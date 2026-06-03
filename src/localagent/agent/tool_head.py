@@ -17,7 +17,9 @@ import torch.nn.functional as F
 from localagent.model.tokenizer import ASSISTANT, USER
 
 CLASSES = ["get_weather", "calculator", "web_search", "planner",
-           "define", "play_music", "get_news", "text"]
+           "define", "play_music", "get_news",
+           "read_file", "write_file", "grep_search", "run_command", "git_commit", "run_tests",
+           "set_reminder", "set_timer", "text"]
 
 
 def label_of(sample) -> str:

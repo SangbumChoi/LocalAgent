@@ -74,12 +74,30 @@ def _numbers(prompt: str) -> list[str]:
     return re.findall(r"-?\d+", prompt)
 
 
+def _quoted(prompt: str) -> list[str]:
+    """Content of the first single/double-quoted span (patterns, commands, commit messages)."""
+    m = re.search(r"'([^']+)'|\"([^\"]+)\"", prompt)
+    return [next(g for g in m.groups() if g)] if m else []
+
+
+def _path(prompt: str) -> list[str]:
+    """First file-path/-name token (has a slash or a file extension)."""
+    m = re.search(r"[A-Za-z0-9_.\-/]+/[A-Za-z0-9_.\-/]*|[A-Za-z0-9_.\-/]+\.[A-Za-z0-9]{1,5}\b",
+                  prompt)
+    return [m.group(0).rstrip(".")] if m else []  # drop trailing sentence period
+
+
 def _arg_options(prompt: str, name: str, schema: dict, required: bool) -> list:
     """Candidate values for one argument, from its JSON-schema type (generic)."""
+    fmt = schema.get("format")
     if "enum" in schema:
         opts = list(schema["enum"])
-    elif schema.get("format") == "arithmetic" or "express" in name:
+    elif fmt == "arithmetic" or "express" in name:
         opts = _arith(prompt)
+    elif fmt == "quoted":
+        opts = _quoted(prompt)
+    elif fmt == "path":
+        opts = _path(prompt)
     elif schema.get("type") in ("integer", "number"):
         opts = _numbers(prompt)
     else:  # string / unknown -> deterministic best prompt span (arg-aware)

@@ -55,6 +55,23 @@ SONGS_EVAL = ["Let It Be", "Smooth Criminal", "Sweet Caroline", "Purple Rain", "
 TOPICS_TRAIN = ["the economy", "space exploration", "local elections", "climate policy",
                 "technology", "the stock market", "public health", "renewable energy"]
 TOPICS_EVAL = ["artificial intelligence", "the housing market", "ocean conservation", "world cup"]
+# --- coding-agent surface (Claude Code / Codex-style tools) ---
+PATHS_TRAIN = ["src/main.py", "utils/io.py", "app/server.js", "lib/parse.py", "tests/test_api.py",
+               "README.md", "config/settings.yaml", "core/model.py", "src/train.py", "db/schema.sql"]
+PATHS_EVAL = ["data/loader.py", "web/index.html", "bin/run.sh", "docs/guide.md", "api/routes.go"]
+PATTERNS_TRAIN = ["TODO", "def main", "import os", "class Model", "async def", "API_KEY",
+                  "NotImplementedError", "print("]
+PATTERNS_EVAL = ["def run", "return None", "raise ValueError", "self.cfg"]
+COMMANDS_TRAIN = ["ls -la", "npm install", "pip install torch", "docker build .", "make test",
+                  "git status", "python -m pytest", "cargo run"]
+COMMANDS_EVAL = ["git pull", "cargo build", "python app.py", "npm run dev"]
+COMMITS_TRAIN = ["fix bug", "add tests", "update docs", "refactor parser", "bump version"]
+COMMITS_EVAL = ["handle edge case", "remove dead code", "tidy imports"]
+TASKS_TRAIN = ["call the dentist", "buy groceries", "submit the report", "back up the laptop",
+               "email the team", "renew the subscription"]
+TASKS_EVAL = ["water the plants", "renew the license", "book a flight"]
+DURATIONS_TRAIN = ["10 minutes", "1 hour", "30 seconds", "20 minutes", "2 hours"]
+DURATIONS_EVAL = ["5 minutes", "45 seconds", "3 hours"]
 
 
 @dataclass
@@ -86,6 +103,12 @@ class Generator:
         self.terms = TERMS_TRAIN if tr else TERMS_EVAL
         self.songs = SONGS_TRAIN if tr else SONGS_EVAL
         self.topics = TOPICS_TRAIN if tr else TOPICS_EVAL
+        self.paths = PATHS_TRAIN if tr else PATHS_EVAL
+        self.patterns = PATTERNS_TRAIN if tr else PATTERNS_EVAL
+        self.commands = COMMANDS_TRAIN if tr else COMMANDS_EVAL
+        self.commits = COMMITS_TRAIN if tr else COMMITS_EVAL
+        self.tasks = TASKS_TRAIN if tr else TASKS_EVAL
+        self.durations = DURATIONS_TRAIN if tr else DURATIONS_EVAL
 
     # ---- per-category sample makers ----
     def weather(self) -> Sample:
@@ -166,6 +189,49 @@ class Generator:
                                  [f"Show the news about {t}.", f"Latest news on {t}.",
                                   f"What's the news about {t}."])
 
+    # --- coding-agent tools (Claude Code / Codex-style) ---
+    def read_file(self) -> Sample:
+        p = self.rng.choice(self.paths)
+        return self._string_tool("read_file", "code", "read_file", "path", p,
+                                 [f"Read the file {p}.", f"Open {p}.", f"Show the contents of {p}."])
+
+    def write_file(self) -> Sample:
+        p = self.rng.choice(self.paths)
+        return self._string_tool("write_file", "code", "write_file", "path", p,
+                                 [f"Create the file {p}.", f"Write to {p}."])
+
+    def grep_search(self) -> Sample:
+        pat = self.rng.choice(self.patterns)
+        return self._string_tool("grep_search", "code", "grep_search", "pattern", pat,
+                                 [f"Search the code for '{pat}'.", f"Grep for '{pat}'.",
+                                  f"Find '{pat}' in the repo."])
+
+    def run_command(self) -> Sample:
+        c = self.rng.choice(self.commands)
+        return self._string_tool("run_command", "code", "run_command", "command", c,
+                                 [f"Run the command '{c}'.", f"Execute '{c}' in the shell."])
+
+    def git_commit(self) -> Sample:
+        msg = self.rng.choice(self.commits)
+        return self._string_tool("git_commit", "code", "git_commit", "message", msg,
+                                 [f"Commit with message '{msg}'.", f"Make a git commit saying '{msg}'."])
+
+    def run_tests(self) -> Sample:
+        phr = self.rng.choice(["Run the tests.", "Run the test suite.", "Execute all tests."])
+        return Sample("run_tests", "code", phr, "tool", _tool_target("run_tests", {}),
+                      "run_tests", "{}")
+
+    # --- popular everyday tools ---
+    def set_reminder(self) -> Sample:
+        t = self.rng.choice(self.tasks)
+        return self._string_tool("set_reminder", "tool_call", "set_reminder", "task", t,
+                                 [f"Set a reminder to {t}.", f"Remind to {t}."])
+
+    def set_timer(self) -> Sample:
+        d = self.rng.choice(self.durations)
+        return self._string_tool("set_timer", "tool_call", "set_timer", "duration", d,
+                                 [f"Set a timer for {d}.", f"Start a timer for {d}."])
+
     def text(self) -> Sample:
         name = self.rng.choice(self.names)
         choice = self.rng.choice(["hello", "morning", "name"])
@@ -183,7 +249,9 @@ class Generator:
     # ---- dataset assembly ----
     def makers(self):
         m = [self.weather, self.calc, self.web_search, self.planner,
-             self.define, self.play_music, self.get_news, self.text]
+             self.define, self.play_music, self.get_news,
+             self.read_file, self.write_file, self.grep_search, self.run_command,
+             self.git_commit, self.run_tests, self.set_reminder, self.set_timer, self.text]
         if self.level >= 2:
             m.append(self.no_tool)
         return m

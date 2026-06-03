@@ -69,4 +69,48 @@ STANDARD_TOOLS = [
         parameters={"type": "object", "properties": {"topic": {"type": "string"}},
                     "required": ["topic"]},
     ),
+    # --- coding-agent tools (Claude Code / Codex-style) ---
+    ToolSpec(
+        name="read_file", description="Read a file.",
+        parameters={"type": "object", "properties": {"path": {"type": "string", "format": "path"}},
+                    "required": ["path"]},
+    ),
+    ToolSpec(
+        name="write_file", description="Create or write a file.",
+        parameters={"type": "object", "properties": {"path": {"type": "string", "format": "path"}},
+                    "required": ["path"]},
+    ),
+    ToolSpec(
+        name="grep_search", description="Search the codebase for a pattern.",
+        parameters={"type": "object",
+                    "properties": {"pattern": {"type": "string", "format": "quoted"}},
+                    "required": ["pattern"]},
+    ),
+    ToolSpec(
+        name="run_command", description="Run a shell command.",
+        parameters={"type": "object",
+                    "properties": {"command": {"type": "string", "format": "quoted"}},
+                    "required": ["command"]},
+    ),
+    ToolSpec(
+        name="git_commit", description="Make a git commit.",
+        parameters={"type": "object",
+                    "properties": {"message": {"type": "string", "format": "quoted"}},
+                    "required": ["message"]},
+    ),
+    ToolSpec(
+        name="run_tests", description="Run the test suite.",
+        parameters={"type": "object", "properties": {}, "required": []},
+    ),
+    # --- popular everyday tools ---
+    ToolSpec(
+        name="set_reminder", description="Set a reminder for a task.",
+        parameters={"type": "object", "properties": {"task": {"type": "string"}},
+                    "required": ["task"]},
+    ),
+    ToolSpec(
+        name="set_timer", description="Set a timer for a duration.",
+        parameters={"type": "object", "properties": {"duration": {"type": "string"}},
+                    "required": ["duration"]},
+    ),
 ]
