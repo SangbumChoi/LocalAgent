@@ -23,7 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 data = ["datasets>=2.18", "requests>=2.31"]          # corpus + teacher data fetching
-demo = ["gradio>=4.0"]                                 # web demo / agent-loop visualization
+demo = ["gradio>=4.0", "matplotlib>=3.7"]              # web demo + flywheel/benchmark viz
 export = ["onnx>=1.16", "onnxruntime>=1.18"]           # ONNX path (GGUF/ExecuTorch use their own toolchains)
 dev = ["pytest>=8.0", "ruff>=0.4"]
 

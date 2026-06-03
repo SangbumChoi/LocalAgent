@@ -1,55 +1,57 @@
-"""Tokenizer with agent special tokens (Phase 1).
+"""Tokenizer — the text<->vector index map (Phase 1, implemented).
 
-Two modes, selected by the model tier (see docs/ARCHITECTURE_IDEAS.md):
-  * ``byte``  — tokenizer-free, vocab 256 (+ specials). Used by the ultra-tiny (~1M) tier so the
-    model pays no embedding tax. Encoding is just UTF-8 bytes.
-  * ``bpe``   — byte-level BPE trained with the `tokenizers` lib (vocab ~32k). Used by tiny/small.
+The ultra-tiny tier is **byte-level**: vocab is exactly 256 (one id per UTF-8 byte), so the
+model pays no embedding tax and needs no trained tokenizer. Agent markers (``<|user|>``,
+``<tool_call>`` …) are just literal UTF-8 text the model learns to emit — they stay in the 256
+byte space. Byte ``0x00`` is reserved as EOS/PAD (it never appears in valid UTF-8 of our data).
 
-Either way the special tokens below make tool use in-vocabulary so the model can natively
-emit/parse tool calls.
+A BPE mode (vocab ~32k) for the tiny/small tiers is stubbed at the bottom (Phase 1 follow-up).
 """
 
 from __future__ import annotations
 
-SPECIAL_TOKENS = [
-    "<|system|>",
-    "<|user|>",
-    "<|assistant|>",
-    "<|tool|>",
-    "<tool_call>",
-    "</tool_call>",
-    "<tool_response>",
-    "</tool_response>",
-    "<|eot|>",
-    "<|pad|>",
+EOS_ID = 0      # reserved byte, end-of-sequence
+PAD_ID = 0      # same byte doubles as pad (masked out of the loss)
+
+# Literal text markers used to frame conversations (plain bytes, not new vocab ids).
+USER = "<|user|>"
+ASSISTANT = "<|assistant|>"
+TOOL = "<|tool|>"
+TOOL_CALL_OPEN = "<tool_call>"
+TOOL_CALL_CLOSE = "</tool_call>"
+TOOL_RESPONSE_OPEN = "<tool_response>"
+TOOL_RESPONSE_CLOSE = "</tool_response>"
+
+SPECIAL_MARKERS = [
+    USER, ASSISTANT, TOOL,
+    TOOL_CALL_OPEN, TOOL_CALL_CLOSE,
+    TOOL_RESPONSE_OPEN, TOOL_RESPONSE_CLOSE,
 ]
 
 
-class Tokenizer:
-    """Thin wrapper around a trained byte-level BPE.
+class ByteTokenizer:
+    """UTF-8 byte tokenizer. vocab_size == 256."""
 
-    TODO(phase-1): implement train()/encode()/decode() over the `tokenizers` lib and
-    persist to a single tokenizer.json. Keep it dependency-light.
-    """
+    vocab_size = 256
+    eos_id = EOS_ID
+    pad_id = PAD_ID
 
-    def __init__(self, path: str | None = None):
-        self._tk = None  # tokenizers.Tokenizer once loaded
-        self.path = path
-        if path is not None:
-            self.load(path)
+    def encode(self, text: str, add_eos: bool = False) -> list[int]:
+        ids = list(text.encode("utf-8"))
+        if add_eos:
+            ids.append(EOS_ID)
+        return ids
 
-    @classmethod
-    def train(cls, corpus_files: list[str], vocab_size: int, out_path: str) -> "Tokenizer":
-        raise NotImplementedError("TODO(phase-1): train byte-level BPE + add SPECIAL_TOKENS")
+    def decode(self, ids: list[int], stop_at_eos: bool = True) -> str:
+        out = []
+        for i in ids:
+            if stop_at_eos and i == EOS_ID:
+                break
+            out.append(i)
+        return bytes(out).decode("utf-8", errors="replace")
 
-    def load(self, path: str) -> None:
-        raise NotImplementedError("TODO(phase-1): load tokenizer.json")
 
-    def encode(self, text: str) -> list[int]:
-        raise NotImplementedError("TODO(phase-1)")
-
-    def decode(self, ids: list[int]) -> str:
-        raise NotImplementedError("TODO(phase-1)")
-
-    def token_id(self, token: str) -> int:
-        raise NotImplementedError("TODO(phase-1): lookup special-token id, e.g. '<|eot|>'")
+def load_tokenizer(kind: str = "byte"):
+    if kind == "byte":
+        return ByteTokenizer()
+    raise NotImplementedError("TODO(phase-1): BPE tokenizer for the tiny/small (32k vocab) tiers")
