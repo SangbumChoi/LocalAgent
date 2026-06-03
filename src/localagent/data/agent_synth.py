@@ -147,15 +147,31 @@ class Generator:
     def generate(self, n: int) -> list[Sample]:
         makers = self.makers()
         out, seen = [], set()
-        # round-robin categories for balance; dedupe identical prompts
-        guard = 0
-        while len(out) < n and guard < n * 50:
-            guard += 1
-            s = makers[len(out) % len(makers)]()
+        # round-robin categories by attempt index (NOT len(out)) so a low-diversity category
+        # hitting duplicates can't freeze the selector; dedupe identical prompts.
+        attempts = 0
+        while len(out) < n and attempts < n * 80:
+            s = makers[attempts % len(makers)]()
+            attempts += 1
             if s.prompt in seen:
                 continue
             seen.add(s.prompt)
             out.append(s)
+        return out
+
+
+    def generate_balanced(self, per_category: int) -> list[Sample]:
+        """Up to `per_category` unique samples per category — for meaningful per-group eval."""
+        from collections import Counter
+        makers = self.makers()
+        out, seen, cnt = [], set(), Counter()
+        attempts, cap = 0, per_category * len(makers) * 300
+        while len(out) < per_category * len(makers) and attempts < cap:
+            s = makers[attempts % len(makers)]()
+            attempts += 1
+            if cnt[s.category] >= per_category or s.prompt in seen:
+                continue
+            seen.add(s.prompt); cnt[s.category] += 1; out.append(s)
         return out
 
 

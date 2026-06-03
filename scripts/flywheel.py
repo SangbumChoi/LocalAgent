@@ -60,8 +60,8 @@ def main():
     model = LocalAgentLM(cfg).to(device)
     print(f"model {cfg.name}: {model.num_params()/1e6:.3f}M params on {device}", flush=True)
 
-    n_train = 400 if args.quick else 2000
-    n_eval = 60 if args.quick else 160
+    n_train = 400 if args.quick else 1200
+    n_eval = 12 if args.quick else 30        # per category (balanced held-out)
     pre_steps = 60 if args.quick else 200
     sft1 = 150 if args.quick else 600
     sft_inc = 80 if args.quick else 250
@@ -74,7 +74,7 @@ def main():
     metrics = {"rounds": [], "pretrain_loss": pre_loss}
     for r in range(1, args.rounds + 1):
         train = Generator(level=r, seed=r, split="train").generate(n_train)
-        held = Generator(level=r, seed=1000 + r, split="eval").generate(n_eval)
+        held = Generator(level=r, seed=1000 + r, split="eval").generate_balanced(n_eval)
         steps = sft1 if r == 1 else sft_inc
         print(f"\n=== Round {r} (level {r}, {len(train)} train / {len(held)} held-out) ===", flush=True)
         sft_loss = sft(model, train, tok, steps=steps, batch_size=32, lr=1.5e-3, device=device,
@@ -89,7 +89,7 @@ def main():
         _plot_rounds(metrics)
 
     # final comparison: raw free-generation vs grounded, on the last level's held-out
-    final_held = Generator(level=args.rounds, seed=4242, split="eval").generate(80)
+    final_held = Generator(level=args.rounds, seed=4242, split="eval").generate_balanced(20)
     fg = evaluate(model, final_held, tok, device=device)
     gr = evaluate_grounded(model, final_held, tok, TOOLS, device=device)
     metrics["final_freegen"] = fg
