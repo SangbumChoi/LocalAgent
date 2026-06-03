@@ -28,7 +28,7 @@ import torch
 
 from localagent.data.agent_synth import Generator
 from localagent.data.render import build_pretrain_stream, prompt_text
-from localagent.eval.harness import evaluate, evaluate_grounded
+from localagent.eval.harness import evaluate, evaluate_grounded, multi_turn_eval
 from localagent.inference.generate import generate
 from localagent.agent.constrained import grounded_decode
 from localagent.agent.toolset import STANDARD_TOOLS as TOOLS
@@ -61,6 +61,7 @@ def main():
 
     n_train = 400 if args.quick else 1200
     n_eval = 12 if args.quick else 30        # per category (balanced held-out)
+    n_ep = 40 if args.quick else 240         # multi-turn coding episodes per round
     pre_steps = 60 if args.quick else 200
     sft1 = 150 if args.quick else 600
     sft_inc = 80 if args.quick else 220
@@ -73,18 +74,26 @@ def main():
     metrics = {"rounds": [], "pretrain_loss": pre_loss}
     for r in range(1, args.rounds + 1):
         train = Generator(level=r, seed=r, split="train").generate(n_train)
+        episodes = Generator(level=r, seed=5000 + r, split="train").episodes(n_ep)
         held = Generator(level=r, seed=1000 + r, split="eval").generate_balanced(n_eval)
+        held_ep = Generator(level=r, seed=6000 + r, split="eval").episodes(n_ep // 4)
         steps = sft1 if r == 1 else sft_inc
-        print(f"\n=== Round {r} (level {r}, {len(train)} train / {len(held)} held-out) ===", flush=True)
-        sft_loss, head = sft(model, train, tok, steps=steps, batch_size=32, lr=1.5e-3,
-                             device=device, log=lambda *a: None, joint_tool_head=True)
+        print(f"\n=== Round {r} (level {r}, {len(train)} single-turn + {len(episodes)} episodes "
+              f"/ {len(held)} held-out) ===", flush=True)
+        sft_loss, head, ptr = sft(model, train, tok, steps=steps, batch_size=32, lr=1.5e-3,
+                                  device=device, log=lambda *a: None, joint_tool_head=True,
+                                  conversations=episodes)
         grpo(model, train, tok, steps=grpo_steps, device=device, log=lambda *a: None)  # RL stage
-        gr = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head)
+        gr = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
+        mt = multi_turn_eval(model, held_ep, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
         print(f"  grounded (held-out): {fmt(gr)}", flush=True)
-        metrics["rounds"].append({"round": r, "level": r, "grounded": gr,
+        print(f"  multi-turn: step_acc={mt['step_acc']*100:.0f}% episode_acc={mt['episode_acc']*100:.0f}%"
+              f" ({mt['steps']} steps)", flush=True)
+        metrics["rounds"].append({"round": r, "level": r, "grounded": gr, "multi_turn": mt,
                                   "sft_loss_last": sft_loss[-1]})
         torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict(),
-                    "tool_head": head.state_dict() if head is not None else None},
+                    "tool_head": head.state_dict() if head is not None else None,
+                    "ptr_head": ptr.state_dict() if ptr is not None else None},
                    f"{OUT}/ultra-tiny.pt")
         json.dump(metrics, open(f"{OUT}/metrics.json", "w"), indent=2)
         _plot_rounds(metrics)
@@ -92,7 +101,7 @@ def main():
     # final comparison: raw free-generation vs grounded, on the last level's held-out
     final_held = Generator(level=args.rounds, seed=4242, split="eval").generate_balanced(20)
     fg = evaluate(model, final_held, tok, device=device)
-    gr = evaluate_grounded(model, final_held, tok, TOOLS, device=device, tool_head=head)
+    gr = evaluate_grounded(model, final_held, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
     metrics["final_freegen"] = fg
     metrics["final_grounded"] = gr
     print(f"\nFINAL free-gen : {fmt(fg)}")
@@ -100,7 +109,7 @@ def main():
 
     samples = []
     for s in Generator(level=args.rounds, seed=999, split="eval").generate(8):
-        out = grounded_decode(model, tok, s.prompt, TOOLS, device=device, tool_head=head)
+        out = grounded_decode(model, tok, s.prompt, TOOLS, device=device, tool_head=head, ptr_head=ptr)
         samples.append({"prompt": s.prompt, "expected": s.target, "grounded_out": out})
     json.dump(samples, open(f"{OUT}/samples.json", "w"), indent=2)
     json.dump(metrics, open(f"{OUT}/metrics.json", "w"), indent=2)

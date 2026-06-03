@@ -49,10 +49,10 @@ def evaluate(model, samples, tok, device="cpu", max_new_tokens=96) -> dict:
     }
 
 
-def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None) -> dict:
-    """Eval with prompt-grounded constrained decoding (the deployed decoder). Fast: ranks
-    candidate calls (teacher-forced) instead of autoregressive generation. A trained `tool_head`
-    does tool selection; otherwise free-gen / text-intent selection is used."""
+def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None, ptr_head=None) -> dict:
+    """Eval with grounded constrained decoding (the deployed decoder). A trained `tool_head` does
+    tool selection and a `ptr_head` fills arguments via learned copy spans; otherwise heuristic
+    selection/extraction is used."""
     from collections import defaultdict
 
     from localagent.agent.constrained import grounded_decode
@@ -60,7 +60,8 @@ def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None) 
     by_cat = defaultdict(lambda: [0, 0])
     n_correct = 0
     for s in samples:
-        out = grounded_decode(model, tok, s.prompt, tools, device=device, tool_head=tool_head)
+        out = grounded_decode(model, tok, s.prompt, tools, device=device,
+                              tool_head=tool_head, ptr_head=ptr_head)
         ok = _correct(s, out)
         n_correct += ok
         by_group[s.group][0] += ok; by_group[s.group][1] += 1
@@ -71,6 +72,60 @@ def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None) 
         "categories": {g: c / t for g, (c, t) in by_cat.items()},
         "n": len(samples),
     }
+
+
+def _history_text(messages) -> str:
+    """Render a message prefix to text (markers, no EOS) for multi-turn context."""
+    import json
+
+    from localagent.data.schema import Role
+    from localagent.model.tokenizer import (ASSISTANT, TOOL, TOOL_CALL_CLOSE, TOOL_CALL_OPEN,
+                                            TOOL_RESPONSE_CLOSE, TOOL_RESPONSE_OPEN, USER)
+    parts = []
+    for m in messages:
+        if m.role == Role.user:
+            parts.append(USER + m.content)
+        elif m.role == Role.tool:
+            parts.append(TOOL + TOOL_RESPONSE_OPEN + (m.tool_response or "") + TOOL_RESPONSE_CLOSE)
+        elif m.role == Role.assistant:
+            if m.tool_calls:
+                c = m.tool_calls[0]
+                body = TOOL_CALL_OPEN + json.dumps(
+                    {"name": c.name, "arguments": c.arguments}, separators=(",", ":"),
+                    sort_keys=True) + TOOL_CALL_CLOSE
+            else:
+                body = m.content
+            parts.append(ASSISTANT + body)
+    return "".join(parts)
+
+
+def multi_turn_eval(model, episodes, tok, tools, device="cpu", tool_head=None, ptr_head=None) -> dict:
+    """Replay each episode; at every assistant *tool-call* turn, decode the next action over the
+    full history (so follow-up args can be grounded in earlier tool responses) and AST-match it
+    against the gold call. Reports per-step and whole-episode accuracy."""
+    from localagent.agent.constrained import grounded_decode
+    from localagent.agent.parser import extract_tool_calls
+    from localagent.data.schema import Role
+    from localagent.eval.tool_eval import match_calls
+    from localagent.model.tokenizer import ASSISTANT
+
+    step_ok = step_tot = ep_ok = ep_tot = 0
+    for conv in episodes:
+        all_ok, has_step = True, False
+        for i, m in enumerate(conv.messages):
+            if m.role != Role.assistant or not m.tool_calls:
+                continue
+            has_step = True
+            ctx = _history_text(conv.messages[:i]) + ASSISTANT
+            out = grounded_decode(model, tok, ctx, tools, device=device, tool_head=tool_head,
+                                  ptr_head=ptr_head, framed=True)
+            pred = extract_tool_calls(out)
+            ok = bool(pred) and match_calls([pred[0]], [m.tool_calls[0]])
+            step_ok += ok; step_tot += 1; all_ok = all_ok and ok
+        if has_step:
+            ep_tot += 1; ep_ok += all_ok
+    return {"step_acc": step_ok / max(1, step_tot), "episode_acc": ep_ok / max(1, ep_tot),
+            "steps": step_tot, "episodes": ep_tot}
 
 
 def run(checkpoint: str, suite: str = "all", out: str = "runs/eval/report.json") -> dict:

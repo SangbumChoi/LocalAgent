@@ -8,15 +8,54 @@ samples. The loss is masked over the prompt (we only learn the assistant body + 
 
 from __future__ import annotations
 
+import json
+
 from localagent.data.agent_synth import Sample
+from localagent.data.schema import Conversation, Role
 from localagent.model.tokenizer import (
     ASSISTANT,
+    TOOL,
     TOOL_CALL_CLOSE,
     TOOL_CALL_OPEN,
+    TOOL_RESPONSE_CLOSE,
+    TOOL_RESPONSE_OPEN,
     USER,
 )
 
 IGNORE = -100
+
+
+def _canon(name: str, args: dict) -> str:
+    return json.dumps({"name": name, "arguments": args}, separators=(",", ":"), sort_keys=True)
+
+
+def render_conversation(conv: Conversation, tok) -> tuple[list[int], list[int]]:
+    """Render a multi-turn Conversation to (input_ids, labels); loss is on every assistant turn
+    (tool calls + final text + per-turn EOS). User and tool-response tokens are masked."""
+    ids: list[int] = []
+    labels: list[int] = []
+
+    def add(text: str, learn: bool):
+        t = tok.encode(text)
+        ids.extend(t)
+        labels.extend(t if learn else [IGNORE] * len(t))
+
+    for m in conv.messages:
+        if m.role == Role.user:
+            add(USER + m.content, False)
+        elif m.role == Role.tool:
+            add(TOOL + TOOL_RESPONSE_OPEN + (m.tool_response or "") + TOOL_RESPONSE_CLOSE, False)
+        elif m.role == Role.assistant:
+            add(ASSISTANT, False)  # marker is part of the prompt
+            if m.tool_calls:
+                c = m.tool_calls[0]
+                body = TOOL_CALL_OPEN + _canon(c.name, c.arguments) + TOOL_CALL_CLOSE
+            else:
+                body = m.content
+            b = tok.encode(body) + [tok.eos_id]
+            ids.extend(b)
+            labels.extend(b)  # learn the assistant body + end-of-turn
+    return ids, labels
 
 
 def assistant_body(s: Sample) -> str:

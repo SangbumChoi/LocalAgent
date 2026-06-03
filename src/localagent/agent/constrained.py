@@ -87,13 +87,19 @@ def _path(prompt: str) -> list[str]:
     return [m.group(0).rstrip(".")] if m else []  # drop trailing sentence period
 
 
-def _arg_options(prompt: str, name: str, schema: dict, required: bool) -> list:
-    """Candidate values for one argument, from its JSON-schema type (generic)."""
+def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None) -> list:
+    """Candidate values for one argument. If a pointer head is given (`ptr`), string-typed args
+    are filled by its learned copy span; otherwise schema/heuristic extractors are used."""
+    from localagent.agent.pointer_head import ARG_IDX
     fmt = schema.get("format")
     if "enum" in schema:
         opts = list(schema["enum"])
     elif fmt == "arithmetic" or "express" in name:
         opts = _arith(prompt)
+    elif ptr is not None and name in ARG_IDX:        # learned pointer/copy span
+        ph, feats_row, framed_ids, tok = ptr
+        s, e = ph.predict_span(feats_row, name)
+        opts = [tok.decode(framed_ids[s:e + 1])]
     elif fmt == "quoted":
         opts = _quoted(prompt)
     elif fmt == "path":
@@ -107,11 +113,11 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool) -> list:
     return opts or ([None] if not required else [])
 
 
-def _tool_bodies(prompt: str, tool: ToolSpec) -> list[str]:
+def _tool_bodies(prompt: str, tool: ToolSpec, ptr=None) -> list[str]:
     props = (tool.parameters or {}).get("properties", {})
     required = set((tool.parameters or {}).get("required", []))
     names = list(props.keys())
-    per_arg = [_arg_options(prompt, n, props[n], n in required) for n in names]
+    per_arg = [_arg_options(prompt, n, props[n], n in required, ptr) for n in names]
     bodies = []
     for combo in itertools.islice(itertools.product(*per_arg), MAX_COMBOS):
         args = {n: v for n, v in zip(names, combo) if v is not None}
@@ -182,24 +188,45 @@ def _preselect_tool(model, tok, prompt: str, names: set[str], device) -> str | N
     return calls[0].name if calls and calls[0].name in names else None
 
 
+@torch.no_grad()
+def _ctx_feats(model, tok, ctx: str, device):
+    ids = tok.encode(ctx)
+    _, feats = model(torch.tensor([ids], device=device), return_hidden=True)
+    return feats[0], ids
+
+
 def grounded_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu",
-                    tool_head=None) -> str:
-    # 1. tool selection: the trained tool head if given, else free-gen / text-intent fallback.
+                    tool_head=None, ptr_head=None, framed=False) -> str:
+    """Grounded constrained decode. `framed=False`: `prompt` is a raw user turn (framed as
+    <|user|>..<|assistant|> internally) — single-turn. `framed=True`: `prompt` is the full
+    multi-turn context already ending at the assistant marker (the next action is decoded over the
+    whole history, so args can be grounded in earlier tool responses)."""
+    from localagent.model.tokenizer import ASSISTANT, USER
+    ctx = prompt if framed else f"{USER}{prompt}{ASSISTANT}"
+    score = prompt if not framed else ctx  # what _score conditions on
+    feats = ids = None
+    # 1. tool selection
     if tool_head is not None:
-        picked = tool_head.predict(model, tok, prompt, device)
+        feats, ids = _ctx_feats(model, tok, ctx, device)
+        from localagent.agent.tool_head import CLASSES
+        picked = CLASSES[int(tool_head(feats[-1]).argmax(-1))]
         if picked == "text":
-            txt = _text_candidates(prompt) or ["I am LocalAgent."]
-            return _best(model, tok, prompt, txt, device)
+            return _best(model, tok, score, _text_candidates(prompt) or ["I am LocalAgent."], device)
     else:
         txt = _text_candidates(prompt)
         if txt is not None:
-            return _best(model, tok, prompt, txt, device)
+            return _best(model, tok, score, txt, device)
         picked = _preselect_tool(model, tok, prompt, {t.name for t in tools}, device)
-    # 2. rank the selected tool's prompt-grounded argument candidates.
+    # 2. fill the selected tool's args — learned pointer/copy spans if a pointer head is given.
     use = [t for t in tools if t.name == picked] if picked else tools
+    ptr = None
+    if ptr_head is not None:
+        if feats is None:
+            feats, ids = _ctx_feats(model, tok, ctx, device)
+        ptr = (ptr_head, feats, ids, tok)
     bodies = []
     for t in use:
-        bodies += _tool_bodies(prompt, t)
+        bodies += _tool_bodies(prompt, t, ptr)
     if not bodies:
         return "I am LocalAgent."
-    return _best(model, tok, prompt, bodies, device)
+    return _best(model, tok, score, bodies, device)

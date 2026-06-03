@@ -23,6 +23,8 @@ import json
 import random
 from dataclasses import dataclass
 
+from localagent.data.schema import Conversation, Message, Role, ToolCall
+
 # ---- slot pools, split train/eval (disjoint) ------------------------------------------------
 CITIES_TRAIN = ["Paris", "Tokyo", "Berlin", "Cairo", "Lima", "Oslo", "Delhi", "Madrid",
                 "Seoul", "Rome", "Dublin", "Vienna", "Athens", "Bogota", "Hanoi", "Accra",
@@ -255,6 +257,55 @@ class Generator:
         if self.level >= 2:
             m.append(self.no_tool)
         return m
+
+    # --- multi-turn coding episodes (Claude Code / Codex-style trajectories) ---
+    def coding_episode(self) -> Conversation:
+        """A short multi-turn tool-use trajectory: tool call -> tool response -> follow-up.
+        Some follow-up args are grounded in the *tool response*, not the user turn (the case
+        only a learned pointer head can handle)."""
+        def A(name, args):
+            return Message(role=Role.assistant, tool_calls=[ToolCall(name, args)])
+
+        def T(resp):
+            return Message(role=Role.tool, tool_response=resp)
+
+        path = self.rng.choice(self.paths)
+        which = self.rng.choice(["debug", "grep_read", "test_commit"])
+        if which == "debug":
+            msgs = [
+                Message(role=Role.user, content=f"There's a bug in {path}, investigate it."),
+                A("read_file", {"path": path}),
+                T("def handler():\n    return None  # suspicious"),
+                A("run_tests", {}),
+                T("FAILED tests/test_handler.py::test_ok"),
+                Message(role=Role.assistant,
+                        content=f"The bug is in {path}: handler() returns None."),
+            ]
+        elif which == "grep_read":  # follow-up path comes from the tool response
+            pat = self.rng.choice(self.patterns)
+            msgs = [
+                Message(role=Role.user, content=f"Where is '{pat}' used? Open that file."),
+                A("grep_search", {"pattern": pat}),
+                T(f"{path}:12:    {pat} appears here"),
+                A("read_file", {"path": path}),
+                T("<file contents>"),
+                Message(role=Role.assistant, content=f"'{pat}' is used in {path}."),
+            ]
+        else:
+            msg = self.rng.choice(self.commits)
+            msgs = [
+                Message(role=Role.user,
+                        content=f"Run the tests and commit with message '{msg}'."),
+                A("run_tests", {}),
+                T("All tests passed."),
+                A("git_commit", {"message": msg}),
+                T("Committed abc123."),
+                Message(role=Role.assistant, content=f"Done — committed '{msg}'."),
+            ]
+        return Conversation(messages=msgs, meta={"kind": "coding_episode", "type": which})
+
+    def episodes(self, n: int) -> list[Conversation]:
+        return [self.coding_episode() for _ in range(n)]
 
     def generate(self, n: int) -> list[Sample]:
         makers = self.makers()
