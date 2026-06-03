@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Artifacts
+checkpoints/
+data/raw/
+data/shards/
+data/synth/
+runs/
+*.gguf
+*.onnx
+*.pte
+*.bin
+*.safetensors
+*.sqlite
+*.db
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.DS_Store

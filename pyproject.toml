@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "localagent"
+version = "0.0.1"
+description = "A <100M-parameter LLM, pretrained from scratch, that works as a local tool-calling agent. Minimal pure-PyTorch pipeline."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "LocalAgent contributors" }]
+keywords = ["llm", "agent", "tool-calling", "tiny", "on-device", "distillation", "pytorch"]
+
+# Deliberately minimal — pure PyTorch + a BPE tokenizer + yaml configs. No training framework.
+dependencies = [
+    "torch>=2.2",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "tokenizers>=0.15",   # BPE tokenizer training only (not transformers)
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+data = ["datasets>=2.18", "requests>=2.31"]          # corpus + teacher data fetching
+demo = ["gradio>=4.0"]                                 # web demo / agent-loop visualization
+export = ["onnx>=1.16", "onnxruntime>=1.18"]           # ONNX path (GGUF/ExecuTorch use their own toolchains)
+dev = ["pytest>=8.0", "ruff>=0.4"]
+
+[project.scripts]
+localagent = "localagent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
