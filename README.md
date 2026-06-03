@@ -39,19 +39,23 @@ At ~1M params the goal is a *controller*, not a chatbot: knowledge is offloaded 
 memory/retrieval store, so the parameters can encode skills and control flow.
 
 ### Result (ultra-tiny ~1M, pretrained from scratch, byte-level)
-On **held-out slot values** (disjoint train/eval pools), the raw byte model learns tool-call
-*structure* perfectly but can't copy unseen slot values. **Prompt-grounded constrained decoding**
-(the model ranks candidate calls whose args are grounded in the prompt) closes the gap:
+A **15-tool** agent — general (`get_weather`, `calculator`, `web_search`, `planner`, `define`,
+`play_music`, `get_news`), the **Claude Code / Codex-style coding surface** (`read_file`,
+`write_file`, `grep_search`, `run_command`, `git_commit`, `run_tests`), and popular
+(`set_reminder`, `set_timer`). On **held-out slot values** (disjoint train/eval pools), the raw
+byte model learns tool-call *structure* perfectly but can't copy unseen slot values. The deployed
+decoder is a **dual head + prompt-grounded constrained decoding**: a jointly-trained tool-selection
+head picks the tool, and arguments are grounded in spans of the prompt (schema-driven, trigger-free).
 
-| decoder | tool-calling | web-search | planner | text-gen | overall |
-|---|---|---|---|---|---|
-| raw byte generation | ~1% | ~0% | ~0% | ~1% | ~1% |
-| **grounded constrained** | **100%** | **100%** | **100%** | **100%** | **100%** |
+| decoder | overall (15 tools, held-out) |
+|---|---|
+| raw byte generation | ~0% |
+| **dual-head + grounded constrained** | **~83%** (text/define/web_search 100%, news 92%, planner 83%, code 80%, calc/weather 71%, music 73%) |
 
-Across 5 flywheel **enrichment levels** (each adds harder cases — weather units, 3-term
-arithmetic, new phrasings), grounded web-search / planner / text stay at **100%**; tool-calling
-(weather+calc) holds **100%** at level 1 and dips to **~78–87%** at higher levels (the grounded
-ranker occasionally mis-picks a unit or a multi-term expression). See `runs/flywheel/accuracy.png`.
+The data flywheel (5 enrichment rounds) lifts the harder categories as it grows — `code` 46%→80%,
+`news` 25%→92%. Argument grounding is exact (0/1254 extraction misses across all tools); remaining
+errors are tool *selection* by the 1M head (e.g. news↔weather), which a larger tier / pointer head
+closes. See `runs/flywheel/accuracy.png`.
 
 Throughput/memory (CPU, 4 threads), showing the KV-cache win:
 
@@ -101,7 +105,7 @@ tests/
 | Model: 3 tiers (decoder, **KV cache**, config, budget guard) + factorized embeddings + depth-recurrence | ✅ implemented |
 | Training: pretrain + SFT + GRPO (verifiable reward), CPU/GPU | ✅ implemented |
 | Synthetic data + render + eval harness (AST + grounded) | ✅ implemented |
-| **Grounded constrained decoding** → 100% held-out (tool/web/planner/text) | ✅ implemented (`agent/constrained.py`) |
+| **Dual-head (tool classifier) + grounded constrained decoding** → ~83% held-out across 15 tools | ✅ implemented (`agent/constrained.py`, `agent/tool_head.py`) |
 | Flywheel driver + throughput/memory + accuracy visualizations | ✅ implemented (`scripts/flywheel.py`, `scripts/benchmark.py`) |
 | Dual tool/text head, SSM backbone, retrieval head | 📐 proposed (ARCHITECTURE_IDEAS.md) |
 | Conversation schema, tool registry, tool-call parser, AST eval primitives | ✅ implemented |
