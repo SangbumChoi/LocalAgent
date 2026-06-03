@@ -54,8 +54,17 @@ head picks the tool, and arguments are grounded in spans of the prompt (schema-d
 
 The data flywheel (5 enrichment rounds) lifts the harder categories as it grows — `code` 46%→80%,
 `news` 25%→92%. Argument grounding is exact (0/1254 extraction misses across all tools); remaining
-errors are tool *selection* by the 1M head (e.g. news↔weather), which a larger tier / pointer head
-closes. See `runs/flywheel/accuracy.png`.
+errors are tool *selection* by the 1M head (e.g. news↔weather). See `runs/flywheel/accuracy.png`.
+
+**Multi-turn coding episodes + pointer head.** Training the tool head and a learned
+**pointer/copy argument head** (`agent/pointer_head.py`) jointly — including on multi-turn episode
+contexts — lets the agent run tool→response→follow-up trajectories and ground a follow-up arg
+(e.g. a file path) out of an earlier **tool response** (which heuristics can't reach). In a
+combined 5-round run, multi-turn coding episodes score **~73–77% per step / ~50% whole-episode**
+(see `runs/flywheel/final_combined.png`). Sharing the SFT step budget with the extra heads lowers
+single-turn peak (~67% here vs ~83% single-turn-only) — a compute trade-off, not a method limit.
+On clean single-turn templates the deterministic extractors still beat the pointer head, so
+single-turn deploys heuristics and multi-turn uses the pointer head.
 
 Throughput/memory (CPU, 4 threads), showing the KV-cache win:
 
