@@ -25,19 +25,36 @@ from dataclasses import dataclass
 
 # ---- slot pools, split train/eval (disjoint) ------------------------------------------------
 CITIES_TRAIN = ["Paris", "Tokyo", "Berlin", "Cairo", "Lima", "Oslo", "Delhi", "Madrid",
-                "Seoul", "Rome", "Dublin", "Vienna", "Athens", "Bogota", "Hanoi", "Accra"]
-CITIES_EVAL = ["Boston", "Quito", "Kyoto", "Bern", "Tunis", "Riga", "Perth", "Nairobi"]
+                "Seoul", "Rome", "Dublin", "Vienna", "Athens", "Bogota", "Hanoi", "Accra",
+                "Lisbon", "Prague", "Warsaw", "Helsinki", "Manila", "Jakarta", "Amman", "Doha"]
+CITIES_EVAL = ["Boston", "Quito", "Kyoto", "Bern", "Tunis", "Riga", "Perth", "Nairobi",
+               "Caracas", "Bruges", "Cusco", "Almaty"]
 NAMES_TRAIN = ["Alice", "Bob", "Carol", "David", "Eve", "Frank", "Grace", "Heidi",
-               "Ivan", "Judy", "Mallory", "Niaj", "Olivia", "Peggy", "Sybil", "Trent"]
-NAMES_EVAL = ["Walter", "Xena", "Yuki", "Zara", "Quinn", "Rosa", " Feliks".strip(), "Mira"]
+               "Ivan", "Judy", "Mallory", "Niaj", "Olivia", "Peggy", "Sybil", "Trent",
+               "Karl", "Nora", "Pablo", "Ruth", "Vince", "Wendy", "Hugo", "Iris"]
+NAMES_EVAL = ["Walter", "Xena", "Yuki", "Zara", "Quinn", "Rosa", "Feliks", "Mira",
+              "Otto", "Greta", "Diego", "Lena"]
 QUERIES_TRAIN = ["best pizza in town", "history of jazz", "how tall is Everest",
                  "python list comprehension", "tides tomorrow", "nearest pharmacy",
-                 "speed of light", "who wrote Hamlet"]
-QUERIES_EVAL = ["origin of tea", "rules of chess", "how rainbows form", "fastest land animal"]
+                 "speed of light", "who wrote Hamlet", "capital of Peru", "boiling point of water",
+                 "longest river in Asia", "how to tie a tie"]
+QUERIES_EVAL = ["origin of tea", "rules of chess", "how rainbows form", "fastest land animal",
+                "phases of the moon", "history of the violin"]
 GOALS_TRAIN = ["plan a trip to the coast", "organize a birthday party",
                "learn to bake bread", "set up a home garden", "prepare for an exam",
-               "build a bookshelf", "train for a 5k", "write a short story"]
-GOALS_EVAL = ["plan a museum visit", "start a podcast", "fix a leaky faucet", "learn guitar"]
+               "build a bookshelf", "train for a 5k", "write a short story",
+               "redecorate the living room", "save for a vacation", "declutter the garage"]
+GOALS_EVAL = ["plan a museum visit", "start a podcast", "fix a leaky faucet", "learn guitar",
+              "host a dinner party", "switch careers"]
+TERMS_TRAIN = ["photosynthesis", "inflation", "entropy", "recursion", "osmosis",
+               "democracy", "gravity", "metaphor", "algorithm", "ecosystem"]
+TERMS_EVAL = ["mitosis", "diplomacy", "friction", "syntax", "biome"]
+SONGS_TRAIN = ["Bohemian Rhapsody", "Hey Jude", "Yesterday", "Imagine", "Hallelujah",
+               "Thunderstruck", "Clocks", "Africa", "Viva La Vida", "Wonderwall"]
+SONGS_EVAL = ["Let It Be", "Smooth Criminal", "Sweet Caroline", "Purple Rain", "Hotel California"]
+TOPICS_TRAIN = ["the economy", "space exploration", "local elections", "climate policy",
+                "technology", "the stock market", "public health", "renewable energy"]
+TOPICS_EVAL = ["artificial intelligence", "the housing market", "ocean conservation", "world cup"]
 
 
 @dataclass
@@ -61,10 +78,14 @@ class Generator:
         self.level = level
         self.split = split
         self.rng = random.Random(seed)
-        self.cities = CITIES_TRAIN if split == "train" else CITIES_EVAL
-        self.names = NAMES_TRAIN if split == "train" else NAMES_EVAL
-        self.queries = QUERIES_TRAIN if split == "train" else QUERIES_EVAL
-        self.goals = GOALS_TRAIN if split == "train" else GOALS_EVAL
+        tr = split == "train"
+        self.cities = CITIES_TRAIN if tr else CITIES_EVAL
+        self.names = NAMES_TRAIN if tr else NAMES_EVAL
+        self.queries = QUERIES_TRAIN if tr else QUERIES_EVAL
+        self.goals = GOALS_TRAIN if tr else GOALS_EVAL
+        self.terms = TERMS_TRAIN if tr else TERMS_EVAL
+        self.songs = SONGS_TRAIN if tr else SONGS_EVAL
+        self.topics = TOPICS_TRAIN if tr else TOPICS_EVAL
 
     # ---- per-category sample makers ----
     def weather(self) -> Sample:
@@ -114,14 +135,36 @@ class Generator:
     def planner(self) -> Sample:
         goal = self.rng.choice(self.goals)
         phr = self.rng.choice([
-            f"Help me {goal}.",
             f"Make a plan to {goal}.",
             f"I want to {goal}.",
+            f"I need to {goal}.",
         ])
         args = {"goal": goal}
         return Sample("planner", "planner", phr, "tool",
                       _tool_target("planner", args), "planner",
                       json.dumps(args, separators=(",", ":"), sort_keys=True))
+
+    def _string_tool(self, category, group, name, arg, value, phrasings) -> Sample:
+        args = {arg: value}
+        return Sample(category, group, self.rng.choice(phrasings), "tool",
+                      _tool_target(name, args), name,
+                      json.dumps(args, separators=(",", ":"), sort_keys=True))
+
+    def define(self) -> Sample:
+        t = self.rng.choice(self.terms)
+        return self._string_tool("define", "define", "define", "term", t,
+                                 [f"Definition of {t}.", f"Define {t}.", f"Explain {t}."])
+
+    def play_music(self) -> Sample:
+        s = self.rng.choice(self.songs)
+        return self._string_tool("play_music", "music", "play_music", "song", s,
+                                 [f"Play {s}.", f"Put on {s}.", f"Start playing {s}."])
+
+    def get_news(self) -> Sample:
+        t = self.rng.choice(self.topics)
+        return self._string_tool("get_news", "news", "get_news", "topic", t,
+                                 [f"Show the news about {t}.", f"Latest news on {t}.",
+                                  f"What's the news about {t}."])
 
     def text(self) -> Sample:
         name = self.rng.choice(self.names)
@@ -139,7 +182,8 @@ class Generator:
 
     # ---- dataset assembly ----
     def makers(self):
-        m = [self.weather, self.calc, self.web_search, self.planner, self.text]
+        m = [self.weather, self.calc, self.web_search, self.planner,
+             self.define, self.play_music, self.get_news, self.text]
         if self.level >= 2:
             m.append(self.no_tool)
         return m

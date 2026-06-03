@@ -29,8 +29,9 @@ from localagent.model.tokenizer import TOOL_CALL_CLOSE, TOOL_CALL_OPEN
 
 MAX_COMBOS = 60
 # Generic English prepositions that introduce a slot value ("weather IN Paris", "search FOR X",
-# "plan TO learn guitar"). Not tool-specific — works across schemas.
-PREPS = ["for", "about", "up", "to", "me", "in", "on", "of"]
+# "plan TO learn guitar"). Not tool-specific — works across schemas. ("me" excluded: it nests
+# badly, e.g. "remind ME to call" vs "to call".)
+PREPS = ["for", "about", "up", "to", "in", "on", "of"]
 
 
 def _canon(name: str, args: dict) -> str:
@@ -41,17 +42,27 @@ def _strip(s: str) -> str:
     return re.sub(r"^[^A-Za-z0-9]+|\s*(online|please|right now)?\s*[.?!]*$", "", s, flags=re.I).strip()
 
 
-def _best_string(prompt: str) -> str:
-    """Deterministic string-slot value (the tool head already chose the tool, so the value just
-    needs the right span): prefer a maximal capitalized proper-noun span (cities/names), else the
-    longest generic-preposition tail (queries/goals). Generic English heuristics, not per-tool."""
+# Argument names whose value is a proper-noun entity (take the capitalized span) vs free text
+# (take the whole tail, which may itself contain a proper noun, e.g. query "capital of Peru").
+ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place"}
+
+
+def _best_string(prompt: str, arg: str = "") -> str:
+    """Deterministic string-slot value, arg-aware (the tool head already chose the tool/arg):
+    entity args -> first capitalized proper-noun span; free-text args -> longest preposition tail
+    (else the imperative tail after the leading verb). Generic English heuristics, not per-tool."""
     caps = re.findall(r"(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+)*", " ".join(prompt.split()[1:]))
-    if caps:
-        return _strip(caps[0])  # first proper-noun mention (robust to trailing "In Fahrenheit")
     low = prompt.lower()
     tails = [_strip(prompt[i + len(p) + 2:]) for p in PREPS if (i := low.find(f" {p} ")) >= 0]
     tails = [t for t in tails if t]
-    return max(tails, key=len) if tails else _strip(prompt)
+    if arg in ENTITY_ARGS and caps:
+        return _strip(caps[0])
+    if tails:
+        return max(tails, key=len)
+    if caps:
+        return _strip(caps[0])
+    words = prompt.split()  # imperative "Define X." / "Play X." -> drop the leading verb
+    return _strip(" ".join(words[1:])) if len(words) > 1 else _strip(prompt)
 
 
 def _arith(prompt: str) -> list[str]:
@@ -71,8 +82,8 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool) -> list:
         opts = _arith(prompt)
     elif schema.get("type") in ("integer", "number"):
         opts = _numbers(prompt)
-    else:  # string / unknown -> deterministic best prompt span
-        opts = [_best_string(prompt)]
+    else:  # string / unknown -> deterministic best prompt span (arg-aware)
+        opts = [_best_string(prompt, name)]
     if not required:
         opts = [None] + opts          # allow omitting optional args
     return opts or ([None] if not required else [])

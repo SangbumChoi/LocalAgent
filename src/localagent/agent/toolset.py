@@ -51,4 +51,22 @@ STANDARD_TOOLS = [
             "required": ["goal"],
         },
     ),
+    ToolSpec(
+        name="define",
+        description="Define a term.",
+        parameters={"type": "object", "properties": {"term": {"type": "string"}},
+                    "required": ["term"]},
+    ),
+    ToolSpec(
+        name="play_music",
+        description="Play a song.",
+        parameters={"type": "object", "properties": {"song": {"type": "string"}},
+                    "required": ["song"]},
+    ),
+    ToolSpec(
+        name="get_news",
+        description="Get news on a topic.",
+        parameters={"type": "object", "properties": {"topic": {"type": "string"}},
+                    "required": ["topic"]},
+    ),
 ]
