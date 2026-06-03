@@ -19,7 +19,9 @@ from localagent.model.tokenizer import ASSISTANT, USER
 CLASSES = ["get_weather", "calculator", "web_search", "planner",
            "define", "play_music", "get_news",
            "read_file", "write_file", "grep_search", "run_command", "git_commit", "run_tests",
-           "set_reminder", "set_timer", "text"]
+           "set_reminder", "set_timer",
+           "calendar_event", "send_email", "open_url", "notion_write", "slack_send", "jira_issue",
+           "text"]
 
 
 def label_of(sample) -> str:

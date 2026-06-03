@@ -17,7 +17,8 @@ import torch.nn as nn
 
 # string args grounded by the pointer head (enum/number/arithmetic use schema extractors instead)
 PTR_ARGS = ["city", "query", "goal", "term", "song", "topic",
-            "path", "pattern", "command", "message", "task", "duration"]
+            "path", "pattern", "command", "message", "task", "duration",
+            "title", "recipient", "url", "content", "summary"]
 ARG_IDX = {a: i for i, a in enumerate(PTR_ARGS)}
 
 

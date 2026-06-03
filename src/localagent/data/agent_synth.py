@@ -74,6 +74,20 @@ TASKS_TRAIN = ["call the dentist", "buy groceries", "submit the report", "back u
 TASKS_EVAL = ["water the plants", "renew the license", "book a flight"]
 DURATIONS_TRAIN = ["10 minutes", "1 hour", "30 seconds", "20 minutes", "2 hours"]
 DURATIONS_EVAL = ["5 minutes", "45 seconds", "3 hours"]
+# --- computer-use / productivity surface (calendar, email, browser, Notion, Slack, Jira) ---
+URLS_TRAIN = ["example.com", "github.com", "wikipedia.org", "stackoverflow.com",
+              "nytimes.com", "python.org", "arxiv.org", "docs.google.com"]
+URLS_EVAL = ["reddit.com", "figma.com", "openai.com", "huggingface.co"]
+EVENT_TITLES_TRAIN = ["Team sync", "Standup", "Design review", "Budget meeting", "Onboarding",
+                      "Sprint review", "Project kickoff", "Retro"]
+EVENT_TITLES_EVAL = ["Demo day", "Planning", "Interview", "Sync up"]
+NOTION_TRAIN = ["meeting notes", "weekly goals", "project ideas", "reading list",
+                "action items", "release plan"]
+NOTION_EVAL = ["bug triage", "roadmap draft", "retro notes"]
+SLACK_TRAIN = ["deploy is done", "standup in 5", "PR is ready", "build passed", "reviewing now"]
+SLACK_EVAL = ["ship it", "need help", "on my way"]
+JIRA_TRAIN = ["login bug", "slow query", "add dark mode", "fix typo", "memory leak", "flaky test"]
+JIRA_EVAL = ["broken link", "update deps", "cache miss"]
 
 
 @dataclass
@@ -111,6 +125,11 @@ class Generator:
         self.commits = COMMITS_TRAIN if tr else COMMITS_EVAL
         self.tasks = TASKS_TRAIN if tr else TASKS_EVAL
         self.durations = DURATIONS_TRAIN if tr else DURATIONS_EVAL
+        self.urls = URLS_TRAIN if tr else URLS_EVAL
+        self.events = EVENT_TITLES_TRAIN if tr else EVENT_TITLES_EVAL
+        self.notion = NOTION_TRAIN if tr else NOTION_EVAL
+        self.slack = SLACK_TRAIN if tr else SLACK_EVAL
+        self.jira = JIRA_TRAIN if tr else JIRA_EVAL
 
     # ---- per-category sample makers ----
     def weather(self) -> Sample:
@@ -234,6 +253,39 @@ class Generator:
         return self._string_tool("set_timer", "tool_call", "set_timer", "duration", d,
                                  [f"Set a timer for {d}.", f"Start a timer for {d}."])
 
+    # --- computer-use / productivity tools ---
+    def calendar_event(self) -> Sample:
+        t = self.rng.choice(self.events)
+        return self._string_tool("calendar_event", "productivity", "calendar_event", "title", t,
+                                 [f"Add a calendar event called '{t}'.",
+                                  f"Schedule '{t}' on my calendar."])
+
+    def send_email(self) -> Sample:
+        nm = self.rng.choice(self.names)
+        return self._string_tool("send_email", "productivity", "send_email", "recipient", nm,
+                                 [f"Send an email to {nm}.", f"Email {nm}."])
+
+    def open_url(self) -> Sample:
+        u = self.rng.choice(self.urls)
+        return self._string_tool("open_url", "browser", "open_url", "url", u,
+                                 [f"Open {u}.", f"Go to {u}.", f"Navigate to {u} in the browser."])
+
+    def notion_write(self) -> Sample:
+        c = self.rng.choice(self.notion)
+        return self._string_tool("notion_write", "productivity", "notion_write", "content", c,
+                                 [f"Write '{c}' in Notion.", f"Add a Notion note saying '{c}'."])
+
+    def slack_send(self) -> Sample:
+        m = self.rng.choice(self.slack)
+        return self._string_tool("slack_send", "productivity", "slack_send", "message", m,
+                                 [f"Send a Slack message saying '{m}'.", f"Post '{m}' to Slack."])
+
+    def jira_issue(self) -> Sample:
+        s = self.rng.choice(self.jira)
+        return self._string_tool("jira_issue", "productivity", "jira_issue", "summary", s,
+                                 [f"Create a Jira ticket titled '{s}'.",
+                                  f"Open a Jira issue for '{s}'."])
+
     def text(self) -> Sample:
         name = self.rng.choice(self.names)
         choice = self.rng.choice(["hello", "morning", "name"])
@@ -253,7 +305,9 @@ class Generator:
         m = [self.weather, self.calc, self.web_search, self.planner,
              self.define, self.play_music, self.get_news,
              self.read_file, self.write_file, self.grep_search, self.run_command,
-             self.git_commit, self.run_tests, self.set_reminder, self.set_timer, self.text]
+             self.git_commit, self.run_tests, self.set_reminder, self.set_timer,
+             self.calendar_event, self.send_email, self.open_url, self.notion_write,
+             self.slack_send, self.jira_issue, self.text]
         if self.level >= 2:
             m.append(self.no_tool)
         return m

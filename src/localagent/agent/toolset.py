@@ -113,4 +113,40 @@ STANDARD_TOOLS = [
         parameters={"type": "object", "properties": {"duration": {"type": "string"}},
                     "required": ["duration"]},
     ),
+    # --- computer-use / productivity tools ---
+    ToolSpec(
+        name="calendar_event", description="Create a Google Calendar event.",
+        parameters={"type": "object",
+                    "properties": {"title": {"type": "string", "format": "quoted"}},
+                    "required": ["title"]},
+    ),
+    ToolSpec(
+        name="send_email", description="Send an email to someone.",
+        parameters={"type": "object", "properties": {"recipient": {"type": "string"}},
+                    "required": ["recipient"]},
+    ),
+    ToolSpec(
+        name="open_url", description="Open a URL in the web browser.",
+        parameters={"type": "object",
+                    "properties": {"url": {"type": "string", "format": "url"}},
+                    "required": ["url"]},
+    ),
+    ToolSpec(
+        name="notion_write", description="Write a note in Notion.",
+        parameters={"type": "object",
+                    "properties": {"content": {"type": "string", "format": "quoted"}},
+                    "required": ["content"]},
+    ),
+    ToolSpec(
+        name="slack_send", description="Send a Slack message.",
+        parameters={"type": "object",
+                    "properties": {"message": {"type": "string", "format": "quoted"}},
+                    "required": ["message"]},
+    ),
+    ToolSpec(
+        name="jira_issue", description="Create a Jira issue.",
+        parameters={"type": "object",
+                    "properties": {"summary": {"type": "string", "format": "quoted"}},
+                    "required": ["summary"]},
+    ),
 ]

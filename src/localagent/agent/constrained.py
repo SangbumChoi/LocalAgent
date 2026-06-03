@@ -44,7 +44,8 @@ def _strip(s: str) -> str:
 
 # Argument names whose value is a proper-noun entity (take the capitalized span) vs free text
 # (take the whole tail, which may itself contain a proper noun, e.g. query "capital of Peru").
-ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place"}
+ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place",
+               "recipient"}
 
 
 def _best_string(prompt: str, arg: str = "") -> str:
@@ -84,6 +85,12 @@ def _path(prompt: str) -> list[str]:
     """First file-path/-name token (has a slash or a file extension)."""
     m = re.search(r"[A-Za-z0-9_.\-/]+/[A-Za-z0-9_.\-/]*|[A-Za-z0-9_.\-/]+\.[A-Za-z0-9]{1,5}\b",
                   prompt)
+    return [m.group(0).rstrip(".")] if m else []
+
+
+def _url(prompt: str) -> list[str]:
+    """First URL/domain token (optionally with scheme/path)."""
+    m = re.search(r"(?:https?://)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:/[\w./-]*)?", prompt)
     return [m.group(0).rstrip(".")] if m else []  # drop trailing sentence period
 
 
@@ -104,6 +111,8 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         opts = _quoted(prompt)
     elif fmt == "path":
         opts = _path(prompt)
+    elif fmt == "url":
+        opts = _url(prompt)
     elif schema.get("type") in ("integer", "number"):
         opts = _numbers(prompt)
     else:  # string / unknown -> deterministic best prompt span (arg-aware)
