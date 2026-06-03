@@ -39,13 +39,16 @@ At ~1M params the goal is a *controller*, not a chatbot: knowledge is offloaded 
 memory/retrieval store, so the parameters can encode skills and control flow.
 
 ### Result (ultra-tiny ~1M, pretrained from scratch, byte-level)
-A **15-tool** agent — general (`get_weather`, `calculator`, `web_search`, `planner`, `define`,
+A **21-tool** agent — general (`get_weather`, `calculator`, `web_search`, `planner`, `define`,
 `play_music`, `get_news`), the **Claude Code / Codex-style coding surface** (`read_file`,
-`write_file`, `grep_search`, `run_command`, `git_commit`, `run_tests`), and popular
-(`set_reminder`, `set_timer`). On **held-out slot values** (disjoint train/eval pools), the raw
-byte model learns tool-call *structure* perfectly but can't copy unseen slot values. The deployed
-decoder is a **dual head + prompt-grounded constrained decoding**: a jointly-trained tool-selection
-head picks the tool, and arguments are grounded in spans of the prompt (schema-driven, trigger-free).
+`write_file`, `grep_search`, `run_command`, `git_commit`, `run_tests`), **computer-use /
+productivity** (`calendar_event`, `send_email`, `open_url` browser, `notion_write`, `slack_send`,
+`jira_issue`), and everyday (`set_reminder`, `set_timer`). On **held-out slot values** (disjoint
+train/eval pools), the raw byte model learns tool-call *structure* perfectly but can't copy unseen
+slot values. The deployed decoder is a **dual head + prompt-grounded constrained decoding**: a
+jointly-trained tool-selection head picks the tool, and arguments are grounded in spans of the
+prompt (schema-driven, trigger-free) — a learned **pointer/copy head** for the general/multi-turn
+case, exact heuristic extractors for clean single-turn (verified 0 misses across 1,616 args).
 
 | decoder | overall (15 tools, held-out) |
 |---|---|
