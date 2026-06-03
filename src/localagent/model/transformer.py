@@ -90,16 +90,31 @@ class Block(nn.Module):
 
 
 class LocalAgentLM(nn.Module):
+    """Tiny decoder with optional factorized embeddings + depth-recurrence.
+
+    Embeddings:   token -> (vocab, embed_dim) table -> in_proj -> d_model.
+    Backbone:     the n_layers blocks are run n_loops times (shared weights), with a small
+                  per-loop embedding so a block knows which iteration it is on.
+    Output:       d_model -> out_proj -> embed_dim -> (tied) logits over vocab.
+    When embed_dim == d_model the projections are identity (vanilla path for tiny/small).
+    """
+
     def __init__(self, cfg: ModelConfig):
         super().__init__()
         cfg.assert_within_budget()
         self.cfg = cfg
-        self.embed = nn.Embedding(cfg.vocab_size, cfg.d_model)
+        self.embed = nn.Embedding(cfg.vocab_size, cfg.embed_dim)
+        self.in_proj = nn.Linear(cfg.embed_dim, cfg.d_model, bias=False) if cfg.factorized else None
+        self.out_proj = nn.Linear(cfg.d_model, cfg.embed_dim, bias=False) if cfg.factorized else None
         self.blocks = nn.ModuleList(Block(cfg) for _ in range(cfg.n_layers))
+        self.loop_embed = (
+            nn.Parameter(torch.zeros(cfg.n_loops, cfg.d_model)) if cfg.n_loops > 1 else None
+        )
         self.norm = RMSNorm(cfg.d_model, cfg.norm_eps)
-        self.lm_head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=False)
-        if cfg.tie_embeddings:
-            self.lm_head.weight = self.embed.weight
+        # Output head ties to the (vocab, embed_dim) table; separate head only if untied.
+        self.lm_head = (
+            None if cfg.tie_embeddings else nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False)
+        )
         self._rope = None
         self.apply(self._init_weights)
 
@@ -118,10 +133,18 @@ class LocalAgentLM(nn.Module):
 
     def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None):
         x = self.embed(idx)
+        if self.in_proj is not None:
+            x = self.in_proj(x)
         cos, sin = self._rope_cache(x.device, x.dtype)
-        for blk in self.blocks:
-            x = blk(x, cos, sin)
-        logits = self.lm_head(self.norm(x))
+        for loop in range(self.cfg.n_loops):  # depth-recurrence: shared blocks, n_loops passes
+            if self.loop_embed is not None:
+                x = x + self.loop_embed[loop]
+            for blk in self.blocks:
+                x = blk(x, cos, sin)
+        h = self.norm(x)
+        if self.out_proj is not None:
+            h = self.out_proj(h)            # d_model -> embed_dim
+        logits = F.linear(h, self.embed.weight) if self.lm_head is None else self.lm_head(h)
         loss = None
         if targets is not None:
             loss = F.cross_entropy(

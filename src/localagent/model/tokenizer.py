@@ -1,7 +1,12 @@
-"""Byte-level BPE tokenizer with agent special tokens (Phase 1).
+"""Tokenizer with agent special tokens (Phase 1).
 
-Wraps the `tokenizers` library for training/encoding. The special tokens below make tool use
-in-vocabulary so the model can natively emit/parse tool calls.
+Two modes, selected by the model tier (see docs/ARCHITECTURE_IDEAS.md):
+  * ``byte``  — tokenizer-free, vocab 256 (+ specials). Used by the ultra-tiny (~1M) tier so the
+    model pays no embedding tax. Encoding is just UTF-8 bytes.
+  * ``bpe``   — byte-level BPE trained with the `tokenizers` lib (vocab ~32k). Used by tiny/small.
+
+Either way the special tokens below make tool use in-vocabulary so the model can natively
+emit/parse tool calls.
 """
 
 from __future__ import annotations

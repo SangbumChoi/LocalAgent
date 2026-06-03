@@ -48,14 +48,18 @@ and **GQA** (per SmolLM2).
 - **Blocks:** pre-norm RMSNorm → GQA self-attention (RoPE positions) → SwiGLU MLP, residual.
 - **Tied** input/output embeddings (the embedding table dominates param count at this scale).
 - **KV cache** for generation; sliding-window optional.
-- **Two reference configs** (`configs/model/`):
+- **Three tiers** (`configs/model/`) — each with a distinct job, not just "the same model,
+  smaller" (see [`ARCHITECTURE_IDEAS.md`](./ARCHITECTURE_IDEAS.md)):
 
-  | config | d_model | layers | heads / kv | ffn | vocab | ~params |
-  |---|---|---|---|---|---|---|
-  | `tiny-30m`  | 384 | 12 | 6 / 2  | 1024 | 32k | ~30M |
-  | `small-90m` | 640 | 16 | 10 / 2 | 1728 | 32k | ~90M |
+  | config | d_model | blocks×loops | heads / kv | ffn | vocab | ~params | role |
+  |---|---|---|---|---|---|---|---|
+  | `ultra-tiny-1m` | 192 | 2×6 (depth 12) | 6 / 2 | 640 | byte 256 | ~1.0M | tool router |
+  | `tiny-30m`  | 384 | 12×1 | 6 / 2  | 1024 | 32k | ~31M | agent |
+  | `small-90m` | 640 | 16×1 | 10 / 2 | 1728 | 32k | ~89M | capable agent |
 
-Param budget is asserted at construction time so configs can't silently exceed 100M.
+  The ultra-tiny tier adds three structural levers — **byte vocab**, **factorized embeddings**
+  (`embed_dim`), and **depth-recurrence** (`n_loops`, shared-weight passes) — that make ~1M
+  feasible. Param budget is asserted at construction so configs can't silently exceed 100M.
 
 **Tokenizer** (`model/tokenizer.py`): a byte-level BPE (trained with the `tokenizers` lib) with
 **agent special tokens** so tool use is in-vocabulary:

@@ -22,9 +22,16 @@ def _model_info(args) -> None:
     cfg = ModelConfig.from_yaml(args.config)
     n = cfg.estimate_params()
     cfg.assert_within_budget()
-    print(f"{cfg.name}: ~{n/1e6:.1f}M params (budget 100M) — OK")
+    print(f"{cfg.name}: ~{n/1e6:.2f}M params (budget 100M) — OK")
     print(f"  d_model={cfg.d_model} layers={cfg.n_layers} heads={cfg.n_heads}/{cfg.n_kv_heads} "
           f"ffn={cfg.ffn_hidden} vocab={cfg.vocab_size}")
+    extras = []
+    if cfg.factorized:
+        extras.append(f"factorized embed_dim={cfg.embed_dim}")
+    if cfg.n_loops > 1:
+        extras.append(f"depth-recurrence x{cfg.n_loops} (effective depth {cfg.effective_depth})")
+    if extras:
+        print("  " + " · ".join(extras))
 
 
 def _train(args) -> None:

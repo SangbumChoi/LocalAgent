@@ -20,10 +20,23 @@ the conversations it has while running locally.
   for inference on CPU/GPU/NPU.
 - **Gets better with use** — served conversations are stored, mined, verified, and fed back in.
 
-The design is a deliberate synthesis of the best ideas from prior work — see
-[`docs/RESEARCH.md`](docs/RESEARCH.md) for what we take from nanochat, SmolLM2, APIGen/xLAM,
-ToolACE, Hammer, MiniLLM/on-policy-distillation, MemGPT/Letta, the Airbnb data flywheel, and
-BFCL — and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how it all fits together.
+The design synthesizes the best ideas from prior work — see [`docs/RESEARCH.md`](docs/RESEARCH.md)
+for what we take from nanochat, SmolLM2, APIGen/xLAM, ToolACE, Hammer, MiniLLM/on-policy-
+distillation, MemGPT/Letta, the Airbnb data flywheel, and BFCL — but it isn't bound by them:
+[`docs/ARCHITECTURE_IDEAS.md`](docs/ARCHITECTURE_IDEAS.md) lays out the original structural bets
+(agent-as-controller, the vocabulary tax, factorized + depth-recurrent ultra-tiny models, a dual
+tool/text head, grammar-constrained decoding). [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) is
+how it all fits together.
+
+### Three size tiers
+| Tier | ~params | Job | Vocab | Structure |
+|---|---|---|---|---|
+| `ultra-tiny-1m` | ~1.0M | **tool router / planner** (picks tool + args, abstains) | byte 256 | factorized embeddings + depth-recurrence (2 blocks × 6 loops = effective depth 12) |
+| `tiny-30m` | ~31M | **agent** (tool calls + short grounded answers) | BPE 32k | standard decoder |
+| `small-90m` | ~89M | **capable local agent** (multi-turn tool use + coherent text) | BPE 32k | standard decoder |
+
+At ~1M params the goal is a *controller*, not a chatbot: knowledge is offloaded to tools and the
+memory/retrieval store, so the parameters can encode skills and control flow.
 
 ## Quickstart
 ```bash
@@ -41,7 +54,7 @@ pytest        # core (config/model/schema/agent) tests pass today
 ## Repo layout
 ```
 configs/                YAML for every model/train/data stage
-docs/                   RESEARCH.md · ARCHITECTURE.md · ROADMAP.md
+docs/                   RESEARCH.md · ARCHITECTURE.md · ARCHITECTURE_IDEAS.md · ROADMAP.md
 src/localagent/
   model/                tiny Llama-style decoder (GQA+RoPE+SwiGLU), config+budget, tokenizer
   data/                 Conversation schema · pretrain corpus · agent_synth · flywheel
@@ -59,7 +72,8 @@ tests/
 ## Build status
 | Area | State |
 |---|---|
-| Model (decoder, config, budget guard) | ✅ implemented (Phase 1 core) |
+| Model: 3 tiers (decoder, config, budget guard) + factorized embeddings + depth-recurrence | ✅ implemented (Phase 1 core) |
+| Dual tool/text head + grammar-constrained decoding | 📐 proposed (ARCHITECTURE_IDEAS.md, Phase 4) |
 | Conversation schema, tool registry, tool-call parser, AST eval primitives | ✅ implemented |
 | Device abstraction (CPU/GPU/NPU) | ✅ implemented |
 | Tokenizer training | 🚧 stub (Phase 1) |
