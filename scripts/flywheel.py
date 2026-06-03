@@ -76,10 +76,10 @@ def main():
         held = Generator(level=r, seed=1000 + r, split="eval").generate_balanced(n_eval)
         steps = sft1 if r == 1 else sft_inc
         print(f"\n=== Round {r} (level {r}, {len(train)} train / {len(held)} held-out) ===", flush=True)
-        sft_loss = sft(model, train, tok, steps=steps, batch_size=32, lr=1.5e-3, device=device,
-                       log=lambda *a: None)
+        sft_loss, head = sft(model, train, tok, steps=steps, batch_size=32, lr=1.5e-3,
+                             device=device, log=lambda *a: None, joint_tool_head=True)
         grpo(model, train, tok, steps=grpo_steps, device=device, log=lambda *a: None)  # RL stage
-        gr = evaluate_grounded(model, held, tok, TOOLS, device=device)
+        gr = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head)
         print(f"  grounded (held-out): {fmt(gr)}", flush=True)
         metrics["rounds"].append({"round": r, "level": r, "grounded": gr,
                                   "sft_loss_last": sft_loss[-1]})
@@ -90,7 +90,7 @@ def main():
     # final comparison: raw free-generation vs grounded, on the last level's held-out
     final_held = Generator(level=args.rounds, seed=4242, split="eval").generate_balanced(20)
     fg = evaluate(model, final_held, tok, device=device)
-    gr = evaluate_grounded(model, final_held, tok, TOOLS, device=device)
+    gr = evaluate_grounded(model, final_held, tok, TOOLS, device=device, tool_head=head)
     metrics["final_freegen"] = fg
     metrics["final_grounded"] = gr
     print(f"\nFINAL free-gen : {fmt(fg)}")
@@ -98,7 +98,7 @@ def main():
 
     samples = []
     for s in Generator(level=args.rounds, seed=999, split="eval").generate(8):
-        out = grounded_decode(model, tok, s.prompt, TOOLS, device=device)
+        out = grounded_decode(model, tok, s.prompt, TOOLS, device=device, tool_head=head)
         samples.append({"prompt": s.prompt, "expected": s.target, "grounded_out": out})
     json.dump(samples, open(f"{OUT}/samples.json", "w"), indent=2)
     json.dump(metrics, open(f"{OUT}/metrics.json", "w"), indent=2)
