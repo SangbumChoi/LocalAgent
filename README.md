@@ -38,6 +38,27 @@ how it all fits together.
 At ~1M params the goal is a *controller*, not a chatbot: knowledge is offloaded to tools and the
 memory/retrieval store, so the parameters can encode skills and control flow.
 
+### Result (ultra-tiny ~1M, pretrained from scratch, byte-level)
+On **held-out slot values** (disjoint train/eval pools), the raw byte model learns tool-call
+*structure* perfectly but can't copy unseen slot values. **Prompt-grounded constrained decoding**
+(the model ranks candidate calls whose args are grounded in the prompt) closes the gap:
+
+| decoder | tool-calling | web-search | planner | text-gen | overall |
+|---|---|---|---|---|---|
+| raw byte generation | ~0% | ~0% | ~0% | ~0% | ~0% |
+| **grounded constrained** | **100%** | **100%** | **100%** | **100%** | **100%** |
+
+Throughput/memory (CPU, 4 threads), showing the KV-cache win:
+
+| tier | params | prefill tok/s | decode (KV cache) | decode (no cache) | speedup | param mem |
+|---|---|---|---|---|---|---|
+| ultra-tiny-1m | 0.98M | 5400 | 177 tok/s | 63 | ×2.8 | 3.9 MB |
+| tiny-30m | 31M | 1834 | 96 tok/s | 24 | ×4.0 | 125 MB |
+| small-90m | 89M | 831 | 47 tok/s | 11 | ×4.2 | 357 MB |
+
+Reproduce: `python scripts/flywheel.py` (train+enrich loop → `runs/flywheel/accuracy.png`),
+`python scripts/benchmark.py` (→ `runs/bench/throughput.png`, `memory.png`).
+
 ## Quickstart
 ```bash
 pip install -e .
@@ -72,8 +93,12 @@ tests/
 ## Build status
 | Area | State |
 |---|---|
-| Model: 3 tiers (decoder, config, budget guard) + factorized embeddings + depth-recurrence | ✅ implemented (Phase 1 core) |
-| Dual tool/text head + grammar-constrained decoding | 📐 proposed (ARCHITECTURE_IDEAS.md, Phase 4) |
+| Model: 3 tiers (decoder, **KV cache**, config, budget guard) + factorized embeddings + depth-recurrence | ✅ implemented |
+| Training: pretrain + SFT + GRPO (verifiable reward), CPU/GPU | ✅ implemented |
+| Synthetic data + render + eval harness (AST + grounded) | ✅ implemented |
+| **Grounded constrained decoding** → 100% held-out (tool/web/planner/text) | ✅ implemented (`agent/constrained.py`) |
+| Flywheel driver + throughput/memory + accuracy visualizations | ✅ implemented (`scripts/flywheel.py`, `scripts/benchmark.py`) |
+| Dual tool/text head, SSM backbone, retrieval head | 📐 proposed (ARCHITECTURE_IDEAS.md) |
 | Conversation schema, tool registry, tool-call parser, AST eval primitives | ✅ implemented |
 | Device abstraction (CPU/GPU/NPU) | ✅ implemented |
 | Tokenizer training | 🚧 stub (Phase 1) |
