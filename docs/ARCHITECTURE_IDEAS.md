@@ -42,17 +42,27 @@ These three are **implemented and tested today.**
 
 ## 2. Proposed structural ideas (designed, not yet built)
 
-### 2a. Dual output head: a **tool head** + a **text head**
-Instead of forcing the tiny model to emit valid JSON token-by-token, give it two heads off the
-final hidden state:
-- a **tool head** = a classifier over the (small) set of available tools + an "no-tool/answer"
-  class;
-- **argument slots** filled by a **pointer/copy** mechanism over the prompt (copy `Paris` from the
-  user turn) plus typed value heads, validated against the tool's JSON schema.
+### 2a. Dual output head: a **tool head** + grounded args — **IMPLEMENTED**
+Instead of forcing the tiny model to emit valid JSON token-by-token, split the job:
+- a **tool head** = a classifier over available tools + a "text" class, reading the prompt's final
+  hidden state (`agent/tool_head.py`);
+- **arguments** grounded in the prompt by the schema-driven decoder (`agent/constrained.py`):
+  proper-noun / preposition-tail spans for strings, regex for numbers/arithmetic, enum members.
 
-This turns "generate syntactically-valid function calls" — hard for a 1M model — into
-classification + copying, which tiny models do well. The text head handles free-form. Pairs
-naturally with the byte backbone. *This is the highest-leverage original idea here.*
+This turns "generate valid function calls" (hard) into "classify the tool + extract a span" (easy).
+**The key result is that the tool head must be trained *jointly* with the model** (auxiliary
+classification loss during SFT, `train.sft(joint_tool_head=True)`), not as a post-hoc probe:
+
+| tool head | tool_call | web_search | planner | text | overall (held-out, level 1) |
+|---|---|---|---|---|---|
+| frozen linear probe | 0.65 | 0.67 | 0.50 | 0.82 | ~0.63 |
+| **jointly trained (SFT aux loss)** | **0.98** | **0.92** | **0.75** | **1.00** | **~0.94** |
+
+A frozen probe plateaus because the raw features don't separate planner/web_search; the auxiliary
+loss *shapes* the representation so they do. This is fully **trigger-free** — unlike the earlier
+template decoder whose per-tool phrases secretly did tool selection. Remaining gaps (planner
+recall, and tool args under enrichment — weather units / 3-term arithmetic) point at a true
+pointer/copy arg head + a stronger backbone as the next step.
 
 ### 2b. Grounded / grammar-constrained decoding — **IMPLEMENTED, and it works**
 Tool-call structure is decoded through the tool schema; **string arguments are grounded in spans

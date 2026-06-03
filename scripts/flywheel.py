@@ -63,8 +63,8 @@ def main():
     n_eval = 12 if args.quick else 30        # per category (balanced held-out)
     pre_steps = 60 if args.quick else 200
     sft1 = 150 if args.quick else 600
-    sft_inc = 80 if args.quick else 250
-    grpo_steps = 4 if args.quick else 12
+    sft_inc = 80 if args.quick else 220
+    grpo_steps = 4 if args.quick else 6
 
     g0 = Generator(level=1, seed=0, split="train").generate(n_train)
     pre_loss = pretrain(model, build_pretrain_stream(g0, tok), tok, steps=pre_steps,
