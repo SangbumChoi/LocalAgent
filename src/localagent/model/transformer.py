@@ -143,9 +143,10 @@ class LocalAgentLM(nn.Module):
         return self.cfg.n_loops * self.cfg.n_layers
 
     def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None,
-                pos: int = 0, caches=None):
+                pos: int = 0, caches=None, return_hidden: bool = False):
         """If `caches` is provided (a list of n_cache_slots entries), runs the cached path and
-        returns (logits, loss, new_caches). Otherwise returns (logits, loss)."""
+        returns (logits, loss, new_caches). Otherwise returns (logits, loss). With
+        `return_hidden`, also returns the post-final-norm (d_model) features for a probe/head."""
         return_cache = caches is not None
         if caches is None:
             caches = [None] * self.n_cache_slots()
@@ -162,10 +163,11 @@ class LocalAgentLM(nn.Module):
                 x, nc = blk(x, cos, sin, caches[slot])
                 new_caches[slot] = nc
                 slot += 1
-        h = self.norm(x)
-        if self.out_proj is not None:
-            h = self.out_proj(h)
+        feats = self.norm(x)               # (B, T, d_model) features for the tool head
+        h = self.out_proj(feats) if self.out_proj is not None else feats
         logits = F.linear(h, self.embed.weight) if self.lm_head is None else self.lm_head(h)
+        if return_hidden:
+            return logits, feats
         loss = None
         if targets is not None:
             loss = F.cross_entropy(

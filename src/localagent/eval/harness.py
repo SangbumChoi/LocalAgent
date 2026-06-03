@@ -49,9 +49,10 @@ def evaluate(model, samples, tok, device="cpu", max_new_tokens=96) -> dict:
     }
 
 
-def evaluate_grounded(model, samples, tok, tools, device="cpu") -> dict:
+def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None) -> dict:
     """Eval with prompt-grounded constrained decoding (the deployed decoder). Fast: ranks
-    candidate calls (teacher-forced) instead of autoregressive generation."""
+    candidate calls (teacher-forced) instead of autoregressive generation. A trained `tool_head`
+    does tool selection; otherwise free-gen / text-intent selection is used."""
     from collections import defaultdict
 
     from localagent.agent.constrained import grounded_decode
@@ -59,7 +60,7 @@ def evaluate_grounded(model, samples, tok, tools, device="cpu") -> dict:
     by_cat = defaultdict(lambda: [0, 0])
     n_correct = 0
     for s in samples:
-        out = grounded_decode(model, tok, s.prompt, tools, device=device)
+        out = grounded_decode(model, tok, s.prompt, tools, device=device, tool_head=tool_head)
         ok = _correct(s, out)
         n_correct += ok
         by_group[s.group][0] += ok; by_group[s.group][1] += 1

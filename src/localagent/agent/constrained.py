@@ -27,26 +27,31 @@ import torch.nn.functional as F
 from localagent.data.schema import ToolSpec
 from localagent.model.tokenizer import TOOL_CALL_CLOSE, TOOL_CALL_OPEN
 
-MAX_SPAN_WORDS = 8
-MAX_COMBOS = 240
+MAX_COMBOS = 60
+# Generic English prepositions that introduce a slot value ("weather IN Paris", "search FOR X",
+# "plan TO learn guitar"). Not tool-specific — works across schemas.
+PREPS = ["for", "about", "up", "to", "me", "in", "on", "of"]
 
 
 def _canon(name: str, args: dict) -> str:
     return json.dumps({"name": name, "arguments": args}, separators=(",", ":"), sort_keys=True)
 
 
-def _spans(prompt: str) -> list[str]:
-    """All contiguous word n-grams (1..MAX_SPAN_WORDS), edge punctuation stripped. Generic — no
-    knowledge of which words are slots."""
-    words = prompt.split()
-    out, seen = [], set()
-    for i in range(len(words)):
-        for j in range(i + 1, min(i + MAX_SPAN_WORDS, len(words)) + 1):
-            s = re.sub(r"^[^A-Za-z0-9]+|[^A-Za-z0-9!]+$", "", " ".join(words[i:j]))
-            if s and s not in seen:
-                seen.add(s)
-                out.append(s)
-    return out
+def _strip(s: str) -> str:
+    return re.sub(r"^[^A-Za-z0-9]+|\s*(online|please|right now)?\s*[.?!]*$", "", s, flags=re.I).strip()
+
+
+def _best_string(prompt: str) -> str:
+    """Deterministic string-slot value (the tool head already chose the tool, so the value just
+    needs the right span): prefer a maximal capitalized proper-noun span (cities/names), else the
+    longest generic-preposition tail (queries/goals). Generic English heuristics, not per-tool."""
+    caps = re.findall(r"(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+)*", " ".join(prompt.split()[1:]))
+    if caps:
+        return _strip(max(caps, key=len))
+    low = prompt.lower()
+    tails = [_strip(prompt[i + len(p) + 2:]) for p in PREPS if (i := low.find(f" {p} ")) >= 0]
+    tails = [t for t in tails if t]
+    return max(tails, key=len) if tails else _strip(prompt)
 
 
 def _arith(prompt: str) -> list[str]:
@@ -66,8 +71,8 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool) -> list:
         opts = _arith(prompt)
     elif schema.get("type") in ("integer", "number"):
         opts = _numbers(prompt)
-    else:  # string / unknown -> prompt spans
-        opts = _spans(prompt)
+    else:  # string / unknown -> deterministic best prompt span
+        opts = [_best_string(prompt)]
     if not required:
         opts = [None] + opts          # allow omitting optional args
     return opts or ([None] if not required else [])
@@ -122,17 +127,6 @@ def _best(model, tok, prompt: str, bodies: list[str], device) -> str:
     return bodies[best_i]
 
 
-def _preselect_tool(model, tok, prompt: str, names: set[str], device) -> str | None:
-    """Free-generate a call and read the tool name (the model gets selection right)."""
-    from localagent.agent.parser import extract_tool_calls
-    from localagent.model.tokenizer import ASSISTANT, USER
-    from localagent.inference.generate import generate
-    framed = f"{USER}{prompt}{ASSISTANT}"
-    gen, _ = generate(model, tok, framed, max_new_tokens=80, temperature=0.0)
-    calls = extract_tool_calls(gen)
-    return calls[0].name if calls and calls[0].name in names else None
-
-
 def candidates(prompt: str, tools: list[ToolSpec]) -> list[tuple[str, bool, str]]:
     """All grounded candidates as (text, is_tool, group). Used by tests; ranking picks one."""
     group_of = {"get_weather": "tool_call", "calculator": "tool_call",
@@ -147,14 +141,32 @@ def candidates(prompt: str, tools: list[ToolSpec]) -> list[tuple[str, bool, str]
     return out or [("I am LocalAgent.", False, "text")]
 
 
-def grounded_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu") -> str:
-    # 1. open-text intent first (placeholder text-head)
-    txt = _text_candidates(prompt)
-    if txt is not None:
-        return _best(model, tok, prompt, txt, device)
-    # 2. schema-driven grounded tool candidates, narrowed by the model's tool pick
-    names = {t.name for t in tools}
-    picked = _preselect_tool(model, tok, prompt, names, device)
+def _preselect_tool(model, tok, prompt: str, names: set[str], device) -> str | None:
+    """Let the model free-generate a call and read the tool *name* (it picks the tool reliably
+    even when the argument bytes are garbled). This is the schema-agnostic tool selector; the
+    grounded candidates then only have to get the arguments right."""
+    from localagent.agent.parser import extract_tool_calls
+    from localagent.inference.generate import generate
+    from localagent.model.tokenizer import ASSISTANT, USER
+    gen, _ = generate(model, tok, f"{USER}{prompt}{ASSISTANT}", max_new_tokens=80, temperature=0.0)
+    calls = extract_tool_calls(gen)
+    return calls[0].name if calls and calls[0].name in names else None
+
+
+def grounded_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu",
+                    tool_head=None) -> str:
+    # 1. tool selection: the trained tool head if given, else free-gen / text-intent fallback.
+    if tool_head is not None:
+        picked = tool_head.predict(model, tok, prompt, device)
+        if picked == "text":
+            txt = _text_candidates(prompt) or ["I am LocalAgent."]
+            return _best(model, tok, prompt, txt, device)
+    else:
+        txt = _text_candidates(prompt)
+        if txt is not None:
+            return _best(model, tok, prompt, txt, device)
+        picked = _preselect_tool(model, tok, prompt, {t.name for t in tools}, device)
+    # 2. rank the selected tool's prompt-grounded argument candidates.
     use = [t for t in tools if t.name == picked] if picked else tools
     bodies = []
     for t in use:
