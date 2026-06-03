@@ -83,7 +83,9 @@ def main():
         print(f"  grounded (held-out): {fmt(gr)}", flush=True)
         metrics["rounds"].append({"round": r, "level": r, "grounded": gr,
                                   "sft_loss_last": sft_loss[-1]})
-        torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict()}, f"{OUT}/ultra-tiny.pt")
+        torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict(),
+                    "tool_head": head.state_dict() if head is not None else None},
+                   f"{OUT}/ultra-tiny.pt")
         json.dump(metrics, open(f"{OUT}/metrics.json", "w"), indent=2)
         _plot_rounds(metrics)
 

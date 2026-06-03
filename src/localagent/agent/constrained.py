@@ -47,7 +47,7 @@ def _best_string(prompt: str) -> str:
     longest generic-preposition tail (queries/goals). Generic English heuristics, not per-tool."""
     caps = re.findall(r"(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+)*", " ".join(prompt.split()[1:]))
     if caps:
-        return _strip(max(caps, key=len))
+        return _strip(caps[0])  # first proper-noun mention (robust to trailing "In Fahrenheit")
     low = prompt.lower()
     tails = [_strip(prompt[i + len(p) + 2:]) for p in PREPS if (i := low.find(f" {p} ")) >= 0]
     tails = [t for t in tails if t]
