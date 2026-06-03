@@ -31,7 +31,8 @@ def _framed_full(model, tok, prompts, device):
 
 
 def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
-        device="cpu", log=print, joint_tool_head=False, aux_weight=1.0, conversations=None):
+        device="cpu", log=print, joint_tool_head=False, aux_weight=1.0, ptr_weight=0.15,
+        conversations=None):
     """SFT with masked LM loss over single-turn samples + optional multi-turn `conversations`
     (which teach tool->response->follow-up continuation). With `joint_tool_head`, also trains
     jointly a tool-selection head AND a pointer/copy argument head (on the single-turn samples).
@@ -91,7 +92,7 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                 sl, el = ptr_head.logits(sub, torch.tensor(ai, device=device))
                 for r, bi in enumerate(rws):                       # mask padding positions
                     sl[r, lengths[bi]:] = -1e9; el[r, lengths[bi]:] = -1e9
-                loss = loss + aux_weight * (
+                loss = loss + ptr_weight * (   # down-weighted so it can't swamp tool selection
                     F.cross_entropy(sl, torch.tensor(gs, device=device))
                     + F.cross_entropy(el, torch.tensor(ge, device=device)))
         opt.zero_grad(set_to_none=True)
