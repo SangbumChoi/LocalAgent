@@ -45,8 +45,13 @@ On **held-out slot values** (disjoint train/eval pools), the raw byte model lear
 
 | decoder | tool-calling | web-search | planner | text-gen | overall |
 |---|---|---|---|---|---|
-| raw byte generation | ~0% | ~0% | ~0% | ~0% | ~0% |
+| raw byte generation | ~1% | ~0% | ~0% | ~1% | ~1% |
 | **grounded constrained** | **100%** | **100%** | **100%** | **100%** | **100%** |
+
+Across 5 flywheel **enrichment levels** (each adds harder cases — weather units, 3-term
+arithmetic, new phrasings), grounded web-search / planner / text stay at **100%**; tool-calling
+(weather+calc) holds **100%** at level 1 and dips to **~78–87%** at higher levels (the grounded
+ranker occasionally mis-picks a unit or a multi-term expression). See `runs/flywheel/accuracy.png`.
 
 Throughput/memory (CPU, 4 threads), showing the KV-cache win:
 

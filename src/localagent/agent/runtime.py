@@ -23,6 +23,18 @@ class Agent:
         self.memory = memory or Memory()
 
     def chat(self, user_message: str, max_tool_hops: int = 6) -> str:
-        raise NotImplementedError(
-            "TODO(phase-7): prompt build + generate + tool-dispatch loop + memory + logging"
-        )
+        """Single-turn agent step: grounded-decode a call, dispatch it, return the result.
+
+        Uses prompt-grounded constrained decoding (reliable for the tiny model). Multi-turn /
+        memory threading is TODO(phase-7); this is the working minimal loop for the demo.
+        """
+        from localagent.agent.constrained import grounded_decode
+        from localagent.agent.parser import extract_tool_calls
+
+        out = grounded_decode(self.model, self.tokenizer, user_message, self.tools.specs())
+        calls = extract_tool_calls(out)
+        if calls:
+            c = calls[0]
+            result = self.tools.dispatch(c.name, c.arguments)
+            return f"[{c.name}({c.arguments}) -> {result}]"
+        return out  # plain text answer / abstention

@@ -49,8 +49,8 @@ def _logprob_sum(model, prompt_ids, gen_ids, device):
     return tok_lp[start:].sum()
 
 
-def grpo(model, samples, tok, *, steps=60, prompts_per_step=8, group_size=6, lr=2e-4,
-         temperature=1.0, max_new=96, device="cpu", log=print):
+def grpo(model, samples, tok, *, steps=60, prompts_per_step=8, group_size=4, lr=2e-4,
+         temperature=1.0, max_new=64, device="cpu", log=print):
     model.to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95))
     rng = random.Random(0)
@@ -58,7 +58,9 @@ def grpo(model, samples, tok, *, steps=60, prompts_per_step=8, group_size=6, lr=
     for step in range(steps):
         set_lr(opt, cosine_lr(step, steps, lr, 5, 0.1))
         batch = [rng.choice(samples) for _ in range(prompts_per_step)]
-        losses, rewards_log = [], []
+        opt.zero_grad(set_to_none=True)
+        rewards_log, n_updated = [], 0
+        # Backward per prompt-group (not over all 48 rollouts at once) to bound memory.
         for s in batch:
             pid = tok.encode(prompt_text(s))
             model.eval()
@@ -71,19 +73,13 @@ def grpo(model, samples, tok, *, steps=60, prompts_per_step=8, group_size=6, lr=
                 continue  # no signal in this group
             adv = (rewards - rewards.mean()) / (rewards.std() + 1e-6)
             model.train()
-            for r, a in zip(rollouts, adv):
-                if not r:
-                    continue
-                lp = _logprob_sum(model, pid, r, device)
-                losses.append(-a * lp)
-        if not losses:
-            hist.append(sum(rewards_log) / max(1, len(rewards_log)))
-            continue
-        loss = torch.stack(losses).mean()
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        opt.step()
+            gl = [(-a * _logprob_sum(model, pid, r, device)) for r, a in zip(rollouts, adv) if r]
+            if gl:
+                (torch.stack(gl).mean() / len(batch)).backward()  # accumulate grads, free graph
+                n_updated += 1
+        if n_updated:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step()
         avg_r = sum(rewards_log) / max(1, len(rewards_log))
         hist.append(avg_r)
         if step % max(1, steps // 6) == 0 or step == steps - 1:
