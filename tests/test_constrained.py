@@ -1,9 +1,7 @@
 """Prompt-grounded constrained decoding: candidate proposal must ground slots in the prompt."""
 
 from localagent.agent.constrained import candidates
-from localagent.data.schema import ToolSpec
-
-TOOLS = [ToolSpec(n, "", {}) for n in ["get_weather", "calculator", "web_search", "planner"]]
+from localagent.agent.toolset import STANDARD_TOOLS as TOOLS
 
 
 def _bodies(prompt):

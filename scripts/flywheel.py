@@ -28,10 +28,10 @@ import torch
 
 from localagent.data.agent_synth import Generator
 from localagent.data.render import build_pretrain_stream, prompt_text
-from localagent.data.schema import ToolSpec
 from localagent.eval.harness import evaluate, evaluate_grounded
 from localagent.inference.generate import generate
 from localagent.agent.constrained import grounded_decode
+from localagent.agent.toolset import STANDARD_TOOLS as TOOLS
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.model.tokenizer import load_tokenizer
 from localagent.train.device import resolve_device
@@ -40,7 +40,6 @@ from localagent.train.rl import grpo
 from localagent.train.sft import sft
 
 OUT = "runs/flywheel"
-TOOLS = [ToolSpec(n, "", {}) for n in ["get_weather", "calculator", "web_search", "planner"]]
 
 
 def fmt(d):
