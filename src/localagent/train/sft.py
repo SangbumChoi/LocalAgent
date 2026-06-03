@@ -62,6 +62,25 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                         parg, pval = k, tok.encode(v)
                         break
             meta.append((CLASSES.index(label_of(s)), parg, pval))
+        # multi-turn head examples: train tool+pointer heads on episode contexts too, so they
+        # transfer to multi-turn (the tool head reads a context ending after a tool response;
+        # the pointer can copy a follow-up arg out of that response).
+        mt = []  # (ctx_ids, tool_label, ptr_arg_idx|-1, gold_start, gold_end)
+        from localagent.data.render import history_text
+        from localagent.model.tokenizer import ASSISTANT
+        for conv in (conversations or []):
+            for i, msg in enumerate(conv.messages):
+                if msg.role.value != "assistant" or not msg.tool_calls:
+                    continue
+                c = msg.tool_calls[0]
+                cid = tok.encode(history_text(conv.messages[:i]) + ASSISTANT)
+                lab = CLASSES.index(c.name) if c.name in CLASSES else CLASSES.index("text")
+                pa, gsx, gex = -1, -1, -1
+                for k, v in c.arguments.items():
+                    if k in ARG_IDX and (sp := gold_span(cid, tok.encode(v))):
+                        pa, gsx, gex = ARG_IDX[k], sp[0], sp[1]
+                        break
+                mt.append((cid, lab, pa, gsx, gex))
     opt = torch.optim.AdamW(params, lr=lr, betas=(0.9, 0.95), weight_decay=0.0)
     rng = random.Random(0)
     hist = []
@@ -95,6 +114,26 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                 loss = loss + ptr_weight * (   # down-weighted so it can't swamp tool selection
                     F.cross_entropy(sl, torch.tensor(gs, device=device))
                     + F.cross_entropy(el, torch.tensor(ge, device=device)))
+            # --- multi-turn head training (episode contexts) ---
+            if mt:
+                mb = [mt[rng.randrange(len(mt))] for _ in range(min(12, len(mt)))]
+                ml = max(len(e[0]) for e in mb)
+                X = torch.full((len(mb), ml), tok.pad_id, dtype=torch.long, device=device)
+                for r, e in enumerate(mb):
+                    X[r, : len(e[0])] = torch.tensor(e[0], device=device)
+                _, mfeats = model(X, return_hidden=True)
+                mlast = mfeats[torch.arange(len(mb)), torch.tensor([len(e[0]) - 1 for e in mb])]
+                loss = loss + aux_weight * F.cross_entropy(
+                    tool_head(mlast), torch.tensor([e[1] for e in mb], device=device))
+                prw = [r for r, e in enumerate(mb) if e[2] >= 0]
+                if prw:
+                    sl, el = ptr_head.logits(mfeats[prw], torch.tensor([mb[r][2] for r in prw],
+                                                                       device=device))
+                    for j, r in enumerate(prw):
+                        sl[j, len(mb[r][0]):] = -1e9; el[j, len(mb[r][0]):] = -1e9
+                    loss = loss + ptr_weight * (
+                        F.cross_entropy(sl, torch.tensor([mb[r][3] for r in prw], device=device))
+                        + F.cross_entropy(el, torch.tensor([mb[r][4] for r in prw], device=device)))
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(params, 1.0)
