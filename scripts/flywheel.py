@@ -61,11 +61,11 @@ def main():
 
     n_train = 400 if args.quick else 1200
     n_eval = 12 if args.quick else 30        # per category (balanced held-out)
-    n_ep = 40 if args.quick else 160         # multi-turn coding episodes per round
+    n_ep = 40 if args.quick else 120         # multi-turn coding episodes per round
     pre_steps = 60 if args.quick else 200
-    sft1 = 150 if args.quick else 500
-    sft_inc = 80 if args.quick else 180
-    grpo_steps = 4 if args.quick else 5
+    sft1 = 150 if args.quick else 420
+    sft_inc = 80 if args.quick else 150
+    grpo_steps = 4 if args.quick else 4
 
     g0 = Generator(level=1, seed=0, split="train").generate(n_train)
     pre_loss = pretrain(model, build_pretrain_stream(g0, tok), tok, steps=pre_steps,
