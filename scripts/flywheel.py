@@ -61,11 +61,11 @@ def main():
 
     n_train = 400 if args.quick else 1200
     n_eval = 12 if args.quick else 30        # per category (balanced held-out)
-    n_ep = 40 if args.quick else 240         # multi-turn coding episodes per round
+    n_ep = 40 if args.quick else 160         # multi-turn coding episodes per round
     pre_steps = 60 if args.quick else 200
-    sft1 = 150 if args.quick else 600
-    sft_inc = 80 if args.quick else 220
-    grpo_steps = 4 if args.quick else 6
+    sft1 = 150 if args.quick else 500
+    sft_inc = 80 if args.quick else 180
+    grpo_steps = 4 if args.quick else 5
 
     g0 = Generator(level=1, seed=0, split="train").generate(n_train)
     pre_loss = pretrain(model, build_pretrain_stream(g0, tok), tok, steps=pre_steps,
@@ -84,7 +84,9 @@ def main():
                                   device=device, log=lambda *a: None, joint_tool_head=True,
                                   conversations=episodes)
         grpo(model, train, tok, steps=grpo_steps, device=device, log=lambda *a: None)  # RL stage
-        gr = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
+        # single-turn: heuristic grounding (best on clean templates); multi-turn: pointer head
+        # (only it can ground a follow-up arg in an earlier tool response).
+        gr = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head)
         mt = multi_turn_eval(model, held_ep, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
         print(f"  grounded (held-out): {fmt(gr)}", flush=True)
         print(f"  multi-turn: step_acc={mt['step_acc']*100:.0f}% episode_acc={mt['episode_acc']*100:.0f}%"

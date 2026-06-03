@@ -106,6 +106,8 @@ tests/
 | Training: pretrain + SFT + GRPO (verifiable reward), CPU/GPU | ✅ implemented |
 | Synthetic data + render + eval harness (AST + grounded) | ✅ implemented |
 | **Dual-head (tool classifier) + grounded constrained decoding** → ~83% held-out across 15 tools | ✅ implemented (`agent/constrained.py`, `agent/tool_head.py`) |
+| Pointer/copy argument head (learned span grounding) | ✅ implemented (`agent/pointer_head.py`) |
+| Multi-turn coding episodes (tool→response→follow-up) + replay eval | ✅ implemented (`data/agent_synth.py`, `eval/harness.py`) |
 | Flywheel driver + throughput/memory + accuracy visualizations | ✅ implemented (`scripts/flywheel.py`, `scripts/benchmark.py`) |
 | Dual tool/text head, SSM backbone, retrieval head | 📐 proposed (ARCHITECTURE_IDEAS.md) |
 | Conversation schema, tool registry, tool-call parser, AST eval primitives | ✅ implemented |

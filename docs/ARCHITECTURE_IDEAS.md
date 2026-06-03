@@ -60,9 +60,22 @@ classification loss during SFT, `train.sft(joint_tool_head=True)`), not as a pos
 
 A frozen probe plateaus because the raw features don't separate planner/web_search; the auxiliary
 loss *shapes* the representation so they do. This is fully **trigger-free** — unlike the earlier
-template decoder whose per-tool phrases secretly did tool selection. Remaining gaps (planner
-recall, and tool args under enrichment — weather units / 3-term arithmetic) point at a true
-pointer/copy arg head + a stronger backbone as the next step.
+template decoder whose per-tool phrases secretly did tool selection.
+
+**Pointer/copy argument head (`agent/pointer_head.py`) — implemented.** Conditioned on which
+argument it is filling, the head predicts a `(start, end)` span over the prompt's byte positions;
+the value is the copied span. Trained jointly with the model (SFT aux loss). It is the *general*
+grounding mechanism — no per-arg regex/preposition heuristics — and is what lets a follow-up arg be
+grounded in an earlier **tool response** (multi-turn). Honest ablation: on the clean templated
+single-turn eval the tuned deterministic extractors still edge it out (they're near-perfect,
+0/787), so the deployed single-turn path uses heuristics and the pointer head is used for
+multi-turn; closing the single-turn gap wants more joint training / a bigger tier.
+
+**Multi-turn coding episodes (B).** The dataset includes Claude Code / Codex-style trajectories
+(`read_file`→response→`run_tests`→…; `grep_search`→response→`read_file` where the path comes from
+the response). `eval.multi_turn_eval` replays each episode and AST-matches the action at every
+tool step over the full history. This is the frontier: it needs the pointer head (heuristics can't
+reach into a tool response) and benefits from training the heads on multi-turn contexts.
 
 ### 2b. Grounded / grammar-constrained decoding — **IMPLEMENTED, and it works**
 Tool-call structure is decoded through the tool schema; **string arguments are grounded in spans
