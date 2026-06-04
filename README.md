@@ -69,6 +69,14 @@ single-turn peak (~67% here vs ~83% single-turn-only) — a compute trade-off, n
 On clean single-turn templates the deterministic extractors still beat the pointer head, so
 single-turn deploys heuristics and multi-turn uses the pointer head.
 
+**Scaling the tool surface (21 tools).** Adding the computer-use/productivity tools brings the set
+to 21 (a 22-way selector). Grounding stays exact (0/1616), but single-turn *selection* accuracy
+drops to ~47% — distinctive-argument tools are reliable (`send_email`→a name, `open_url`→a URL),
+while tools that share an argument *shape* (`calendar_event` / `notion_write` / `slack_send` /
+`jira_issue` all take a quoted string) confuse the 1M tool head even though their values extract
+correctly. More tools ⇒ harder selection on a 1M head; a larger tier (`tiny-30m`) or
+per-tool-balanced training disambiguates. This is a selection-capacity limit, not a grounding one.
+
 Throughput/memory (CPU, 4 threads), showing the KV-cache win:
 
 | tier | params | prefill tok/s | decode (KV cache) | decode (no cache) | speedup | param mem |
