@@ -53,18 +53,30 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         tool_head = ToolHead(model.cfg.d_model).to(device)
         ptr_head = PointerHead(model.cfg.d_model).to(device)
         params += list(tool_head.parameters()) + list(ptr_head.parameters())
-        meta = []  # (tool_label|-1, ptr_arg_name|None, ptr_value_ids|None); -1 = skip (parallel)
+        # Head training items: (prompt, tool_label, ptr_arg_name|None, ptr_value_ids|None).
+        # Parallel "X and Y" turns are SPLIT into conjuncts so the head learns the (lowercased)
+        # fragments the parallel decoder will actually feed it.
+        head_items = []
+
+        def _ptr_of(args):
+            for k, v in args.items():
+                if k in ARG_IDX:
+                    return k, tok.encode(v)
+            return None, None
+
         for s in samples:
-            if s.calls:                       # parallel: skip head training (handled by split)
-                meta.append((-1, None, None))
-                continue
-            parg = pval = None
-            if s.kind == "tool":
-                for k, v in json.loads(s.ref_args).items():
-                    if k in ARG_IDX:
-                        parg, pval = k, tok.encode(v)
-                        break
-            meta.append((CLASSES.index(label_of(s)), parg, pval))
+            if s.calls:                                   # parallel -> one item per conjunct
+                conj = s.prompt.split(" and ")
+                if len(conj) == len(s.calls):
+                    for cpr, call in zip(conj, s.calls):
+                        lab = CLASSES.index(call["name"]) if call["name"] in CLASSES \
+                            else CLASSES.index("text")
+                        pa, pv = _ptr_of(call["arguments"])
+                        head_items.append((cpr.strip(), lab, pa, pv))
+            else:
+                args = json.loads(s.ref_args) if s.kind == "tool" else {}
+                pa, pv = _ptr_of(args)
+                head_items.append((s.prompt, CLASSES.index(label_of(s)), pa, pv))
         # multi-turn head examples: train tool+pointer heads on episode contexts too, so they
         # transfer to multi-turn (the tool head reads a context ending after a tool response;
         # the pointer can copy a follow-up arg out of that response).
@@ -84,7 +96,6 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                         pa, gsx, gex = ARG_IDX[k], sp[0], sp[1]
                         break
                 mt.append((cid, lab, pa, gsx, gex))
-        single_idx = [i for i, s in enumerate(samples) if not s.calls]  # head-trainable samples
     opt = torch.optim.AdamW(params, lr=lr, betas=(0.9, 0.95), weight_decay=0.0)
     rng = random.Random(0)
     hist = []
@@ -95,15 +106,14 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         _, loss = model(x, targets=y)
         if joint_tool_head:
             from localagent.agent.pointer_head import ARG_IDX, gold_span
-            idx = [rng.choice(single_idx) for _ in range(batch_size)]  # heads: single-call only
-            feats, lengths, enc = _framed_full(model, tok, [samples[i].prompt for i in idx], device)
-            last = feats[torch.arange(len(idx)), lengths - 1]
+            batch = [head_items[rng.randrange(len(head_items))] for _ in range(batch_size)]
+            feats, lengths, enc = _framed_full(model, tok, [b[0] for b in batch], device)
+            last = feats[torch.arange(len(batch)), lengths - 1]
             loss = loss + aux_weight * F.cross_entropy(
-                tool_head(last), torch.tensor([meta[i][0] for i in idx], device=device))
+                tool_head(last), torch.tensor([b[1] for b in batch], device=device))
             # pointer head: rows in the batch that have a copy arg with a locatable gold span
             rws, gs, ge, ai = [], [], [], []
-            for bi, i in enumerate(idx):
-                _, parg, pval = meta[i]
+            for bi, (_, _, parg, pval) in enumerate(batch):
                 if parg is None:
                     continue
                 span = gold_span(enc[bi], pval)

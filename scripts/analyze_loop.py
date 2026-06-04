@@ -84,8 +84,9 @@ def main():
         hist.append({"round": r, "overall": res["overall"], "categories": cats,
                      "weights_for_next": new_weights, "n_train": len(train)})
         weights = new_weights
-        if res["overall"] > best_overall:     # keep the BEST round, not the last (can regress)
-            best_overall = res["overall"]
+        score = res["overall"] + 0.5 * cats.get("parallel", 0.0)   # value parallel in best-save
+        if score > best_overall:     # keep the BEST round, not the last (can regress)
+            best_overall = score
             torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict(),
                         "tool_head": head.state_dict() if head is not None else None,
                         "ptr_head": ptr.state_dict() if ptr is not None else None},
