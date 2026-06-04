@@ -84,6 +84,13 @@ weak tools recover (`run_command` 0→100%, `read_file` 0→80%), while a few sa
 tools (`git_commit`) stay at 0% — oversampling can't fix what the 22-way 1M selector can't separate.
 See `runs/analyze/analyze.png`.
 
+**More data helps too (data-starved vs capacity-limited).** Expanding the dataset ~3× (slot pools
+24→48-61 values/tool + more phrasings → 8,000+ unique samples, 0 grounding misses) lifts the *same*
+1M model on the same failure-driven loop from **62% → 71%** held-out. So the two levers buy
+different things: **data** 62→71% (the data-starved tools), **model size** 1M→28M round-1 45→64%
+(the same-shaped tools the small head can't separate). See
+`runs/analyze_ultra-tiny-1m/dataset_compare.png`.
+
 **Scaling the model fixes selection (1M → ~28M byte tier, `configs/model/tiny-30m-byte.yaml`).**
 On the *same* 21-tool data, round-1 held-out accuracy jumps **45% → 64%**; tool selection improves
 across the board (`open_url` +83, `run_command` +62, `web_search` +62, `define` +53) and
