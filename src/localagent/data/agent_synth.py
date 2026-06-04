@@ -377,6 +377,22 @@ class Generator:
         return out
 
 
+    def generate_weighted(self, n: int, weights: dict) -> list[Sample]:
+        """Sample categories with per-category weights (>1 oversamples). Drives failure-driven
+        enrichment: the flywheel raises weights on the categories the model is failing."""
+        makers = self.makers()
+        cats = [mk().category for mk in makers]      # one call each to read its category
+        w = [max(0.05, weights.get(c, 1.0)) for c in cats]
+        out, seen, tries = [], set(), 0
+        while len(out) < n and tries < n * 100:
+            tries += 1
+            s = self.rng.choices(makers, weights=w, k=1)[0]()
+            if s.prompt in seen:
+                continue
+            seen.add(s.prompt)
+            out.append(s)
+        return out
+
     def generate_balanced(self, per_category: int) -> list[Sample]:
         """Up to `per_category` unique samples per category — for meaningful per-group eval."""
         from collections import Counter
