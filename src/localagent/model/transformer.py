@@ -70,10 +70,9 @@ class Attention(nn.Module):
         new_cache = (k, v)
         k = k.repeat_interleave(self.rep, dim=1)  # GQA expand
         v = v.repeat_interleave(self.rep, dim=1)
-        # causal only matters when q and k have equal length (prefill/training); a single decode
-        # query (T==1) legitimately attends to all cached keys, so no causal mask there.
-        causal = q.shape[2] == k.shape[2] and q.shape[2] > 1
-        out = F.scaled_dot_product_attention(q, k, v, is_causal=causal)
+        # full-sequence prefill/training (no cache) is causal; a cached single-step decode query
+        # attends to all cached keys, so no mask. (Python bool -> ONNX-exportable.)
+        out = F.scaled_dot_product_attention(q, k, v, is_causal=cache is None)
         out = out.transpose(1, 2).reshape(B, T, -1)
         return self.o(out), new_cache
 
