@@ -438,7 +438,8 @@ class Generator:
             return Message(role=Role.tool, tool_response=resp)
 
         path = self.rng.choice(self.paths)
-        which = self.rng.choice(["debug", "grep_read", "test_commit"])
+        which = self.rng.choice(["debug", "grep_read", "test_commit",
+                                 "implement_feature", "fix_failing_test"])
         if which == "debug":
             msgs = [
                 Message(role=Role.user, content=f"There's a bug in {path}, investigate it."),
@@ -459,7 +460,7 @@ class Generator:
                 T("<file contents>"),
                 Message(role=Role.assistant, content=f"'{pat}' is used in {path}."),
             ]
-        else:
+        elif which == "test_commit":
             msg = self.rng.choice(self.commits)
             msgs = [
                 Message(role=Role.user,
@@ -469,6 +470,36 @@ class Generator:
                 A("git_commit", {"message": msg}),
                 T("Committed abc123."),
                 Message(role=Role.assistant, content=f"Done — committed '{msg}'."),
+            ]
+        elif which == "implement_feature":  # grep -> read -> write -> test -> commit (5 calls)
+            pat = self.rng.choice(self.patterns)
+            msg = self.rng.choice(self.commits)
+            msgs = [
+                Message(role=Role.user, content=f"Implement '{msg}'; the relevant code uses '{pat}'."),
+                A("grep_search", {"pattern": pat}),
+                T(f"{path}:20:    {pat} ..."),
+                A("read_file", {"path": path}),
+                T("<current implementation>"),
+                A("write_file", {"path": path}),
+                T("written."),
+                A("run_tests", {}),
+                T("All tests passed."),
+                A("git_commit", {"message": msg}),
+                T("Committed def456."),
+                Message(role=Role.assistant, content=f"Implemented and committed '{msg}'."),
+            ]
+        else:  # fix_failing_test: run_tests -> read -> write -> run_tests
+            msgs = [
+                Message(role=Role.user, content=f"A test is failing in {path}, please fix it."),
+                A("run_tests", {}),
+                T(f"FAILED {path}::test_case"),
+                A("read_file", {"path": path}),
+                T("def f(): return None"),
+                A("write_file", {"path": path}),
+                T("patched."),
+                A("run_tests", {}),
+                T("All tests passed."),
+                Message(role=Role.assistant, content=f"Fixed the failing test in {path}."),
             ]
         return Conversation(messages=msgs, meta={"kind": "coding_episode", "type": which})
 
