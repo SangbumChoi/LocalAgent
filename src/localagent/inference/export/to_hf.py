@@ -45,6 +45,29 @@ Codex coding surface, and computer-use / productivity tools), including parallel
 - `model.safetensors` / `pytorch_model.bin` — decoder weights
 - `agent_heads.bin` — trained tool-selection + pointer heads (optional)
 
+## What it can do (use cases)
+One byte-level model that turns a natural-language turn into a grounded tool call — across an
+assistant, a coding agent, computer-use/productivity apps, and **parallel two-call** turns:
+
+| you say | it calls |
+|---|---|
+| "What's the weather in Cusco?" | `get_weather(city="Cusco")` |
+| "What is 19 * 19 * 5?" | `calculator(expression="19*19*5")` |
+| "Open the file bin/run.sh." | `read_file(path="bin/run.sh")` |
+| "Grep for 'TODO'." | `grep_search(pattern="TODO")` |
+| "Run the tests." | `run_tests()` |
+| "Commit with message 'fix bug'." | `git_commit(message="fix bug")` |
+| "Send an email to Greta." | `send_email(recipient="Greta")` |
+| "Go to figma.com." | `open_url(url="figma.com")` |
+| "Send a Slack message saying 'ship it'." | `slack_send(message="ship it")` |
+| "Create a Jira ticket titled 'broken link'." | `jira_issue(summary="broken link")` |
+| "Compose an email to Judy **and** search for how tall is Everest." | `send_email(recipient="Judy")` + `web_search(query="how tall is Everest")` |
+
+Multi-turn coding (grounds a follow-up arg from a tool response):
+`read_file(tests/test_api.py)` → result → `run_tests()` → "FAILED…" → fix.
+At catalog scale (100s–1000s of tools) selection is done by **retrieval** (top-k) instead of a
+fixed head. See the [LocalAgent repo](https://github.com/sangbumchoi/localagent).
+
 ## Load (pure PyTorch, no transformers)
 ```python
 import json, torch
@@ -58,7 +81,8 @@ from safetensors.torch import load_file
 model.load_state_dict(load_file(hf_hub_download("{repo}", "model.safetensors")))
 model.eval()
 ```
-See the LocalAgent repo for the grounded decoder / agent runtime.
+See the LocalAgent repo for the grounded decoder / agent runtime (tool head, pointer head,
+retrieval, parallel-call decode).
 """
 
 
