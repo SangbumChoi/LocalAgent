@@ -22,6 +22,7 @@ ruff check src tests             # lint
 localagent model-info configs/model/ultra-tiny-1m.yaml   # param budget report
 python scripts/flywheel.py --quick                       # fast end-to-end smoke (CPU OK)
 python scripts/flywheel.py --rounds 5                    # full train+enrich flywheel
+python scripts/analyze_loop.py --rounds 5                # failure-driven flywheel (oversamples weak tools)
 python scripts/benchmark.py                              # tok/s + memory viz (KV cache vs not)
 ```
 

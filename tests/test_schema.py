@@ -18,6 +18,15 @@ def test_conversation_roundtrip():
     assert back.tools[0].name == "get_weather"
 
 
+def test_generate_weighted_oversamples():
+    from collections import Counter
+
+    from localagent.data.agent_synth import Generator
+    s = Generator(2, 1, "train").generate_weighted(300, {"weather": 12.0})
+    c = Counter(x.category for x in s)
+    assert c["weather"] > 50  # heavy weight dominates
+
+
 def test_toolcall_normalized_is_order_independent():
     a = ToolCall("f", {"x": 1, "y": 2})
     b = ToolCall("f", {"y": 2, "x": 1})
