@@ -60,8 +60,10 @@ def main():
     g0 = Generator(level=1, seed=0, split="train").generate(n_train)
     pretrain(model, build_pretrain_stream(g0, tok), tok, steps=pre, batch_size=64, device=device)
 
+    import torch
     weights = dict(REALISTIC_WEIGHTS)     # realistic base (parallel-heavy, calc down-weighted)
     hist = []
+    best_overall = -1.0
     for r in range(1, args.rounds + 1):
         train = Generator(level=r, seed=r, split="train").generate_weighted(n_train, weights)
         held = Generator(level=r, seed=1000 + r, split="eval").generate_balanced(n_eval)
@@ -82,16 +84,18 @@ def main():
         hist.append({"round": r, "overall": res["overall"], "categories": cats,
                      "weights_for_next": new_weights, "n_train": len(train)})
         weights = new_weights
+        if res["overall"] > best_overall:     # keep the BEST round, not the last (can regress)
+            best_overall = res["overall"]
+            torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict(),
+                        "tool_head": head.state_dict() if head is not None else None,
+                        "ptr_head": ptr.state_dict() if ptr is not None else None},
+                       f"{OUT}/model.pt")
+            print(f"  (saved best model: overall={best_overall*100:.1f}%)", flush=True)
         json.dump(hist, open(f"{OUT}/analysis.json", "w"), indent=2)
         _plot(hist)
 
-    import torch
-    torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict(),
-                "tool_head": head.state_dict() if head is not None else None,
-                "ptr_head": ptr.state_dict() if ptr is not None else None},
-               f"{OUT}/model.pt")
-    print(f"\nDone. overall by round: "
-          f"{[round(h['overall']*100) for h in hist]}  (model + artifacts in {OUT}/)")
+    print(f"\nDone. overall by round: {[round(h['overall']*100) for h in hist]}  "
+          f"(best={best_overall*100:.1f}% saved to {OUT}/model.pt)")
 
 
 def _plot(hist):
