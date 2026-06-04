@@ -91,6 +91,15 @@ different things: **data** 62→71% (the data-starved tools), **model size** 1M�
 (the same-shaped tools the small head can't separate). See
 `runs/analyze_ultra-tiny-1m/dataset_compare.png`.
 
+**Parallel two-call turns + 4× rebalanced dataset.** Real usage is "do X *and* Y" (two tool calls),
+not a calc-dominated single-call stream. The dataset adds a **parallel** category (one turn → two
+calls, e.g. *"Compose an email to Judy and search for how tall is Everest"* → `send_email` +
+`web_search`), is **4× larger** (10,000 unique samples), and is **rebalanced** (`REALISTIC_WEIGHTS`:
+parallel ~70%, calc ~6% — was ~70%). The decoder handles two-call turns by splitting on "and" and
+grounding each conjunct (tool head + pointer head); eval matches the whole call *set*. On the
+failure-driven loop the ~1M model learns parallel calls **0 → 38%** (both calls must be exactly
+right) while overall climbs **32 → 63%**. See `runs/analyze_ultra-tiny-1m/parallel_result.png`.
+
 **Scaling the model fixes selection (1M → ~28M byte tier, `configs/model/tiny-30m-byte.yaml`).**
 On the *same* 21-tool data, round-1 held-out accuracy jumps **45% → 64%**; tool selection improves
 across the board (`open_url` +83, `run_command` +62, `web_search` +62, `define` +53) and
