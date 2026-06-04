@@ -77,9 +77,12 @@ def render_conversation(conv: Conversation, tok) -> tuple[list[int], list[int]]:
 
 
 def assistant_body(s: Sample) -> str:
-    if s.kind == "tool":
-        return f"{TOOL_CALL_OPEN}{s.target}{TOOL_CALL_CLOSE}"
-    return s.target
+    if s.kind != "tool":
+        return s.target
+    if s.calls:  # parallel: one <tool_call> block per call
+        return "".join(f"{TOOL_CALL_OPEN}{_canon(c['name'], c['arguments'])}{TOOL_CALL_CLOSE}"
+                       for c in s.calls)
+    return f"{TOOL_CALL_OPEN}{s.target}{TOOL_CALL_CLOSE}"
 
 
 def prompt_text(s: Sample) -> str:

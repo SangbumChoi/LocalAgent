@@ -19,9 +19,11 @@ from localagent.inference.generate import generate
 
 def _correct(sample, gen_text: str) -> bool:
     if sample.kind == "tool":
-        ref = ToolCall(**json.loads(sample.target))
-        pred = extract_tool_calls(gen_text)
-        return len(pred) >= 1 and match_calls([pred[0]], [ref])
+        if getattr(sample, "calls", None):            # parallel: match the whole set of calls
+            gold = [ToolCall(**c) for c in sample.calls]
+        else:
+            gold = [ToolCall(**json.loads(sample.target))]
+        return match_calls(extract_tool_calls(gen_text), gold)
     # text: exact match, and no spurious tool call
     return gen_text.strip() == sample.target.strip() and not extract_tool_calls(gen_text)
 
@@ -55,13 +57,17 @@ def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None, 
     selection/extraction is used."""
     from collections import defaultdict
 
-    from localagent.agent.constrained import grounded_decode
+    from localagent.agent.constrained import grounded_decode, grounded_decode_parallel
     by_group = defaultdict(lambda: [0, 0])
     by_cat = defaultdict(lambda: [0, 0])
     n_correct = 0
     for s in samples:
-        out = grounded_decode(model, tok, s.prompt, tools, device=device,
-                              tool_head=tool_head, ptr_head=ptr_head)
+        if getattr(s, "calls", None) and len(s.calls) > 1:   # parallel two-call turn
+            out = grounded_decode_parallel(model, tok, s.prompt, tools, device=device,
+                                           tool_head=tool_head, ptr_head=ptr_head)
+        else:
+            out = grounded_decode(model, tok, s.prompt, tools, device=device,
+                                  tool_head=tool_head, ptr_head=ptr_head)
         ok = _correct(s, out)
         n_correct += ok
         by_group[s.group][0] += ok; by_group[s.group][1] += 1

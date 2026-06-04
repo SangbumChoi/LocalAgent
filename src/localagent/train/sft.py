@@ -53,8 +53,11 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         tool_head = ToolHead(model.cfg.d_model).to(device)
         ptr_head = PointerHead(model.cfg.d_model).to(device)
         params += list(tool_head.parameters()) + list(ptr_head.parameters())
-        meta = []  # (tool_label, ptr_arg_name|None, ptr_value_ids|None)
+        meta = []  # (tool_label|-1, ptr_arg_name|None, ptr_value_ids|None); -1 = skip (parallel)
         for s in samples:
+            if s.calls:                       # parallel: skip head training (handled by split)
+                meta.append((-1, None, None))
+                continue
             parg = pval = None
             if s.kind == "tool":
                 for k, v in json.loads(s.ref_args).items():
@@ -81,6 +84,7 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                         pa, gsx, gex = ARG_IDX[k], sp[0], sp[1]
                         break
                 mt.append((cid, lab, pa, gsx, gex))
+        single_idx = [i for i, s in enumerate(samples) if not s.calls]  # head-trainable samples
     opt = torch.optim.AdamW(params, lr=lr, betas=(0.9, 0.95), weight_decay=0.0)
     rng = random.Random(0)
     hist = []
@@ -91,7 +95,7 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         _, loss = model(x, targets=y)
         if joint_tool_head:
             from localagent.agent.pointer_head import ARG_IDX, gold_span
-            idx = [rng.randrange(len(samples)) for _ in range(batch_size)]  # heads: single-turn
+            idx = [rng.choice(single_idx) for _ in range(batch_size)]  # heads: single-call only
             feats, lengths, enc = _framed_full(model, tok, [samples[i].prompt for i in idx], device)
             last = feats[torch.arange(len(idx)), lengths - 1]
             loss = loss + aux_weight * F.cross_entropy(

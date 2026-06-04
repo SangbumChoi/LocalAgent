@@ -145,15 +145,27 @@ JIRA_TRAIN = ["login bug", "slow query", "add dark mode", "fix typo", "memory le
 JIRA_EVAL = ["broken link", "update deps", "cache miss", "form validation", "data loss", "404 page"]
 
 
+# A realistic usage distribution (not the old calc-dominated one): emphasize the two-call
+# ("parallel") turns and productivity tools people actually want; down-weight the over-represented
+# calculator/weather. Used as the base sampling weight in the flywheels.
+REALISTIC_WEIGHTS = {
+    "parallel": 2.5, "calc": 0.3, "weather": 0.6,
+    "send_email": 1.4, "calendar_event": 1.4, "open_url": 1.4, "slack_send": 1.4,
+    "notion_write": 1.4, "jira_issue": 1.4, "set_reminder": 1.2, "set_timer": 1.2,
+    "read_file": 1.2, "write_file": 1.2, "run_command": 1.2, "git_commit": 1.2,
+}
+
+
 @dataclass
 class Sample:
-    category: str          # weather | calc | web_search | planner | text | no_tool
-    group: str             # tool_call | web_search | planner | text
+    category: str          # weather | calc | ... | parallel | text | no_tool
+    group: str             # tool_call | web_search | planner | ... | parallel | text
     prompt: str            # user text (without framing markers)
     kind: str              # "tool" or "text"
     target: str            # canonical assistant body (no markers/EOS)
-    ref_name: str = ""     # tool name (for tool kind)
-    ref_args: str = ""     # canonical sorted-key JSON args string (for tool kind)
+    ref_name: str = ""     # tool name (for tool kind; first call for parallel)
+    ref_args: str = ""     # canonical sorted-key JSON args string (first call)
+    calls: list = None     # [{"name","arguments"}, ...] when >1 call (parallel); else None
 
 
 def _tool_target(name: str, arguments: dict) -> str:
@@ -364,6 +376,30 @@ class Generator:
                                   f"Open a Jira issue for '{s}'.",
                                   f"File a Jira bug for '{s}'.", f"Log a Jira issue: '{s}'."])
 
+    # --- parallel / two-tool calls ("do X and Y" — what people actually want) ---
+    _PARALLEL_POOL = ("weather", "web_search", "define", "play_music", "get_news", "read_file",
+                      "run_tests", "set_reminder", "set_timer", "calendar_event", "send_email",
+                      "open_url", "notion_write", "slack_send", "jira_issue", "grep_search",
+                      "git_commit", "calc", "run_command")
+
+    def parallel(self) -> Sample:
+        """One user turn that needs TWO tool calls, joined by 'and'. Each clause is a standalone
+        single-tool request so it splits/grounds cleanly (no value contains ' and ')."""
+        for _ in range(20):
+            a = getattr(self, self.rng.choice(self._PARALLEL_POOL))()
+            b = getattr(self, self.rng.choice(self._PARALLEL_POOL))()
+            p2 = b.prompt
+            p2 = (p2[0].lower() + p2[1:]) if p2 else p2
+            prompt = a.prompt.rstrip(".?! ") + " and " + p2
+            if prompt.count(" and ") != 1:    # a value sneaked in an 'and' — retry
+                continue
+            calls = [{"name": a.ref_name, "arguments": json.loads(a.ref_args or "{}")},
+                     {"name": b.ref_name, "arguments": json.loads(b.ref_args or "{}")}]
+            target = " ".join(_tool_target(c["name"], c["arguments"]) for c in calls)
+            return Sample("parallel", "parallel", prompt, "tool", target,
+                          a.ref_name, a.ref_args, calls)
+        return a  # fallback (rare)
+
     def text(self) -> Sample:
         name = self.rng.choice(self.names)
         choice = self.rng.choice(["hello", "morning", "name"])
@@ -385,7 +421,7 @@ class Generator:
              self.read_file, self.write_file, self.grep_search, self.run_command,
              self.git_commit, self.run_tests, self.set_reminder, self.set_timer,
              self.calendar_event, self.send_email, self.open_url, self.notion_write,
-             self.slack_send, self.jira_issue, self.text]
+             self.slack_send, self.jira_issue, self.parallel, self.text]
         if self.level >= 2:
             m.append(self.no_tool)
         return m

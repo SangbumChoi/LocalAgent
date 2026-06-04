@@ -19,7 +19,7 @@ import os
 import torch
 
 from localagent.agent.toolset import STANDARD_TOOLS as TOOLS
-from localagent.data.agent_synth import Generator
+from localagent.data.agent_synth import REALISTIC_WEIGHTS, Generator
 from localagent.data.render import build_pretrain_stream
 from localagent.eval.harness import evaluate_grounded
 from localagent.model import LocalAgentLM, ModelConfig
@@ -50,7 +50,7 @@ def main():
     model = LocalAgentLM(cfg).to(device)
     print(f"model {cfg.name}: {model.num_params()/1e6:.3f}M params on {device}", flush=True)
 
-    n_train = 400 if args.quick else 2500
+    n_train = 1200 if args.quick else 10000   # 4x larger
     n_eval = 8 if args.quick else 16
     pre, s1, sinc = (40, 120, 60) if args.quick else (200, 300, 200)
     pre = args.pre or pre
@@ -60,7 +60,7 @@ def main():
     g0 = Generator(level=1, seed=0, split="train").generate(n_train)
     pretrain(model, build_pretrain_stream(g0, tok), tok, steps=pre, batch_size=64, device=device)
 
-    weights: dict[str, float] = {}        # uniform to start
+    weights = dict(REALISTIC_WEIGHTS)     # realistic base (parallel-heavy, calc down-weighted)
     hist = []
     for r in range(1, args.rounds + 1):
         train = Generator(level=r, seed=r, split="train").generate_weighted(n_train, weights)
@@ -71,8 +71,9 @@ def main():
         res = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head)
         cats = res["categories"]
         weak = sorted(cats.items(), key=lambda kv: kv[1])[:5]
-        # ANALYZE -> reweight: failing categories get oversampled next round
-        new_weights = {c: round(1 + K * (1 - a), 2) for c, a in cats.items()}
+        # ANALYZE -> reweight: failing categories oversampled next round, on the realistic base
+        new_weights = {c: round(REALISTIC_WEIGHTS.get(c, 1.0) * (1 + K * (1 - a)), 2)
+                       for c, a in cats.items()}
         print(f"\n=== Round {r}: overall={res['overall']*100:.1f}%  "
               f"(trained with {len(train)} samples) ===", flush=True)
         print("  weakest: " + ", ".join(f"{c}={a*100:.0f}%" for c, a in weak), flush=True)

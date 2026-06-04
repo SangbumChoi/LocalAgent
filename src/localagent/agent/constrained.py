@@ -204,6 +204,14 @@ def _ctx_feats(model, tok, ctx: str, device):
     return feats[0], ids
 
 
+def grounded_decode_parallel(model, tok, prompt: str, tools: list[ToolSpec], device="cpu",
+                             tool_head=None, ptr_head=None) -> str:
+    """For 'do X and Y' turns: split on ' and ', ground each conjunct, concatenate the calls."""
+    parts = [p.strip() for p in prompt.split(" and ") if p.strip()]
+    return "".join(grounded_decode(model, tok, p, tools, device, tool_head, ptr_head)
+                   for p in parts)
+
+
 def grounded_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu",
                     tool_head=None, ptr_head=None, framed=False) -> str:
     """Grounded constrained decode. `framed=False`: `prompt` is a raw user turn (framed as
