@@ -176,6 +176,7 @@ tests/
 | Agent data synthesis + flywheel | 🚧 stubs (Phases 3/8) |
 | Eval harness (multi-turn, parity) | 🚧 stubs (Phase 5) |
 | Agent runtime + memory + demos | 🚧 stubs (Phase 7) |
+| Export to Hugging Face Hub (config + safetensors + heads + model card) | ✅ implemented (`scripts/push_to_hf.py`) |
 | Export GGUF/ONNX/ExecuTorch | 🚧 stubs (Phase 9) |
 
 Full plan: [`docs/ROADMAP.md`](docs/ROADMAP.md). Stubs raise `NotImplementedError` with a

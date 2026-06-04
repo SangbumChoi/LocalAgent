@@ -86,7 +86,7 @@ def main(argv: list[str] | None = None) -> None:
     ev.set_defaults(func=_eval)
 
     ex = sub.add_parser("export", help="export to an on-device runtime")
-    ex.add_argument("target", choices=["gguf", "onnx", "executorch"])
+    ex.add_argument("target", choices=["gguf", "onnx", "executorch", "hf"])
     ex.add_argument("checkpoint")
     ex.add_argument("out")
     ex.set_defaults(func=_export)

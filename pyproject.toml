@@ -25,6 +25,7 @@ dependencies = [
 data = ["datasets>=2.18", "requests>=2.31"]          # corpus + teacher data fetching
 demo = ["gradio>=4.0", "matplotlib>=3.7"]              # web demo + flywheel/benchmark viz
 export = ["onnx>=1.16", "onnxruntime>=1.18"]           # ONNX path (GGUF/ExecuTorch use their own toolchains)
+hub = ["huggingface_hub>=0.23", "safetensors>=0.4"]    # push trained weights to the HF Hub
 dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [project.scripts]
