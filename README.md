@@ -91,6 +91,15 @@ across the board (`open_url` +83, `run_command` +62, `web_search` +62, `define` 
 ~6.5 s/step on a 4-core CPU, so this is a 2-round probe, not the full 5-round loop.) See
 `runs/analyze_tiny-30m-byte/size_compare.png`.
 
+**Distillation (`train/distill.py`, `scripts/distill_demo.py`) — implemented, honest negative.**
+Offline logit-KD from the 28M teacher (held-out top-1 87%) into the 1M student. The distilled
+student (67%) does **not** beat the SFT-only student (67%), and NLL gets worse — because on
+*deterministic* templated tool-call targets, hard-label SFT is already near-optimal, so there's
+little soft "dark knowledge" to transfer and temperature-softening hurts sharp next-byte
+prediction. Distillation is the right tool for *ambiguous/open-ended* targets or for distilling the
+capacity-limited skill directly (tool-head logits) — not deterministic copies. See
+`runs/distill/distill.png`. (Both forward- and reverse-KL are implemented.)
+
 Throughput/memory (CPU, 4 threads), showing the KV-cache win:
 
 | tier | params | prefill tok/s | decode (KV cache) | decode (no cache) | speedup | param mem |
