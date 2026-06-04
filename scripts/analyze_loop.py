@@ -50,7 +50,7 @@ def main():
     model = LocalAgentLM(cfg).to(device)
     print(f"model {cfg.name}: {model.num_params()/1e6:.3f}M params on {device}", flush=True)
 
-    n_train = 400 if args.quick else 1500
+    n_train = 400 if args.quick else 2500
     n_eval = 8 if args.quick else 16
     pre, s1, sinc = (40, 120, 60) if args.quick else (200, 300, 200)
     pre = args.pre or pre
