@@ -66,9 +66,9 @@ def main():
         train = Generator(level=r, seed=r, split="train").generate_weighted(n_train, weights)
         held = Generator(level=r, seed=1000 + r, split="eval").generate_balanced(n_eval)
         steps = s1 if r == 1 else sinc
-        head, _ = sft(model, train, tok, steps=steps, batch_size=32, lr=1.5e-3, device=device,
-                      log=lambda *a: None, joint_tool_head=True)[1:]
-        res = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head)
+        _, head, ptr = sft(model, train, tok, steps=steps, batch_size=32, lr=1.5e-3, device=device,
+                           log=lambda *a: None, joint_tool_head=True)
+        res = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
         cats = res["categories"]
         weak = sorted(cats.items(), key=lambda kv: kv[1])[:5]
         # ANALYZE -> reweight: failing categories oversampled next round, on the realistic base
@@ -85,8 +85,13 @@ def main():
         json.dump(hist, open(f"{OUT}/analysis.json", "w"), indent=2)
         _plot(hist)
 
+    import torch
+    torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict(),
+                "tool_head": head.state_dict() if head is not None else None,
+                "ptr_head": ptr.state_dict() if ptr is not None else None},
+               f"{OUT}/model.pt")
     print(f"\nDone. overall by round: "
-          f"{[round(h['overall']*100) for h in hist]}  (artifacts in {OUT}/)")
+          f"{[round(h['overall']*100) for h in hist]}  (model + artifacts in {OUT}/)")
 
 
 def _plot(hist):
