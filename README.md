@@ -77,6 +77,13 @@ while tools that share an argument *shape* (`calendar_event` / `notion_write` / 
 correctly. More tools ⇒ harder selection on a 1M head; a larger tier (`tiny-30m`) or
 per-tool-balanced training disambiguates. This is a selection-capacity limit, not a grounding one.
 
+**Failure-driven flywheel (`scripts/analyze_loop.py`).** A real data flywheel: each round it tests,
+**analyzes per-tool accuracy, and oversamples the weakest tools** (`weight = 1 + k·(1−acc)`) in the
+next round's training data. Looped 5×, held-out accuracy climbs monotonically **45→50→57→61→62%**;
+weak tools recover (`run_command` 0→100%, `read_file` 0→80%), while a few same-shaped quoted-arg
+tools (`git_commit`) stay at 0% — oversampling can't fix what the 22-way 1M selector can't separate.
+See `runs/analyze/analyze.png`.
+
 Throughput/memory (CPU, 4 threads), showing the KV-cache win:
 
 | tier | params | prefill tok/s | decode (KV cache) | decode (no cache) | speedup | param mem |
