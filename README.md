@@ -84,6 +84,13 @@ weak tools recover (`run_command` 0→100%, `read_file` 0→80%), while a few sa
 tools (`git_commit`) stay at 0% — oversampling can't fix what the 22-way 1M selector can't separate.
 See `runs/analyze/analyze.png`.
 
+**Scaling the model fixes selection (1M → ~28M byte tier, `configs/model/tiny-30m-byte.yaml`).**
+On the *same* 21-tool data, round-1 held-out accuracy jumps **45% → 64%**; tool selection improves
+across the board (`open_url` +83, `run_command` +62, `web_search` +62, `define` +53) and
+`git_commit` goes 0%→17% — confirming the bottleneck was selection *capacity*, not data. (28M is
+~6.5 s/step on a 4-core CPU, so this is a 2-round probe, not the full 5-round loop.) See
+`runs/analyze_tiny-30m-byte/size_compare.png`.
+
 Throughput/memory (CPU, 4 threads), showing the KV-cache win:
 
 | tier | params | prefill tok/s | decode (KV cache) | decode (no cache) | speedup | param mem |
