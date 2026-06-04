@@ -35,18 +35,27 @@ K = 3.0  # how aggressively to oversample weak categories
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=5)
+    ap.add_argument("--model", default="configs/model/ultra-tiny-1m.yaml")
+    ap.add_argument("--pre", type=int, default=0, help="pretrain steps (0=auto)")
+    ap.add_argument("--sft1", type=int, default=0, help="round-1 SFT steps (0=auto)")
+    ap.add_argument("--sft-inc", type=int, default=0, help="later-round SFT steps (0=auto)")
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
-    os.makedirs(OUT, exist_ok=True)
     device = resolve_device("auto")
     tok = load_tokenizer("byte")
-    cfg = ModelConfig.from_yaml("configs/model/ultra-tiny-1m.yaml")
+    cfg = ModelConfig.from_yaml(args.model)
+    global OUT
+    OUT = f"runs/analyze_{cfg.name}"
+    os.makedirs(OUT, exist_ok=True)
     model = LocalAgentLM(cfg).to(device)
     print(f"model {cfg.name}: {model.num_params()/1e6:.3f}M params on {device}", flush=True)
 
     n_train = 400 if args.quick else 1500
     n_eval = 8 if args.quick else 16
     pre, s1, sinc = (40, 120, 60) if args.quick else (200, 300, 200)
+    pre = args.pre or pre
+    s1 = args.sft1 or s1
+    sinc = args.sft_inc or sinc
 
     g0 = Generator(level=1, seed=0, split="train").generate(n_train)
     pretrain(model, build_pretrain_stream(g0, tok), tok, steps=pre, batch_size=64, device=device)
