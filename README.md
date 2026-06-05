@@ -6,8 +6,39 @@ ML pipeline (nanochat in spirit), with **training + evaluation**, that runs on *
 and exports to **PyTorch / GGUF / ONNX / ExecuTorch**. A **data flywheel** lets it improve from
 the conversations it has while running locally.
 
-> Status: **Phase 0 — scaffold.** The architecture, configs, schema, model, and CLI skeleton are
-> in place; per-stage logic lands phase by phase. See the status table below.
+## Reliable tool calling on *your* tools — no training required
+
+Give `ToolCaller` any JSON-schema tools (multi-argument, real APIs) and it returns a
+**schema-valid, grounded** call — or abstains. Selection scales to thousands of tools via
+retrieval; arguments are filled by a schema-guided constrained decoder, so **the output is never
+malformed**. No model download, no fine-tuning.
+
+```python
+from localagent import ToolCaller
+from localagent.data.schema import ToolSpec
+
+tools = [ToolSpec("move_file", "move or rename a file", {
+    "type": "object",
+    "properties": {"source": {"type": "string", "format": "path"},
+                   "dest":   {"type": "string", "format": "path"}},
+    "required": ["source", "dest"]})]
+
+caller = ToolCaller(tools)
+caller.call("Move src/app.py to backup/app.py.")   # ToolCall(move_file, {source:'src/app.py', dest:'backup/app.py'})
+caller.call("What's the weather?")                  # None  (abstains)
+```
+
+**Benchmark** (`scripts/toolcall_eval.py` — 18 realistic multi-arg tools, paraphrased held-out
+queries, disjoint slot values):
+
+| | full-call | tool@1 | abstention |
+|---|---|---|---|
+| 18 tools | **72%** | 86% | — |
+| 18 tools (`--min-score 0.12`) | 69% | 83% | **75%** |
+| + **1,000 distractor tools** | 58% | 72% | — |
+
+Full-call = correct tool *and* every argument grounded exactly. See `docs/TOOL_CALLING.md`.
+Remaining misses are free-text multi-word args (the pointer-head frontier).
 
 ## Why / what
 - **Tiny + from scratch** — you build and pretrain the transformer yourself; a budget guard keeps
@@ -164,6 +195,7 @@ tests/
 | Model: 3 tiers (decoder, **KV cache**, config, budget guard) + factorized embeddings + depth-recurrence | ✅ implemented |
 | Training: pretrain + SFT + GRPO (verifiable reward), CPU/GPU | ✅ implemented |
 | Synthetic data + render + eval harness (AST + grounded) | ✅ implemented |
+| **`ToolCaller`** — schema-guided constrained decoding on any JSON-schema tools (multi-arg, retrieval, abstention), no training | ✅ implemented (`agent/caller.py`, `agent/schema_decode.py`) |
 | **Dual-head (tool classifier) + grounded constrained decoding** → ~83% held-out across 15 tools | ✅ implemented (`agent/constrained.py`, `agent/tool_head.py`) |
 | Pointer/copy argument head (learned span grounding) | ✅ implemented (`agent/pointer_head.py`) |
 | Multi-turn coding episodes (tool→response→follow-up) + replay eval | ✅ implemented (`data/agent_synth.py`, `eval/harness.py`) |

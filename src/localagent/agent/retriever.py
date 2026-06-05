@@ -51,10 +51,14 @@ class ToolRetriever:
         self.M = np.stack(vecs)
 
     def retrieve(self, query: str, k: int = 10) -> list[str]:
+        return [n for n, _ in self.retrieve_scored(query, k)]
+
+    def retrieve_scored(self, query: str, k: int = 10) -> list[tuple[str, float]]:
         sims = self.M @ embed(query, self.dim)
         k = min(k, len(sims))
         idx = np.argpartition(-sims, k - 1)[:k]
-        return [self.names[i] for i in idx[np.argsort(-sims[idx])]]
+        idx = idx[np.argsort(-sims[idx])]
+        return [(self.names[i], float(sims[i])) for i in idx]
 
     def rank_of(self, query: str, gold: str) -> int:
         """1-based rank of `gold` for `query` (len+1 if absent). For recall@k / MRR."""
