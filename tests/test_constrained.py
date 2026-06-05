@@ -28,3 +28,23 @@ def test_hello_is_text_only_not_planner():
 def test_thanks_abstains_with_text():
     cands = candidates("Thanks for your help!", TOOLS)
     assert all(not is_tool for _, is_tool, _ in cands)
+
+
+def test_best_clamps_overlong_context():
+    # A long multi-turn history + a candidate body can exceed max_seq_len; _best must trim the
+    # oldest prompt tokens (left) instead of overflowing RoPE. Regression for the flywheel
+    # multi-turn-eval crash (constrained.py:_best).
+    from localagent.agent.constrained import _best
+    from localagent.model import LocalAgentLM, ModelConfig
+    from localagent.model.tokenizer import load_tokenizer
+
+    cfg = ModelConfig(vocab_size=256, d_model=64, embed_dim=64, n_layers=2, n_loops=1,
+                      n_heads=4, n_kv_heads=2, ffn_hidden=128, max_seq_len=128,
+                      rope_theta=10000.0, norm_eps=1e-5, tie_embeddings=True, dropout=0.0)
+    m = LocalAgentLM(cfg).eval()
+    tok = load_tokenizer("byte")
+    long_prompt = "step. " * 60                       # ~360 bytes >> 128-token window
+    bodies = ['<tool_call>{"arguments":{"path":"a.py"},"name":"read_file"}</tool_call>',
+              '<tool_call>{"arguments":{},"name":"run_tests"}</tool_call>']
+    out = _best(m, tok, long_prompt, bodies, device="cpu")   # must not raise
+    assert out in bodies

@@ -426,85 +426,358 @@ class Generator:
             m.append(self.no_tool)
         return m
 
-    # --- multi-turn coding episodes (Claude Code / Codex-style trajectories) ---
+    # --- multi-turn trajectory helpers ---------------------------------------------------
+    @staticmethod
+    def _A(name, args):
+        return Message(role=Role.assistant, tool_calls=[ToolCall(name, args)])
+
+    @staticmethod
+    def _T(resp):
+        return Message(role=Role.tool, tool_response=resp)
+
+    @staticmethod
+    def _U(content):
+        return Message(role=Role.user, content=content)
+
+    @staticmethod
+    def _F(content):  # final / intermediate assistant text turn
+        return Message(role=Role.assistant, content=content)
+
+    # Episode-type registries. Each builder returns a list[Message]. Builders whose name is in
+    # `_PTR_*` ground at least one follow-up argument from a TOOL RESPONSE (pointer-head case).
+    _CODING_TYPES = ("debug", "grep_read", "test_commit", "implement_feature", "fix_failing_test",
+                     "refactor_rename", "review_pr", "dependency_bump", "trace_import",
+                     "lint_and_fix")
+    _PRODUCTIVITY_TYPES = ("research_summarize", "schedule_and_notify", "triage_issue",
+                           "news_brief", "open_and_note", "remind_and_slack")
+    _PLANNER_TYPES = ("plan_read_test_commit", "plan_research", "plan_fix_test")
+
+    # ---- coding episode builders (return list[Message]) ----
+    def _ep_debug(self):
+        path = self.rng.choice(self.paths)
+        return [
+            self._U(f"There's a bug in {path}, investigate it."),
+            self._A("read_file", {"path": path}),
+            self._T("def handler():\n    return None  # suspicious"),
+            self._A("run_tests", {}),
+            self._T("FAILED tests/test_handler.py::test_ok"),
+            self._F(f"The bug is in {path}: handler() returns None."),
+        ]
+
+    def _ep_grep_read(self):  # follow-up path grounded from the tool response (pointer case)
+        path = self.rng.choice(self.paths)
+        pat = self.rng.choice(self.patterns)
+        return [
+            self._U(f"Where is '{pat}' used? Open that file."),
+            self._A("grep_search", {"pattern": pat}),
+            self._T(f"{path}:12:    {pat} appears here"),
+            self._A("read_file", {"path": path}),
+            self._T("<file contents>"),
+            self._F(f"'{pat}' is used in {path}."),
+        ]
+
+    def _ep_test_commit(self):
+        msg = self.rng.choice(self.commits)
+        return [
+            self._U(f"Run the tests and commit with message '{msg}'."),
+            self._A("run_tests", {}),
+            self._T("All tests passed."),
+            self._A("git_commit", {"message": msg}),
+            self._T("Committed abc123."),
+            self._F(f"Done — committed '{msg}'."),
+        ]
+
+    def _ep_implement_feature(self):  # grep -> read -> write -> test -> commit (pointer case)
+        path = self.rng.choice(self.paths)
+        pat = self.rng.choice(self.patterns)
+        msg = self.rng.choice(self.commits)
+        return [
+            self._U(f"Implement '{msg}'; the relevant code uses '{pat}'."),
+            self._A("grep_search", {"pattern": pat}),
+            self._T(f"{path}:20:    {pat} ..."),
+            self._A("read_file", {"path": path}),
+            self._T("<current implementation>"),
+            self._A("write_file", {"path": path}),
+            self._T("written."),
+            self._A("run_tests", {}),
+            self._T("All tests passed."),
+            self._A("git_commit", {"message": msg}),
+            self._T("Committed def456."),
+            self._F(f"Implemented and committed '{msg}'."),
+        ]
+
+    def _ep_fix_failing_test(self):  # run_tests -> read -> write -> run_tests
+        path = self.rng.choice(self.paths)
+        return [
+            self._U(f"A test is failing in {path}, please fix it."),
+            self._A("run_tests", {}),
+            self._T(f"FAILED {path}::test_case"),
+            self._A("read_file", {"path": path}),
+            self._T("def f(): return None"),
+            self._A("write_file", {"path": path}),
+            self._T("patched."),
+            self._A("run_tests", {}),
+            self._T("All tests passed."),
+            self._F(f"Fixed the failing test in {path}."),
+        ]
+
+    def _ep_refactor_rename(self):  # grep -> (response has path) -> read -> write -> tests (pointer)
+        path = self.rng.choice(self.paths)
+        pat = self.rng.choice(self.patterns)
+        return [
+            self._U(f"Rename the symbol '{pat}'; find where it lives and update it."),
+            self._A("grep_search", {"pattern": pat}),
+            self._T(f"{path}:34:    {pat} = ...  # definition"),
+            self._A("read_file", {"path": path}),
+            self._T("<current source>"),
+            self._A("write_file", {"path": path}),
+            self._T("written."),
+            self._A("run_tests", {}),
+            self._T("All tests passed."),
+            self._F(f"Renamed '{pat}' in {path} and tests pass."),
+        ]
+
+    def _ep_review_pr(self):  # read -> (response = diff) -> comment text turn
+        path = self.rng.choice(self.paths)
+        return [
+            self._U(f"Review the changes in {path}."),
+            self._A("read_file", {"path": path}),
+            self._T(f"@@ -1,3 +1,4 @@\n+    log.debug('x')\n     return value  # in {path}"),
+            self._F(f"Looks good: {path} adds a debug log; no blocking issues."),
+        ]
+
+    def _ep_dependency_bump(self):  # read config -> write config -> install -> tests -> commit
+        path = self.rng.choice(self.paths)
+        cmd = self.rng.choice(self.commands)
+        msg = self.rng.choice(self.commits)
+        return [
+            self._U(f"Bump a dependency in {path}, install, test, then commit '{msg}'."),
+            self._A("read_file", {"path": path}),
+            self._T("requests==2.0.0"),
+            self._A("write_file", {"path": path}),
+            self._T("written."),
+            self._A("run_command", {"command": cmd}),
+            self._T("install complete."),
+            self._A("run_tests", {}),
+            self._T("All tests passed."),
+            self._A("git_commit", {"message": msg}),
+            self._T("Committed 9f8e7d."),
+            self._F(f"Bumped the dependency and committed '{msg}'."),
+        ]
+
+    def _ep_trace_import(self):  # grep -> (response has path) -> read -> text (pointer)
+        path = self.rng.choice(self.paths)
+        pat = self.rng.choice(self.patterns)
+        return [
+            self._U(f"Trace where '{pat}' is imported and open that module."),
+            self._A("grep_search", {"pattern": pat}),
+            self._T(f"{path}:1:from x import {pat}"),
+            self._A("read_file", {"path": path}),
+            self._T("<module source>"),
+            self._F(f"'{pat}' is imported in {path}."),
+        ]
+
+    def _ep_lint_and_fix(self):  # run_command(lint) -> (response has path) -> read -> write (pointer)
+        path = self.rng.choice(self.paths)
+        cmd = self.rng.choice(self.commands)
+        return [
+            self._U(f"Run '{cmd}' and fix whatever file it flags."),
+            self._A("run_command", {"command": cmd}),
+            self._T(f"{path}:7: E501 line too long"),
+            self._A("read_file", {"path": path}),
+            self._T("<offending line>"),
+            self._A("write_file", {"path": path}),
+            self._T("written."),
+            self._F(f"Fixed the lint issue in {path}."),
+        ]
+
+    # ---- productivity / computer-use episode builders ----
+    def _ep_research_summarize(self):  # web_search -> (response has url) -> open_url -> text (pointer)
+        query = self.rng.choice(self.queries)
+        url = self.rng.choice(self.urls)
+        return [
+            self._U(f"Research {query} and open the top result."),
+            self._A("web_search", {"query": query}),
+            self._T(f"1. {url} — a relevant overview of {query}"),
+            self._A("open_url", {"url": url}),
+            self._T("<page loaded>"),
+            self._F(f"Top result for {query} is {url}."),
+        ]
+
+    def _ep_schedule_and_notify(self):  # calendar_event -> send_email -> text
+        title = self.rng.choice(self.events)
+        nm = self.rng.choice(self.names)
+        return [
+            self._U(f"Schedule '{title}' and email {nm} about it."),
+            self._A("calendar_event", {"title": title}),
+            self._T("event created."),
+            self._A("send_email", {"recipient": nm}),
+            self._T("email sent."),
+            self._F(f"Scheduled '{title}' and emailed {nm}."),
+        ]
+
+    def _ep_triage_issue(self):  # jira_issue -> slack_send -> text
+        summary = self.rng.choice(self.jira)
+        msg = self.rng.choice(self.slack)
+        return [
+            self._U(f"File a Jira issue for '{summary}' and ping the team on Slack '{msg}'."),
+            self._A("jira_issue", {"summary": summary}),
+            self._T("created PROJ-123."),
+            self._A("slack_send", {"message": msg}),
+            self._T("message posted."),
+            self._F(f"Filed '{summary}' and notified the team."),
+        ]
+
+    def _ep_news_brief(self):  # get_news -> (response has url) -> open_url -> text (pointer)
+        topic = self.rng.choice(self.topics)
+        url = self.rng.choice(self.urls)
+        return [
+            self._U(f"Get the latest news on {topic} and open the top story."),
+            self._A("get_news", {"topic": topic}),
+            self._T(f"Top story: {url} covers {topic}"),
+            self._A("open_url", {"url": url}),
+            self._T("<page loaded>"),
+            self._F(f"Top {topic} story is at {url}."),
+        ]
+
+    def _ep_open_and_note(self):  # open_url -> notion_write -> text
+        url = self.rng.choice(self.urls)
+        content = self.rng.choice(self.notion)
+        return [
+            self._U(f"Open {url} and note '{content}' in Notion."),
+            self._A("open_url", {"url": url}),
+            self._T("<page loaded>"),
+            self._A("notion_write", {"content": content}),
+            self._T("note saved."),
+            self._F(f"Opened {url} and saved '{content}' to Notion."),
+        ]
+
+    def _ep_remind_and_slack(self):  # set_reminder -> slack_send -> text
+        task = self.rng.choice(self.tasks)
+        msg = self.rng.choice(self.slack)
+        return [
+            self._U(f"Remind me to {task} and tell the team on Slack '{msg}'."),
+            self._A("set_reminder", {"task": task}),
+            self._T("reminder set."),
+            self._A("slack_send", {"message": msg}),
+            self._T("message posted."),
+            self._F(f"Reminder set to {task} and team notified."),
+        ]
+
+    # ---- planner-then-execute episode builders ----
+    # The plan text is deterministic/canonical so it is exactly learnable and scorable.
+    @staticmethod
+    def _plan(steps):
+        return "Plan: " + " ".join(f"{i + 1}) {s}" for i, s in enumerate(steps))
+
+    def _ep_plan_read_test_commit(self):
+        path = self.rng.choice(self.paths)
+        msg = self.rng.choice(self.commits)
+        return [
+            self._U(f"Read {path}, run the tests, then commit '{msg}'."),
+            self._F(self._plan(["read the file", "run tests", "commit"])),
+            self._A("read_file", {"path": path}),
+            self._T("<file contents>"),
+            self._A("run_tests", {}),
+            self._T("All tests passed."),
+            self._A("git_commit", {"message": msg}),
+            self._T("Committed 1a2b3c."),
+            self._F(f"Read {path}, tests pass, committed '{msg}'."),
+        ]
+
+    def _ep_plan_research(self):  # plan -> search -> (response url) -> open_url -> summary (pointer)
+        query = self.rng.choice(self.queries)
+        url = self.rng.choice(self.urls)
+        return [
+            self._U(f"Look into {query}: search, open the best link, then summarize."),
+            self._F(self._plan(["search the web", "open the top result", "summarize"])),
+            self._A("web_search", {"query": query}),
+            self._T(f"1. {url} — the best overview of {query}"),
+            self._A("open_url", {"url": url}),
+            self._T("<page loaded>"),
+            self._F(f"Summary: {url} is the best source on {query}."),
+        ]
+
+    def _ep_plan_fix_test(self):  # plan -> run_tests -> read -> write -> run_tests -> summary
+        path = self.rng.choice(self.paths)
+        return [
+            self._U(f"A test in {path} is broken — make a plan and fix it."),
+            self._F(self._plan(["run tests", "read the file", "fix it", "run tests again"])),
+            self._A("run_tests", {}),
+            self._T(f"FAILED {path}::test_case"),
+            self._A("read_file", {"path": path}),
+            self._T("def f(): return None"),
+            self._A("write_file", {"path": path}),
+            self._T("patched."),
+            self._A("run_tests", {}),
+            self._T("All tests passed."),
+            self._F(f"Fixed the failing test in {path}."),
+        ]
+
+    def _coding_builders(self):
+        return {
+            "debug": self._ep_debug, "grep_read": self._ep_grep_read,
+            "test_commit": self._ep_test_commit, "implement_feature": self._ep_implement_feature,
+            "fix_failing_test": self._ep_fix_failing_test, "refactor_rename": self._ep_refactor_rename,
+            "review_pr": self._ep_review_pr, "dependency_bump": self._ep_dependency_bump,
+            "trace_import": self._ep_trace_import, "lint_and_fix": self._ep_lint_and_fix,
+        }
+
+    def _productivity_builders(self):
+        return {
+            "research_summarize": self._ep_research_summarize,
+            "schedule_and_notify": self._ep_schedule_and_notify,
+            "triage_issue": self._ep_triage_issue, "news_brief": self._ep_news_brief,
+            "open_and_note": self._ep_open_and_note, "remind_and_slack": self._ep_remind_and_slack,
+        }
+
+    def _planner_builders(self):
+        return {
+            "plan_read_test_commit": self._ep_plan_read_test_commit,
+            "plan_research": self._ep_plan_research, "plan_fix_test": self._ep_plan_fix_test,
+        }
+
     def coding_episode(self) -> Conversation:
-        """A short multi-turn tool-use trajectory: tool call -> tool response -> follow-up.
+        """A short multi-turn coding tool-use trajectory: tool call -> tool response -> follow-up.
         Some follow-up args are grounded in the *tool response*, not the user turn (the case
         only a learned pointer head can handle)."""
-        def A(name, args):
-            return Message(role=Role.assistant, tool_calls=[ToolCall(name, args)])
-
-        def T(resp):
-            return Message(role=Role.tool, tool_response=resp)
-
-        path = self.rng.choice(self.paths)
-        which = self.rng.choice(["debug", "grep_read", "test_commit",
-                                 "implement_feature", "fix_failing_test"])
-        if which == "debug":
-            msgs = [
-                Message(role=Role.user, content=f"There's a bug in {path}, investigate it."),
-                A("read_file", {"path": path}),
-                T("def handler():\n    return None  # suspicious"),
-                A("run_tests", {}),
-                T("FAILED tests/test_handler.py::test_ok"),
-                Message(role=Role.assistant,
-                        content=f"The bug is in {path}: handler() returns None."),
-            ]
-        elif which == "grep_read":  # follow-up path comes from the tool response
-            pat = self.rng.choice(self.patterns)
-            msgs = [
-                Message(role=Role.user, content=f"Where is '{pat}' used? Open that file."),
-                A("grep_search", {"pattern": pat}),
-                T(f"{path}:12:    {pat} appears here"),
-                A("read_file", {"path": path}),
-                T("<file contents>"),
-                Message(role=Role.assistant, content=f"'{pat}' is used in {path}."),
-            ]
-        elif which == "test_commit":
-            msg = self.rng.choice(self.commits)
-            msgs = [
-                Message(role=Role.user,
-                        content=f"Run the tests and commit with message '{msg}'."),
-                A("run_tests", {}),
-                T("All tests passed."),
-                A("git_commit", {"message": msg}),
-                T("Committed abc123."),
-                Message(role=Role.assistant, content=f"Done — committed '{msg}'."),
-            ]
-        elif which == "implement_feature":  # grep -> read -> write -> test -> commit (5 calls)
-            pat = self.rng.choice(self.patterns)
-            msg = self.rng.choice(self.commits)
-            msgs = [
-                Message(role=Role.user, content=f"Implement '{msg}'; the relevant code uses '{pat}'."),
-                A("grep_search", {"pattern": pat}),
-                T(f"{path}:20:    {pat} ..."),
-                A("read_file", {"path": path}),
-                T("<current implementation>"),
-                A("write_file", {"path": path}),
-                T("written."),
-                A("run_tests", {}),
-                T("All tests passed."),
-                A("git_commit", {"message": msg}),
-                T("Committed def456."),
-                Message(role=Role.assistant, content=f"Implemented and committed '{msg}'."),
-            ]
-        else:  # fix_failing_test: run_tests -> read -> write -> run_tests
-            msgs = [
-                Message(role=Role.user, content=f"A test is failing in {path}, please fix it."),
-                A("run_tests", {}),
-                T(f"FAILED {path}::test_case"),
-                A("read_file", {"path": path}),
-                T("def f(): return None"),
-                A("write_file", {"path": path}),
-                T("patched."),
-                A("run_tests", {}),
-                T("All tests passed."),
-                Message(role=Role.assistant, content=f"Fixed the failing test in {path}."),
-            ]
+        which = self.rng.choice(self._CODING_TYPES)
+        msgs = self._coding_builders()[which]()
         return Conversation(messages=msgs, meta={"kind": "coding_episode", "type": which})
 
-    def episodes(self, n: int) -> list[Conversation]:
+    def productivity_episode(self) -> Conversation:
+        """A multi-turn computer-use / productivity trajectory (calendar, email, browser, Slack,
+        Notion, Jira). Several ground a follow-up arg (a URL) from the tool response."""
+        which = self.rng.choice(self._PRODUCTIVITY_TYPES)
+        msgs = self._productivity_builders()[which]()
+        return Conversation(messages=msgs, meta={"kind": "productivity_episode", "type": which})
+
+    def planner_episode(self) -> Conversation:
+        """A planner-then-execute trajectory: a canonical text plan turn, then each step as a
+        tool-call turn with tool responses between, then a final summary (teaches plan->act)."""
+        which = self.rng.choice(self._PLANNER_TYPES)
+        msgs = self._planner_builders()[which]()
+        return Conversation(messages=msgs, meta={"kind": "planner_episode", "type": which})
+
+    def coding_episodes(self, n: int) -> list[Conversation]:
         return [self.coding_episode() for _ in range(n)]
+
+    def productivity_episodes(self, n: int) -> list[Conversation]:
+        return [self.productivity_episode() for _ in range(n)]
+
+    def planner_episodes(self, n: int) -> list[Conversation]:
+        return [self.planner_episode() for _ in range(n)]
+
+    def episodes(self, n: int, mix: bool = True) -> list[Conversation]:
+        """Sample `n` multi-turn episodes. With ``mix=True`` (default) the pool spans coding +
+        productivity + planner trajectories so the flywheel/eval see the full diversity; with
+        ``mix=False`` it returns coding-only episodes (the original behaviour)."""
+        if not mix:
+            return [self.coding_episode() for _ in range(n)]
+        builders = [self.coding_episode, self.productivity_episode, self.planner_episode]
+        # weight coding a bit higher (it has the most types), then productivity, then planner
+        weights = [0.5, 0.3, 0.2]
+        return [self.rng.choices(builders, weights=weights, k=1)[0]() for _ in range(n)]
 
     def generate(self, n: int) -> list[Sample]:
         makers = self.makers()
@@ -549,7 +822,9 @@ class Generator:
             attempts += 1
             if cnt[s.category] >= per_category or s.prompt in seen:
                 continue
-            seen.add(s.prompt); cnt[s.category] += 1; out.append(s)
+            seen.add(s.prompt)
+            cnt[s.category] += 1
+            out.append(s)
         return out
 
 

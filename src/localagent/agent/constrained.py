@@ -157,6 +157,15 @@ def _best(model, tok, prompt: str, bodies: list[str], device) -> str:
     pid = tok.encode(prompt)
     seqs = [pid + tok.encode(b) + [tok.eos_id] for b in bodies]
     maxlen = max(len(s) for s in seqs)
+    # Keep within the model's context window: a long multi-turn history + a candidate body can
+    # exceed max_seq_len. Trim from the LEFT (drop the oldest *prompt* tokens, shared by every
+    # candidate) so bodies stay intact and the scoring offsets below shift consistently.
+    max_len = getattr(getattr(model, "cfg", None), "max_seq_len", maxlen)
+    cut = min(max(0, maxlen - 1 - max_len), len(pid) - 1)
+    if cut:
+        seqs = [s[cut:] for s in seqs]
+        pid = pid[cut:]
+        maxlen = max(len(s) for s in seqs)
     X = torch.full((len(seqs), maxlen), tok.pad_id, dtype=torch.long, device=device)
     for i, s in enumerate(seqs):
         X[i, : len(s)] = torch.tensor(s, device=device)
