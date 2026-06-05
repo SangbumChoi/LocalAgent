@@ -169,3 +169,14 @@ model against the PyTorch reference on a fixed prompt set.
 | Airbnb AITL | data-flywheel feedback schema + retrain loop |
 | BFCL / tau-bench | AST tool eval + multi-turn + irrelevance |
 | llama.cpp/ONNX/ExecuTorch | four export targets + Q4 + parity test |
+
+---
+
+## See also — computer-use & tool-calling agents
+
+For the recent **computer-use / multi-agent-browser / tool-calling** wave (UI-TARS, OSWorld-G/Jedi,
+WebVoyager, SeeAct, Mind2Web, WebArena, Gorilla, ToolLLM, xLAM/APIGen, Hammer, ToolACE, ToolAlpaca,
+CodeAct, OctoTools, AutoGen, CoAct-1) — with each paper's good part, a two-persona **scale vs
+structure** debate, and the verdict for a sub-100M on-device agent — see
+[`COMPUTER_USE_DEBATE.md`](./COMPUTER_USE_DEBATE.md). That survey is what motivated
+`ToolCaller.plan()` (planner over grounded calls).

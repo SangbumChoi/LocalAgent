@@ -55,3 +55,23 @@ def test_caller_scales_with_distractors():
     from localagent.data.tool_catalog import build_catalog
     c = ToolCaller([WEATHER] + build_catalog(500, seed=1))
     assert c.call("What's the weather in Oslo?").name == "get_weather"
+
+
+def test_plan_decomposes_multistep():
+    c = ToolCaller([WEATHER, MOVE, THERMO, CONVERT])
+    plan = c.plan("Move x/a.py to y/a.py then convert 50 to EUR.")
+    assert [tc.name for tc in plan] == ["move_file", "convert_currency"]
+    assert plan[0].arguments == {"source": "x/a.py", "dest": "y/a.py"}
+    assert plan[1].arguments == {"amount": 50.0, "to": "EUR"}
+
+
+def test_plan_single_step_is_singleton():
+    c = ToolCaller([WEATHER, MOVE, THERMO, CONVERT])
+    assert [tc.name for tc in c.plan("What's the weather in Cusco?")] == ["get_weather"]
+
+
+def test_plan_drops_ungroundable_steps():
+    c = ToolCaller([WEATHER, MOVE, THERMO, CONVERT], min_score=0.15)
+    # only the first clause grounds; "tell me a joke" abstains and is dropped
+    plan = c.plan("Convert 50 to EUR and tell me a joke.")
+    assert [tc.name for tc in plan] == ["convert_currency"]

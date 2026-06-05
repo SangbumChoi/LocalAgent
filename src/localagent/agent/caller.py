@@ -56,6 +56,23 @@ class ToolCaller:
                 return ToolCall(tool.name, args)
         return None
 
+    def plan(self, query: str) -> list[ToolCall]:
+        """Decompose a multi-step request into an ordered list of calls (planner/executor pattern,
+        à la AutoGen/OctoTools/CodeAct). Splits on connectives ('then', 'and then', 'after that',
+        'and', ';') and grounds each step; drops steps that don't yield a call."""
+        import re
+        parts = re.split(r"\s*(?:;|,?\s*then\s+|\s+after\s+that\s+|\s+and\s+then\s+|\s+and\s+)\s*",
+                         query, flags=re.I)
+        plan = []
+        for p in parts:
+            p = p.strip()
+            if len(p) < 4:
+                continue
+            r = self.call(p if p.endswith((".", "?", "!")) else p + ".")
+            if r is not None:
+                plan.append(r)
+        return plan
+
     def explain(self, query: str, top: int = 5) -> dict:
         """Debug view: ranked candidates, the chosen tool, and the grounded args."""
         cands = self.candidates(query)[:top]
