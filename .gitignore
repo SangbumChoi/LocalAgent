@@ -26,3 +26,7 @@ runs/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+
+# committed results gallery
+!figures/
+!figures/*.png
