@@ -1,6 +1,7 @@
 # Results gallery
 
-Every experiment's plot, in one place. Regenerate any of them with the script noted; new
+Every experiment's plot, in one place. The **why** behind each (motivation, hypothesis, finding) is
+in [`docs/EXPERIMENTS.md`](../docs/EXPERIMENTS.md). Regenerate any plot with the noted script; new
 experiments save here via `from localagent.figs import savefig`.
 
 | # | figure | finding | script |
@@ -20,6 +21,7 @@ experiments save here via `from localagent.figs import savefig`.
 | 13 | `13_distillation.png` | distillation honest negative on deterministic targets | `scripts/distill_demo.py` |
 | 14 | `14_codebench_by_arity.png` | **coding tools**: more args is *easier*; selection is the bottleneck | `scripts/codebench_eval.py` |
 | 15 | `15_example_usage_scaling.png` | **how much per-tool data?** 1 example = +16 pts; saturates ~16 | `scripts/example_scaling.py` |
+| 16 | `16_scenarios_mcp_rest_cli_sdk.png` | **MCP/REST/CLI/SDK**: it's arg *typing*, not modality (CLI worst at 58%, SDK best) | `scripts/scenarios_eval.py` |
 
 ## The story these tell
 - **Grounded/constrained decoding** makes a tiny model reliable (01); the **flywheel** improves it (02, 07).
