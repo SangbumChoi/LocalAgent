@@ -86,6 +86,31 @@ grabs the wrong span; SDK was easy only because its args are typed (paths, quote
 → **Lesson for tool authors: give each argument a `format`/`enum`/type (or quote its value) and
 grounding is reliable on any surface form.** See `scripts/scenarios_eval.py` / `figures/16_*`.
 
+### 17 · Logit autopsy: WHY grounding beats free byte-generation
+**Why:** experiment 01 shows the same tiny byte model scores ~1% by free argmax but 100% with
+grounded constrained decoding. This pins the *mechanistic* reason in the model's own next-byte
+logits. **Hypothesis:** the model learns tool-call *structure* (the JSON scaffolding, keys, and tool
+name — all in-distribution) with high confidence, but at *argument-value* bytes (the held-out slot,
+e.g. a city "Boston") its next-byte distribution is high-entropy and its argmax is usually wrong,
+because eval slot pools are **disjoint** from train — the value isn't in the weights, it's in the
+prompt. **Finding (hypothesis confirmed):** teacher-forcing 240 held-out single-call tool bodies
+through the 28M byte model and splitting every body byte into STRUCTURAL vs SLOT-VALUE:
+
+| group | mean entropy | top-1 (free-gen) | gold-byte prob | copy-mass (prompt bytes) |
+|---|---|---|---|---|
+| structural | **0.18 bits** | **96.6%** | 0.95 | 57.7% |
+| slot-value | **3.28 bits** | **23.7%** | 0.17 | **74.9%** |
+
+The model is ~18× more uncertain (bits) and ~4× less accurate on slot bytes than on structure. Free
+generation must argmax through that uncertain slot region, so a single wrong byte breaks the exact
+match — that's the ~1%. But **74.9%** of the slot-position probability mass already sits on byte
+*values that appear in the prompt*: the right bytes are reachable, just not as the argmax. Grounded
+constrained decoding copies the slot from the prompt, sidestepping the model's uncertain logits at
+exactly those positions — that's the 100%. A *weights-only* view (no prompt) confirms the gap is a
+grounding gap, not a fact in the weights: asked to emit a city value with no prompt to copy from, the
+model's next byte is 4.5 bits of entropy spread over common initials (`B`, `T`, `S`, `M`, `R`) — it
+has no way to single out the held-out value. See `scripts/logit_analysis.py` / `figures/17_*`.
+
 ---
 
 ## The throughline

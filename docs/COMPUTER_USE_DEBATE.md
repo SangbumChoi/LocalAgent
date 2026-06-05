@@ -230,3 +230,15 @@ So the verdict converts directly into one applied change and a ranked backlog.
 > The literature's reliability gains come from **either** scale **or** structure; at <100M params on
 > a CPU, structure is the only one you can afford — so buy the *composition* that scale was selling
 > with a **planner over grounded calls**, not an interpreter.
+
+---
+
+## Follow-ups
+
+- **Why is planning a different operation from acting at all?** Answered mechanistically (in terms
+  of the model's logit distribution / entropy regimes) in
+  [`PLANNING_VS_ACTING.md`](./PLANNING_VS_ACTING.md).
+- **Why does grounded decoding beat free byte-generation?** Measured on the 28M checkpoint in
+  experiment **17** of [`EXPERIMENTS.md`](./EXPERIMENTS.md) (`figures/17_*`): structural bytes 0.18
+  bits / 96.6% top-1 vs slot-value bytes 3.28 bits / 23.7% top-1, with 74.9% of slot probability
+  mass on bytes present in the prompt.
