@@ -78,21 +78,21 @@ _TOOLS = [
 ]
 
 
-def build_tools() -> list[ToolSpec]:
+def build_tools(defs=None) -> list[ToolSpec]:
     out = []
-    for name, desc, args, templates, _v, _s in _TOOLS:
+    for name, desc, args, templates, _v, _s in (defs or _TOOLS):
         props = {a: sch for a, sch, *_ in args}
         out.append(ToolSpec(name, desc, {"type": "object", "properties": props,
                                           "required": list(props)}))
     return out
 
 
-def examples() -> dict:
+def examples(defs=None) -> dict:
     """Example phrasings per tool for retrieval — including the *verb synonyms*, so the index
     bridges the paraphrase gap (a query that says 'execute' matches the tool whose API verb is
     'run'). This is the example-augmented-retrieval trick from scripts/tool_scale_analysis.py."""
     ex = {}
-    for name, desc, args, templates, verb, syn in _TOOLS:
+    for name, desc, args, templates, verb, syn in (defs or _TOOLS):
         vals = [a[2][0] for a in args]                # first train value per arg
         fills = {f"a{i}": v for i, v in enumerate(vals)}
         for vb in [verb, *syn]:                        # train verb + every synonym
@@ -101,11 +101,11 @@ def examples() -> dict:
     return ex
 
 
-def gold_set(split: str = "eval", seed: int = 0):
+def gold_set(split: str = "eval", seed: int = 0, defs=None):
     """(query, gold_call) pairs. Eval paraphrases the verb (synonyms) and uses disjoint values."""
     rng = random.Random(seed)
     rows = []
-    for name, desc, args, templates, verb, syn in _TOOLS:
+    for name, desc, args, templates, verb, syn in (defs or _TOOLS):
         for t in templates:
             vals, gold = [], {}
             for a, sch, tr, ev in args:
