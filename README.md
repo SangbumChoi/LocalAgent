@@ -6,6 +6,11 @@ ML pipeline (nanochat in spirit), with **training + evaluation**, that runs on *
 and exports to **PyTorch / GGUF / ONNX / ExecuTorch**. A **data flywheel** lets it improve from
 the conversations it has while running locally.
 
+> **🤗 Pretrained checkpoint:** the 28M byte-level agent is on the Hub —
+> **[SangbumChoi/localagent-tiny-30m-byte](https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte)**
+> (config + safetensors + tool/pointer heads + model card). **71.3% single-turn** held-out **and
+> 74% multi-turn** step-accuracy — strong on both. Loads in pure PyTorch, no `transformers`.
+
 ## Reliable tool calling on *your* tools — no training required
 
 Give `ToolCaller` any JSON-schema tools (multi-argument, real APIs) and it returns a
@@ -122,6 +127,40 @@ different things: **data** 62→71% (the data-starved tools), **model size** 1M�
 (the same-shaped tools the small head can't separate). See
 `runs/analyze_ultra-tiny-1m/dataset_compare.png`.
 
+### Pretrained 28M agent — strong on both axes 🤗
+The deployable checkpoint is the **`tiny-30m-byte`** model (byte-level, `d_model` 512 × 10 layers,
+GQA, pretrained from scratch). It is on the Hub:
+**[SangbumChoi/localagent-tiny-30m-byte](https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte)**.
+
+Earlier configs forced a trade-off — the single-turn-only deploy hit ~83% single-turn but only ~18%
+multi-turn, while joint multi-turn tuning lifted episodes but dragged single-turn down each round.
+Two training changes close the gap: **gradient accumulation** (effective batch 32 inside an 11.8 GB
+CPU footprint, so the small-batch noise that was sinking single-turn is gone) and a **down-weighted
+multi-turn head** (`mt_weight=0.3`, so episode contexts stop pulling the shared tool head off the
+single-turn distribution). The result is the first config that is **strong on both at once**:
+
+| axis | this 28M | single-turn-only deploy |
+|---|---|---|
+| single-turn held-out (21 tools, disjoint slot values) | **71.3%** | ~83% |
+| multi-turn step-accuracy (coding episodes) | **74%** | ~18% |
+
+Reproduce: `python scripts/analyze_loop.py --model configs/model/tiny-30m-byte.yaml --rounds 4
+--batch 16 --accum 2 --mt-weight 0.3 --episodes 120`. Load it (pure PyTorch, no `transformers`):
+
+```python
+import json, torch
+from huggingface_hub import hf_hub_download
+from safetensors.torch import load_file
+from localagent.model import LocalAgentLM, ModelConfig
+
+repo = "SangbumChoi/localagent-tiny-30m-byte"
+cfg_d = json.load(open(hf_hub_download(repo, "config.json")))
+cfg = ModelConfig(**{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__})
+model = LocalAgentLM(cfg)
+model.load_state_dict(load_file(hf_hub_download(repo, "model.safetensors")))
+model.eval()
+```
+
 **Parallel two-call turns + 4× rebalanced dataset.** Real usage is "do X *and* Y" (two tool calls),
 not a calc-dominated single-call stream. The dataset adds a **parallel** category (one turn → two
 calls, e.g. *"Compose an email to Judy and search for how tall is Everest"* → `send_email` +
@@ -208,7 +247,7 @@ tests/
 | Agent data synthesis + flywheel | 🚧 stubs (Phases 3/8) |
 | Eval harness (multi-turn, parity) | 🚧 stubs (Phase 5) |
 | Agent runtime + memory + demos | 🚧 stubs (Phase 7) |
-| Export to Hugging Face Hub (config + safetensors + heads + model card) | ✅ implemented (`scripts/push_to_hf.py`) |
+| Export to Hugging Face Hub (config + safetensors + heads + model card) | ✅ implemented (`scripts/push_to_hf.py`) — published: [`SangbumChoi/localagent-tiny-30m-byte`](https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte) |
 | Export GGUF/ONNX/ExecuTorch | 🚧 stubs (Phase 9) |
 
 Full plan: [`docs/ROADMAP.md`](docs/ROADMAP.md). Stubs raise `NotImplementedError` with a
