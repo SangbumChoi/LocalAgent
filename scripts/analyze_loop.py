@@ -41,7 +41,12 @@ def main():
     ap.add_argument("--sft-inc", type=int, default=0, help="later-round SFT steps (0=auto)")
     ap.add_argument("--episodes", type=int, default=0,
                     help="multi-turn trajectory episodes per round to train on (0=auto)")
-    ap.add_argument("--batch", type=int, default=32, help="SFT batch size (lower to fit memory)")
+    ap.add_argument("--batch", type=int, default=32, help="SFT micro-batch size (lower to fit memory)")
+    ap.add_argument("--accum", type=int, default=1,
+                    help="gradient accumulation steps; effective batch = batch * accum (recovers a "
+                         "large effective batch within a small memory footprint)")
+    ap.add_argument("--mt-weight", type=float, default=1.0,
+                    help="weight on the multi-turn (episode) head training; <1 protects single-turn")
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
     device = resolve_device("auto")
@@ -77,7 +82,7 @@ def main():
         steps = s1 if r == 1 else sinc
         _, head, ptr = sft(model, train, tok, steps=steps, batch_size=args.batch, lr=1.5e-3,
                            device=device, log=lambda *a: None, joint_tool_head=True,
-                           conversations=episodes)
+                           conversations=episodes, accum_steps=args.accum, mt_weight=args.mt_weight)
         res = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
         mt = multi_turn_eval(model, held_ep, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
         cats = res["categories"]

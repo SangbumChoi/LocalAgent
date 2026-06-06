@@ -32,10 +32,16 @@ def _framed_full(model, tok, prompts, device):
 
 def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         device="cpu", log=print, joint_tool_head=False, aux_weight=1.0, ptr_weight=0.15,
-        conversations=None):
+        conversations=None, accum_steps=1, mt_weight=1.0):
     """SFT with masked LM loss over single-turn samples + optional multi-turn `conversations`
     (which teach tool->response->follow-up continuation). With `joint_tool_head`, also trains
     jointly a tool-selection head AND a pointer/copy argument head (on the single-turn samples).
+
+    `steps` is the number of OPTIMIZER steps; each runs `accum_steps` micro-batches of size
+    `batch_size` (effective batch = batch_size * accum_steps). Each micro-batch's combined loss is
+    divided by `accum_steps` and backward()'d immediately, so peak memory stays at one micro-batch
+    regardless of accumulation. `mt_weight` scales ONLY the multi-turn head-training losses (tool +
+    pointer CE on episode contexts); the LM loss on rendered conversations is unaffected.
     Returns (loss_hist, tool_head, ptr_head); heads are None unless joint_tool_head."""
     import json
 
@@ -99,8 +105,9 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
     opt = torch.optim.AdamW(params, lr=lr, betas=(0.9, 0.95), weight_decay=0.0)
     rng = random.Random(0)
     hist = []
-    for step in range(steps):
-        set_lr(opt, cosine_lr(step, steps, lr, warmup, 0.1))
+
+    def _micro_loss():
+        """Full combined loss (LM + head + ptr + mt) for ONE micro-batch of `batch_size`."""
         idx_lm = [rng.randrange(len(lm_rows)) for _ in range(batch_size)]
         x, y = pad_batch([lm_rows[i] for i in idx_lm], tok.pad_id, device)
         _, loss = model(x, targets=y)
@@ -128,7 +135,7 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                 loss = loss + ptr_weight * (   # down-weighted so it can't swamp tool selection
                     F.cross_entropy(sl, torch.tensor(gs, device=device))
                     + F.cross_entropy(el, torch.tensor(ge, device=device)))
-            # --- multi-turn head training (episode contexts) ---
+            # --- multi-turn head training (episode contexts), scaled by mt_weight ---
             if mt:
                 mb = [mt[rng.randrange(len(mt))] for _ in range(min(12, len(mt)))]
                 ml = max(len(e[0]) for e in mb)
@@ -137,7 +144,7 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                     X[r, : len(e[0])] = torch.tensor(e[0], device=device)
                 _, mfeats = model(X, return_hidden=True)
                 mlast = mfeats[torch.arange(len(mb)), torch.tensor([len(e[0]) - 1 for e in mb])]
-                loss = loss + aux_weight * F.cross_entropy(
+                loss = loss + mt_weight * aux_weight * F.cross_entropy(
                     tool_head(mlast), torch.tensor([e[1] for e in mb], device=device))
                 prw = [r for r, e in enumerate(mb) if e[2] >= 0]
                 if prw:
@@ -145,16 +152,24 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                                                                        device=device))
                     for j, r in enumerate(prw):
                         sl[j, len(mb[r][0]):] = -1e9; el[j, len(mb[r][0]):] = -1e9
-                    loss = loss + ptr_weight * (
+                    loss = loss + mt_weight * ptr_weight * (
                         F.cross_entropy(sl, torch.tensor([mb[r][3] for r in prw], device=device))
                         + F.cross_entropy(el, torch.tensor([mb[r][4] for r in prw], device=device)))
+        return loss
+
+    for step in range(steps):
+        set_lr(opt, cosine_lr(step, steps, lr, warmup, 0.1))
         opt.zero_grad(set_to_none=True)
-        loss.backward()
+        step_loss = 0.0
+        for _ in range(accum_steps):
+            loss = _micro_loss() / accum_steps
+            loss.backward()                  # free this micro-batch's graph before the next forward
+            step_loss += loss.item() * accum_steps
         torch.nn.utils.clip_grad_norm_(params, 1.0)
         opt.step()
-        hist.append(loss.item())
+        hist.append(step_loss)
         if step % max(1, steps // 8) == 0 or step == steps - 1:
-            log(f"  [sft] step {step:4d}/{steps}  loss {loss.item():.3f}")
+            log(f"  [sft] step {step:4d}/{steps}  loss {step_loss:.3f}")
     return hist, tool_head, ptr_head
 
 
