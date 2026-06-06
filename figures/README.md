@@ -23,6 +23,7 @@ experiments save here via `from localagent.figs import savefig`.
 | 15 | `15_example_usage_scaling.png` | **how much per-tool data?** 1 example = +16 pts; saturates ~16 | `scripts/example_scaling.py` |
 | 16 | `16_scenarios_mcp_rest_cli_sdk.png` | **MCP/REST/CLI/SDK**: it's arg *typing*, not modality (CLI worst at 58%, SDK best) | `scripts/scenarios_eval.py` |
 | 17 | `17_logit_entropy_structural_vs_slot.png` | **why grounding wins**: structure bytes 0.18 bits/96.6% top-1, slot bytes 3.28 bits/23.7% — but 75% of slot mass is on prompt bytes (grounding copies them) | `scripts/logit_analysis.py` |
+| 18 | `18_multiturn_trajectory_learning.png` | **learning plan→act**: 1M trained on coding+computer-use+planner trajectories, multi-turn step-acc 18%→**89%**, episode-acc→**70%** | `scripts/flywheel.py` |
 
 ## The story these tell
 - **Grounded/constrained decoding** makes a tiny model reliable (01) — because slot-value bytes are

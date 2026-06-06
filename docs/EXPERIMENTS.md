@@ -111,9 +111,23 @@ grounding gap, not a fact in the weights: asked to emit a city value with no pro
 model's next byte is 4.5 bits of entropy spread over common initials (`B`, `T`, `S`, `M`, `R`) — it
 has no way to single out the held-out value. See `scripts/logit_analysis.py` / `figures/17_*`.
 
+### 18 · Learning plan→act on multi-turn trajectories
+**Why:** experiment 04 showed a frozen single-turn model can't ground follow-up steps (it replays
+the new coding/computer-use/planner trajectories at ~18% step-acc). After expanding the trajectory
+data to 19 episode types — coding, computer-use, and **planner-then-execute** (the assistant emits a
+`Plan: 1) … 2) …` text turn, then executes each step) — does *training on them* teach the plan→act
+decomposition end-to-end? **Finding:** yes. Retraining the 1M model through the 5-round flywheel with
+the mixed episodes lifts **multi-turn step-accuracy 18% → 61 → 82 → 80 → 74 → 89%** and
+whole-episode accuracy to **70%** by round 5, while single-turn grounded overall also rose (60→69%).
+The follow-up steps whose argument is grounded in an earlier *tool response* (the pointer-head case)
+are what the trajectory data specifically buys. → the decomposition `ToolCaller.plan()` does at
+inference is now *also* learned in the weights. See `scripts/flywheel.py` / `figures/18_*`.
+
 ---
 
 ## The throughline
 Grounding is the easy part; **selection is the bottleneck**, and it's fixed by *capacity* and a
 *re-ranker*, not by more data (which saturates fast). Data fixes data-starved tools; size fixes
 confusable ones. A tiny model is made *reliable* by constrained decoding + retrieval, not by scale.
+Multi-turn **plan→act** is learnable on trajectory data (18) — the planner's decomposition lives both
+in the inference-time `plan()` and, after training, in the weights.

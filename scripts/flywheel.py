@@ -115,8 +115,42 @@ def main():
         samples.append({"prompt": s.prompt, "expected": s.target, "grounded_out": out})
     json.dump(samples, open(f"{OUT}/samples.json", "w"), indent=2)
     json.dump(metrics, open(f"{OUT}/metrics.json", "w"), indent=2)
-    _plot_rounds(metrics); _plot_compare(metrics); _plot_loss(pre_loss)
+    _plot_rounds(metrics)
+    _plot_compare(metrics)
+    _plot_loss(pre_loss)
+    _plot_multiturn(metrics)
     print(f"\nArtifacts in {OUT}/ (accuracy.png, freegen_vs_grounded.png, loss.png, samples.json)")
+
+
+def _plot_multiturn(metrics):
+    """Tracked figure (figures/18): multi-turn trajectory accuracy across rounds, vs the untrained
+    baseline (a frozen single-turn model replays the new episodes at ~18% step-acc)."""
+    if not all("multi_turn" in m for m in metrics["rounds"]):
+        return
+    try:
+        from localagent.figs import savefig
+        plt = _mpl()
+    except Exception:
+        return
+    rs = [m["round"] for m in metrics["rounds"]]
+    step = [m["multi_turn"]["step_acc"] * 100 for m in metrics["rounds"]]
+    ep = [m["multi_turn"]["episode_acc"] * 100 for m in metrics["rounds"]]
+    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    ax.axhline(18, ls="--", color="gray", lw=1.5, label="untrained baseline (~18% step)")
+    ax.plot(rs, step, marker="o", lw=2.5, color="tab:purple", label="step accuracy")
+    ax.plot(rs, ep, marker="s", lw=2, color="tab:orange", label="whole-episode accuracy")
+    ax.set_xlabel("flywheel round (enrichment level)")
+    ax.set_ylabel("multi-turn accuracy (%)")
+    ax.set_ylim(0, 105)
+    ax.set_xticks(rs)
+    ax.grid(alpha=.3)
+    ax.legend(loc="lower right", fontsize=9)
+    ax.set_title("Learning plan->act: multi-turn trajectory accuracy (1M, coding+computer-use+planner)")
+    for x, y in zip(rs, step):
+        ax.text(x, y + 2, f"{y:.0f}", ha="center", fontsize=8, color="tab:purple")
+    fig.tight_layout()
+    savefig(fig, "18_multiturn_trajectory_learning")
+    plt.close(fig)
 
 
 def _mpl():
