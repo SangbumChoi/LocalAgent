@@ -1,0 +1,19 @@
+# Phase 3 — synthetic agent-data generation (ToolACE + APIGen + Hammer).
+out: data/synth/agent_sft.jsonl
+n_samples: 5000
+tool_pool: configs/data/tool_pool.json     # API pool to sample tools from
+generator:
+  backend: openai_compatible               # the "teacher"/synthesis model
+  endpoint: http://localhost:8000/v1
+  model: teacher-instruct
+complexity:
+  # ToolACE-style complexity targeting (fraction of dataset per bucket)
+  single_call: 0.4
+  parallel_call: 0.2
+  multiple_call: 0.2
+  multi_turn: 0.2
+irrelevance_fraction: 0.15                  # Hammer "no tool needed" negatives
+verification:
+  rule_based: true                          # schema + AST validity + executability
+  model_based: true                         # semantic check by a verifier model
+  drop_on_fail: true

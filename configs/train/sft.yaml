@@ -1,0 +1,29 @@
+# Phase 4 — supervised fine-tune on agent conversations.
+# Loss is masked to assistant + tool-call spans; function masking on (Hammer).
+stage: sft
+model_config: configs/model/tiny-30m.yaml
+init_from: runs/pretrain/latest.pt
+data:
+  conversations: data/synth/agent_sft.jsonl
+  seq_len: 2048
+  mask_user_and_tool_response: true   # only learn assistant/tool_call tokens
+  function_masking: true              # randomly mask/rename tools to force generalization
+optim:
+  name: adamw
+  lr: 1.0e-4
+  weight_decay: 0.0
+  grad_clip: 1.0
+schedule:
+  warmup_steps: 50
+  total_steps: 3000
+  min_lr_ratio: 0.1
+batch:
+  micro_batch_size: 8
+  grad_accum_steps: 2
+runtime:
+  device: auto
+  dtype: auto
+log:
+  out_dir: runs/sft
+  ckpt_every: 500
+  eval_every: 500
