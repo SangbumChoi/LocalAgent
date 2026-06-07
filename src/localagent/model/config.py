@@ -39,6 +39,11 @@ class ModelConfig:
     norm_eps: float = 1e-5
     tie_embeddings: bool = True
     dropout: float = 0.0
+    # --- Hybrid backbone levers (LFM2/Nemotron-H + Qwen3 stability) ---
+    # Defaults preserve the existing all-attention, QK-Norm-off model EXACTLY.
+    qk_norm: bool = False                  # RMSNorm on Q/K per-head before RoPE (Qwen3/Kimi)
+    conv_kernel: int = 3                   # depthwise causal short-conv kernel (LFM2 LIV)
+    layer_types: list[str] | None = None   # per-layer block kind: "attn"|"conv"; None => all "attn"
 
     def __post_init__(self) -> None:
         if self.embed_dim is None:
@@ -46,6 +51,20 @@ class ModelConfig:
         assert self.d_model % self.n_heads == 0, "d_model must divide n_heads"
         assert self.n_heads % self.n_kv_heads == 0, "n_heads must be a multiple of n_kv_heads"
         assert self.n_loops >= 1, "n_loops must be >= 1"
+        if self.layer_types is not None:
+            assert len(self.layer_types) == self.n_layers, (
+                f"layer_types has {len(self.layer_types)} entries, expected n_layers={self.n_layers}"
+            )
+            assert all(t in ("attn", "conv") for t in self.layer_types), (
+                "layer_types entries must be 'attn' or 'conv'"
+            )
+            assert any(t == "attn" for t in self.layer_types), (
+                "keep >=1 attention layer for verbatim argument-copying"
+            )
+
+    def block_types(self) -> list[str]:
+        """Resolved per-layer block kinds; None => all attention (legacy behavior)."""
+        return self.layer_types if self.layer_types is not None else ["attn"] * self.n_layers
 
     @property
     def head_dim(self) -> int:
@@ -74,15 +93,28 @@ class ModelConfig:
         out_proj = d * k if self.factorized else 0
         head = 0 if self.tie_embeddings else self.vocab_size * k
         loop_embed = self.n_loops * d if self.n_loops > 1 else 0
-        per_block = (
-            d * (h * hd)               # q proj
-            + 2 * d * (kv * hd)        # k, v proj (GQA → smaller)
-            + (h * hd) * d             # out proj
-            + 3 * d * self.ffn_hidden  # SwiGLU: gate, up, down
-            + 2 * d                    # two RMSNorm gains
-        )
+        ffn = 3 * d * self.ffn_hidden  # SwiGLU: gate, up, down (shared by both block kinds)
+
+        def attn_mixer() -> int:
+            qk = 2 * hd if self.qk_norm else 0  # RMSNorm(head_dim) gains on Q and K (shared/head)
+            return (
+                d * (h * hd)           # q proj
+                + 2 * d * (kv * hd)    # k, v proj (GQA → smaller)
+                + (h * hd) * d         # out proj
+                + qk
+            )
+
+        def conv_mixer() -> int:
+            # 3 in-projections (B, C, h̃) of width d, depthwise causal conv (k weights/channel),
+            # and an out-projection. No bias.
+            return 3 * d * d + d * self.conv_kernel + d * d
+
+        total_blocks = 0
+        for kind in self.block_types():
+            mixer = conv_mixer() if kind == "conv" else attn_mixer()
+            total_blocks += mixer + ffn + 2 * d  # + two RMSNorm gains (pre-mixer, pre-ffn)
         final = d  # final norm
-        return embed_table + in_proj + out_proj + head + loop_embed + self.n_layers * per_block + final
+        return embed_table + in_proj + out_proj + head + loop_embed + total_blocks + final
 
     def assert_within_budget(self) -> None:
         n = self.estimate_params()
