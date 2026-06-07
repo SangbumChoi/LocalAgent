@@ -59,8 +59,14 @@ TEACHER_CKPT_FALLBACK = "runs/analyze_tiny-30m-byte/model.pt"
 def load_teacher(device):
     ckpt = TEACHER_CKPT if os.path.exists(TEACHER_CKPT) else TEACHER_CKPT_FALLBACK
     ck = torch.load(ckpt, map_location=device, weights_only=False)
-    tcfg = ModelConfig.from_yaml(TEACHER_CFG)
-    assert ck["cfg"] == tcfg.__dict__, f"teacher ckpt cfg != {TEACHER_CFG}"
+    # Build the teacher from the cfg that PRODUCED its weights (ck["cfg"]). The committed
+    # tiny-30m-byte.yaml has since gained optional fields (conv_kernel/qk_norm/layer_types) that
+    # default-off, so we sanity-check only the fields the checkpoint actually stored rather than
+    # requiring an exact dict match against the newer YAML.
+    tcfg = ModelConfig(**ck["cfg"])
+    ycfg = ModelConfig.from_yaml(TEACHER_CFG).__dict__
+    for k, v in ck["cfg"].items():
+        assert ycfg.get(k) == v, f"teacher ckpt cfg.{k}={v} != {TEACHER_CFG} {ycfg.get(k)}"
     teacher = LocalAgentLM(tcfg).to(device)
     teacher.load_state_dict(ck["state_dict"])
     teacher.eval()
