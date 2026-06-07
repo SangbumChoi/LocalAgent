@@ -43,5 +43,31 @@ truth. First load fetches `model.fp16.onnx` (~tens of MB) and caches it.
 - `index.html` / `style.css` — the UI shell.
 - `app.js` — byte tokenizer, onnxruntime-web session (WebGPU + WASM fallback), tool selection,
   grounding, and the planner rollout.
-- `model.fp16.onnx`, `heads.json`, `meta.json` — the exported inference bundle
-  (`localagent.inference.export.export_web`).
+- `model.fp16.onnx`, `heads.json`, `meta.json` — the exported inference bundle (**not in the
+  source repo**; they are deploy artifacts).
+
+## Deploy
+The model bundle is produced from a trained checkpoint, separately from the source tree:
+
+```bash
+python -c "from localagent.inference.export.to_onnx import export_web; \
+           export_web('runs/tiny-30m-byte-best.pt', 'runs/web_export')"
+```
+
+Then upload **the four static files + the three bundle files** into a Hugging Face Space repo
+(`sdk: static`), all at the repo root, using git-lfs for the large ones:
+
+```bash
+huggingface-cli upload <user>/localagent-webgpu spaces/localagent-webgpu/ . --repo-type space
+huggingface-cli upload <user>/localagent-webgpu runs/web_export/model.fp16.onnx model.fp16.onnx --repo-type space
+huggingface-cli upload <user>/localagent-webgpu runs/web_export/heads.json heads.json --repo-type space
+huggingface-cli upload <user>/localagent-webgpu runs/web_export/meta.json meta.json --repo-type space
+```
+
+`app.js` fetches `model.fp16.onnx` / `heads.json` / `meta.json` relative to the page, so they must
+sit next to `index.html`. The export was verified for onnxruntime-CPU↔PyTorch parity
+(max |Δlogits| 7.6e-6; fp16 drift 1.4e-3, same tool argmax) and the in-browser tool-selection +
+pointer-grounding math was checked against the bundle (`get_weather{city:"Paris"}`,
+`read_file{path:"tests/test_api.py"}`, …). The graph is all standard opset-17 ops; onnxruntime-web
+falls back per-op to WASM for any op without a WebGPU kernel (`Trilu`/`Tile`/`Expand`), with
+identical results.

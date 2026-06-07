@@ -37,7 +37,7 @@ async function loadBundle() {
 // Markers are literal strings encoded as UTF-8 bytes — identical to the Python byte tokenizer.
 const enc = new TextEncoder();
 function bytesOf(s) { return Array.from(enc.encode(s)); }
-function mark(name) { return META.markers[name]; } // literal string
+function mark(name) { return META.markers[name].text; } // markers carry { text, ids }
 
 // Render a user turn the way the model was trained / `plan_rollout` renders it.
 function renderContext(query, steps) {
@@ -86,38 +86,42 @@ function selectTool(hiddenTensor, T) {
   return { name: classes[index], index, conf, isStop: index === stop_index };
 }
 
-// ---- argument grounding (browser approximation of the Python grounder) ----
-// Copies arg values from spans of the prompt by format/name. The full Python grounder
-// (heuristic extractors + pointer head + schema-constrained decode) is the source of truth.
-function groundArgs(tool, prompt) {
+// ---- argument grounding via the learned pointer head (port of pointer_head) ----
+// For each copy-arg of the chosen tool, compute start/end span logits over the input positions
+// and slice the value out of the prompt bytes — identical math to the PyTorch pointer head:
+//   q = arg_emb[arg_idx[arg]];  qs = start_W·q;  qe = end_W·q
+//   start = argmax_t hidden[t]·qs;  end = argmax_{t>=start} hidden[t]·qe;  value = bytes[start..end]
+function matvec(M, v) {                 // M [d][d] · v [d] -> [d]
+  const d = v.length, out = new Float32Array(d);
+  for (let i = 0; i < d; i++) { const Mi = M[i]; let a = 0; for (let j = 0; j < d; j++) a += Mi[j] * v[j]; out[i] = a; }
+  return out;
+}
+function dotAt(H, t, d, q) {             // hidden[t] · q
+  const off = t * d; let a = 0;
+  for (let k = 0; k < d; k++) a += H[off + k] * q[k];
+  return a;
+}
+function pointerSpan(arg, ids, H, T) {
+  const ph = HEADS.pointer_head, d = META.d_model;
+  const ai = ph.arg_idx[arg];
+  if (ai == null) return "";
+  const qs = matvec(ph.start_W, ph.arg_emb[ai]);
+  const qe = matvec(ph.end_W, ph.arg_emb[ai]);
+  let s = 0, sb = -Infinity;
+  for (let t = 0; t < T; t++) { const v = dotAt(H, t, d, qs); if (v > sb) { sb = v; s = t; } }
+  let e = s, eb = -Infinity;
+  for (let t = s; t < T; t++) { const v = dotAt(H, t, d, qe); if (v > eb) { eb = v; e = t; } }
+  try { return new TextDecoder().decode(new Uint8Array(ids.slice(s, e + 1))); } catch { return ""; }
+}
+function groundArgs(tool, ids, hiddenTensor, T) {
   const spec = (META.tools || []).find((t) => t.name === tool);
   const args = {};
   if (!spec) return args;
-  const props = (spec.schema && spec.schema.properties) || {};
-  for (const arg of spec.args || Object.keys(props)) {
-    const fmt = (props[arg] && (props[arg].format || props[arg].type)) || "";
-    args[arg] = extractByFormat(arg, fmt, prompt) || "";
+  const H = hiddenTensor.data;
+  for (const arg of spec.args || []) {
+    args[arg] = HEADS.pointer_head.arg_idx[arg] != null ? pointerSpan(arg, ids, H, T) : "";
   }
   return args;
-}
-
-function extractByFormat(arg, fmt, p) {
-  const path = p.match(/\b[\w./-]*\/[\w./-]+|\b[\w-]+\.[a-z]{1,5}\b/i);
-  const url = p.match(/\b(?:https?:\/\/)?[\w-]+\.(?:com|org|io|ai|net|dev|co)[\w./-]*/i);
-  const quoted = p.match(/['"“](.+?)['"”]/);
-  const afterTo = p.match(/\bto\s+([A-Z][\w]+)/);
-  const num = p.match(/\b\d+\b/);
-  if (fmt === "path" || /file|path|source|dest/.test(arg)) return path && path[0];
-  if (fmt === "uri" || /url/.test(arg)) return url && url[0];
-  if (/recipient|name|to|assignee/.test(arg)) return (afterTo && afterTo[1]) || (quoted && quoted[1]);
-  if (/message|summary|title|note|text|content|body/.test(arg)) return quoted && quoted[1];
-  if (fmt === "integer" || fmt === "number" || /count|minutes|amount/.test(arg)) return num && num[0];
-  // default: a cleaned query — strip a leading imperative verb
-  if (/query|q|search|location|city/.test(arg)) {
-    return p.replace(/^[^a-z0-9]*(what'?s|what is|search( the web)?( for)?|look up|find|get|tell me)\s+/i, "")
-            .replace(/[?.!]+$/, "").trim();
-  }
-  return (quoted && quoted[1]) || null;
 }
 
 // ---- single grounded call -------------------------------------------------
@@ -128,7 +132,7 @@ async function callOnce(query) {
   const sel = selectTool(out.hidden, ids.length);
   const ms = performance.now() - t0;
   if (sel.isStop) return { abstain: true, conf: sel.conf, ms };
-  return { tool: sel.name, args: groundArgs(sel.name, query), conf: sel.conf, ms };
+  return { tool: sel.name, args: groundArgs(sel.name, ids, out.hidden, ids.length), conf: sel.conf, ms };
 }
 
 // ---- planner rollout (port of plan_rollout) -------------------------------
@@ -140,7 +144,7 @@ async function planRollout(query, maxSteps = 4) {
     const out = await forward(ids);
     const sel = selectTool(out.hidden, ids.length);
     if (sel.isStop) break;
-    const args = groundArgs(sel.name, query);
+    const args = groundArgs(sel.name, ids, out.hidden, ids.length);
     steps.push({ tool: sel.name, args, conf: sel.conf, response: simResponse(sel.name, args) });
   }
   return { steps, ms: performance.now() - t0 };
