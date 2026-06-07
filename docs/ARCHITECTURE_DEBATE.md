@@ -155,17 +155,20 @@ inconclusive results are reported as such.
 | Lever | Measured result | Verdict |
 |---|---|---|
 | **Planner→action (1M)**, learned `plan_rollout` over a 4-round flywheel | teacher-forced next-tool **78→81%**, grounded-call **70%**, single-turn **48%** — but free-rollout whole-plan stays **~2%** | **Mechanics strong, strategy capped.** The 1M nails next-tool-given-context and grounding; autonomous multi-step planning collapses under compounding error — the capacity ceiling, cleanly shown. |
-| **30M→1M Top-K distillation**, controlled A/B (only the distill stage differs) | T−C: single-turn **+5.4**, free-rollout whole-plan **+7.5**, teacher-forced **0.0**, grounded **−29** (small-n, noisy) | **Modest + mixed.** Confirms the debate's own Scaler caveat: a 71% 30M teacher is too weak to transfer crisp argument-copying (grounding *regressed*). The fuller recipe — distill-*throughout*-SFT / on-policy reverse-KL — is the real follow-up, not naive backbone KD. |
+| **30M→1M Top-K distillation, distill-*then*-SFT**, controlled A/B (only the distill stage differs) | T−C: single-turn **+5.4**, free-rollout whole-plan **+7.5**, teacher-forced **0.0**, grounded **−29** (small-n, noisy) | **Modest + mixed.** Confirms the debate's own Scaler caveat: a 71% 30M teacher is too weak to transfer crisp argument-copying — and warming the backbone then SFT-ing the heads *re-specializes it away* from copying, so grounding **regressed**. |
+| **30M→1M Top-K distillation, distill-*throughout*-SFT** (concurrent KD term added to `sft`), 3-arm A/B vs control & distill-then | grounded **+9.7 vs distill-then** (regression *erased*: 62.5% vs 52.8%, and +2.5 vs control); single-turn **+12.4 vs distill-then**; TF step-acc +3.1; but **vs plain control**: single-turn ~flat (−2.0), free-rollout noisy 0% | **The schedule matters; the gap still caps the gain.** Concurrent KD is *strictly better than* distill-then (recovers grounding, lifts selection) — so **if you distill at this gap, do it throughout SFT, not before.** But it does *not* cleanly beat from-scratch control on generative metrics: at a 71%→1M gap the distillation benefit is marginal, exactly as the capacity-gap caveat predicts. |
 | **Hybrid short-conv + GQA + QK-Norm (30M)** vs standard decoder, equal params (29.1M vs 28.3M) | **+20% prefill, +5% decode** tok/s on CPU; accuracy 6.9% vs 11.0% at a minimal SFT-only budget — but at `n=24` that 4-pt gap is **~1 example (inconclusive)** | **Speed win real, accuracy unresolved.** The conv's O(L·k) edge over O(L²) is modest at short tool-agent contexts, as predicted; a fair accuracy ranking needs a pretrained, larger-eval A/B (currently blocked by the sandbox SIGKILLing the `batch=64` pretrain — addressable with a smaller pretrain batch). |
-| WSD schedule · curriculum · flywheel merging | not yet run | queued |
+| WSD schedule · curriculum · flywheel merging · on-policy reverse-KL | not yet run | queued |
 
 **Cross-cutting takeaway.** The debate predicted the transferable lessons would be *training*, not
 architecture — and the measurements bear that out so far: the architecture lever (hybrid) bought a real
 but modest *speed* gain with no clear accuracy change, while the *training* levers (distillation, planner
 rollout) moved capability metrics the most (for better and, on grounding, for worse). Distillation at our
 own 30M→1M gap is *weakly* positive, not the ~10× story the frontier reports at 7B→1B gaps — exactly the
-capacity-gap caveat. Next highest-ROI: distill-throughout-SFT + on-policy, then a properly-pretrained
-hybrid A/B.
+capacity-gap caveat. The one crisp, reusable engineering result: **distill-*throughout*-SFT strictly beats
+distill-*then*-SFT** (+9.7 grounding, +12.4 single-turn) — concurrent KD avoids the backbone
+re-specialization that the two-stage schedule causes. Next highest-ROI: on-policy reverse-KL, WSD +
+curriculum, and a properly-pretrained hybrid A/B.
 
 ## Sources
 Qwen3 [2505.09388](https://arxiv.org/abs/2505.09388) · DeepSeek-V3 [2412.19437](https://arxiv.org/abs/2412.19437) ·
