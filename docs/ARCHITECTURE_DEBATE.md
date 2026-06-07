@@ -147,6 +147,26 @@ at our scale.
 Each step is measured against the live baselines, not assumed — per the project rule of reporting real
 numbers.
 
+## Apply-phase results (measured — real numbers, including the nulls)
+
+What the roadmap above actually produced when run. The project rule is no faking, so the mixed and
+inconclusive results are reported as such.
+
+| Lever | Measured result | Verdict |
+|---|---|---|
+| **Planner→action (1M)**, learned `plan_rollout` over a 4-round flywheel | teacher-forced next-tool **78→81%**, grounded-call **70%**, single-turn **48%** — but free-rollout whole-plan stays **~2%** | **Mechanics strong, strategy capped.** The 1M nails next-tool-given-context and grounding; autonomous multi-step planning collapses under compounding error — the capacity ceiling, cleanly shown. |
+| **30M→1M Top-K distillation**, controlled A/B (only the distill stage differs) | T−C: single-turn **+5.4**, free-rollout whole-plan **+7.5**, teacher-forced **0.0**, grounded **−29** (small-n, noisy) | **Modest + mixed.** Confirms the debate's own Scaler caveat: a 71% 30M teacher is too weak to transfer crisp argument-copying (grounding *regressed*). The fuller recipe — distill-*throughout*-SFT / on-policy reverse-KL — is the real follow-up, not naive backbone KD. |
+| **Hybrid short-conv + GQA + QK-Norm (30M)** vs standard decoder, equal params (29.1M vs 28.3M) | **+20% prefill, +5% decode** tok/s on CPU; accuracy 6.9% vs 11.0% at a minimal SFT-only budget — but at `n=24` that 4-pt gap is **~1 example (inconclusive)** | **Speed win real, accuracy unresolved.** The conv's O(L·k) edge over O(L²) is modest at short tool-agent contexts, as predicted; a fair accuracy ranking needs a pretrained, larger-eval A/B (currently blocked by the sandbox SIGKILLing the `batch=64` pretrain — addressable with a smaller pretrain batch). |
+| WSD schedule · curriculum · flywheel merging | not yet run | queued |
+
+**Cross-cutting takeaway.** The debate predicted the transferable lessons would be *training*, not
+architecture — and the measurements bear that out so far: the architecture lever (hybrid) bought a real
+but modest *speed* gain with no clear accuracy change, while the *training* levers (distillation, planner
+rollout) moved capability metrics the most (for better and, on grounding, for worse). Distillation at our
+own 30M→1M gap is *weakly* positive, not the ~10× story the frontier reports at 7B→1B gaps — exactly the
+capacity-gap caveat. Next highest-ROI: distill-throughout-SFT + on-policy, then a properly-pretrained
+hybrid A/B.
+
 ## Sources
 Qwen3 [2505.09388](https://arxiv.org/abs/2505.09388) · DeepSeek-V3 [2412.19437](https://arxiv.org/abs/2412.19437) ·
 DeepSeek-R1 [2501.12948](https://arxiv.org/html/2501.12948v1) · Nemotron-H [adlr/nemotronh](https://research.nvidia.com/labs/adlr/nemotronh/) ·
