@@ -26,9 +26,14 @@ def test_all_coding_types_are_producible():
 def test_productivity_and_planner_episodes_exist():
     g = Generator(5, 0, "train")
     prod = {g.productivity_episode().meta["type"] for _ in range(300)}
-    plan = {g.planner_episode().meta["type"] for _ in range(200)}
+    # planner_episode() yields the multi-step (>=1 tool call) plan types; 0-step "don't over-plan"
+    # cases come from plan_episode()/plan_episodes(). plan_episodes() covers ALL plan types.
+    plan = {g.planner_episode().meta["type"] for _ in range(400)}
+    all_plan = {g.plan_episode().meta["type"] for _ in range(1500)}
+    multi_types = {t for t, (_a, ln) in g._PLAN_BUILDERS.items() if ln >= 1}
     assert prod == set(Generator._PRODUCTIVITY_TYPES)
-    assert plan == set(Generator._PLANNER_TYPES)
+    assert plan == multi_types
+    assert all_plan == set(Generator._PLANNER_TYPES)
     # productivity episodes are not coding episodes
     assert g.productivity_episode().meta["kind"] == "productivity_episode"
     assert g.planner_episode().meta["kind"] == "planner_episode"

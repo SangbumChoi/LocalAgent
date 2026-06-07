@@ -450,7 +450,19 @@ class Generator:
                      "lint_and_fix")
     _PRODUCTIVITY_TYPES = ("research_summarize", "schedule_and_notify", "triage_issue",
                            "news_brief", "open_and_note", "remind_and_slack")
-    _PLANNER_TYPES = ("plan_read_test_commit", "plan_research", "plan_fix_test")
+    # All plan-episode types (length-bucketed). Backwards-compatible: the original three
+    # (plan_read_test_commit, plan_research, plan_fix_test) are a subset. The gold "plan" of any
+    # episode is recoverable via ``episode_plan`` (ordered tool names). Keep this tuple in sync
+    # with ``_PLAN_BUILDERS`` below — ``test_planner_data`` asserts they match exactly.
+    _PLANNER_TYPES = (
+        "plan_no_tool_thanks", "plan_no_tool_greet",
+        "plan_single_read", "plan_single_search", "plan_single_timer",
+        "plan_research_record", "plan_research_share", "plan_schedule_notify",
+        "plan_remind_timer", "plan_read_run",
+        "plan_read_test_commit", "plan_research", "plan_locate_inspect_edit",
+        "plan_search_open_note",
+        "plan_fix_test", "plan_implement",
+    )
 
     # ---- coding episode builders (return list[Message]) ----
     def _ep_debug(self):
@@ -670,7 +682,113 @@ class Generator:
     def _plan(steps):
         return "Plan: " + " ".join(f"{i + 1}) {s}" for i, s in enumerate(steps))
 
-    def _ep_plan_read_test_commit(self):
+    # ---- richer multi-step PLAN episodes (planner -> action decomposition, stage 1) ----
+    # Each builder returns list[Message]. The gold "plan" is the ordered projection of the
+    # episode's tool-call turns onto tool NAMES (see ``episode_plan`` below); each step's args
+    # are groundable — copyable either from the composite user request or from an EARLIER tool
+    # response (the pointer case, where a path/url is "returned" then consumed downstream).
+    # Plan lengths span 1..4 so the planner learns plan-LENGTH control, not just a fixed shape.
+
+    # --- 2-step plans ---
+    def _ep_plan_research_record(self):  # web_search -> notion_write (research then record)
+        query = self.rng.choice(self.queries)
+        content = self.rng.choice(self.notion)
+        return [
+            self._U(f"Research {query} then note '{content}' in Notion."),
+            self._F(self._plan(["search the web", "save a Notion note"])),
+            self._A("web_search", {"query": query}),
+            self._T(f"Results for {query}."),
+            self._A("notion_write", {"content": content}),
+            self._T("note saved."),
+            self._F(f"Researched {query} and noted '{content}'."),
+        ]
+
+    def _ep_plan_research_share(self):  # web_search -> send_email (research then share)
+        query = self.rng.choice(self.queries)
+        nm = self.rng.choice(self.names)
+        return [
+            self._U(f"Look up {query} and email {nm} about it."),
+            self._F(self._plan(["search the web", "email the result"])),
+            self._A("web_search", {"query": query}),
+            self._T(f"Results for {query}."),
+            self._A("send_email", {"recipient": nm}),
+            self._T("email sent."),
+            self._F(f"Looked up {query} and emailed {nm}."),
+        ]
+
+    def _ep_plan_schedule_notify(self):  # calendar_event -> send_email (schedule then notify)
+        title = self.rng.choice(self.events)
+        nm = self.rng.choice(self.names)
+        return [
+            self._U(f"Schedule '{title}' then notify {nm} by email."),
+            self._F(self._plan(["create a calendar event", "send an email"])),
+            self._A("calendar_event", {"title": title}),
+            self._T("event created."),
+            self._A("send_email", {"recipient": nm}),
+            self._T("email sent."),
+            self._F(f"Scheduled '{title}' and notified {nm}."),
+        ]
+
+    def _ep_plan_remind_timer(self):  # set_reminder -> set_timer
+        task = self.rng.choice(self.tasks)
+        dur = self.rng.choice(self.durations)
+        return [
+            self._U(f"Remind me to {task} and set a timer for {dur}."),
+            self._F(self._plan(["set a reminder", "set a timer"])),
+            self._A("set_reminder", {"task": task}),
+            self._T("reminder set."),
+            self._A("set_timer", {"duration": dur}),
+            self._T("timer started."),
+            self._F(f"Reminder to {task} set and timer for {dur} started."),
+        ]
+
+    def _ep_plan_read_run(self):  # read_file -> run_command
+        path = self.rng.choice(self.paths)
+        cmd = self.rng.choice(self.commands)
+        return [
+            self._U(f"Read {path} then run '{cmd}'."),
+            self._F(self._plan(["read the file", "run the command"])),
+            self._A("read_file", {"path": path}),
+            self._T("<file contents>"),
+            self._A("run_command", {"command": cmd}),
+            self._T("command finished."),
+            self._F(f"Read {path} and ran '{cmd}'."),
+        ]
+
+    # --- 3-step plans ---
+    def _ep_plan_locate_inspect_edit(self):  # grep_search -> read_file -> write_file (pointer)
+        path = self.rng.choice(self.paths)
+        pat = self.rng.choice(self.patterns)
+        return [
+            self._U(f"Find '{pat}', inspect that file, then edit it."),
+            self._F(self._plan(["search the code", "read the file", "edit the file"])),
+            self._A("grep_search", {"pattern": pat}),
+            self._T(f"{path}:9:    {pat} appears here"),   # path "returned" by grep
+            self._A("read_file", {"path": path}),          # grounded from tool response
+            self._T("<current source>"),
+            self._A("write_file", {"path": path}),         # grounded from tool response
+            self._T("written."),
+            self._F(f"Located '{pat}' in {path} and edited it."),
+        ]
+
+    def _ep_plan_search_open_note(self):  # web_search -> open_url -> notion_write (pointer)
+        query = self.rng.choice(self.queries)
+        url = self.rng.choice(self.urls)
+        content = self.rng.choice(self.notion)
+        return [
+            self._U(f"Research {query}, open the top link, then note '{content}'."),
+            self._F(self._plan(["search the web", "open the top result", "save a Notion note"])),
+            self._A("web_search", {"query": query}),
+            self._T(f"1. {url} — overview of {query}"),    # url "returned" by search
+            self._A("open_url", {"url": url}),             # grounded from tool response
+            self._T("<page loaded>"),
+            self._A("notion_write", {"content": content}),
+            self._T("note saved."),
+            self._F(f"Researched {query}, opened {url}, noted '{content}'."),
+        ]
+
+    # --- 4-step plans ---
+    def _ep_plan_read_test_commit(self):  # 3-step, existing one (kept, lightly varied phrasing)
         path = self.rng.choice(self.paths)
         msg = self.rng.choice(self.commits)
         return [
@@ -685,7 +803,7 @@ class Generator:
             self._F(f"Read {path}, tests pass, committed '{msg}'."),
         ]
 
-    def _ep_plan_research(self):  # plan -> search -> (response url) -> open_url -> summary (pointer)
+    def _ep_plan_research(self):  # 3-step plan -> search -> (url) -> open_url -> summary (pointer)
         query = self.rng.choice(self.queries)
         url = self.rng.choice(self.urls)
         return [
@@ -698,7 +816,7 @@ class Generator:
             self._F(f"Summary: {url} is the best source on {query}."),
         ]
 
-    def _ep_plan_fix_test(self):  # plan -> run_tests -> read -> write -> run_tests -> summary
+    def _ep_plan_fix_test(self):  # 4-step: run_tests -> read -> write -> run_tests
         path = self.rng.choice(self.paths)
         return [
             self._U(f"A test in {path} is broken — make a plan and fix it."),
@@ -713,6 +831,96 @@ class Generator:
             self._T("All tests passed."),
             self._F(f"Fixed the failing test in {path}."),
         ]
+
+    def _ep_plan_implement(self):  # 4-step: grep -> (path) -> read -> write -> git_commit (pointer)
+        path = self.rng.choice(self.paths)
+        pat = self.rng.choice(self.patterns)
+        msg = self.rng.choice(self.commits)
+        return [
+            self._U(f"Implement '{msg}' where '{pat}' lives, then commit."),
+            self._F(self._plan(["search the code", "read the file", "edit the file", "commit"])),
+            self._A("grep_search", {"pattern": pat}),
+            self._T(f"{path}:20:    {pat} ..."),           # path "returned" by grep
+            self._A("read_file", {"path": path}),
+            self._T("<current implementation>"),
+            self._A("write_file", {"path": path}),
+            self._T("written."),
+            self._A("git_commit", {"message": msg}),
+            self._T("Committed def456."),
+            self._F(f"Implemented and committed '{msg}'."),
+        ]
+
+    # --- 1-step plans (teach the planner to STOP after one tool) ---
+    def _ep_plan_single_read(self):
+        path = self.rng.choice(self.paths)
+        return [
+            self._U(f"Just read {path}."),
+            self._F(self._plan(["read the file"])),
+            self._A("read_file", {"path": path}),
+            self._T("<file contents>"),
+            self._F(f"Read {path}."),
+        ]
+
+    def _ep_plan_single_search(self):
+        query = self.rng.choice(self.queries)
+        return [
+            self._U(f"Only search the web for {query}."),
+            self._F(self._plan(["search the web"])),
+            self._A("web_search", {"query": query}),
+            self._T(f"Results for {query}."),
+            self._F(f"Searched for {query}."),
+        ]
+
+    def _ep_plan_single_timer(self):
+        dur = self.rng.choice(self.durations)
+        return [
+            self._U(f"Set a timer for {dur}, nothing else."),
+            self._F(self._plan(["set a timer"])),
+            self._A("set_timer", {"duration": dur}),
+            self._T("timer started."),
+            self._F(f"Timer for {dur} started."),
+        ]
+
+    # --- 0-step "plans": a trivial request answered with text, no tool (don't over-plan) ---
+    def _ep_plan_no_tool_thanks(self):
+        return [
+            self._U("Thanks for your help!"),
+            self._F("Plan: just reply."),
+            self._F("You're welcome!"),
+        ]
+
+    def _ep_plan_no_tool_greet(self):
+        nm = self.rng.choice(self.names)
+        return [
+            self._U(f"Just say hello to {nm}."),
+            self._F("Plan: just reply."),
+            self._F(f"Hello, {nm}!"),
+        ]
+
+    # length-bucketed registry; ``plan_episode`` samples across buckets for plan-length variety
+    _PLAN_BUILDERS = {
+        # 0-step (text only, no tool)
+        "plan_no_tool_thanks": ("_ep_plan_no_tool_thanks", 0),
+        "plan_no_tool_greet": ("_ep_plan_no_tool_greet", 0),
+        # 1-step
+        "plan_single_read": ("_ep_plan_single_read", 1),
+        "plan_single_search": ("_ep_plan_single_search", 1),
+        "plan_single_timer": ("_ep_plan_single_timer", 1),
+        # 2-step
+        "plan_research_record": ("_ep_plan_research_record", 2),
+        "plan_research_share": ("_ep_plan_research_share", 2),
+        "plan_schedule_notify": ("_ep_plan_schedule_notify", 2),
+        "plan_remind_timer": ("_ep_plan_remind_timer", 2),
+        "plan_read_run": ("_ep_plan_read_run", 2),
+        # 3-step
+        "plan_read_test_commit": ("_ep_plan_read_test_commit", 3),
+        "plan_research": ("_ep_plan_research", 3),
+        "plan_locate_inspect_edit": ("_ep_plan_locate_inspect_edit", 3),
+        "plan_search_open_note": ("_ep_plan_search_open_note", 3),
+        # 4-step
+        "plan_fix_test": ("_ep_plan_fix_test", 4),
+        "plan_implement": ("_ep_plan_implement", 4),
+    }
 
     def _coding_builders(self):
         return {
@@ -732,10 +940,7 @@ class Generator:
         }
 
     def _planner_builders(self):
-        return {
-            "plan_read_test_commit": self._ep_plan_read_test_commit,
-            "plan_research": self._ep_plan_research, "plan_fix_test": self._ep_plan_fix_test,
-        }
+        return {name: getattr(self, attr) for name, (attr, _len) in self._PLAN_BUILDERS.items()}
 
     def coding_episode(self) -> Conversation:
         """A short multi-turn coding tool-use trajectory: tool call -> tool response -> follow-up.
@@ -752,12 +957,34 @@ class Generator:
         msgs = self._productivity_builders()[which]()
         return Conversation(messages=msgs, meta={"kind": "productivity_episode", "type": which})
 
-    def planner_episode(self) -> Conversation:
-        """A planner-then-execute trajectory: a canonical text plan turn, then each step as a
-        tool-call turn with tool responses between, then a final summary (teaches plan->act)."""
-        which = self.rng.choice(self._PLANNER_TYPES)
+    def _build_plan_episode(self, which: str) -> Conversation:
+        """Build a named plan episode and tag meta with its gold plan (ordered tool names) and
+        plan length, both *derived* from the episode's tool-call sequence (no schema change)."""
         msgs = self._planner_builders()[which]()
-        return Conversation(messages=msgs, meta={"kind": "planner_episode", "type": which})
+        plan = episode_plan(Conversation(messages=msgs))
+        return Conversation(messages=msgs, meta={"kind": "planner_episode", "type": which,
+                                                 "plan": plan, "plan_len": len(plan)})
+
+    def planner_episode(self) -> Conversation:
+        """A planner-then-execute trajectory: a canonical NUMBERED text plan turn, then each step
+        as a tool-call turn with tool responses between, then a final summary (teaches plan->act).
+        Backwards-compatible: only multi-step types (>=1 tool call, plan starts ``Plan: 1)``); the
+        0-step "don't over-plan" cases are reached via ``plan_episode``/``plan_episodes`` instead.
+        ``meta['plan']`` is the gold ordered tool-name list; ``meta['plan_len']`` its length."""
+        multi = [t for t, (_a, ln) in self._PLAN_BUILDERS.items() if ln >= 1]
+        which = self.rng.choice(multi)
+        return self._build_plan_episode(which)
+
+    def plan_episode(self) -> Conversation:
+        """Sample a plan episode with *plan-length variety*: pick a length bucket (0..4) uniformly,
+        then a type within it, so the planner sees STOP-after-one and don't-over-plan cases, not
+        only long plans. Same Conversation shape as ``planner_episode`` (alias-friendly)."""
+        by_len: dict[int, list[str]] = {}
+        for name, (_attr, ln) in self._PLAN_BUILDERS.items():
+            by_len.setdefault(ln, []).append(name)
+        length = self.rng.choice(sorted(by_len))
+        which = self.rng.choice(by_len[length])
+        return self._build_plan_episode(which)
 
     def coding_episodes(self, n: int) -> list[Conversation]:
         return [self.coding_episode() for _ in range(n)]
@@ -767,6 +994,12 @@ class Generator:
 
     def planner_episodes(self, n: int) -> list[Conversation]:
         return [self.planner_episode() for _ in range(n)]
+
+    def plan_episodes(self, n: int) -> list[Conversation]:
+        """`n` plan episodes sampled for plan-length variety. Entry point for stage-1 planner
+        training/eval: each Conversation's gold plan is ``meta['plan']`` (== ``episode_plan(ep)``)
+        and its per-step grounded ToolCalls are the assistant tool-call turns, in order."""
+        return [self.plan_episode() for _ in range(n)]
 
     def episodes(self, n: int, mix: bool = True) -> list[Conversation]:
         """Sample `n` multi-turn episodes. With ``mix=True`` (default) the pool spans coding +
@@ -826,6 +1059,25 @@ class Generator:
             cnt[s.category] += 1
             out.append(s)
         return out
+
+
+# ---- plan helpers (free functions; no schema change — operate on the existing episode shape) --
+def episode_plan(ep: Conversation) -> list[str]:
+    """The gold PLAN of an episode: the ordered projection of its assistant tool-call turns onto
+    tool NAMES. This is the stage-1 planner target — the planner emits this list, and the existing
+    action decoder grounds each name into a concrete ToolCall. A 0-step plan (a trivial text-only
+    request) yields ``[]``."""
+    return [m.tool_calls[0].name
+            for m in ep.messages
+            if m.role == Role.assistant and m.tool_calls]
+
+
+def episode_steps(ep: Conversation) -> list[ToolCall]:
+    """The per-step grounded ToolCalls of an episode, in order — one per planned step. Zipped with
+    ``episode_plan(ep)`` they give (tool_name, grounded_args) for each step."""
+    return [m.tool_calls[0]
+            for m in ep.messages
+            if m.role == Role.assistant and m.tool_calls]
 
 
 def synthesize(config_path: str) -> None:  # CLI entry retained
