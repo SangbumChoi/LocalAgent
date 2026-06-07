@@ -136,6 +136,19 @@ Multi-turn tool use in realistic customer-service / real-API settings.
 **We adopt:** a small **multi-turn task harness** with a simulated user + tool sandbox for
 end-to-end agent eval beyond static call matching.
 
+### Agents' Last Exam (ALE) ([abs](https://arxiv.org/abs/2606.05405) · [site](https://agents-last-exam.org)) — *contrast, not a target*
+The frontier end of the spectrum: **1,000+ long-horizon, economically-valuable real-world tasks**
+with **verifiable outcomes**, spanning 55 subfields across 13 industry clusters (U.S. occupational
+taxonomy), built with 250+ industry experts. It is deliberately unsaturated — mainstream frontier
+configs average just **~2.6% full pass** on the hardest tier. This is autonomous *professional
+workflow* evaluation, the opposite pole from a <100M single-/parallel-call tool router.
+
+**We don't target it** — a 28M on-device model is a **controller**, not an autonomous long-horizon
+agent; sustained multi-step workflows are the *orchestrator's* job, with the tiny model supplying
+grounded tool calls underneath. What we **do** take is the **verifiable-outcome** discipline (score
+against an executable/AST oracle, never an LLM judge) and ALE as an explicit **scope boundary**: it
+keeps us honest that our held-out tool-call accuracy measures the router, not end-to-end autonomy.
+
 ---
 
 ## 7. On-device inference / export ("runs on CPU/GPU/NPU")
@@ -168,6 +181,7 @@ model against the PyTorch reference on a fixed prompt set.
 | MemGPT/Letta | two-tier self-editing memory exposed as tools |
 | Airbnb AITL | data-flywheel feedback schema + retrain loop |
 | BFCL / tau-bench | AST tool eval + multi-turn + irrelevance |
+| Agents' Last Exam | verifiable-outcome discipline + a scope boundary (contrast, not a target) |
 | llama.cpp/ONNX/ExecuTorch | four export targets + Q4 + parity test |
 
 ---
