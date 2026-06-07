@@ -28,14 +28,28 @@ from localagent.agent.schema_decode import fill_tool
 from localagent.data.schema import ToolCall, ToolSpec
 
 
+# Re-export the learned planner rollout (stage 2) so callers can `from localagent.agent.caller
+# import plan_rollout`. It reuses the trained tool/pointer heads (no new model parameters) instead
+# of the regex connective-splitter in ToolCaller.plan.
+from localagent.agent.planner import plan_rollout  # noqa: E402,F401
+
+
 class ToolCaller:
     def __init__(self, tools: list[ToolSpec], retrieve_k: int = 12, examples: dict | None = None,
-                 min_score: float = 0.0, retriever=None):
-        """`min_score`: abstain if the top retrieved tool's similarity is below this (0 = off)."""
+                 min_score: float = 0.0, retriever=None, model=None, tok=None,
+                 tool_head=None, ptr_head=None, device: str = "cpu"):
+        """`min_score`: abstain if the top retrieved tool's similarity is below this (0 = off).
+        Pass `model`/`tok`/`tool_head`/`ptr_head` to make `.plan()` use the LEARNED `plan_rollout`
+        (stage 2) instead of the regex connective-splitter."""
         self.tools = {t.name: t for t in tools}
         self.specs = list(tools)
         self.k = retrieve_k
         self.min_score = min_score
+        self.model = model
+        self.tok = tok
+        self.tool_head = tool_head
+        self.ptr_head = ptr_head
+        self.device = device
         from localagent.agent.retriever import ToolRetriever
         # Always rank by relevance (even a small toolset) so the *relevant* tool is tried first,
         # not just the first one that happens to be fillable.
@@ -56,10 +70,16 @@ class ToolCaller:
                 return ToolCall(tool.name, args)
         return None
 
-    def plan(self, query: str) -> list[ToolCall]:
+    def plan(self, query: str, max_steps: int = 4) -> list[ToolCall]:
         """Decompose a multi-step request into an ordered list of calls (planner/executor pattern,
-        à la AutoGen/OctoTools/CodeAct). Splits on connectives ('then', 'and then', 'after that',
-        'and', ';') and grounds each step; drops steps that don't yield a call."""
+        à la AutoGen/OctoTools/CodeAct). With trained heads (model+tok+tool_head) this delegates to
+        the LEARNED `plan_rollout`; otherwise it falls back to the regex connective-splitter
+        ('then', 'and then', 'after that', 'and', ';'), grounding each step and dropping steps that
+        don't yield a call."""
+        if self.model is not None and self.tok is not None and self.tool_head is not None:
+            return plan_rollout(self.model, self.tok, query, self.specs,
+                                tool_head=self.tool_head, ptr_head=self.ptr_head,
+                                max_steps=max_steps, device=self.device)
         import re
         parts = re.split(r"\s*(?:;|,?\s*then\s+|\s+after\s+that\s+|\s+and\s+then\s+|\s+and\s+)\s*",
                          query, flags=re.I)

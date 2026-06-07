@@ -110,6 +110,116 @@ def multi_turn_eval(model, episodes, tok, tools, device="cpu", tool_head=None, p
             "steps": step_tot, "episodes": ep_tot}
 
 
+def _first_user_query(conv) -> str:
+    """The episode's initial user request — the planner's only input (matches how multi_turn_eval
+    starts each episode from the first user turn)."""
+    from localagent.data.schema import Role
+    for m in conv.messages:
+        if m.role == Role.user:
+            return m.content
+    return ""
+
+
+def plan_eval(model, tok, tools, episodes, *, tool_head, ptr_head, max_steps=4, device="cpu") -> dict:
+    """Free-run PLANNER eval (stage 3) over held-out plan episodes.
+
+    For each episode we take only the first user query, call the learned ``plan_rollout`` (which
+    plans + grounds an ordered list of ToolCalls), and score the predicted plan against the gold
+    ``episode_plan(ep)`` / ``episode_steps(ep)``. We report four free-run planner metrics plus a
+    teacher-forced next-tool metric (from ``multi_turn_eval``) side by side.
+
+    Metrics (returned dict keys):
+      whole_plan_acc      — fraction of episodes whose predicted ordered tool-NAME sequence exactly
+                            equals the gold plan (same length AND same names in order).
+      step_acc            — positional tool-name accuracy. Scored over ``max(len(pred), len(gold))``
+                            positions: a position counts correct only if BOTH plans have a step
+                            there and the names match. Positions past the shorter plan's end are
+                            counted as wrong, so over- AND under-length plans are penalized (an
+                            over-length plan can never reach 1.0). Denominator is the sum of
+                            ``max(len(pred),len(gold))`` over episodes (empty/empty episodes
+                            contribute 0/0 and are skipped).
+      grounded_acc        — over the positions where the tool NAME matches, fraction whose grounded
+                            ARGS also AST-match (ToolCall.normalized via match_calls). Denominator
+                            is the number of name-matched positions.
+      plan_len_acc        — fraction of episodes with len(pred) == len(gold).
+      by_gold_len         — {gold_len: {"whole": acc, "n": count}} breakdown of whole-plan accuracy
+                            bucketed by gold plan length (0..max_steps), to localize failures.
+      teacher_forced      — multi_turn_eval(...) on the same episodes: next-tool step_acc /
+                            episode_acc when the model is fed the GOLD prior steps (low-variance
+                            robustness number alongside the free-run planner metrics).
+      episodes, steps     — episode count and total gold steps scored.
+    """
+    from collections import defaultdict
+
+    from localagent.agent.caller import plan_rollout
+    from localagent.data.agent_synth import episode_plan, episode_steps
+    from localagent.eval.tool_eval import match_calls
+
+    whole_ok = 0
+    len_ok = 0
+    step_ok = 0
+    step_tot = 0
+    grnd_ok = 0
+    grnd_tot = 0
+    by_len = defaultdict(lambda: [0, 0])   # gold_len -> [whole_ok, n]
+    gold_steps_total = 0
+
+    for ep in episodes:
+        gold_names = episode_plan(ep)
+        gold_calls = episode_steps(ep)
+        query = _first_user_query(ep)
+        pred_calls = plan_rollout(model, tok, query, tools, tool_head=tool_head,
+                                  ptr_head=ptr_head, max_steps=max_steps, device=device)
+        pred_names = [c.name for c in pred_calls]
+
+        gold_steps_total += len(gold_names)
+        whole = pred_names == gold_names
+        whole_ok += whole
+        len_ok += (len(pred_names) == len(gold_names))
+
+        # positional step accuracy over the longer of the two (penalizes over/under length)
+        span = max(len(pred_names), len(gold_names))
+        step_tot += span
+        for i in range(span):
+            if i < len(pred_names) and i < len(gold_names) and pred_names[i] == gold_names[i]:
+                step_ok += 1
+                # grounded args only checked where the tool name matched
+                grnd_tot += 1
+                if match_calls([pred_calls[i]], [gold_calls[i]]):
+                    grnd_ok += 1
+
+        b = by_len[len(gold_names)]
+        b[0] += whole
+        b[1] += 1
+
+    n = len(episodes)
+    teacher = multi_turn_eval(model, episodes, tok, tools, device=device,
+                              tool_head=tool_head, ptr_head=ptr_head)
+    return {
+        "whole_plan_acc": whole_ok / max(1, n),
+        "step_acc": step_ok / max(1, step_tot),
+        "grounded_acc": grnd_ok / max(1, grnd_tot),
+        "plan_len_acc": len_ok / max(1, n),
+        "by_gold_len": {ln: {"whole": c / max(1, t), "n": t} for ln, (c, t) in sorted(by_len.items())},
+        "teacher_forced": {"step_acc": teacher["step_acc"], "episode_acc": teacher["episode_acc"]},
+        "episodes": n,
+        "steps": gold_steps_total,
+    }
+
+
+def format_plan_eval(res: dict) -> str:
+    """One-line-per-section `log`-style summary of plan_eval(), matching analyze_loop's print style."""
+    by_len = " ".join(f"L{ln}={v['whole']*100:.0f}%({v['n']})" for ln, v in res["by_gold_len"].items())
+    tf = res["teacher_forced"]
+    return (
+        f"planner: whole={res['whole_plan_acc']*100:.0f}% step={res['step_acc']*100:.0f}% "
+        f"grounded={res['grounded_acc']*100:.0f}% plan_len={res['plan_len_acc']*100:.0f}% "
+        f"({res['episodes']} eps, {res['steps']} steps)\n"
+        f"  by gold-len: {by_len}\n"
+        f"  teacher-forced: step_acc={tf['step_acc']*100:.0f}% episode_acc={tf['episode_acc']*100:.0f}%"
+    )
+
+
 def run(checkpoint: str, suite: str = "all", out: str = "runs/eval/report.json") -> dict:
     raise NotImplementedError("Use scripts/flywheel.py — evaluate() is called in-process there")
 
