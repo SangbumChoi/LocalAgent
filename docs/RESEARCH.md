@@ -226,3 +226,9 @@ CodeAct, OctoTools, AutoGen, CoAct-1) — with each paper's good part, a two-per
 structure** debate, and the verdict for a sub-100M on-device agent — see
 [`COMPUTER_USE_DEBATE.md`](./COMPUTER_USE_DEBATE.md). That survey is what motivated
 `ToolCaller.plan()` (planner over grounded calls).
+
+For the **model architecture** itself — what the 2024–2026 frontier and small-model waves
+(Qwen3, DeepSeek-V3/R1, Nemotron-H, Llama-4, LFM2, MobileLLM, MiniCPM, Phi, Gemma-3n, …) teach a
+sub-100M on-device tool agent, staged as a multi-persona debate with adopt/skip verdicts for our
+1M/30M tiers — see [`ARCHITECTURE_DEBATE.md`](./ARCHITECTURE_DEBATE.md). Headline: distillation
+(30M→1M) and a gated short-conv + GQA hybrid port; MoE/MLA/FP8/SSM/sparse-long-context do not.
