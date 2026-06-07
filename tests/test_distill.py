@@ -18,6 +18,7 @@ from localagent.train.distill import (
     distill,
     _topk_kd_loss,
 )
+from localagent.train.sft import sft
 
 
 def _tiny_cfg(vocab=256, name="t"):
@@ -75,6 +76,33 @@ def test_topk_zero_when_student_equals_teacher():
         logits, _ = student(X)
         kd = _topk_kd_loss(logits, cache, bi, X, mask, student.cfg.vocab_size, 2.0, "cpu")
     assert kd.item() < 1e-4, kd.item()
+
+
+def test_sft_distill_throughout_runs_and_decreases():
+    """distill-throughout-SFT: sft(teacher=...) caches teacher Top-K once and adds the KD term
+    to each step. Loss must stay finite and trend down, and the teacher arg is OPT-IN."""
+    teacher, student, samples, tok = _models_and_samples(n=16)
+    hist, head, ptr = sft(student, samples, tok, steps=20, batch_size=16, lr=3e-3, warmup=4,
+                          device="cpu", log=lambda *a: None, joint_tool_head=True,
+                          teacher=teacher, kd_type="topk", kd_k=16, kd_weight=0.5,
+                          kd_temperature=2.0)
+    assert all(torch.isfinite(torch.tensor(h)) for h in hist)
+    assert hist[-1] < hist[0], (hist[0], hist[-1])
+    assert head is not None and ptr is not None
+
+
+def test_sft_teacher_default_off_is_inert():
+    """With no teacher, the new args change nothing: same seed -> identical loss history as a
+    plain sft() call (existing callers byte-for-byte unaffected)."""
+    _, _, samples, tok = _models_and_samples(n=16)
+    torch.manual_seed(7)
+    s1 = LocalAgentLM(_tiny_cfg(name="s"))
+    s2 = copy.deepcopy(s1)
+    h1, _, _ = sft(s1, samples, tok, steps=10, batch_size=16, lr=3e-3, warmup=2,
+                   device="cpu", log=lambda *a: None)
+    h2, _, _ = sft(s2, samples, tok, steps=10, batch_size=16, lr=3e-3, warmup=2,
+                   device="cpu", log=lambda *a: None, teacher=None, kd_weight=0.5)
+    assert h1 == h2
 
 
 def test_topk_full_vocab_matches_forward_kl():

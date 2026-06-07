@@ -12,7 +12,7 @@ import random
 import torch
 import torch.nn.functional as F
 
-from localagent.data.render import render_sft
+from localagent.data.render import IGNORE, render_sft
 from localagent.train.loop import cosine_lr, pad_batch, set_lr
 
 
@@ -32,7 +32,8 @@ def _framed_full(model, tok, prompts, device):
 
 def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         device="cpu", log=print, joint_tool_head=False, aux_weight=1.0, ptr_weight=0.15,
-        conversations=None, accum_steps=1, mt_weight=1.0):
+        conversations=None, accum_steps=1, mt_weight=1.0,
+        teacher=None, kd_type="topk", kd_k=16, kd_weight=0.5, kd_temperature=2.0):
     """SFT with masked LM loss over single-turn samples + optional multi-turn `conversations`
     (which teach tool->response->follow-up continuation). With `joint_tool_head`, also trains
     jointly a tool-selection head AND a pointer/copy argument head (on the single-turn samples).
@@ -42,6 +43,15 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
     divided by `accum_steps` and backward()'d immediately, so peak memory stays at one micro-batch
     regardless of accumulation. `mt_weight` scales ONLY the multi-turn head-training losses (tool +
     pointer CE on episode contexts); the LM loss on rendered conversations is unaffected.
+
+    **distill-throughout-SFT** (optional, default OFF): if `teacher` is given, the teacher's
+    Top-K next-token targets are cached ONCE on the single-turn SFT `samples` (reusing
+    distill.py's `cache_teacher_topk`, memory = K/pos not full vocab), and each step adds
+    `kd_weight * topk_kd_loss(student_logits, teacher_topk)` on the assistant spans alongside the
+    LM/head/pointer losses. The backbone keeps matching the teacher's distribution WHILE the heads
+    train, so it is not pulled away from verbatim arg-copying. Only `kd_type="topk"` is supported
+    here (it reuses distill.py's `_topk_kd_loss`). When `teacher is None` the path is inert and
+    every existing caller is byte-for-byte unchanged.
     Returns (loss_hist, tool_head, ptr_head); heads are None unless joint_tool_head."""
     import json
 
@@ -50,6 +60,17 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
     model.to(device)
     rows = [render_sft(s, tok) for s in samples]
     lm_rows = rows + ([render_conversation(c, tok) for c in (conversations or [])])
+
+    # --- distill-throughout-SFT: cache teacher Top-K targets ONCE on the SFT rows ---
+    kd_cache = None
+    if teacher is not None:
+        if kd_type != "topk":
+            raise ValueError("sft() distillation only supports kd_type='topk'")
+        from localagent.train.distill import _topk_kd_loss, cache_teacher_topk
+        log(f"  [sft] caching teacher top-{kd_k} targets for distill-throughout-SFT ...")
+        kd_cache = cache_teacher_topk(teacher, rows, tok, device=device,
+                                      temperature=kd_temperature, k=kd_k, log=log)
+        V_kd = model.cfg.vocab_size
     tool_head = ptr_head = None
     params = list(model.parameters())
     meta = None
@@ -111,6 +132,22 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         idx_lm = [rng.randrange(len(lm_rows)) for _ in range(batch_size)]
         x, y = pad_batch([lm_rows[i] for i in idx_lm], tok.pad_id, device)
         _, loss = model(x, targets=y)
+        if kd_cache is not None:
+            # KD micro-batch sampled from the SFT rows (the only rows with cached teacher
+            # targets), batched exactly like distill.py: inputs = row[:-1], mask on labels[1:].
+            bi = [rng.randrange(len(rows)) for _ in range(batch_size)]
+            seqs = [rows[j][0][:-1] for j in bi]
+            labs = [rows[j][1][1:] for j in bi]
+            ml = max(len(s) for s in seqs)
+            Xk = torch.full((len(bi), ml), tok.pad_id, dtype=torch.long, device=device)
+            mk = torch.zeros(len(bi), ml, device=device)
+            for r in range(len(bi)):
+                Xk[r, : len(seqs[r])] = torch.tensor(seqs[r], device=device)
+                lab_t = torch.tensor(labs[r], device=device)
+                mk[r, : len(lab_t)] = (lab_t != IGNORE).float()
+            klogits, _ = model(Xk)
+            kd = _topk_kd_loss(klogits, kd_cache, bi, Xk, mk, V_kd, kd_temperature, device)
+            loss = loss + kd_weight * kd
         if joint_tool_head:
             from localagent.agent.pointer_head import ARG_IDX, gold_span
             batch = [head_items[rng.randrange(len(head_items))] for _ in range(batch_size)]
