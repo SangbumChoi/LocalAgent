@@ -136,6 +136,36 @@ Multi-turn tool use in realistic customer-service / real-API settings.
 **We adopt:** a small **multi-turn task harness** with a simulated user + tool sandbox for
 end-to-end agent eval beyond static call matching.
 
+### Tool/function-calling benchmark landscape — survey ([BFCL_v4 survey](https://huggingface.co/datasets/tuandunghcmut/BFCL_v4_information))
+A survey that maps the tool-calling eval space along three axes — **task complexity** (single →
+parallel/sequential → agentic planning), **interaction model** (stateless single-turn → stateful
+multi-turn), and **evaluation method** (AST match → execution → outcome → LLM-judge) — and names the
+core tension: *more realistic benchmarks force less reliable scoring* (open-ended state pushes you
+toward LLM-as-judge with its position/verbosity biases). It documents a **mechanics-vs-strategy**
+split — e.g. GPT-4o ~84% on stateless BFCL but ~7% on a stateful variant — i.e. grounded call
+*mechanics* and long-horizon *strategy* are distinct competencies. Beyond BFCL/ToolBench it catalogs
+**API-Bank** (decomposes tool use into planning / retrieving / calling), **ToolSandbox** (stateful
+multi-turn scored by a Milestone DAG), AgentBench, and MCP-AgentBench.
+
+**We adopt:** the **AST/execution end** of that ladder (score grounded call trees against a
+deterministic oracle, never an LLM judge); **API-Bank's planning/retrieving/calling decomposition**,
+which maps cleanly onto our own split of *tool selection* (the head) vs *argument grounding*
+(pointer/heuristics) vs *abstention*; and the **mechanics-vs-strategy** finding as direct support for
+scoping the 28M model to mechanics and leaving strategy to the orchestrator (see the ALE note below).
+
+### tool-calling-benchmark — Veerman ([repo](https://github.com/MikeVeerman/tool-calling-benchmark))
+Exactly our regime: **small open-weight models (0.5–3.8B), CPU-only**, scored on *judgment*. 12
+single-turn prompts mix actionable calls, **restraint** cases (where calling *any* tool is wrong,
+e.g. "what tools do you have?"), and **misleading** prompts that bait keyword-triggered calls.
+Scoring is a weighted **Agent Score = Action·0.4 + Restraint·0.3 + Wrong-Tool-Avoidance·0.3**,
+aggregated by **majority vote over 20 runs** (3 runs proved unreliable). Top small model: qwen3:1.7b
+at 0.960.
+
+**We adopt:** **restraint/abstention as a first-class *scored* axis** (our irrelevance negatives
+already train it — this says to weight and report it alongside action, not bury it); an explicit
+**wrong-tool penalty** for same-shaped distractor tools (our known 22-way selector confusion); and
+**multi-run majority-vote** for stable tiny-model eval on CPU, where single-run accuracy is noisy.
+
 ### Agents' Last Exam (ALE) ([abs](https://arxiv.org/abs/2606.05405) · [site](https://agents-last-exam.org)) — *contrast, not a target*
 The frontier end of the spectrum: **1,000+ long-horizon, economically-valuable real-world tasks**
 with **verifiable outcomes**, spanning 55 subfields across 13 industry clusters (U.S. occupational
@@ -181,6 +211,8 @@ model against the PyTorch reference on a fixed prompt set.
 | MemGPT/Letta | two-tier self-editing memory exposed as tools |
 | Airbnb AITL | data-flywheel feedback schema + retrain loop |
 | BFCL / tau-bench | AST tool eval + multi-turn + irrelevance |
+| Tool-calling survey (BFCL_v4) | AST/execution-end scoring + planning/retrieving/calling split + mechanics-vs-strategy |
+| tool-calling-benchmark (Veerman) | restraint as a scored axis + wrong-tool penalty + multi-run majority vote |
 | Agents' Last Exam | verifiable-outcome discipline + a scope boundary (contrast, not a target) |
 | llama.cpp/ONNX/ExecuTorch | four export targets + Q4 + parity test |
 
