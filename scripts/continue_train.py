@@ -41,14 +41,13 @@ h0 = ToolHead(cfg.d_model); h0.load_state_dict(ck["tool_head"])
 p0 = PointerHead(cfg.d_model); p0.load_state_dict(ck["ptr_head"])
 report(build(), h0, p0, "BEFORE")
 
-# CONTINUE-TRAIN — warm backbone + warm heads, lookup tools up-weighted
-w = dict(REALISTIC_WEIGHTS)
-for k in LOOK:
-    w[k] = w.get(k, 1.0) * 2.0
-train = Generator(level=3, seed=7, split="train").generate_weighted(8000, w)
+# CONTINUE-TRAIN — warm backbone + warm heads. Use the NATURAL augmented mix (the new
+# web_search/define coverage is already ~2.8x there) so no category is starved; gentler lr
+# to adapt without drifting the backbone (the x2 up-weight + lr 8e-4 regressed overall).
+train = Generator(level=3, seed=7, split="train").generate(8000)
 t0 = time.time()
 model = build()
-_, head, ptr = sft(model, train, tok, steps=160, batch_size=8, lr=8e-4, device="cpu",
+_, head, ptr = sft(model, train, tok, steps=160, batch_size=8, lr=4e-4, device="cpu",
                    joint_tool_head=True, log=print,
                    init_tool_head=ck["tool_head"], init_ptr_head=ck["ptr_head"])
 print(f"train done in {(time.time()-t0)/60:.1f} min", flush=True)
