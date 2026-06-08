@@ -144,6 +144,44 @@ JIRA_TRAIN = ["login bug", "slow query", "add dark mode", "fix typo", "memory le
               "export to csv", "mobile layout", "session timeout"]
 JIRA_EVAL = ["broken link", "update deps", "cache miss", "form validation", "data loss", "404 page"]
 
+# --- implicit factual-question entities -> web_search. The query arg is grounded to the ENTITY,
+# which is a literal substring of every templated factual question. Train/eval disjoint. ---
+ENTITIES_TRAIN = ["Mount Everest", "the Eiffel Tower", "the Great Wall of China", "Lake Baikal",
+                  "the Amazon River", "the Sahara Desert", "the Pacific Ocean", "Mount Fuji",
+                  "the Nile", "the Colosseum", "the Empire State Building", "the Golden Gate Bridge",
+                  "the Grand Canyon", "Niagara Falls", "the Burj Khalifa", "the Statue of Liberty",
+                  "the Leaning Tower of Pisa", "the Sydney Opera House", "Mount Kilimanjaro",
+                  "the Mississippi River", "the Andes", "the Dead Sea", "the Sahara", "Big Ben",
+                  "the Hoover Dam", "the Panama Canal", "the Taj Mahal", "Stonehenge",
+                  "the Suez Canal", "the Mariana Trench", "Mount Rushmore", "the Rocky Mountains"]
+ENTITIES_EVAL = ["the Matterhorn", "Lake Victoria", "the Yangtze River", "the Gobi Desert",
+                 "the Arctic Ocean", "Mount Etna", "the Danube", "the Acropolis",
+                 "the Chrysler Building", "the Brooklyn Bridge", "Angkor Wat", "the Petronas Towers"]
+# "What's the {ATTR} of {PLACE}?" factual questions -> web_search (query grounded to PLACE).
+PLACES_TRAIN = ["Peru", "Mongolia", "Iceland", "Portugal", "Kenya", "Vietnam", "Norway", "Chile",
+                "Morocco", "Nepal", "Bolivia", "Finland", "Ireland", "Greece", "Croatia", "Ghana",
+                "Ecuador", "Sweden", "Romania", "Hungary", "Tunisia", "Jordan", "Latvia", "Senegal",
+                "Uruguay", "Slovenia", "Estonia", "Armenia", "Georgia", "Cambodia", "Laos", "Oman"]
+PLACES_EVAL = ["Paraguay", "Lithuania", "Slovakia", "Namibia", "Botswana", "Bhutan", "Moldova",
+               "Albania", "Tanzania", "Zambia", "Belize", "Brunei"]
+# "Who {invented/wrote/founded/discovered} {THING}?" -> web_search (query grounded to THING).
+INVENTIONS_TRAIN = ["the telephone", "the light bulb", "the printing press", "the steam engine",
+                    "the airplane", "the telescope", "the World Wide Web", "the radio",
+                    "the periodic table", "the theory of relativity", "the polio vaccine",
+                    "the cotton gin", "the sewing machine", "the microscope", "dynamite",
+                    "the assembly line", "the transistor", "penicillin", "the barometer",
+                    "Hamlet", "Moby Dick", "War and Peace", "the Mona Lisa", "Pride and Prejudice"]
+INVENTIONS_EVAL = ["the camera", "the typewriter", "the thermometer", "the compass",
+                   "the seismograph", "Frankenstein", "Don Quixote", "the Starry Night"]
+# "When did {EVENT} happen?" / "What year was {EVENT}?" -> web_search (query grounded to EVENT).
+EVENTS_TRAIN = ["World War II", "the French Revolution", "the moon landing", "the Renaissance",
+                "the Industrial Revolution", "the fall of the Berlin Wall", "the Cold War",
+                "the American Civil War", "the Great Depression", "the Roman Empire",
+                "the Battle of Hastings", "the Boston Tea Party", "the gold rush",
+                "the Cuban Missile Crisis", "the signing of the Magna Carta", "the Black Death"]
+EVENTS_EVAL = ["the Spanish Inquisition", "the Wright brothers' first flight", "the Boston Marathon",
+               "the invention of the internet", "the discovery of America", "the Russian Revolution"]
+
 
 # A realistic usage distribution (not the old calc-dominated one): emphasize the two-call
 # ("parallel") turns and productivity tools people actually want; down-weight the over-represented
@@ -197,6 +235,10 @@ class Generator:
         self.notion = NOTION_TRAIN if tr else NOTION_EVAL
         self.slack = SLACK_TRAIN if tr else SLACK_EVAL
         self.jira = JIRA_TRAIN if tr else JIRA_EVAL
+        self.entities = ENTITIES_TRAIN if tr else ENTITIES_EVAL
+        self.places = PLACES_TRAIN if tr else PLACES_EVAL
+        self.inventions = INVENTIONS_TRAIN if tr else INVENTIONS_EVAL
+        self.history = EVENTS_TRAIN if tr else EVENTS_EVAL  # historical events for web_search
 
     # ---- per-category sample makers ----
     def weather(self) -> Sample:
@@ -205,6 +247,9 @@ class Generator:
             f"What's the weather in {city}?",
             f"Tell me the weather for {city}.",
             f"How is the weather in {city} right now?",
+            f"I wonder what the weather's like in {city}.",
+            f"Is it raining in {city}?",
+            f"What's it like outside in {city}?",
         ] + ([f"Weather in {city} please."] if self.level >= 4 else []))
         args = {"city": city}
         if self.level >= 2 and self.rng.random() < 0.5:
@@ -226,6 +271,17 @@ class Generator:
         else:
             expr = f"{a}{op}{b}"
             q = f"What is {a} {op} {b}?"
+        # Natural arithmetic phrasings -> calculator. The arithmetic schema extractor grounds the
+        # expression from the digit/operator span (whitespace-stripped), so we keep the SYMBOL form
+        # (e.g. "7*8") inside the prompt rather than word forms ("7 times 8") that wouldn't ground.
+        if self.rng.random() < 0.5 and expr == f"{a}{op}{b}":
+            q = self.rng.choice([
+                f"How much is {a}{op}{b}?",
+                f"Can you compute {a}{op}{b}?",
+                f"What's {a}{op}{b}?",
+                f"Calculate {a}{op}{b}.",
+                f"Work out {a}{op}{b} for me.",
+            ])
         args = {"expression": expr}
         return Sample("calc", "tool_call", q, "tool",
                       _tool_target("calculator", args), "calculator",
@@ -241,6 +297,57 @@ class Generator:
             f"I'm searching for {query}.",
             f"Search for {query}.",
         ])
+        args = {"query": query}
+        return Sample("web_search", "web_search", phr, "tool",
+                      _tool_target("web_search", args), "web_search",
+                      json.dumps(args, separators=(",", ":"), sort_keys=True))
+
+    def web_search_implicit(self) -> Sample:
+        """Implicit factual questions (bare questions, NOT explicit "search" commands) that should
+        still map to ``web_search``. The ``query`` arg is grounded to an ENTITY/PLACE/THING/EVENT
+        that is a literal substring of the chosen phrasing. This is the headline coverage gap: the
+        model previously only saw imperative "search for X" prompts and mis-routed real questions."""
+        kind = self.rng.choice(["measure", "attr", "who", "when"])
+        if kind == "measure":
+            e = self.rng.choice(self.entities)
+            adj = self.rng.choice(["tall", "high", "far away", "old", "long", "deep", "heavy",
+                                   "big", "wide"])
+            phr = self.rng.choice([
+                f"How {adj} is {e}?",
+                f"Do you know how {adj} {e} is?",
+                f"I wonder how {adj} {e} is.",
+            ])
+            query = e
+        elif kind == "attr":
+            p = self.rng.choice(self.places)
+            attr = self.rng.choice(["capital", "population", "currency", "national language",
+                                    "area", "time zone", "flag"])
+            phr = self.rng.choice([
+                f"What's the {attr} of {p}?",
+                f"What is the {attr} of {p}?",
+                f"Tell me the {attr} of {p}.",
+                f"Do you know the {attr} of {p}?",
+            ])
+            query = p
+        elif kind == "who":
+            t = self.rng.choice(self.inventions)
+            verb = self.rng.choice(["invented", "wrote", "founded", "discovered", "designed",
+                                    "built", "painted", "created"])
+            phr = self.rng.choice([
+                f"Who {verb} {t}?",
+                f"Do you know who {verb} {t}?",
+                f"Any idea who {verb} {t}?",
+            ])
+            query = t
+        else:  # when
+            ev = self.rng.choice(self.history)
+            phr = self.rng.choice([
+                f"When did {ev} happen?",
+                f"What year was {ev}?",
+                f"When was {ev}?",
+                f"What year did {ev} take place?",
+            ])
+            query = ev
         args = {"query": query}
         return Sample("web_search", "web_search", phr, "tool",
                       _tool_target("web_search", args), "web_search",
@@ -269,23 +376,33 @@ class Generator:
 
     def define(self) -> Sample:
         t = self.rng.choice(self.terms)
+        # Meaning questions -> define (distinct from web_search facts and get_news current events).
         return self._string_tool("define", "define", "define", "term", t,
                                  [f"Definition of {t}.", f"Define {t}.", f"Explain {t}.",
                                   f"Tell me about {t}.", f"Describe {t}.",
-                                  f"Give me the definition of {t}."])
+                                  f"Give me the definition of {t}.",
+                                  f"What does {t} mean?", f"What is the meaning of {t}?",
+                                  f"What's the definition of {t}?", f"What does the word {t} mean?",
+                                  f"Can you define {t}?"])
 
     def play_music(self) -> Sample:
         s = self.rng.choice(self.songs)
         return self._string_tool("play_music", "music", "play_music", "song", s,
                                  [f"Play {s}.", f"Put on {s}.", f"Start playing {s}.",
-                                  f"Queue up {s}.", f"I want to hear {s}.", f"Play the song {s}."])
+                                  f"Queue up {s}.", f"I want to hear {s}.", f"Play the song {s}.",
+                                  f"Can you put on {s}?", f"I'm in the mood for {s}.",
+                                  f"Let's listen to {s}."])
 
     def get_news(self) -> Sample:
         t = self.rng.choice(self.topics)
+        # Current-events questions -> get_news (distinct from define meaning & web_search facts).
         return self._string_tool("get_news", "news", "get_news", "topic", t,
                                  [f"Show the news about {t}.", f"Latest news on {t}.",
                                   f"What's the news about {t}.", f"Any news about {t}?",
-                                  f"Give me news on {t}.", f"Show news about {t}."])
+                                  f"Give me news on {t}.", f"Show news about {t}.",
+                                  f"What's the latest on {t}?", f"What's happening with {t}?",
+                                  f"Any updates on {t}?", f"What's new with {t}?",
+                                  f"Catch me up on {t}."])
 
     # --- coding-agent tools (Claude Code / Codex-style) ---
     def read_file(self) -> Sample:
@@ -329,13 +446,17 @@ class Generator:
         t = self.rng.choice(self.tasks)
         return self._string_tool("set_reminder", "tool_call", "set_reminder", "task", t,
                                  [f"Set a reminder to {t}.", f"Remind to {t}.",
-                                  f"Remind me to {t}.", f"Add a reminder to {t}."])
+                                  f"Remind me to {t}.", f"Add a reminder to {t}.",
+                                  f"Can you remind me to {t}?", f"Don't let me forget to {t}.",
+                                  f"I need to remember to {t}."])
 
     def set_timer(self) -> Sample:
         d = self.rng.choice(self.durations)
         return self._string_tool("set_timer", "tool_call", "set_timer", "duration", d,
                                  [f"Set a timer for {d}.", f"Start a timer for {d}.",
-                                  f"Set a countdown for {d}.", f"Wake me in {d}."])
+                                  f"Set a countdown for {d}.", f"Wake me in {d}.",
+                                  f"Can you set a timer for {d}?", f"Let me know in {d}.",
+                                  f"Ping me in {d}."])
 
     # --- computer-use / productivity tools ---
     def calendar_event(self) -> Sample:
@@ -349,7 +470,9 @@ class Generator:
         nm = self.rng.choice(self.names)
         return self._string_tool("send_email", "productivity", "send_email", "recipient", nm,
                                  [f"Send an email to {nm}.", f"Email {nm}.",
-                                  f"Write an email to {nm}.", f"Compose an email to {nm}."])
+                                  f"Write an email to {nm}.", f"Compose an email to {nm}.",
+                                  f"Can you email {nm}?", f"Shoot an email over to {nm}.",
+                                  f"Drop {nm} an email."])
 
     def open_url(self) -> Sample:
         u = self.rng.choice(self.urls)
@@ -377,7 +500,8 @@ class Generator:
                                   f"File a Jira bug for '{s}'.", f"Log a Jira issue: '{s}'."])
 
     # --- parallel / two-tool calls ("do X and Y" — what people actually want) ---
-    _PARALLEL_POOL = ("weather", "web_search", "define", "play_music", "get_news", "read_file",
+    _PARALLEL_POOL = ("weather", "web_search", "web_search_implicit", "define", "play_music",
+                      "get_news", "read_file",
                       "run_tests", "set_reminder", "set_timer", "calendar_event", "send_email",
                       "open_url", "notion_write", "slack_send", "jira_issue", "grep_search",
                       "git_commit", "calc", "run_command")
@@ -416,7 +540,7 @@ class Generator:
 
     # ---- dataset assembly ----
     def makers(self):
-        m = [self.weather, self.calc, self.web_search, self.planner,
+        m = [self.weather, self.calc, self.web_search, self.web_search_implicit, self.planner,
              self.define, self.play_music, self.get_news,
              self.read_file, self.write_file, self.grep_search, self.run_command,
              self.git_commit, self.run_tests, self.set_reminder, self.set_timer,
