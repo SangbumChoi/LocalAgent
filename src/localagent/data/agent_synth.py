@@ -144,6 +144,80 @@ JIRA_TRAIN = ["login bug", "slow query", "add dark mode", "fix typo", "memory le
               "export to csv", "mobile layout", "session timeout"]
 JIRA_EVAL = ["broken link", "update deps", "cache miss", "form validation", "data loss", "404 page"]
 
+# --- computer-use surface. All values are quoted in the prompt so they ground as literal
+# substrings (the byte model has no vision; targets are semantic element descriptions, not pixels).
+# UI element targets (click/double_click/move_cursor). Train/eval disjoint. ---
+UI_TARGETS_TRAIN = ["the Submit button", "the Login button", "the Save icon", "the Search box",
+                    "the Settings menu", "the OK button", "the Cancel button", "the Next button",
+                    "the Profile tab", "the hamburger menu", "the Download link", "the Send button",
+                    "the Close button", "the Add button", "the Edit pencil", "the Filter dropdown",
+                    "the Share button", "the Upload area", "the Refresh icon", "the New Tab button",
+                    "the username field", "the password field", "the Continue button",
+                    "the dropdown arrow", "the checkbox", "the Reply button", "the Compose button"]
+UI_TARGETS_EVAL = ["the Delete button", "the Confirm button", "the Back arrow", "the email field",
+                   "the Sign Up button", "the Apply button", "the gear icon", "the notification bell",
+                   "the Done button", "the Bookmark star"]
+# text typed into fields (type_text / write_clipboard). Train/eval disjoint.
+TYPED_TEXT_TRAIN = ["hello world", "admin@example.com", "my search query", "first last name",
+                    "the quick brown fox", "January 2026", "password123", "remote work policy",
+                    "quarterly report", "weekly standup notes", "order number 4521",
+                    "shipping address", "draft invoice", "project alpha", "status update"]
+TYPED_TEXT_EVAL = ["good afternoon", "test@mail.com", "annual budget", "release notes",
+                   "meeting agenda", "customer feedback", "invoice 9087"]
+# desktop apps (open_app). Train/eval disjoint.
+APPS_TRAIN = ["Chrome", "Safari", "Slack", "Spotify", "Terminal", "VS Code", "Notion", "Figma",
+              "Calculator", "Calendar", "Mail", "Photoshop", "Finder", "Discord", "Zoom",
+              "Excel", "Word", "Preview", "Notes", "Messages"]
+APPS_EVAL = ["Firefox", "Postman", "Docker Desktop", "iTerm", "Obsidian", "Outlook", "Telegram",
+             "PowerPoint"]
+# wait durations in seconds (wait.seconds integer extractor). Train/eval disjoint.
+WAIT_SECONDS_TRAIN = [2, 3, 5, 7, 10, 15, 20, 30, 45, 60, 90, 120]
+WAIT_SECONDS_EVAL = [1, 4, 8, 12, 25, 40, 75]
+
+# --- modern dev / agentic surface ---
+# Python snippets (run_python) — quoted so they ground exactly. Train/eval disjoint.
+PYCODE_TRAIN = ["print('hi')", "import numpy as np", "x = sum(range(10))", "len(data)",
+                "df.head()", "os.getcwd()", "2 ** 16", "sorted(items)", "model.eval()",
+                "json.loads(s)", "np.zeros(5)", "open('f.txt').read()", "time.sleep(1)",
+                "requests.get(url)", "plt.show()"]
+PYCODE_EVAL = ["print('done')", "math.sqrt(2)", "list(map(str, xs))", "pd.read_csv('a.csv')",
+               "random.seed(0)", "min(values)", "torch.randn(3)"]
+# glob patterns (find_files) — quoted. Train/eval disjoint.
+GLOBS_TRAIN = ["*.py", "**/*.js", "test_*.py", "*.log", "src/**/*.ts", "*.yaml", "Dockerfile",
+               "*.md", "**/*.go", "*.csv", "config/*.json", "*.rs", "*.sql", "*.png"]
+GLOBS_EVAL = ["*.txt", "**/*.tsx", "*.toml", "spec_*.rb", "*.html", "lib/**/*.py", "*.env"]
+# SQL queries (sql_query) — quoted. Train/eval disjoint.
+SQL_TRAIN = ["SELECT * FROM users", "SELECT count(*) FROM orders", "DELETE FROM logs",
+             "SELECT name FROM products", "UPDATE users SET active = 1", "SELECT * FROM events",
+             "INSERT INTO tags VALUES (1)", "SELECT id FROM sessions", "SELECT * FROM payments",
+             "SELECT email FROM accounts", "DROP TABLE temp", "SELECT * FROM inventory"]
+SQL_EVAL = ["SELECT * FROM customers", "SELECT max(price) FROM items", "TRUNCATE cache",
+            "SELECT title FROM posts", "UPDATE orders SET paid = 1", "SELECT * FROM metrics"]
+# package names (install_package) — quoted. Train/eval disjoint.
+PACKAGES_TRAIN = ["numpy", "pandas", "requests", "flask", "pytest", "torch", "fastapi", "redis",
+                  "django", "scipy", "click", "pydantic", "uvicorn", "aiohttp", "sqlalchemy",
+                  "matplotlib", "pillow", "boto3", "celery", "jinja2"]
+PACKAGES_EVAL = ["scikit-learn", "transformers", "httpx", "rich", "typer", "polars", "ruff",
+                 "lxml"]
+# process names (kill_process) — quoted. Train/eval disjoint.
+PROCESSES_TRAIN = ["node", "python", "chrome", "nginx", "postgres", "redis-server", "java",
+                   "docker", "vite", "webpack", "gunicorn", "mysqld", "ssh", "code"]
+PROCESSES_EVAL = ["firefox", "rabbitmq", "mongod", "celery", "uvicorn", "elasticsearch"]
+# env var names (env_get) — quoted. Train/eval disjoint.
+ENVVARS_TRAIN = ["PATH", "HOME", "API_KEY", "DATABASE_URL", "PORT", "AWS_REGION", "NODE_ENV",
+                 "PYTHONPATH", "SECRET_KEY", "REDIS_URL", "LOG_LEVEL", "USER", "SHELL",
+                 "OPENAI_API_KEY", "DEBUG"]
+ENVVARS_EVAL = ["LANG", "TZ", "GITHUB_TOKEN", "S3_BUCKET", "JAVA_HOME", "VIRTUAL_ENV", "EDITOR"]
+# docker images (docker_run) — quoted. Train/eval disjoint.
+IMAGES_TRAIN = ["nginx", "postgres", "redis", "ubuntu", "python:3.12", "node:20", "alpine",
+                "mysql", "mongo", "busybox", "golang", "rust", "httpd", "memcached"]
+IMAGES_EVAL = ["debian", "elasticsearch", "rabbitmq", "grafana", "prometheus", "traefik"]
+# archive paths (unzip) — file paths. Train/eval disjoint.
+ARCHIVES_TRAIN = ["data.zip", "release.zip", "assets.zip", "backup.tar.gz", "dataset.zip",
+                  "logs.zip", "build/output.zip", "models.zip", "images.tar.gz", "dist.zip",
+                  "src/bundle.zip", "exports.zip"]
+ARCHIVES_EVAL = ["archive.zip", "vendor.tar.gz", "photos.zip", "downloads/pack.zip", "weights.zip"]
+
 # --- implicit factual-question entities -> web_search. The query arg is grounded to the ENTITY,
 # which is a literal substring of every templated factual question. Train/eval disjoint. ---
 ENTITIES_TRAIN = ["Mount Everest", "the Eiffel Tower", "the Great Wall of China", "Lake Baikal",
@@ -191,6 +265,15 @@ REALISTIC_WEIGHTS = {
     "send_email": 1.4, "calendar_event": 1.4, "open_url": 1.4, "slack_send": 1.4,
     "notion_write": 1.4, "jira_issue": 1.4, "set_reminder": 1.2, "set_timer": 1.2,
     "read_file": 1.2, "write_file": 1.2, "run_command": 1.2, "git_commit": 1.2,
+    # computer-use family — the headline new capability, weight it up
+    "click": 1.6, "type_text": 1.5, "key_press": 1.3, "scroll": 1.2, "screenshot": 1.1,
+    "double_click": 1.2, "drag": 1.2, "wait": 1.0, "move_cursor": 1.1, "open_app": 1.5,
+    # modern dev / agentic tools
+    "run_python": 1.4, "edit_file": 1.3, "apply_patch": 1.1, "http_request": 1.3,
+    "sql_query": 1.3, "list_dir": 1.2, "find_files": 1.2, "git_diff": 1.1, "git_status": 1.1,
+    "install_package": 1.3, "kill_process": 1.1, "read_clipboard": 0.9, "write_clipboard": 1.0,
+    "download_file": 1.2, "unzip": 1.0, "env_get": 1.0, "make_dir": 1.0, "list_processes": 0.9,
+    "docker_run": 1.2,
 }
 
 
@@ -239,6 +322,20 @@ class Generator:
         self.places = PLACES_TRAIN if tr else PLACES_EVAL
         self.inventions = INVENTIONS_TRAIN if tr else INVENTIONS_EVAL
         self.history = EVENTS_TRAIN if tr else EVENTS_EVAL  # historical events for web_search
+        # computer-use surface
+        self.ui_targets = UI_TARGETS_TRAIN if tr else UI_TARGETS_EVAL
+        self.typed_text = TYPED_TEXT_TRAIN if tr else TYPED_TEXT_EVAL
+        self.apps = APPS_TRAIN if tr else APPS_EVAL
+        self.wait_seconds = WAIT_SECONDS_TRAIN if tr else WAIT_SECONDS_EVAL
+        # modern dev / agentic surface
+        self.pycode = PYCODE_TRAIN if tr else PYCODE_EVAL
+        self.globs = GLOBS_TRAIN if tr else GLOBS_EVAL
+        self.sql = SQL_TRAIN if tr else SQL_EVAL
+        self.packages = PACKAGES_TRAIN if tr else PACKAGES_EVAL
+        self.processes = PROCESSES_TRAIN if tr else PROCESSES_EVAL
+        self.envvars = ENVVARS_TRAIN if tr else ENVVARS_EVAL
+        self.images = IMAGES_TRAIN if tr else IMAGES_EVAL
+        self.archives = ARCHIVES_TRAIN if tr else ARCHIVES_EVAL
 
     # ---- per-category sample makers ----
     def weather(self) -> Sample:
@@ -499,12 +596,238 @@ class Generator:
                                   f"Open a Jira issue for '{s}'.",
                                   f"File a Jira bug for '{s}'.", f"Log a Jira issue: '{s}'."])
 
+    # --- computer-use family (text-grounded GUI actions) -------------------------------------
+    # All string args are wrapped in single quotes inside the prompt so the `quoted` extractor
+    # grounds them as exact substrings (the byte model has no vision — targets are semantic
+    # element descriptions, never pixel coordinates). Enums/ints ground via schema extractors.
+    def _tool_sample(self, category, group, name, args) -> Sample:
+        ref_args = json.dumps(args, separators=(",", ":"), sort_keys=True)
+        return Sample(category, group, "", "tool", _tool_target(name, args), name, ref_args)
+
+    def screenshot(self) -> Sample:
+        phr = self.rng.choice(["Take a screenshot.", "Capture the screen.",
+                               "Grab a screenshot of the screen.", "Screenshot the current screen.",
+                               "Snap a picture of what's on screen."])
+        s = self._tool_sample("screenshot", "computer_use", "screenshot", {})
+        s.prompt = phr
+        return s
+
+    def click(self) -> Sample:
+        t = self.rng.choice(self.ui_targets)
+        s = self._tool_sample("click", "computer_use", "click", {"target": t})
+        s.prompt = self.rng.choice([
+            f"Click '{t}'.", f"Click on '{t}'.", f"Press '{t}'.",
+            f"Tap '{t}'.", f"Hit '{t}'.", f"Select '{t}'.", f"Go ahead and click '{t}'."])
+        return s
+
+    def double_click(self) -> Sample:
+        t = self.rng.choice(self.ui_targets)
+        s = self._tool_sample("double_click", "computer_use", "double_click", {"target": t})
+        s.prompt = self.rng.choice([
+            f"Double-click '{t}'.", f"Double click '{t}'.", f"Double-click on '{t}'.",
+            f"Open '{t}' by double-clicking.", f"Double tap '{t}'."])
+        return s
+
+    def type_text(self) -> Sample:
+        txt = self.rng.choice(self.typed_text)
+        s = self._tool_sample("type_text", "computer_use", "type_text", {"text": txt})
+        s.prompt = self.rng.choice([
+            f"Type '{txt}'.", f"Type '{txt}' into the field.", f"Enter '{txt}'.",
+            f"Input '{txt}'.", f"Write '{txt}' in the box.", f"Fill in '{txt}'."])
+        return s
+
+    def key_press(self) -> Sample:
+        key = self.rng.choice(["Enter", "Tab", "Escape", "Backspace", "Space", "Delete",
+                               "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"])
+        s = self._tool_sample("key_press", "computer_use", "key_press", {"key": key})
+        s.prompt = self.rng.choice([
+            f"Press {key}.", f"Hit the {key} key.", f"Press the {key} key.",
+            f"Tap {key}.", f"Send a {key} keypress."])
+        return s
+
+    def scroll(self) -> Sample:
+        d = self.rng.choice(["up", "down", "left", "right"])
+        s = self._tool_sample("scroll", "computer_use", "scroll", {"direction": d})
+        s.prompt = self.rng.choice([
+            f"Scroll {d}.", f"Scroll {d} a bit.", f"Scroll the page {d}.",
+            f"Please scroll {d}.", f"Keep scrolling {d}."])
+        return s
+
+    def drag(self) -> Sample:
+        src, dst = self.rng.sample(self.ui_targets, 2)
+        s = self._tool_sample("drag", "computer_use", "drag", {"source": src, "dest": dst})
+        s.prompt = self.rng.choice([
+            f"Drag '{src}' to '{dst}'.", f"Drag '{src}' onto '{dst}'.",
+            f"Move '{src}' over to '{dst}' by dragging.", f"Drag and drop '{src}' to '{dst}'."])
+        return s
+
+    def wait(self) -> Sample:
+        sec = self.rng.choice(self.wait_seconds)
+        s = self._tool_sample("wait", "computer_use", "wait", {"seconds": int(sec)})
+        s.prompt = self.rng.choice([
+            f"Wait {sec} seconds.", f"Wait for {sec} seconds.", f"Pause for {sec} seconds.",
+            f"Hold on {sec} seconds.", f"Give it {sec} seconds."])
+        return s
+
+    def move_cursor(self) -> Sample:
+        t = self.rng.choice(self.ui_targets)
+        s = self._tool_sample("move_cursor", "computer_use", "move_cursor", {"target": t})
+        s.prompt = self.rng.choice([
+            f"Move the cursor to '{t}'.", f"Hover over '{t}'.", f"Move the mouse to '{t}'.",
+            f"Point at '{t}'.", f"Bring the cursor to '{t}'."])
+        return s
+
+    def open_app(self) -> Sample:
+        nm = self.rng.choice(self.apps)
+        s = self._tool_sample("open_app", "computer_use", "open_app", {"name": nm})
+        s.prompt = self.rng.choice([
+            f"Open '{nm}'.", f"Launch '{nm}'.", f"Open the '{nm}' app.",
+            f"Start '{nm}'.", f"Fire up '{nm}'.", f"Bring up '{nm}'."])
+        return s
+
+    # --- modern dev / agentic tools ----------------------------------------------------------
+    def run_python(self) -> Sample:
+        code = self.rng.choice(self.pycode)
+        s = self._tool_sample("run_python", "code", "run_python", {"code": code})
+        s.prompt = self.rng.choice([
+            f"Run the Python code '{code}'.", f"Execute '{code}' in Python.",
+            f"Run '{code}'.", f"Evaluate '{code}' in a Python shell."])
+        return s
+
+    def edit_file(self) -> Sample:
+        p = self.rng.choice(self.paths)
+        return self._string_tool("edit_file", "code", "edit_file", "path", p,
+                                 [f"Edit {p}.", f"Make changes to {p}.", f"Modify {p}.",
+                                  f"Update the file {p}.", f"Open {p} for editing."])
+
+    def apply_patch(self) -> Sample:
+        p = self.rng.choice(self.paths)
+        return self._string_tool("apply_patch", "code", "apply_patch", "path", p,
+                                 [f"Apply the patch to {p}.", f"Patch {p}.",
+                                  f"Apply a patch to the file {p}.", f"Patch the file {p}."])
+
+    def http_request(self) -> Sample:
+        u = self.rng.choice(self.urls)
+        args = {"url": u}
+        if self.rng.random() < 0.5:
+            method = self.rng.choice(["GET", "POST", "PUT", "DELETE", "PATCH"])
+            args["method"] = method
+            phr = self.rng.choice([
+                f"Make a {method} request to {u}.", f"Send a {method} request to {u}.",
+                f"Do a {method} on {u}."])
+        else:
+            phr = self.rng.choice([
+                f"Make an HTTP request to {u}.", f"Hit the endpoint {u}.",
+                f"Send a request to {u}.", f"Call the API at {u}."])
+        s = self._tool_sample("http_request", "code", "http_request", args)
+        s.prompt = phr
+        return s
+
+    def sql_query(self) -> Sample:
+        q = self.rng.choice(self.sql)
+        return self._string_tool("sql_query", "code", "sql_query", "query", q,
+                                 [f"Run the SQL query '{q}'.", f"Execute '{q}' on the database.",
+                                  f"Query the database with '{q}'.", f"Run '{q}' against the db."])
+
+    def list_dir(self) -> Sample:
+        p = self.rng.choice(self.paths)
+        return self._string_tool("list_dir", "code", "list_dir", "path", p,
+                                 [f"List the directory {p}.", f"List the contents of {p}.",
+                                  f"Show what's in {p}.", f"ls {p}.", f"What files are in {p}?"])
+
+    def find_files(self) -> Sample:
+        g = self.rng.choice(self.globs)
+        return self._string_tool("find_files", "code", "find_files", "pattern", g,
+                                 [f"Find files matching '{g}'.", f"Find all '{g}' files.",
+                                  f"Search for files matching '{g}'.", f"Locate '{g}' files."])
+
+    def git_diff(self) -> Sample:
+        s = self._tool_sample("git_diff", "code", "git_diff", {})
+        s.prompt = self.rng.choice(["Show the git diff.", "What's the diff?", "Git diff.",
+                                    "Show me the changes.", "Display the current diff."])
+        return s
+
+    def git_status(self) -> Sample:
+        s = self._tool_sample("git_status", "code", "git_status", {})
+        s.prompt = self.rng.choice(["Show the git status.", "What's the git status?", "Git status.",
+                                    "Check the repo status.", "Show me the working tree status."])
+        return s
+
+    def install_package(self) -> Sample:
+        nm = self.rng.choice(self.packages)
+        return self._string_tool("install_package", "code", "install_package", "name", nm,
+                                 [f"Install '{nm}'.", f"Install the package '{nm}'.",
+                                  f"Add the dependency '{nm}'.", f"pip install '{nm}'.",
+                                  f"Set up '{nm}'."])
+
+    def kill_process(self) -> Sample:
+        nm = self.rng.choice(self.processes)
+        return self._string_tool("kill_process", "code", "kill_process", "name", nm,
+                                 [f"Kill the process '{nm}'.", f"Kill '{nm}'.",
+                                  f"Stop the '{nm}' process.", f"Terminate '{nm}'."])
+
+    def read_clipboard(self) -> Sample:
+        s = self._tool_sample("read_clipboard", "computer_use", "read_clipboard", {})
+        s.prompt = self.rng.choice(["Read the clipboard.", "What's on the clipboard?",
+                                    "Get the clipboard contents.", "Paste the clipboard.",
+                                    "Show me what's copied."])
+        return s
+
+    def write_clipboard(self) -> Sample:
+        txt = self.rng.choice(self.typed_text)
+        return self._string_tool("write_clipboard", "computer_use", "write_clipboard", "text", txt,
+                                 [f"Copy '{txt}' to the clipboard.", f"Put '{txt}' on the clipboard.",
+                                  f"Copy '{txt}'.", f"Set the clipboard to '{txt}'."])
+
+    def download_file(self) -> Sample:
+        u = self.rng.choice(self.urls)
+        return self._string_tool("download_file", "code", "download_file", "url", u,
+                                 [f"Download the file from {u}.", f"Download {u}.",
+                                  f"Fetch the file at {u}.", f"Grab the file from {u}."])
+
+    def unzip(self) -> Sample:
+        p = self.rng.choice(self.archives)
+        return self._string_tool("unzip", "code", "unzip", "path", p,
+                                 [f"Unzip {p}.", f"Extract {p}.", f"Unpack the archive {p}.",
+                                  f"Decompress {p}."])
+
+    def env_get(self) -> Sample:
+        nm = self.rng.choice(self.envvars)
+        return self._string_tool("env_get", "code", "env_get", "name", nm,
+                                 [f"Get the env variable '{nm}'.", f"Read the environment variable '{nm}'.",
+                                  f"What is '{nm}' set to?", f"Show the value of '{nm}'."])
+
+    def make_dir(self) -> Sample:
+        p = self.rng.choice(self.paths)
+        return self._string_tool("make_dir", "code", "make_dir", "path", p,
+                                 [f"Create the directory {p}.", f"Make a directory {p}.",
+                                  f"mkdir {p}.", f"Create folder {p}."])
+
+    def list_processes(self) -> Sample:
+        s = self._tool_sample("list_processes", "code", "list_processes", {})
+        s.prompt = self.rng.choice(["List the running processes.", "Show running processes.",
+                                    "What processes are running?", "List all processes.",
+                                    "Show me the process list."])
+        return s
+
+    def docker_run(self) -> Sample:
+        img = self.rng.choice(self.images)
+        return self._string_tool("docker_run", "code", "docker_run", "image", img,
+                                 [f"Run a Docker container from '{img}'.", f"Run the '{img}' image.",
+                                  f"Start a container from '{img}'.", f"docker run '{img}'."])
+
     # --- parallel / two-tool calls ("do X and Y" — what people actually want) ---
     _PARALLEL_POOL = ("weather", "web_search", "web_search_implicit", "define", "play_music",
                       "get_news", "read_file",
                       "run_tests", "set_reminder", "set_timer", "calendar_event", "send_email",
                       "open_url", "notion_write", "slack_send", "jira_issue", "grep_search",
-                      "git_commit", "calc", "run_command")
+                      "git_commit", "calc", "run_command",
+                      # computer-use + modern tools (single groundable clause each)
+                      "screenshot", "click", "type_text", "key_press", "scroll", "wait",
+                      "open_app", "move_cursor", "double_click",
+                      "run_python", "edit_file", "git_diff", "git_status", "install_package",
+                      "find_files", "list_dir", "kill_process", "sql_query", "env_get",
+                      "make_dir", "unzip", "docker_run")
 
     def parallel(self) -> Sample:
         """One user turn that needs TWO tool calls, joined by 'and'. Each clause is a standalone
@@ -545,7 +868,16 @@ class Generator:
              self.read_file, self.write_file, self.grep_search, self.run_command,
              self.git_commit, self.run_tests, self.set_reminder, self.set_timer,
              self.calendar_event, self.send_email, self.open_url, self.notion_write,
-             self.slack_send, self.jira_issue, self.parallel, self.text]
+             self.slack_send, self.jira_issue,
+             # computer-use family
+             self.screenshot, self.click, self.double_click, self.type_text, self.key_press,
+             self.scroll, self.drag, self.wait, self.move_cursor, self.open_app,
+             # modern dev / agentic tools
+             self.run_python, self.edit_file, self.apply_patch, self.http_request, self.sql_query,
+             self.list_dir, self.find_files, self.git_diff, self.git_status, self.install_package,
+             self.kill_process, self.read_clipboard, self.write_clipboard, self.download_file,
+             self.unzip, self.env_get, self.make_dir, self.list_processes, self.docker_run,
+             self.parallel, self.text]
         if self.level >= 2:
             m.append(self.no_tool)
         return m
@@ -584,8 +916,8 @@ class Generator:
         "plan_research_record", "plan_research_share", "plan_schedule_notify",
         "plan_remind_timer", "plan_read_run",
         "plan_read_test_commit", "plan_research", "plan_locate_inspect_edit",
-        "plan_search_open_note",
-        "plan_fix_test", "plan_implement",
+        "plan_search_open_note", "plan_gui_open_click",
+        "plan_fix_test", "plan_implement", "plan_gui_login",
     )
 
     # ---- coding episode builders (return list[Message]) ----
@@ -800,6 +1132,98 @@ class Generator:
             self._F(f"Reminder set to {task} and team notified."),
         ]
 
+    # ---- computer-use (GUI) episode builders ----
+    # Realistic desktop/browser flows the planner can learn. Every arg is a literal substring of an
+    # earlier turn (the user request or a tool response). Screenshots/keypresses interleave sensibly.
+    def _ep_cu_login(self):  # screenshot -> click(field) -> type_text -> key_press(Enter)
+        field = self.rng.choice([t for t in self.ui_targets if "field" in t] or self.ui_targets)
+        text = self.rng.choice(self.typed_text)
+        return [
+            self._U(f"Log in: click '{field}', type '{text}', then press Enter."),
+            self._A("screenshot", {}),
+            self._T("<screen captured>"),
+            self._A("click", {"target": field}),
+            self._T("focused."),
+            self._A("type_text", {"text": text}),
+            self._T("typed."),
+            self._A("key_press", {"key": "Enter"}),
+            self._T("submitted."),
+            self._F(f"Logged in: typed '{text}' into '{field}'."),
+        ]
+
+    def _ep_cu_open_and_click(self):  # open_app -> click -> screenshot
+        app = self.rng.choice(self.apps)
+        target = self.rng.choice(self.ui_targets)
+        return [
+            self._U(f"Open '{app}', click '{target}', and take a screenshot."),
+            self._A("open_app", {"name": app}),
+            self._T("app launched."),
+            self._A("click", {"target": target}),
+            self._T("clicked."),
+            self._A("screenshot", {}),
+            self._T("<screen captured>"),
+            self._F(f"Opened '{app}' and clicked '{target}'."),
+        ]
+
+    def _ep_cu_search_box(self):  # click(search box) -> type_text -> key_press(Enter) -> screenshot
+        text = self.rng.choice(self.typed_text)
+        return [
+            self._U(f"Click 'the Search box', search for '{text}', and capture the results."),
+            self._A("click", {"target": "the Search box"}),
+            self._T("focused."),
+            self._A("type_text", {"text": text}),
+            self._T("typed."),
+            self._A("key_press", {"key": "Enter"}),
+            self._T("searching."),
+            self._A("screenshot", {}),
+            self._T("<results captured>"),
+            self._F(f"Searched for '{text}'."),
+        ]
+
+    def _ep_cu_scroll_click(self):  # scroll(down) -> screenshot -> click
+        target = self.rng.choice(self.ui_targets)
+        return [
+            self._U(f"Scroll down, take a screenshot, then click '{target}'."),
+            self._A("scroll", {"direction": "down"}),
+            self._T("scrolled."),
+            self._A("screenshot", {}),
+            self._T("<screen captured>"),
+            self._A("click", {"target": target}),
+            self._T("clicked."),
+            self._F(f"Scrolled down and clicked '{target}'."),
+        ]
+
+    def _ep_cu_drag_drop(self):  # screenshot -> drag(source, dest)
+        src, dst = self.rng.sample(self.ui_targets, 2)
+        return [
+            self._U(f"Take a screenshot then drag '{src}' to '{dst}'."),
+            self._A("screenshot", {}),
+            self._T("<screen captured>"),
+            self._A("drag", {"source": src, "dest": dst}),
+            self._T("dropped."),
+            self._F(f"Dragged '{src}' onto '{dst}'."),
+        ]
+
+    def _computer_use_builders(self):
+        return {
+            "cu_login": self._ep_cu_login, "cu_open_and_click": self._ep_cu_open_and_click,
+            "cu_search_box": self._ep_cu_search_box, "cu_scroll_click": self._ep_cu_scroll_click,
+            "cu_drag_drop": self._ep_cu_drag_drop,
+        }
+
+    _COMPUTER_USE_TYPES = ("cu_login", "cu_open_and_click", "cu_search_box", "cu_scroll_click",
+                           "cu_drag_drop")
+
+    def computer_use_episode(self) -> Conversation:
+        """A short multi-turn GUI trajectory (open app / click / type / key / scroll / drag /
+        screenshot). All args are text-grounded substrings; no pixel coordinates."""
+        which = self.rng.choice(self._COMPUTER_USE_TYPES)
+        msgs = self._computer_use_builders()[which]()
+        return Conversation(messages=msgs, meta={"kind": "computer_use_episode", "type": which})
+
+    def computer_use_episodes(self, n: int) -> list[Conversation]:
+        return [self.computer_use_episode() for _ in range(n)]
+
     # ---- planner-then-execute episode builders ----
     # The plan text is deterministic/canonical so it is exactly learnable and scorable.
     @staticmethod
@@ -974,6 +1398,40 @@ class Generator:
             self._F(f"Implemented and committed '{msg}'."),
         ]
 
+    # --- GUI plan episodes (computer-use planner flows) ---
+    def _ep_plan_gui_login(self):  # 4-step: click -> type_text -> key_press -> screenshot
+        field = self.rng.choice([t for t in self.ui_targets if "field" in t] or self.ui_targets)
+        text = self.rng.choice(self.typed_text)
+        return [
+            self._U(f"Log in: click '{field}', type '{text}', press Enter, then screenshot."),
+            self._F(self._plan(["click the field", "type the text", "press Enter",
+                                "take a screenshot"])),
+            self._A("click", {"target": field}),
+            self._T("focused."),
+            self._A("type_text", {"text": text}),
+            self._T("typed."),
+            self._A("key_press", {"key": "Enter"}),
+            self._T("submitted."),
+            self._A("screenshot", {}),
+            self._T("<screen captured>"),
+            self._F("Logged in and captured the screen."),
+        ]
+
+    def _ep_plan_gui_open_click(self):  # 3-step: open_app -> click -> screenshot
+        app = self.rng.choice(self.apps)
+        target = self.rng.choice(self.ui_targets)
+        return [
+            self._U(f"Open '{app}', click '{target}', then take a screenshot."),
+            self._F(self._plan(["open the app", "click the element", "take a screenshot"])),
+            self._A("open_app", {"name": app}),
+            self._T("app launched."),
+            self._A("click", {"target": target}),
+            self._T("clicked."),
+            self._A("screenshot", {}),
+            self._T("<screen captured>"),
+            self._F(f"Opened '{app}' and clicked '{target}'."),
+        ]
+
     # --- 1-step plans (teach the planner to STOP after one tool) ---
     def _ep_plan_single_read(self):
         path = self.rng.choice(self.paths)
@@ -1041,9 +1499,11 @@ class Generator:
         "plan_research": ("_ep_plan_research", 3),
         "plan_locate_inspect_edit": ("_ep_plan_locate_inspect_edit", 3),
         "plan_search_open_note": ("_ep_plan_search_open_note", 3),
+        "plan_gui_open_click": ("_ep_plan_gui_open_click", 3),
         # 4-step
         "plan_fix_test": ("_ep_plan_fix_test", 4),
         "plan_implement": ("_ep_plan_implement", 4),
+        "plan_gui_login": ("_ep_plan_gui_login", 4),
     }
 
     def _coding_builders(self):
@@ -1131,9 +1591,10 @@ class Generator:
         ``mix=False`` it returns coding-only episodes (the original behaviour)."""
         if not mix:
             return [self.coding_episode() for _ in range(n)]
-        builders = [self.coding_episode, self.productivity_episode, self.planner_episode]
-        # weight coding a bit higher (it has the most types), then productivity, then planner
-        weights = [0.5, 0.3, 0.2]
+        builders = [self.coding_episode, self.productivity_episode, self.planner_episode,
+                    self.computer_use_episode]
+        # weight coding a bit higher (it has the most types), then productivity, planner, GUI
+        weights = [0.4, 0.25, 0.2, 0.15]
         return [self.rng.choices(builders, weights=weights, k=1)[0]() for _ in range(n)]
 
     def generate(self, n: int) -> list[Sample]:

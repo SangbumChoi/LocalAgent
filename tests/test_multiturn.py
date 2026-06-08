@@ -51,10 +51,11 @@ def test_planner_episode_starts_with_canonical_text_plan():
         assert any(m.role == Role.assistant and m.tool_calls for m in conv.messages)
 
 
-def test_episodes_mix_spans_all_three_kinds():
-    eps = Generator(5, 1, "train").episodes(300)
+def test_episodes_mix_spans_all_kinds():
+    eps = Generator(5, 1, "train").episodes(400)
     kinds = {e.meta["kind"] for e in eps}
-    assert kinds == {"coding_episode", "productivity_episode", "planner_episode"}
+    assert kinds == {"coding_episode", "productivity_episode", "planner_episode",
+                     "computer_use_episode"}
 
 
 def test_episodes_mix_false_is_coding_only():

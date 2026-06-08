@@ -93,11 +93,19 @@ def _fill_one(prompt: str, name: str, schema: dict, pools: dict, required: bool)
         if v is None:
             return None
         return int(float(v)) if typ == "integer" else float(v)
-    if fmt == "path" or name in PATH_HINTS:
+    # explicit `format` wins over name-based hints (e.g. `target` is a PATH_HINT but a
+    # computer-use click target declares `format: quoted` and must ground as a quoted span).
+    if fmt == "quoted":
+        return _pop(pools["quoted"]) or tail()
+    if fmt == "path":
         return _pop(pools["path"])
-    if fmt == "url" or name in URL_HINTS:
+    if fmt == "url":
         return _pop(pools["url"])
-    if fmt == "quoted" or name in QUOTED_HINTS:
+    if name in PATH_HINTS:
+        return _pop(pools["path"])
+    if name in URL_HINTS:
+        return _pop(pools["url"])
+    if name in QUOTED_HINTS:
         return _pop(pools["quoted"]) or tail()
     if name in ENTITY_HINTS:
         return _pop(pools["caps"]) or tail()

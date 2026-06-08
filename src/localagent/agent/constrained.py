@@ -114,7 +114,9 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
     elif fmt == "url":
         opts = _url(prompt)
     elif schema.get("type") in ("integer", "number"):
-        opts = _numbers(prompt)
+        # cast to typed numbers so the canonical body matches the int/float target (not "5").
+        cast = int if schema.get("type") == "integer" else float
+        opts = [cast(n) for n in _numbers(prompt)]
     else:  # string / unknown -> deterministic best prompt span (arg-aware)
         opts = [_best_string(prompt, name)]
     if not required:

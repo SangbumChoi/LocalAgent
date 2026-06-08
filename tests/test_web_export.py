@@ -61,10 +61,10 @@ def test_web_export_tool_head_from_json(tmp_path):
     got_logits, got_hidden = sess.run(["logits", "hidden"], {"input_ids": x.numpy()})
 
     # JS-side recipe: last position, matmul with tool_head weights.
-    W = np.array(heads["tool_head"]["weight"], dtype=np.float32)   # (22, d_model)
-    b = np.array(heads["tool_head"]["bias"], dtype=np.float32)     # (22,)
+    W = np.array(heads["tool_head"]["weight"], dtype=np.float32)   # (n_classes, d_model)
+    b = np.array(heads["tool_head"]["bias"], dtype=np.float32)     # (n_classes,)
     last = got_hidden[:, -1]                                       # (1, d_model)
-    js_logits = last @ W.T + b                                     # (1, 22)
+    js_logits = last @ W.T + b                                     # (1, n_classes)
 
     with torch.no_grad():
         ref_tool = th(torch.tensor(got_hidden[:, -1]))            # (1, 22)
