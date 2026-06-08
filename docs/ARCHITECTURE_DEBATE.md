@@ -160,7 +160,8 @@ inconclusive results are reported as such.
 | **Hybrid short-conv + GQA + QK-Norm (30M)** vs standard decoder, equal params (29.1M vs 28.3M) | **+20% prefill, +5% decode** tok/s on CPU; accuracy 6.9% vs 11.0% at a minimal SFT-only budget — but at `n=24` that 4-pt gap is **~1 example (inconclusive)** | **Speed win real, accuracy unresolved.** The conv's O(L·k) edge over O(L²) is modest at short tool-agent contexts, as predicted; a fair accuracy ranking needs a pretrained, larger-eval A/B (currently blocked by the sandbox SIGKILLing the `batch=64` pretrain — addressable with a smaller pretrain batch). |
 | **WSD schedule** (MiniCPM), 1M, 50-step proxy, LM-only | train loss **−0.005**, single-turn **+1.4pp** | **Within noise — as predicted.** WSD's payoff (the sharp decay-phase loss drop + a forkable stable checkpoint) needs a *long* run with a real plateau, not a 50-step proxy. Implemented opt-in (`lr_schedule="wsd"` + `decay_samples` injection); ready for a real pretrain to exploit. |
 | **Curriculum** (LFM2 difficulty-ordering), 1M | single-turn **0/0 (floored)**, TF step −8.3, grounded −20 | **Within noise + a real mechanism finding.** Strict ordered passes **starve the hard tail unless `steps×batch ≥ pool size`** — the curriculum arm reached only the easiest ~25% of data in 50 steps and collapsed. Difficulty score validated (range 0.09→5.67); the lever is sound, the *budget* was too small for a full easy→hard sweep. |
-| flywheel merging · on-policy reverse-KL | not yet run | queued |
+| **On-policy reverse-KL** (1M←28M), 20-step smoke | reverse-KL **12.15→5.60** (first-third 11.82 → last-third 6.25); ~13.8 s/step | **Mechanism works cleanly.** Token-level full reverse-KL on the student's *own* rollouts moves it toward the teacher; exactly 0 when student==teacher. The free-rollout payoff needs a full pass + eval-harness measurement on a faster host (student sampling is ~14 s/step on this CPU). Implemented opt-in with CE/entropy/off-policy-mix stabilizers. |
+| **Flywheel merging** (model-soup + TIES) | 17 tests pass; merged real 1M checkpoint loads into model+heads and evals (59.2%, sanity) | **Implemented + verified to load/eval.** Training-free weight-space combine of per-round specialists; a measured merge-vs-retrain A/B needs the round checkpoints + the slow eval harness. |
 
 **Cross-cutting takeaway.** The debate predicted the transferable lessons would be *training*, not
 architecture — and the measurements bear that out so far: the architecture lever (hybrid) bought a real
@@ -177,8 +178,11 @@ budgets down to where single-turn accuracy floors and most A/Bs land *within noi
 deliverable of the apply phase is **the levers implemented as tested, opt-in, default-off code in the
 pipeline** (Top-K KD, distill-throughout, hybrid backbone, WSD, curriculum) plus the **robust engineering
 findings** (distill-throughout > distill-then; hybrid is +20% prefill at equal params; curriculum needs a
-full-sweep budget) — *not* clean capability deltas, which need a faster host to measure at real budgets.
-Remaining queued: on-policy reverse-KL and flywheel merging.
+full-sweep budget; on-policy reverse-KL moves cleanly on the student's own rollouts) — *not* clean
+capability deltas, which need a faster host to measure at real budgets. **All eight adopt-verdict levers
+are now implemented as tested, opt-in, default-off pipeline code** (Top-K KD, distill-throughout, hybrid
+backbone + QK-Norm, WSD, curriculum, on-policy reverse-KL, model-merging) — the toolkit is complete; what
+remains is measurement at real budgets on a faster host.
 
 ## Sources
 Qwen3 [2505.09388](https://arxiv.org/abs/2505.09388) · DeepSeek-V3 [2412.19437](https://arxiv.org/abs/2412.19437) ·
