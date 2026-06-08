@@ -6,7 +6,7 @@ colorTo: purple
 sdk: static
 pinned: false
 license: mit
-short_description: A <100M from-scratch agent doing grounded tool calls in your browser
+short_description: Sub-100M from-scratch tool-calling agent in the browser
 ---
 
 # LocalAgent — tool calling in the browser (WebGPU)

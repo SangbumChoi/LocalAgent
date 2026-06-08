@@ -11,6 +11,11 @@ the conversations it has while running locally.
 > (config + safetensors + tool/pointer heads + model card). **71.3% single-turn** held-out **and
 > 74% multi-turn** step-accuracy — strong on both. Loads in pure PyTorch, no `transformers`.
 
+> **🚀 Live WebGPU demo:** run the agent **client-side in your browser** (no server) —
+> **[danelcsb/localagent-webgpu](https://huggingface.co/spaces/danelcsb/localagent-webgpu)**.
+> The transformer runs on `onnxruntime-web` (WebGPU, WASM fallback); the tool head, pointer-head
+> grounding, and the `plan_rollout` are ported to JS. Source in [`spaces/localagent-webgpu/`](./spaces/localagent-webgpu/).
+
 ## Reliable tool calling on *your* tools — no training required
 
 Give `ToolCaller` any JSON-schema tools (multi-argument, real APIs) and it returns a
