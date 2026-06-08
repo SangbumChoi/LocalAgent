@@ -34,7 +34,8 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         device="cpu", log=print, joint_tool_head=False, aux_weight=1.0, ptr_weight=0.15,
         conversations=None, accum_steps=1, mt_weight=1.0,
         teacher=None, kd_type="topk", kd_k=16, kd_weight=0.5, kd_temperature=2.0,
-        lr_schedule="cosine", decay_frac=0.2, decay_samples=None, shuffle=True):
+        lr_schedule="cosine", decay_frac=0.2, decay_samples=None, shuffle=True,
+        init_tool_head=None, init_ptr_head=None):
     """SFT with masked LM loss over single-turn samples + optional multi-turn `conversations`
     (which teach tool->response->follow-up continuation). With `joint_tool_head`, also trains
     jointly a tool-selection head AND a pointer/copy argument head (on the single-turn samples).
@@ -106,6 +107,12 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         from localagent.agent.tool_head import CLASSES, ToolHead, label_of
         tool_head = ToolHead(model.cfg.d_model).to(device)
         ptr_head = PointerHead(model.cfg.d_model).to(device)
+        # Warm-start the heads from a prior checkpoint to CONTINUE-train (keep learned
+        # selection/grounding and adapt to new data) instead of resetting them.
+        if init_tool_head is not None:
+            tool_head.load_state_dict(init_tool_head)
+        if init_ptr_head is not None:
+            ptr_head.load_state_dict(init_ptr_head)
         params += list(tool_head.parameters()) + list(ptr_head.parameters())
         # Head training items: (prompt, tool_label, ptr_arg_name|None, ptr_value_ids|None).
         # Parallel "X and Y" turns are SPLIT into conjuncts so the head learns the (lowercased)
