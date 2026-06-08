@@ -33,9 +33,9 @@ def predict(m, h, p):
 # warm backbone, FRESH heads (sft builds a 51-class tool head from CLASSES)
 model = LocalAgentLM(cfg)
 model.load_state_dict(ck["state_dict"])
-train = Generator(level=3, seed=7, split="train").generate(14000)
+train = Generator(level=3, seed=7, split="train").generate(18000)
 t0 = time.time()
-_, head, ptr = sft(model, train, tok, steps=600, batch_size=8, lr=1e-3, device="cpu",
+_, head, ptr = sft(model, train, tok, steps=1500, batch_size=8, lr=1e-3, device="cpu",
                    joint_tool_head=True, log=print)
 print(f"train {(time.time()-t0)/60:.1f} min", flush=True)
 
