@@ -13,9 +13,11 @@ from localagent.data.agent_synth import Generator
 from localagent.data.render import render_sft
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.model.tokenizer import load_tokenizer
+from localagent.data.render import prompt_text
 from localagent.train.distill import (
     cache_teacher_topk,
     distill,
+    distill_on_policy,
     _topk_kd_loss,
 )
 from localagent.train.sft import sft
@@ -103,6 +105,55 @@ def test_sft_teacher_default_off_is_inert():
     h2, _, _ = sft(s2, samples, tok, steps=10, batch_size=16, lr=3e-3, warmup=2,
                    device="cpu", log=lambda *a: None, teacher=None, kd_weight=0.5)
     assert h1 == h2
+
+
+def _prompt_ids(samples, tok):
+    return [tok.encode(prompt_text(s)) for s in samples]
+
+
+def test_on_policy_runs_and_reverse_kl_decreases():
+    """distill_on_policy: finite loss, and the student's reverse-KL to a (fixed) teacher trends
+    down over a few on-policy steps on a fixed prompt set."""
+    teacher, student, samples, tok = _models_and_samples(n=8)
+    prompts = _prompt_ids(samples, tok)
+    hist = distill_on_policy(student, teacher, prompts, tok, steps=24, batch_size=4,
+                             max_new=16, sample_temperature=1.0, kd_temperature=1.0,
+                             kd_weight=1.0, lr=3e-3, warmup=4, seed=0, log=lambda *a: None)
+    finite = [h for h in hist if h == h]  # drop any NaN "no-sample" slots
+    assert finite, "every step produced no sampled tokens"
+    assert all(torch.isfinite(torch.tensor(h)) for h in finite)
+    # Average of the first vs last third should drop (on-policy reverse-KD reduces the term).
+    third = max(1, len(finite) // 3)
+    first = sum(finite[:third]) / third
+    last = sum(finite[-third:]) / third
+    assert last < first, (first, last)
+
+
+def test_on_policy_zero_when_student_equals_teacher():
+    """Correctness: student == teacher => the per-token reverse-KL term ~ 0, so the (kd-only)
+    loss is ~0 regardless of which tokens the student samples."""
+    teacher, _, samples, tok = _models_and_samples(n=6)
+    student = copy.deepcopy(teacher)  # identical weights
+    prompts = _prompt_ids(samples, tok)
+    hist = distill_on_policy(student, teacher, prompts, tok, steps=4, batch_size=4,
+                             max_new=12, sample_temperature=1.0, kd_temperature=1.0,
+                             kd_weight=1.0, ce_weight=0.0, lr=0.0, warmup=0, seed=1,
+                             log=lambda *a: None)
+    finite = [h for h in hist if h == h]
+    assert finite
+    assert max(abs(h) for h in finite) < 1e-4, finite
+
+
+def test_on_policy_mix_offpolicy_stays_finite():
+    """Blending the teacher-forced forward-KL anchor must keep the loss finite and trending down."""
+    teacher, student, samples, tok = _models_and_samples(n=8)
+    prompts = _prompt_ids(samples, tok)
+    hist = distill_on_policy(student, teacher, prompts, tok, steps=16, batch_size=4,
+                             max_new=16, mix_offpolicy_weight=0.5, ce_weight=0.05,
+                             entropy_weight=0.01, lr=3e-3, warmup=3, seed=0,
+                             log=lambda *a: None)
+    finite = [h for h in hist if h == h]
+    assert finite and all(torch.isfinite(torch.tensor(h)) for h in finite)
 
 
 def test_topk_full_vocab_matches_forward_kl():

@@ -180,5 +180,150 @@ def distill(student, samples, teacher, tok, *, steps=400, batch_size=24, kd_type
     return hist
 
 
+@torch.no_grad()
+def _sample_student_batch(student, prompt_ids, tok, *, max_new, temperature, device, rng):
+    """Sample one continuation per prompt from the STUDENT (eval, no-grad), via the KV cache.
+
+    Returns, per prompt, the list of *generated* token ids (EOS dropped, capped at `max_new`).
+    Sampling is multinomial at `temperature` (set temperature<=0 for greedy). Each prompt is
+    decoded independently to keep the incremental-decode path simple and CPU-cheap on short seqs.
+    """
+    was_training = student.training
+    student.eval()
+    gens = []
+    for pids in prompt_ids:
+        ids = list(pids)
+        caches = [None] * student.n_cache_slots()
+        x = torch.tensor([ids], dtype=torch.long, device=device)
+        logits, _, caches = student(x, pos=0, caches=caches)
+        pos = len(ids)
+        gen = []
+        for _ in range(max_new):
+            row = logits[0, -1]
+            if temperature and temperature > 0:
+                probs = F.softmax(row / temperature, dim=-1)
+                nxt = int(torch.multinomial(probs, 1, generator=rng))
+            else:
+                nxt = int(row.argmax())
+            if nxt == tok.eos_id:
+                break
+            gen.append(nxt)
+            step = torch.tensor([[nxt]], dtype=torch.long, device=device)
+            logits, _, caches = student(step, pos=pos, caches=caches)
+            pos += 1
+        gens.append(gen)
+    if was_training:
+        student.train()
+    return gens
+
+
+def distill_on_policy(student, teacher, prompts, tok, *, steps=200, batch_size=4,
+                      max_new=48, sample_temperature=1.0, kd_temperature=1.0,
+                      kd_weight=1.0, ce_weight=0.0, entropy_weight=0.0,
+                      mix_offpolicy_weight=0.0, lr=1e-3, warmup=20, grad_clip=1.0,
+                      seed=0, device="cpu", log=print):
+    """On-policy reverse-KL distillation (MiniLLM / on-policy-KD; ARCHITECTURE_DEBATE axis 4).
+
+    Unlike the off-policy :func:`distill` (teacher-forced on cached teacher targets), here each
+    step distills on the STUDENT's own freshly-sampled trajectories, which is what attacks
+    exposure bias (O(eps*T^2) -> O(eps*T)) and targets the stuck free-rollout metric. Nothing is
+    cached across steps — trajectories are regenerated every step from the current student.
+
+    Objective (token-level reverse KL on student-sampled tokens). For each sampled continuation
+    position t we minimise the per-token reverse-KL integrand
+
+        sum_v p_student(v) * (log p_student(v) - log p_teacher(v))    [full reverse KL]
+
+    evaluated at the (tempered) student and teacher next-token distributions over the FULL vocab,
+    averaged over all sampled (non-prompt) positions in the batch. This is the standard mode-
+    seeking reverse-KL KD term; because the positions themselves are drawn from the student's own
+    rollout distribution, the expectation is taken on-policy. We use the analytic per-position KL
+    (not a single-sample REINFORCE estimate) so no baseline is needed and the term is low-variance;
+    the on-policy aspect comes from *where* (which states) we evaluate it. By construction, if
+    student == teacher the per-token reverse KL is 0 (asserted in tests).
+
+    Stabilisers (all default-off):
+      * ``ce_weight``        — ground-truth CE on the sampled tokens (treat student sample as the
+                               label) to keep the student's own modes sharp.
+      * ``entropy_weight``   — adds +H(student) (i.e. subtracts entropy from the loss) to *discourage*
+                               collapse; set >0 to keep the sampling distribution from degenerating.
+      * ``mix_offpolicy_weight`` — blends in the teacher-forced forward-KL term on the *prompt+sample*
+                               sequence (cheap, no caching) for extra stability.
+
+    `prompts` is a list of prompt token-id lists (e.g. ``tok.encode(prompt_text(s))``). Returns the
+    per-step loss history.
+    """
+    student.to(device)
+    teacher.eval().to(device)
+    opt = torch.optim.AdamW(student.parameters(), lr=lr, betas=(0.9, 0.95))
+    py_rng = random.Random(seed)
+    gen_rng = torch.Generator(device=device)
+    gen_rng.manual_seed(seed)
+    V = student.cfg.vocab_size
+    T = kd_temperature
+    hist = []
+    for step in range(steps):
+        set_lr(opt, cosine_lr(step, steps, lr, warmup, 0.1))
+        bi = [py_rng.randrange(len(prompts)) for _ in range(batch_size)]
+        batch_prompts = [list(prompts[j]) for j in bi]
+        gens = _sample_student_batch(
+            student, batch_prompts, tok, max_new=max_new, temperature=sample_temperature,
+            device=device, rng=gen_rng)
+        # Build a padded (prompt + sampled-continuation) batch; mask = sampled (non-prompt) positions.
+        seqs = [p + g for p, g in zip(batch_prompts, gens)]
+        plen = [len(p) for p in batch_prompts]
+        # Drop rows whose student produced no tokens (nothing to learn on this step's slot).
+        keep = [r for r in range(len(seqs)) if len(seqs[r]) - plen[r] > 0 and len(seqs[r]) >= 2]
+        if not keep:
+            hist.append(float("nan"))
+            if step % max(1, steps // 6) == 0 or step == steps - 1:
+                log(f"  [on-policy] step {step}/{steps}  (no sampled tokens)")
+            continue
+        seqs = [seqs[r] for r in keep]
+        plen = [plen[r] for r in keep]
+        ml = max(len(s) for s in seqs)
+        X = torch.full((len(seqs), ml), tok.pad_id, dtype=torch.long, device=device)
+        # mask over positions in the *input* X that PREDICT a sampled token: a position i predicts
+        # token i+1, so a sampled token at index j (j >= plen) is predicted from input index j-1.
+        mask = torch.zeros(len(seqs), ml, device=device)
+        smpl = torch.full((len(seqs), ml), IGNORE, dtype=torch.long, device=device)
+        for r, s in enumerate(seqs):
+            X[r, : len(s)] = torch.tensor(s, device=device)
+            for j in range(plen[r], len(s)):
+                mask[r, j - 1] = 1.0
+                smpl[r, j - 1] = s[j]
+        student.train()
+        logits, _ = student(X)
+        with torch.no_grad():
+            t_logits, _ = teacher(X)
+        s_lp = (logits / T).log_softmax(-1)            # (B, ml, V)
+        t_lp = (t_logits / T).log_softmax(-1)
+        s_p = s_lp.exp()
+        # Per-position full reverse KL: sum_v p_s (log p_s - log p_t).
+        rkl = (s_p * (s_lp - t_lp)).sum(-1)            # (B, ml)
+        denom = mask.sum().clamp(min=1)
+        kd = (rkl * mask).sum() / denom * (T ** 2)
+        loss = kd_weight * kd
+        if ce_weight > 0:
+            loss = loss + ce_weight * F.cross_entropy(
+                logits.reshape(-1, V), smpl.reshape(-1), ignore_index=IGNORE)
+        if entropy_weight > 0:
+            # +H(student) added so it *reduces* the loss => encourages keeping entropy up.
+            ent = -(s_p * s_lp).sum(-1)
+            loss = loss - entropy_weight * (ent * mask).sum() / denom
+        if mix_offpolicy_weight > 0:
+            # Teacher-forced forward KL over the same masked positions (extra stability anchor).
+            fk = (t_lp.exp() * (t_lp - s_lp)).sum(-1)
+            loss = loss + mix_offpolicy_weight * (fk * mask).sum() / denom * (T ** 2)
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(student.parameters(), grad_clip)
+        opt.step()
+        hist.append(loss.item())
+        if step % max(1, steps // 6) == 0 or step == steps - 1:
+            log(f"  [on-policy] step {step}/{steps}  loss {loss.item():.4f}  kd {kd.item():.4f}")
+    return hist
+
+
 def run(config_path: str) -> None:
     raise NotImplementedError("Use scripts/distill_demo.py — distill() is called in-process there")
