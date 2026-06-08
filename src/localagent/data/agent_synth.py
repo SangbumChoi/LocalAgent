@@ -1080,5 +1080,72 @@ def episode_steps(ep: Conversation) -> list[ToolCall]:
             if m.role == Role.assistant and m.tool_calls]
 
 
+# ---- curriculum ordering (LFM2-style easy->hard) ---------------------------------------------
+# LFM2 orders pretraining data by empirical success probability (easy first, hard later). We port
+# the *principle* to tool-calling SFT with a transparent, deterministic proxy for difficulty built
+# from signals already present in each Sample — no schema change, no model in the loop:
+#
+#   score = (W_PARALLEL  * (n_tool_calls - 1)     # >1 call (the "X and Y" parallel turns) is hard
+#          + W_ARGS      * max(0, n_required_args - 1)  # multi-arg (e.g. weather city+unit) is hard
+#          + W_HAS_ARG   * has_any_arg             # a single copy-arg call is harder than no-arg/text
+#          + W_ABSTAIN   * is_abstention           # "don't call a tool" negatives are subtle
+#          + W_PROMPT    * prompt_len_bucket)      # longer phrasings, mild tie-breaker
+#
+# A bare text turn or a no-arg tool call (run_tests) scores ~0 (easiest); a two-call parallel turn
+# with copy args scores highest (hardest). Ties broken by a stable hash of the prompt so the order
+# is fully deterministic and independent of the input list order.
+CURRICULUM_WEIGHTS = {
+    "parallel": 3.0,   # per extra tool call beyond the first
+    "args": 1.5,       # per required arg beyond the first
+    "has_arg": 0.6,    # single copy-arg call vs no-arg/text
+    "abstain": 1.0,    # abstention / irrelevance negative
+    "prompt": 0.25,    # per ~40-char bucket of prompt length (tie-breaker scale)
+}
+
+
+def difficulty_score(s: "Sample", weights: dict | None = None) -> float:
+    """Transparent easy->hard difficulty score for one SFT `Sample` (higher = harder).
+
+    Uses only signals already on the Sample (number of tool calls, number/copy of args, abstention,
+    prompt length). Deterministic and side-effect free. See ``CURRICULUM_WEIGHTS`` for the recipe.
+    """
+    w = weights or CURRICULUM_WEIGHTS
+    # number of tool calls in the turn: parallel samples carry `calls`; single tool/text => 1.
+    n_calls = len(s.calls) if s.calls else 1
+    # required args across the call(s).
+    if s.calls:
+        n_args = sum(len(c.get("arguments", {})) for c in s.calls)
+        has_arg = 1.0 if n_args > 0 else 0.0
+    elif s.kind == "tool":
+        try:
+            args = json.loads(s.ref_args) if s.ref_args else {}
+        except (json.JSONDecodeError, TypeError):
+            args = {}
+        n_args = len(args)
+        has_arg = 1.0 if n_args > 0 else 0.0
+    else:
+        n_args, has_arg = 0, 0.0
+    is_abstain = 1.0 if s.category == "no_tool" else 0.0
+    prompt_bucket = len(s.prompt) / 40.0
+    return (w["parallel"] * (n_calls - 1)
+            + w["args"] * max(0, n_args - 1)
+            + w["has_arg"] * has_arg
+            + w["abstain"] * is_abstain
+            + w["prompt"] * prompt_bucket)
+
+
+def curriculum_order(samples: list, weights: dict | None = None) -> list:
+    """Return `samples` reordered easy->hard by ``difficulty_score`` (ascending). Deterministic:
+    ties are broken by a stable hash of (target, prompt), so the result does not depend on the
+    input order. Opt-in — callers choose this over a shuffle. Does NOT mutate the input list."""
+    import hashlib
+
+    def _key(s):
+        h = hashlib.sha1(f"{s.target}\x00{s.prompt}".encode()).hexdigest()
+        return (difficulty_score(s, weights), h)
+
+    return sorted(samples, key=_key)
+
+
 def synthesize(config_path: str) -> None:  # CLI entry retained
     raise NotImplementedError("Use scripts/flywheel.py — Generator drives data generation in-process")
