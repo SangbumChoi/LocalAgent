@@ -215,6 +215,57 @@ def _ctx_feats(model, tok, ctx: str, device):
     return feats[0], ids
 
 
+def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", *,
+                  retriever=None, route_head=None, ptr_head=None, selector=None, top_m=1, k=8,
+                  framed=False) -> str:
+    """The *generable* decode path — no fixed-N classifier. Selection narrows the catalog to a few
+    candidates, then the model RANKS their grounded bodies; argument *values* are copied by
+    `ptr_head` (the one sub-task a tiny model can't free-generate). An optional 5-way `route_head`
+    gates text-vs-tool up front.
+
+    Selection source:
+      `selector` (a `BoundSelector`, recommended) — a *trained* two-tower scorer that ranks every
+        tool by its description embedding; we keep its top-`top_m`. Generalizes to unseen tools.
+      else `retriever` — zero-training char-ngram retrieval top-k (weaker; the model must then rank).
+    Either way adding a tool needs zero head reshape / retraining."""
+    from localagent.agent.retriever import ToolRetriever
+    from localagent.model.tokenizer import ASSISTANT, USER
+    ctx = prompt if framed else f"{USER}{prompt}{ASSISTANT}"
+    score = prompt if not framed else ctx
+    feats = ids = None
+    # 0. route gate (text vs tool) — falls back to the heuristic text detector when no head given
+    if route_head is not None or selector is not None:
+        feats, ids = _ctx_feats(model, tok, ctx, device)
+    if route_head is not None:
+        from localagent.agent.routes import ROUTES
+        if ROUTES[int(route_head(feats[-1]).argmax(-1))] == "text":
+            return _best(model, tok, score, _text_candidates(prompt) or ["I am LocalAgent."], device)
+    else:
+        txt = _text_candidates(prompt)
+        if txt is not None:
+            return _best(model, tok, score, txt, device)
+    # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
+    if selector is not None:
+        keep = set(selector.rank(feats[-1])[:top_m])
+    else:
+        retriever = retriever or ToolRetriever(tools)
+        keep = set(retriever.retrieve(prompt, k=k))
+    use = [t for t in tools if t.name in keep] or tools
+    # 2. argument values via learned pointer/copy spans
+    ptr = None
+    if ptr_head is not None:
+        if feats is None:
+            feats, ids = _ctx_feats(model, tok, ctx, device)
+        ptr = (ptr_head, feats, ids, tok)
+    # 3. rank every candidate's grounded body; _best picks the tool AND args jointly
+    bodies = []
+    for t in use:
+        bodies += _tool_bodies(prompt, t, ptr)
+    if not bodies:
+        return "I am LocalAgent."
+    return _best(model, tok, score, bodies, device)
+
+
 def grounded_decode_parallel(model, tok, prompt: str, tools: list[ToolSpec], device="cpu",
                              tool_head=None, ptr_head=None) -> str:
     """For 'do X and Y' turns: split on ' and ', ground each conjunct, concatenate the calls."""

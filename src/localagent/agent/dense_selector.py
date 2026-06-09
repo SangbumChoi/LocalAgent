@@ -1,0 +1,92 @@
+"""Dense (two-tower) tool selector — a *trained* selector that is still generable.
+
+The experiments showed: tool selection needs a trained discriminative component (the 51-way head
+gets 45%; intrinsic ranking/generation gets ~5-7%), but a fixed-N softmax can't accept tools it
+wasn't trained on. This resolves the tension: instead of an N-way output layer, score every tool by
+the dot product of a learned **query tower** (over the model's prompt features) and a learned **tool
+tower** (over the tool's *description embedding*). Selection becomes `argmax_j q·t_j` over WHATEVER
+tools are present — adding/removing a tool is adding/removing a column, no reshape, no retraining,
+unseen tools work by embedding their description.
+
+The tool embedding is the zero-training char-ngram vector from `retriever.embed` (the same signal
+retrieval already uses), so the only learned parameters are the two projection towers — a cheap
+frozen-feature probe, like the route head.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from localagent.agent.retriever import embed
+
+
+class DenseToolSelector(nn.Module):
+    """q_proj: model features (d_model) -> p ; t_proj: tool ngram-embedding (dim) -> p.
+    score(query, tool) = <q_proj(feat), t_proj(tool_emb)>. Trained by cross-entropy against the gold
+    tool over the candidate columns — works for any tool set, including unseen tools at eval."""
+
+    def __init__(self, d_model: int, emb_dim: int = 8192, proj: int = 256):
+        super().__init__()
+        self.q_proj = nn.Linear(d_model, proj)
+        self.t_proj = nn.Linear(emb_dim, proj)
+        self.emb_dim = emb_dim
+
+    def forward(self, feats, tool_embs):           # (B,d),(N,emb) -> (B,N) scores
+        q = F.normalize(self.q_proj(feats), dim=-1)
+        t = F.normalize(self.t_proj(tool_embs), dim=-1)
+        return q @ t.T
+
+
+def tool_embeddings(tools, dim: int = 8192, device="cpu") -> torch.Tensor:
+    """Fixed char-ngram embedding of each tool's `name + description` (the tool tower's input)."""
+    M = np.stack([embed(f"{t.name.replace('_', ' ')} {t.description}", dim) for t in tools])
+    return torch.tensor(M, dtype=torch.float32, device=device)
+
+
+class BoundSelector:
+    """A DenseToolSelector bound to a fixed tool list — exposes `rank(feat)` -> ordered tool names,
+    so it drops into `hybrid_decode(selector=...)`."""
+
+    def __init__(self, model: DenseToolSelector, tools, device="cpu"):
+        self.model = model.to(device).eval()
+        self.names = [t.name for t in tools]
+        self.embs = tool_embeddings(tools, model.emb_dim, device)
+
+    @torch.no_grad()
+    def rank(self, feat) -> list[str]:
+        scores = self.model(feat.unsqueeze(0), self.embs)[0]
+        return [self.names[i] for i in torch.argsort(scores, descending=True).tolist()]
+
+
+def train_dense_selector(model, samples, tok, tools, *, steps=400, batch_size=64, lr=5e-3,
+                         proj=256, device="cpu", log=lambda *a: None) -> DenseToolSelector:
+    """Frozen-feature probe (cheap). Only tool samples train selection; the gold tool must be in the
+    tool list. CE is over ALL tools, so the towers learn a general query<->description match."""
+    import random
+
+    from localagent.agent.tool_head import _feat
+
+    model.eval()
+    name_idx = {t.name: i for i, t in enumerate(tools)}
+    rows = [(s.prompt, name_idx[s.ref_name]) for s in samples
+            if s.kind == "tool" and s.ref_name in name_idx]
+    feats = torch.stack([_feat(model, tok, p, device) for p, _ in rows])
+    labels = torch.tensor([j for _, j in rows], device=device)
+    embs = tool_embeddings(tools, device=device)
+    sel = DenseToolSelector(model.cfg.d_model, emb_dim=embs.shape[1], proj=proj).to(device)
+    opt = torch.optim.AdamW(sel.parameters(), lr=lr)
+    rng = random.Random(0)
+    n = len(rows)
+    for step in range(steps):
+        idx = torch.tensor([rng.randrange(n) for _ in range(batch_size)], device=device)
+        loss = F.cross_entropy(sel(feats[idx], embs), labels[idx])
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        opt.step()
+        if step % max(1, steps // 5) == 0 or step == steps - 1:
+            top1 = (sel(feats, embs).argmax(-1) == labels).float().mean().item()
+            log(f"  [dense-sel] step {step}/{steps} loss {loss.item():.3f} top1 {top1:.3f}")
+    return sel

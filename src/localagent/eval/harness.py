@@ -103,6 +103,34 @@ def evaluate_incontext(model, samples, tok, tools, device="cpu", k=8, max_new_to
     }
 
 
+def evaluate_hybrid(model, samples, tok, tools, device="cpu", *, retriever=None, route_head=None,
+                    ptr_head=None, selector=None, top_m=1, k=8) -> dict:
+    """Eval the *generable* hybrid decode (`constrained.hybrid_decode`): trained-dense-selector OR
+    retrieval selection + pointer-copy args + optional route gate — NO fixed-N classifier. Reports
+    overall + per route."""
+    from localagent.agent.constrained import hybrid_decode
+    from localagent.agent.retriever import ToolRetriever
+    from localagent.agent.routes import route_of_sample
+
+    retriever = retriever or ToolRetriever(tools)
+    by_route = defaultdict(lambda: [0, 0])
+    n_correct = 0
+    for s in samples:
+        out = hybrid_decode(model, tok, s.prompt, tools, device=device, retriever=retriever,
+                            route_head=route_head, ptr_head=ptr_head, selector=selector,
+                            top_m=top_m, k=k)
+        ok = _correct(s, out)
+        n_correct += ok
+        r = route_of_sample(s)
+        by_route[r][0] += ok
+        by_route[r][1] += 1
+    return {
+        "overall": n_correct / max(1, len(samples)),
+        "by_route": {r: {"acc": c / t, "n": t} for r, (c, t) in sorted(by_route.items())},
+        "n": len(samples), "k": k,
+    }
+
+
 def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None, ptr_head=None) -> dict:
     """Eval with grounded constrained decoding (the deployed decoder). A trained `tool_head` does
     tool selection and a `ptr_head` fills arguments via learned copy spans; otherwise heuristic
