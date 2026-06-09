@@ -36,13 +36,16 @@ cfg = ModelConfig(**ck["cfg"])
 m = LocalAgentLM(cfg); m.load_state_dict(ck["state_dict"])
 ptr = PointerHead(cfg.d_model); ptr.load_state_dict(ck["ptr_head"]); ptr.eval()
 
-sft_steps = 60 if QUICK else 600
-probe_steps = 150 if QUICK else 600
-templated = Generator(level=3, seed=11).generate_balanced(1 if QUICK else 8)
+sft_steps = 60 if QUICK else 400
+probe_steps = 150 if QUICK else 500
+templated = Generator(level=3, seed=11).generate_balanced(1 if QUICK else 6)
 para = paraphrase_samples(3 if QUICK else 40, seed=11, split="train")   # n per tool (x50)
 combined = templated + para
+import random as _rnd
+_rnd.Random(0).shuffle(combined)
+probe_data = combined if QUICK else combined[:1500]   # cap probe feature-caching cost
 print(f"templated={len(templated)} paraphrase={len(para)} combined={len(combined)} "
-      f"sft_steps={sft_steps}", flush=True)
+      f"probe_data={len(probe_data)} sft_steps={sft_steps}", flush=True)
 
 
 def score(m, route_head, bound, label):
@@ -64,8 +67,8 @@ def score(m, route_head, bound, label):
 
 
 def probes_and_score(label):
-    rh = train_route_head(m, combined, tok, steps=probe_steps, device="cpu"); rh.eval()
-    sel = train_dense_selector(m, combined, tok, TOOLS, steps=probe_steps, device="cpu",
+    rh = train_route_head(m, probe_data, tok, steps=probe_steps, device="cpu"); rh.eval()
+    sel = train_dense_selector(m, probe_data, tok, TOOLS, steps=probe_steps, device="cpu",
                                examples=TOOL_EXAMPLES)
     bound = BoundSelector(sel, TOOLS, device="cpu", examples=TOOL_EXAMPLES)
     score(m, rh, bound, label)
