@@ -29,9 +29,9 @@ model = LocalAgentLM(cfg)
 model.load_state_dict(ck["state_dict"])
 model.eval()
 
-n_train = 400 if QUICK else 2400
-n_eval = 40 if QUICK else 80
-steps = 150 if QUICK else 400
+n_train = 120 if QUICK else 2400
+n_eval = 16 if QUICK else 80
+steps = 120 if QUICK else 400
 train = Generator(level=3, seed=7).generate_balanced(n_train)
 held = Generator(level=3, seed=909, split="eval").generate_balanced(n_eval)
 
