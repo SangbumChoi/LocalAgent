@@ -62,24 +62,50 @@ This empirically confirms the architecture's thesis: **a <100M byte model learns
 + selection but cannot free-generate argument *values* — those must be copied.** That is exactly
 what `ptr_head` (pointer/copy span) does, and why the grounded path reaches 45% while free-gen is 0%.
 
+## Fix part 3 — does selection need to be *generated*? (no — it needs to be *trained*)
+Two more generable selection methods, measured on the same held set, both **without** the 51-way
+classifier:
+
+| Selection method (args always via pointer-copy) | Acc |
+|---|---|
+| free-generate the tool name | ~5% |
+| retrieval top-k + model ranks the candidates' bodies | 7.5–9.4% |
+| **dense two-tower selector (trained), top-1** | **41.5%** |
+| dense two-tower selector, top-2 (model ranks the 2) | 28.3% |
+| 51-way classifier (reference, *not* generable) | 39.6% |
+
+Retrieval narrows the catalog but the tiny model still can't *rank* the right tool among the
+candidates (same weakness as free-gen). Selection genuinely needs a **trained discriminative
+component**. The resolution is to make that component generable instead of a fixed-N softmax: a
+**dense two-tower selector** (`agent/dense_selector.py`) scores every tool by `q·t`, where `q` is a
+learned tower over the prompt's features and `t` is a learned tower over the tool's *description
+embedding*. Selection is `argmax_j q·t_j` over **whatever tools are present** — adding/removing a
+tool is a column, not a reshape; unseen tools work by embedding their description. It is a cheap
+frozen-feature probe (only the two towers are learned), and it **matches the 51-way head (41.5% vs
+39.6%) while being fully generable.** `top_m=2` is worse, confirming the model's multi-candidate
+ranking is weak — so trust the trained selector's top-1.
+
 ## Conclusion — the correct *generable* architecture
-Drop the 51-way classifier, but do **not** try to free-generate everything. The evidence says each
-job goes to the component that can actually do it:
+Drop the 51-way classifier. Each job goes to the component that can actually do it — and the parts
+that need a learned mechanism are made generable rather than fixed-N:
 
 | Job | Component | Why |
 |---|---|---|
-| modality | **5-way route head** | stable, portable; 76.5% as a probe |
-| candidate tools | **retrieval** | scales to any pool, zero retraining, unseen tools |
-| call structure + tool name + arg *keys* | **generation** (in-context catalog) | 100% structure; selection improves with a small candidate set |
+| modality (gate) | **5-way route head** | stable, portable; 76.5% as a probe |
+| tool **selection** | **dense two-tower selector** (`q·t` over tool-desc embeddings) | trained → 41.5% (≥ the 51-way head); generable → any/unseen tool, no reshape |
+| call structure + arg *keys* | **generation** | the model gets these right (100% structure) |
 | argument *values* | **pointer-copy** (`ptr_head`) | the tiny model provably can't free-generate these |
 
-This removes the brittle fixed-N classifier (the thing that wasn't generable) and keeps only the one
-sub-task that genuinely needs a learned mechanism — tool-agnostic argument **copying**. Full free
-generation of argument values is *not* viable at this model size; that is a measured result, not an
-assumption.
+Two things were measured, not assumed: (1) free generation of argument *values* is not viable at this
+size — values must be copied; (2) free generation / retrieval-ranking of the tool *name* is not
+viable either — selection needs a trained scorer. The dense selector keeps that trained scorer's
+accuracy **without** the fixed-N classifier's brittleness, so the whole pipeline becomes generable
+(add a tool = one row in the retrieval/selector index + one catalog line) with no accuracy cost.
 
 ### Artifacts
 - `runs/tiny-30m-routed.pt` — backbone + 5-way route head.
 - `runs/tiny-30m-incontext.pt` — generative in-context SFT checkpoint (the negative-result probe).
-- `scripts/retrain_routed.py`, `scripts/sft_generative.py` — reproduce both.
-- `eval.harness.evaluate_routed` / `evaluate_incontext` — the metrics above.
+- `scripts/retrain_routed.py` — route head; `scripts/sft_generative.py` — in-context gen SFT;
+  `scripts/eval_hybrid.py` — 51-way vs retrieval vs dense-selector comparison.
+- `agent/dense_selector.py` + `agent/constrained.hybrid_decode` — the generable decode path.
+- `eval.harness.evaluate_routed` / `evaluate_incontext` / `evaluate_hybrid` — the metrics above.
