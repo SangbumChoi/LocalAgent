@@ -51,6 +51,58 @@ def evaluate(model, samples, tok, device="cpu", max_new_tokens=96) -> dict:
     }
 
 
+def evaluate_incontext(model, samples, tok, tools, device="cpu", k=8, max_new_tokens=96,
+                       retriever=None, seed=0) -> dict:
+    """Generative in-context eval — the *generable* pipeline. The candidate tool catalog is rendered
+    into the prompt and the LM **free-generates** the full `tool(args)` (AST-matched). No tool head,
+    no pointer copy. Two settings, plus retrieval recall:
+
+      gen_acc        — gold tool force-included in the candidate set (isolates generation skill given
+                       the right tools are visible).
+      gen_acc_e2e    — candidates are the retriever's top-k only (realistic: retrieval may miss gold).
+      recall_at_k    — fraction of tool samples whose gold tool is in the retriever's top-k.
+
+    Adding a tool here needs zero retraining — it's one more catalog line."""
+    import random
+
+    from localagent.agent.incontext import build_candidates, grounded_prompt
+    from localagent.agent.retriever import ToolRetriever
+    from localagent.agent.routes import route_of_sample
+
+    by_name = {t.name: t for t in tools}
+    retriever = retriever or ToolRetriever(tools)
+    rng = random.Random(seed)
+    by_route = defaultdict(lambda: [0, 0, 0])   # route -> [gen_ok(gold-in), gen_ok(e2e), total]
+    gen_hit = e2e_hit = rec_hit = rec_tot = 0
+    for s in samples:
+        gold = s.ref_name if s.kind == "tool" else "text"
+        cand_g = build_candidates(s.prompt, gold, retriever, by_name, k=k, include_gold=True, rng=rng)
+        cand_r = build_candidates(s.prompt, gold, retriever, by_name, k=k, include_gold=False, rng=rng)
+        g_ok = _correct(s, generate(model, tok, grounded_prompt(s.prompt, cand_g),
+                                    max_new_tokens=max_new_tokens, temperature=0.0)[0])
+        e_ok = _correct(s, generate(model, tok, grounded_prompt(s.prompt, cand_r),
+                                    max_new_tokens=max_new_tokens, temperature=0.0)[0])
+        gen_hit += g_ok
+        e2e_hit += e_ok
+        if s.kind == "tool":
+            rec_tot += 1
+            rec_hit += gold in {t.name for t in cand_r}
+        r = route_of_sample(s)
+        b = by_route[r]
+        b[0] += g_ok
+        b[1] += e_ok
+        b[2] += 1
+    n = len(samples)
+    return {
+        "gen_acc": gen_hit / max(1, n),
+        "gen_acc_e2e": e2e_hit / max(1, n),
+        "recall_at_k": rec_hit / max(1, rec_tot),
+        "by_route": {r: {"gen": b[0] / b[2], "e2e": b[1] / b[2], "n": b[2]}
+                     for r, b in sorted(by_route.items())},
+        "n": n, "k": k,
+    }
+
+
 def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None, ptr_head=None) -> dict:
     """Eval with grounded constrained decoding (the deployed decoder). A trained `tool_head` does
     tool selection and a `ptr_head` fills arguments via learned copy spans; otherwise heuristic
