@@ -80,6 +80,48 @@ def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None, 
     }
 
 
+def evaluate_routed(model, samples, tok, route_head, device="cpu", max_new_tokens=96) -> dict:
+    """Route-based eval (the fixed pipeline). Two decoupled signals, bucketed by the 5 routes:
+
+      route_acc — the small 5-way route head picks the correct modality from the prompt's final
+                  hidden state. Stable + portable: unaffected by how many concrete tools exist.
+      gen_acc   — the LM *free-generates* the specific `tool(args)` as text, AST-matched against
+                  gold (the portable, deployable number — no closed-set classifier involved).
+
+    This replaces "51-way head selects the exact tool": selection is now route (head) + concrete
+    call (generation), so adding a tool never reshapes the head."""
+    import torch
+
+    from localagent.agent.routes import ROUTE_INDEX, ROUTES, route_of_sample
+    from localagent.agent.tool_head import _feat
+    from localagent.data.render import prompt_text
+
+    by_route = defaultdict(lambda: [0, 0, 0])   # route -> [route_correct, gen_correct, total]
+    route_hit = gen_hit = 0
+    for s in samples:
+        gold_route = route_of_sample(s)
+        with torch.no_grad():
+            feat = _feat(model, tok, s.prompt, device)
+            pred_route = ROUTES[int(route_head(feat).argmax(-1))]
+        gen, _ = generate(model, tok, prompt_text(s), max_new_tokens=max_new_tokens, temperature=0.0)
+        r_ok = pred_route == gold_route
+        g_ok = _correct(s, gen)
+        route_hit += r_ok
+        gen_hit += g_ok
+        b = by_route[gold_route]
+        b[0] += r_ok
+        b[1] += g_ok
+        b[2] += 1
+    n = len(samples)
+    return {
+        "route_acc": route_hit / max(1, n),
+        "gen_acc": gen_hit / max(1, n),
+        "by_route": {r: {"route": b[0] / b[2], "gen": b[1] / b[2], "n": b[2]}
+                     for r, b in sorted(by_route.items(), key=lambda kv: ROUTE_INDEX.get(kv[0], 9))},
+        "n": n,
+    }
+
+
 def multi_turn_eval(model, episodes, tok, tools, device="cpu", tool_head=None, ptr_head=None) -> dict:
     """Replay each episode; at every assistant *tool-call* turn, decode the next action over the
     full history (so follow-up args can be grounded in earlier tool responses) and AST-match it
