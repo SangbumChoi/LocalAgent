@@ -40,9 +40,22 @@ class DenseToolSelector(nn.Module):
         return q @ t.T
 
 
-def tool_embeddings(tools, dim: int = 8192, device="cpu") -> torch.Tensor:
-    """Fixed char-ngram embedding of each tool's `name + description` (the tool tower's input)."""
-    M = np.stack([embed(f"{t.name.replace('_', ' ')} {t.description}", dim) for t in tools])
+def tool_embeddings(tools, dim: int = 8192, device="cpu", examples: dict | None = None
+                    ) -> torch.Tensor:
+    """Fixed char-ngram embedding of each tool's `name + description` (the tool tower's input).
+    If `examples` ({tool_name: [query strings]}) is given, add the centroid of the tool's example
+    usages and renormalize — the standard paraphrase-bridging trick (queries say 'reserve a flight',
+    the API says 'book_flight'), which sharpens selection on out-of-distribution wording."""
+    rows = []
+    for t in tools:
+        v = embed(f"{t.name.replace('_', ' ')} {t.description}", dim)
+        ex = (examples or {}).get(t.name)
+        if ex:
+            v = v + np.mean([embed(q, dim) for q in ex], axis=0)
+            nrm = np.linalg.norm(v)
+            v = v / nrm if nrm > 0 else v
+        rows.append(v)
+    M = np.stack(rows)
     return torch.tensor(M, dtype=torch.float32, device=device)
 
 
@@ -50,10 +63,10 @@ class BoundSelector:
     """A DenseToolSelector bound to a fixed tool list — exposes `rank(feat)` -> ordered tool names,
     so it drops into `hybrid_decode(selector=...)`."""
 
-    def __init__(self, model: DenseToolSelector, tools, device="cpu"):
+    def __init__(self, model: DenseToolSelector, tools, device="cpu", examples: dict | None = None):
         self.model = model.to(device).eval()
         self.names = [t.name for t in tools]
-        self.embs = tool_embeddings(tools, model.emb_dim, device)
+        self.embs = tool_embeddings(tools, model.emb_dim, device, examples=examples)
 
     @torch.no_grad()
     def rank(self, feat) -> list[str]:
@@ -62,9 +75,11 @@ class BoundSelector:
 
 
 def train_dense_selector(model, samples, tok, tools, *, steps=400, batch_size=64, lr=5e-3,
-                         proj=256, device="cpu", log=lambda *a: None) -> DenseToolSelector:
+                         proj=256, device="cpu", examples: dict | None = None,
+                         log=lambda *a: None) -> DenseToolSelector:
     """Frozen-feature probe (cheap). Only tool samples train selection; the gold tool must be in the
-    tool list. CE is over ALL tools, so the towers learn a general query<->description match."""
+    tool list. CE is over ALL tools, so the towers learn a general query<->description match.
+    `examples` enriches the tool-tower embeddings with example-query centroids (paraphrase bridge)."""
     import random
 
     from localagent.agent.tool_head import _feat
@@ -75,7 +90,7 @@ def train_dense_selector(model, samples, tok, tools, *, steps=400, batch_size=64
             if s.kind == "tool" and s.ref_name in name_idx]
     feats = torch.stack([_feat(model, tok, p, device) for p, _ in rows])
     labels = torch.tensor([j for _, j in rows], device=device)
-    embs = tool_embeddings(tools, device=device)
+    embs = tool_embeddings(tools, device=device, examples=examples)
     sel = DenseToolSelector(model.cfg.d_model, emb_dim=embs.shape[1], proj=proj).to(device)
     opt = torch.optim.AdamW(sel.parameters(), lr=lr)
     rng = random.Random(0)
