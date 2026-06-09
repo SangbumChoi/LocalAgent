@@ -31,10 +31,10 @@ by_name = {t.name: t for t in TOOLS}
 retr = ToolRetriever(TOOLS)
 
 K = 6
-n_train = 200 if QUICK else 4500
-n_eval = 16 if QUICK else 60
-steps = 60 if QUICK else 1400
-bs = 24
+n_train = 200 if QUICK else 2400
+n_eval = 16 if QUICK else 48
+steps = 60 if QUICK else 500
+bs = 16
 
 ck = torch.load("runs/tiny-30m-50tools.pt", map_location="cpu")   # tool-body-aware backbone
 cfg = ModelConfig(**ck["cfg"])
@@ -42,9 +42,18 @@ model = LocalAgentLM(cfg)
 model.load_state_dict(ck["state_dict"])
 
 train = Generator(level=3, seed=11).generate_balanced(1)[:n_train] if QUICK \
-    else Generator(level=3, seed=11).generate_balanced(6)[:n_train]
+    else Generator(level=3, seed=11).generate_balanced(3)[:n_train]
 held = Generator(level=3, seed=909, split="eval").generate_balanced(1)[:n_eval]
 print(f"train={len(train)} held={len(held)} K={K} steps={steps}", flush=True)
+
+
+def report(model, samples, tag):
+    model.eval()
+    r = evaluate_incontext(model, samples, tok, TOOLS, k=K, retriever=retr)
+    print(f"[{tag}] gen_acc(gold-in)={r['gen_acc']*100:.1f}%  "
+          f"gen_acc_e2e={r['gen_acc_e2e']*100:.1f}%  recall@{K}={r['recall_at_k']*100:.1f}%  "
+          f"(n={r['n']})", flush=True)
+    return r
 
 
 def render_row(s, idx):
@@ -61,6 +70,9 @@ t0 = time.time()
 rows = [render_row(s, i) for i, s in enumerate(train)]
 print(f"rendered {len(rows)} rows in {time.time()-t0:.1f}s "
       f"(avg len {sum(len(r[0]) for r in rows)//len(rows)} bytes)", flush=True)
+
+# baseline: the warm-start backbone read the same in-context prompt, BEFORE adaptation
+report(model, held[:16], "BASELINE pre-SFT")
 
 model.train()
 opt = torch.optim.AdamW(model.parameters(), lr=1e-3, betas=(0.9, 0.95), weight_decay=0.0)
@@ -79,11 +91,8 @@ for step in range(steps):
         print(f"  [gen-sft] step {step:4d}/{steps} loss {loss.item():.3f} "
               f"({(time.time()-t0)/max(1,step+1)*1000:.0f}ms/step)", flush=True)
 
-model.eval()
-r = evaluate_incontext(model, held, tok, TOOLS, k=K, retriever=retr)
-print(f"\n[IN-CONTEXT GEN] gen_acc(gold-in)={r['gen_acc']*100:.1f}%  "
-      f"gen_acc_e2e(retrieved)={r['gen_acc_e2e']*100:.1f}%  recall@{K}={r['recall_at_k']*100:.1f}%",
-      flush=True)
+print("", flush=True)
+r = report(model, held, "AFTER gen-SFT")
 print(f"{'route':14}{'gen':>7}{'e2e':>7}{'n':>6}", flush=True)
 for route, v in r["by_route"].items():
     print(f"{route:14}{v['gen']*100:6.0f}%{v['e2e']*100:6.0f}%{v['n']:6d}", flush=True)
