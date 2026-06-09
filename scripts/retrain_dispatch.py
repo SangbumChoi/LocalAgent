@@ -34,7 +34,7 @@ ptr = PointerHead(cfg.d_model); ptr.load_state_dict(ck["ptr_head"])
 
 steps = 200 if QUICK else 600
 templated = Generator(level=3, seed=11).generate_balanced(1 if QUICK else 4)
-para = paraphrase_samples(1 if QUICK else 4, seed=11, split="train")
+para = paraphrase_samples(3 if QUICK else 20, seed=11, split="train")  # n per tool (x50)
 combined = templated + para
 print(f"templated={len(templated)} paraphrase={len(para)} combined={len(combined)}", flush=True)
 
