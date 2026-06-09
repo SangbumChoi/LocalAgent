@@ -85,6 +85,28 @@ frozen-feature probe (only the two towers are learned), and it **matches the 51-
 39.6%) while being fully generable.** `top_m=2` is worse, confirming the model's multi-candidate
 ranking is weak — so trust the trained selector's top-1.
 
+## Fix part 4 — free-form (out-of-distribution) dispatch: a data problem
+A hand-written free-form demo (natural phrasings, not templates) exposed that *selection* fails on
+real wording even though the architecture is right: ~2/10 correct ("What is the color of a monkey?"
+→ get_news; "Make a directory called build" → planner). Arg-copying often still worked — it is
+selection that breaks on OOD phrasing, because the synthetic templates are narrow and the backbone's
+features overfit them.
+
+The fix is data, not architecture. Adding a **paraphrase-rich** data source (`data/paraphrase.py`:
+many varied phrasings per tool) and **example-augmented tool embeddings** (`tool_embeddings(...,
+examples=)`: index each tool by the centroid of example queries) lifts OOD selection measurably, on a
+44-query hand-authored held set (`eval/freeform.py`), with no backbone retraining:
+
+| free-form OOD (44 queries) | selection top-1 | top-3 | end-to-end call-name |
+|---|---|---|---|
+| baseline (templated data, plain tool embeddings) | 27% | 50% | 25% |
+| + paraphrase data + example-augmented embeddings | **36%** | 52% | **34%** |
+
+That is ~+35% relative from data alone. It plateaus there because the dense selector is a
+**frozen-feature probe** — the backbone's features are still templated-overfit, so the probe can only
+recover so much. Closing the rest needs the **backbone SFT'd on the paraphrase corpus** (so its
+features become phrasing-robust), which is the next training lever, not an architecture change.
+
 ## Conclusion — the correct *generable* architecture
 Drop the 51-way classifier. Each job goes to the component that can actually do it — and the parts
 that need a learned mechanism are made generable rather than fixed-N:
