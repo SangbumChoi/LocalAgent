@@ -88,7 +88,8 @@ def train_dense_selector(model, samples, tok, tools, *, steps=400, batch_size=64
     name_idx = {t.name: i for i, t in enumerate(tools)}
     rows = [(s.prompt, name_idx[s.ref_name]) for s in samples
             if s.kind == "tool" and s.ref_name in name_idx]
-    feats = torch.stack([_feat(model, tok, p, device) for p, _ in rows])
+    with torch.no_grad():   # frozen-feature probe: cache detached features (no autograd graph/leak)
+        feats = torch.stack([_feat(model, tok, p, device) for p, _ in rows])
     labels = torch.tensor([j for _, j in rows], device=device)
     embs = tool_embeddings(tools, device=device, examples=examples)
     sel = DenseToolSelector(model.cfg.d_model, emb_dim=embs.shape[1], proj=proj).to(device)

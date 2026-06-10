@@ -13,6 +13,7 @@ contextual-eval scores.
 Saves runs/dispatch-long-step{N}.pt per segment and runs/tiny-30m-dispatch-long.pt at the end.
 """
 import argparse
+import gc
 import random
 import time
 
@@ -139,6 +140,7 @@ while done < args.steps:
                f"runs/dispatch-long-step{done}.pt")
     rh, _, bound = probes(m, probe_pool, 250)     # cheap mid-run probe
     freeform_score(m, rh, bound, ptr, f"seg{seg_i}/{done}st")
+    gc.collect()
 
 print("\n=== FINAL: full probes + all held evals ===", flush=True)
 rh, sel, bound = probes(m, corpus[:1500], 600)

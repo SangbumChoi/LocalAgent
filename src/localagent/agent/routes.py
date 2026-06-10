@@ -87,7 +87,8 @@ def train_route_head(model, samples, tok, *, steps=300, batch_size=64, lr=5e-3, 
 
     model.eval()
     head = RouteHead(model.cfg.d_model).to(device)
-    feats = torch.stack([_feat(model, tok, s.prompt, device) for s in samples])
+    with torch.no_grad():   # frozen-feature probe: cache detached features (no autograd graph/leak)
+        feats = torch.stack([_feat(model, tok, s.prompt, device) for s in samples])
     labels = torch.tensor([ROUTE_INDEX[route_of_sample(s)] for s in samples], device=device)
     opt = torch.optim.AdamW(head.parameters(), lr=lr)
     rng = random.Random(0)
