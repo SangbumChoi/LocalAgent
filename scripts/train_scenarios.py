@@ -123,7 +123,7 @@ def probes(data, steps):
     return rh, BoundSelector(sel, TOOLS, device="cpu", examples=examples), sel
 
 
-probe_pool = corpus[:120 if q else 700]
+probe_pool = corpus[:120 if q else 500]
 ptr = PointerHead(cfg.d_model)
 if init_ptr:
     ptr.load_state_dict(init_ptr)
@@ -138,7 +138,7 @@ while done < args.steps:
     seg = min(args.seg, args.steps - done)
     print(f"\n=== segment {seg_i}: {done}->{done+seg} ({(time.time()-t0)/60:.0f} min) ===", flush=True)
     m.train()
-    _, init_tool_h, init_ptr_h = sft(m, corpus, tok, steps=seg, batch_size=16, lr=args.lr, warmup=20,
+    _, init_tool_h, init_ptr_h = sft(m, corpus, tok, steps=seg, batch_size=8, lr=args.lr, warmup=20,
                                      device="cpu", joint_tool_head=True, init_tool_head=init_tool,
                                      init_ptr_head=init_ptr, conversations=episodes, log=print)
     init_tool = init_tool_h.state_dict(); init_ptr = init_ptr_h.state_dict()
