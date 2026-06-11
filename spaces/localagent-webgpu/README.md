@@ -17,7 +17,7 @@ calling** and **multi-step planning** — running **entirely in your browser** o
 (WASM fallback when WebGPU is unavailable). No server, no API key; the model is downloaded once
 and cached.
 
-Model: [`SangbumChoi/localagent-tiny-30m-byte`](https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte).
+Model: [`danelcsb/localagent-tiny-30m-byte`](https://huggingface.co/danelcsb/localagent-tiny-30m-byte).
 Source: [LocalAgent](https://github.com/sangbumchoi/localagent).
 
 ## What it shows (generable dispatch — no fixed-N classifier)
