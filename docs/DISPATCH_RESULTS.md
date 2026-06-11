@@ -58,6 +58,16 @@ step-2400 backbone — `scripts/finalize_best.py`.)
   wiped) while the persistent disk (`runs/`, repo) survives. Training is therefore run in **bounded,
   per-segment-checkpointed, monitored chunks** and resumed from the latest checkpoint.
 
+## On-device export
+Both new heads export with the existing pipeline (`inference/export/to_dispatch.py`), parity-checked
+against PyTorch (route-head argmax 100% / dense-selector top-1 100% agreement, max|Δ| ~1e-5):
+- **Route head** → linear weights+bias applied to the model's final hidden state; argmax over 5 routes.
+- **Dense selector** → ship the **query tower** + a **precomputed, L2-normalized tool matrix**
+  `(n_tools, 256)`; the device computes `argmax_j normalize(q_proj(h)) · tool_matrix[j]`, never
+  touching the 8192-d embedding at runtime. Adding/removing a tool is adding/removing a `(1,256)`
+  row — the generable property survives export. The browser bundle (`to_onnx.export_web`) emits
+  `dispatch_heads.json` alongside the existing head JSON.
+
 ## Reproduce
 - Dispatch fine-tune: `scripts/train_dispatch_long.py` (segmented, checkpoints per segment).
 - Finalize a deployable checkpoint from a backbone: `scripts/finalize_best.py`.

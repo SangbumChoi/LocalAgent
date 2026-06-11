@@ -240,6 +240,17 @@ def export_web(checkpoint: str, out_dir: str, fp16: bool = True, opset: int = 17
         "meta.json": meta_path,
     }
 
+    # Dispatch heads (route_head + dense_selector query tower + precomputed tool matrix), when the
+    # checkpoint carries them. Same JS recipe as tool_head: apply to the onnx `hidden[:, -1]`.
+    if ck.get("route_head") and ck.get("dense_selector"):
+        from localagent.inference.export.to_dispatch import dispatch_heads_json
+        dispatch = dispatch_heads_json(ck)
+        dispatch_path = os.path.join(out_dir, "dispatch_heads.json")
+        with open(dispatch_path, "w") as f:
+            json.dump(dispatch, f)
+        print(f"wrote {dispatch_path}")
+        stats["dispatch_heads.json"] = dispatch_path
+
     if check:
         import numpy as np
         import onnxruntime as ort
