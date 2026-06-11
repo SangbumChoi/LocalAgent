@@ -76,6 +76,27 @@ its correct outputs (rejection sampling: 257/500), and SFT the LM to free-genera
 selector + pointer-copy) is *necessary* at this scale, not merely convenient: the very functions OPD
 would need to teach (selection, verbatim arg-copy) are the ones the autoregressive LM can't represent.
 
+**Exp 2 — route specialists → distill into one** (the literal DeepSeek-V4 recipe). Per-route
+selection top-1:
+
+| | code | web_search | app_action |
+|---|---|---|---|
+| generalist (broad-trained, scenarios-best) | **51%** | **75%** | **70%** |
+| specialist (SFT'd on its route only) | 38% | 62% | 50% |
+| consolidated (one backbone, union of routes) | 25% | 62% | 35% |
+
+Each narrow specialist is *worse* on its own route than the generalist and catastrophically forgets
+the others (0%); consolidation does not recover. (Caveat: specialists/consolidated start from the
+50-tool base with far fewer steps than the generalist — but the within-base trend is unambiguous.)
+
+**OPD verdict for a 28M from-scratch model: neither variant improves the model.** This is the
+expected mirror of the capacity story. DeepSeek-V4's OPD/specialist-distillation works because large
+models have *spare capacity* and each specialist gets *more/better* data; at 28M the bottlenecks are
+exactly capacity and data-per-slice, so (1) free-gen can't absorb the heads' jobs (Exp 1) and (2)
+narrow specialists underperform a broadly-trained generalist (Exp 2). The right move at this scale is
+the opposite of cutting breadth: keep the discriminative heads and train one generalist on broad,
+paraphrase-rich data — which is exactly the shipped model.
+
 ## On-device export
 Both new heads export with the existing pipeline (`inference/export/to_dispatch.py`), parity-checked
 against PyTorch (route-head argmax 100% / dense-selector top-1 100% agreement, max|Δ| ~1e-5):
