@@ -138,11 +138,12 @@ while done < args.steps:
     seg = min(args.seg, args.steps - done)
     print(f"\n=== segment {seg_i}: {done}->{done+seg} ({(time.time()-t0)/60:.0f} min) ===", flush=True)
     m.train()
-    _, init_tool_h, init_ptr_h = sft(m, corpus, tok, steps=seg, batch_size=8, lr=args.lr, warmup=20,
-                                     device="cpu", joint_tool_head=True, init_tool_head=init_tool,
-                                     init_ptr_head=init_ptr, conversations=episodes, log=print)
-    init_tool = init_tool_h.state_dict(); init_ptr = init_ptr_h.state_dict()
-    ptr = init_ptr_h; ptr.eval(); m.eval()
+    # pure-LM SFT on corpus + episodes: the backbone learns clarify/abstain/parallel/episode
+    # patterns (read by the fresh route-head/selector probes). joint_tool_head=False skips the
+    # UNUSED 51-way head + the expensive multi-turn head training (we select via the dense selector).
+    sft(m, corpus, tok, steps=seg, batch_size=8, lr=args.lr, warmup=20, device="cpu",
+        joint_tool_head=False, conversations=episodes, log=print)
+    m.eval()
     done += seg
     torch.save({"cfg": cfg.__dict__, "state_dict": m.state_dict(), "ptr_head": init_ptr,
                 "tool_head": init_tool, "steps_done": done}, f"runs/scenarios-step{done}.pt")
