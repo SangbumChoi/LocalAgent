@@ -26,7 +26,8 @@
 {"prompt": "mkdir logs please.", "tool": "make_dir"}
 {"prompt": "Run the test suite.", "tool": "run_tests"}
 {"prompt": "Execute the unit tests.", "tool": "run_tests"}
-{"prompt": "Run the python script train.py.", "tool": "run_python"}
+{"prompt": "Run python train.py.", "tool": "run_command"}
+{"prompt": "Run this Python: print(2 ** 16).", "tool": "run_python"}
 {"prompt": "Run the command echo hello in the shell.", "tool": "run_command"}
 {"prompt": "Read the file data/loader.py.", "tool": "read_file"}
 {"prompt": "Open and show me the contents of README.md.", "tool": "read_file"}

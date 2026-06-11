@@ -1,7 +1,7 @@
 {"prompt": "Go through the contents of assets/icons.", "kind": "tool", "category": "ctx_analyze", "tool": "list_dir", "target": "{\"arguments\":{\"path\":\"assets/icons\"},\"name\":\"list_dir\"}"}
 {"prompt": "Can you check the page https://docs.product.com/guide?", "kind": "tool", "category": "ctx_check", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"https://docs.product.com/guide\"},\"name\":\"open_url\"}"}
 {"prompt": "Go ahead and write the summary to logs/run.log.", "kind": "tool", "category": "ctx_write", "tool": "write_file", "target": "{\"arguments\":{\"path\":\"logs/run.log\"},\"name\":\"write_file\"}"}
-{"prompt": "Run 'ingest.py'.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"ingest.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Run 'sum(range(8))' in Python.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"sum(range(8))\"},\"name\":\"run_python\"}"}
 {"prompt": "Please write 'deploy is done' to Slack.", "kind": "tool", "category": "ctx_write", "tool": "slack_send", "target": "{\"arguments\":{\"message\":\"deploy is done\"},\"name\":\"slack_send\"}"}
 {"prompt": "Search for files named '**/*.java'.", "kind": "tool", "category": "ctx_search", "tool": "find_files", "target": "{\"arguments\":{\"pattern\":\"**/*.java\"},\"name\":\"find_files\"}"}
 {"prompt": "Please write the results out to logs/run.log.", "kind": "tool", "category": "ctx_write", "tool": "write_file", "target": "{\"arguments\":{\"path\":\"logs/run.log\"},\"name\":\"write_file\"}"}
@@ -44,7 +44,7 @@
 {"prompt": "Check on the page news.site.org/today.", "kind": "tool", "category": "ctx_check", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"news.site.org/today\"},\"name\":\"open_url\"}"}
 {"prompt": "Go ahead and open https://docs.product.com/guide.", "kind": "tool", "category": "ctx_open", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"https://docs.product.com/guide\"},\"name\":\"open_url\"}"}
 {"prompt": "Please fetch the API response at https://api.service.dev/orders.", "kind": "tool", "category": "ctx_fetch", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"https://api.service.dev/orders\"},\"name\":\"http_request\"}"}
-{"prompt": "Run the test suite.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Please run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
 {"prompt": "Check the diff real quick.", "kind": "tool", "category": "ctx_check", "tool": "git_diff", "target": "{\"arguments\":{},\"name\":\"git_diff\"}"}
 {"prompt": "Check on git status.", "kind": "tool", "category": "ctx_check", "tool": "git_status", "target": "{\"arguments\":{},\"name\":\"git_status\"}"}
 {"prompt": "Check README.md.", "kind": "tool", "category": "ctx_analyze", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"README.md\"},\"name\":\"read_file\"}"}
@@ -62,8 +62,8 @@
 {"prompt": "Open up 'Notion'.", "kind": "tool", "category": "ctx_open", "tool": "open_app", "target": "{\"arguments\":{\"name\":\"Notion\"},\"name\":\"open_app\"}"}
 {"prompt": "Open up data/notes.txt.", "kind": "tool", "category": "ctx_open", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"data/notes.txt\"},\"name\":\"read_file\"}"}
 {"prompt": "Can you run 'docker build .'?", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"docker build .\"},\"name\":\"run_command\"}"}
-{"prompt": "Go get the API response at https://data.portal.app/metrics.", "kind": "tool", "category": "ctx_fetch", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"https://data.portal.app/metrics\"},\"name\":\"http_request\"}"}
-{"prompt": "Run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Can you get the API response at https://data.portal.app/metrics?", "kind": "tool", "category": "ctx_fetch", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"https://data.portal.app/metrics\"},\"name\":\"http_request\"}"}
+{"prompt": "Can you run the test suite?", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
 {"prompt": "Can you check https://blog.dev/intro-post?", "kind": "tool", "category": "ctx_check", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"https://blog.dev/intro-post\"},\"name\":\"open_url\"}"}
 {"prompt": "Can you write the results out to reports/q1.txt?", "kind": "tool", "category": "ctx_write", "tool": "write_file", "target": "{\"arguments\":{\"path\":\"reports/q1.txt\"},\"name\":\"write_file\"}"}
 {"prompt": "Open up https://docs.product.com/guide.", "kind": "tool", "category": "ctx_open", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"https://docs.product.com/guide\"},\"name\":\"open_url\"}"}
@@ -75,14 +75,14 @@
 {"prompt": "Check on the repo.", "kind": "tool", "category": "ctx_check", "tool": "git_status", "target": "{\"arguments\":{},\"name\":\"git_status\"}"}
 {"prompt": "Fetch a copy of files.depot.dev/report.pdf onto disk.", "kind": "tool", "category": "ctx_fetch", "tool": "download_file", "target": "{\"arguments\":{\"url\":\"files.depot.dev/report.pdf\"},\"name\":\"download_file\"}"}
 {"prompt": "Search for files matching 'test_*.py'.", "kind": "tool", "category": "ctx_search", "tool": "find_files", "target": "{\"arguments\":{\"pattern\":\"test_*.py\"},\"name\":\"find_files\"}"}
-{"prompt": "Run the test suite now.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Run the test suite.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
 {"prompt": "Check news.site.org/today.", "kind": "tool", "category": "ctx_analyze", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"news.site.org/today\"},\"name\":\"open_url\"}"}
-{"prompt": "Go run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
 {"prompt": "Can you search for winter running shoes?", "kind": "tool", "category": "ctx_search", "tool": "web_search", "target": "{\"arguments\":{\"query\":\"winter running shoes\"},\"name\":\"web_search\"}"}
 {"prompt": "Summarize https://portal.app/changelog.", "kind": "tool", "category": "ctx_analyze", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"https://portal.app/changelog\"},\"name\":\"open_url\"}"}
 {"prompt": "Do a search for files named '*.css'.", "kind": "tool", "category": "ctx_search", "tool": "find_files", "target": "{\"arguments\":{\"pattern\":\"*.css\"},\"name\":\"find_files\"}"}
 {"prompt": "Fetch a copy of mirror.host.dev/tool.deb onto disk.", "kind": "tool", "category": "ctx_fetch", "tool": "download_file", "target": "{\"arguments\":{\"url\":\"mirror.host.dev/tool.deb\"},\"name\":\"download_file\"}"}
-{"prompt": "Please run the command 'docker build .'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"docker build .\"},\"name\":\"run_command\"}"}
+{"prompt": "Please run the command 'python scripts/ingest.py'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"python scripts/ingest.py\"},\"name\":\"run_command\"}"}
 {"prompt": "Check the state of the repo.", "kind": "tool", "category": "ctx_check", "tool": "git_status", "target": "{\"arguments\":{},\"name\":\"git_status\"}"}
 {"prompt": "Take a look at the article at status.host.io/incidents.", "kind": "tool", "category": "ctx_analyze", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"status.host.io/incidents\"},\"name\":\"open_url\"}"}
 {"prompt": "Do a search for 'MAX_BUFFER' in the codebase.", "kind": "tool", "category": "ctx_search", "tool": "grep_search", "target": "{\"arguments\":{\"pattern\":\"MAX_BUFFER\"},\"name\":\"grep_search\"}"}
@@ -93,7 +93,7 @@
 {"prompt": "Please open lib/helpers.js.", "kind": "tool", "category": "ctx_open", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"lib/helpers.js\"},\"name\":\"read_file\"}"}
 {"prompt": "Open up the file config/settings.yaml.", "kind": "tool", "category": "ctx_open", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"config/settings.yaml\"},\"name\":\"read_file\"}"}
 {"prompt": "Can you check what's changed in the code?", "kind": "tool", "category": "ctx_check", "tool": "git_diff", "target": "{\"arguments\":{},\"name\":\"git_diff\"}"}
-{"prompt": "Can you run the unit tests?", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Run the test suite.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
 {"prompt": "Check on what changed.", "kind": "tool", "category": "ctx_check", "tool": "git_diff", "target": "{\"arguments\":{},\"name\":\"git_diff\"}"}
 {"prompt": "Go ahead and open lib/helpers.js.", "kind": "tool", "category": "ctx_open", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"lib/helpers.js\"},\"name\":\"read_file\"}"}
 {"prompt": "Please fetch me info about cheap flights to Lisbon.", "kind": "tool", "category": "ctx_fetch", "tool": "web_search", "target": "{\"arguments\":{\"query\":\"cheap flights to Lisbon\"},\"name\":\"web_search\"}"}
@@ -112,20 +112,20 @@
 {"prompt": "Look at the file docs/intro.md.", "kind": "tool", "category": "ctx_analyze", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"docs/intro.md\"},\"name\":\"read_file\"}"}
 {"prompt": "Go get me info about the new metro timetable.", "kind": "tool", "category": "ctx_fetch", "tool": "web_search", "target": "{\"arguments\":{\"query\":\"the new metro timetable\"},\"name\":\"web_search\"}"}
 {"prompt": "Can you search for 'render_sidebar' in the files?", "kind": "tool", "category": "ctx_search", "tool": "grep_search", "target": "{\"arguments\":{\"pattern\":\"render_sidebar\"},\"name\":\"grep_search\"}"}
-{"prompt": "Can you get the JSON from https://data.portal.app/metrics?", "kind": "tool", "category": "ctx_fetch", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"https://data.portal.app/metrics\"},\"name\":\"http_request\"}"}
+{"prompt": "Please fetch the JSON from https://data.portal.app/metrics.", "kind": "tool", "category": "ctx_fetch", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"https://data.portal.app/metrics\"},\"name\":\"http_request\"}"}
 {"prompt": "Check git status.", "kind": "tool", "category": "ctx_check", "tool": "git_status", "target": "{\"arguments\":{},\"name\":\"git_status\"}"}
 {"prompt": "Please open 'Notion'.", "kind": "tool", "category": "ctx_open", "tool": "open_app", "target": "{\"arguments\":{\"name\":\"Notion\"},\"name\":\"open_app\"}"}
 {"prompt": "Summarize the contents of scripts.", "kind": "tool", "category": "ctx_analyze", "tool": "list_dir", "target": "{\"arguments\":{\"path\":\"scripts\"},\"name\":\"list_dir\"}"}
 {"prompt": "Take a look at the scripts directory.", "kind": "tool", "category": "ctx_analyze", "tool": "list_dir", "target": "{\"arguments\":{\"path\":\"scripts\"},\"name\":\"list_dir\"}"}
-{"prompt": "Run the script 'ingest.py'.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"ingest.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Run the Python snippet 'sum(range(8))'.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"sum(range(8))\"},\"name\":\"run_python\"}"}
 {"prompt": "Please run 'kubectl get pods'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"kubectl get pods\"},\"name\":\"run_command\"}"}
 {"prompt": "Do a search for files matching '*.css'.", "kind": "tool", "category": "ctx_search", "tool": "find_files", "target": "{\"arguments\":{\"pattern\":\"*.css\"},\"name\":\"find_files\"}"}
 {"prompt": "Run a search for files named '*.css'.", "kind": "tool", "category": "ctx_search", "tool": "find_files", "target": "{\"arguments\":{\"pattern\":\"*.css\"},\"name\":\"find_files\"}"}
 {"prompt": "Can you open the 'Figma' app?", "kind": "tool", "category": "ctx_open", "tool": "open_app", "target": "{\"arguments\":{\"name\":\"Figma\"},\"name\":\"open_app\"}"}
 {"prompt": "Please fetch me info about beginner sourdough recipes.", "kind": "tool", "category": "ctx_fetch", "tool": "web_search", "target": "{\"arguments\":{\"query\":\"beginner sourdough recipes\"},\"name\":\"web_search\"}"}
 {"prompt": "Search for 'parse_headers' in the repo.", "kind": "tool", "category": "ctx_search", "tool": "grep_search", "target": "{\"arguments\":{\"pattern\":\"parse_headers\"},\"name\":\"grep_search\"}"}
-{"prompt": "Go run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
-{"prompt": "Please run 'demo.py'.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"demo.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Run the unit tests now.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Please run 'print('ok')' in Python.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"print('ok')\"},\"name\":\"run_python\"}"}
 {"prompt": "Please fetch me some information on local coworking spaces.", "kind": "tool", "category": "ctx_fetch", "tool": "web_search", "target": "{\"arguments\":{\"query\":\"local coworking spaces\"},\"name\":\"web_search\"}"}
 {"prompt": "Please open 'Chrome'.", "kind": "tool", "category": "ctx_open", "tool": "open_app", "target": "{\"arguments\":{\"name\":\"Chrome\"},\"name\":\"open_app\"}"}
 {"prompt": "Summarize what's inside internal.", "kind": "tool", "category": "ctx_analyze", "tool": "list_dir", "target": "{\"arguments\":{\"path\":\"internal\"},\"name\":\"list_dir\"}"}
@@ -149,11 +149,11 @@
 {"prompt": "Check on the weather in Stockholm.", "kind": "tool", "category": "ctx_check", "tool": "get_weather", "target": "{\"arguments\":{\"city\":\"Stockholm\"},\"name\":\"get_weather\"}"}
 {"prompt": "Can you open the file docs/intro.md?", "kind": "tool", "category": "ctx_open", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"docs/intro.md\"},\"name\":\"read_file\"}"}
 {"prompt": "Look at src/utils.py.", "kind": "tool", "category": "ctx_analyze", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"src/utils.py\"},\"name\":\"read_file\"}"}
-{"prompt": "Run 'git fetch --all'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"git fetch --all\"},\"name\":\"run_command\"}"}
+{"prompt": "Go run the command 'kubectl get pods'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"kubectl get pods\"},\"name\":\"run_command\"}"}
 {"prompt": "Go ahead and write 'demo went well' to Slack.", "kind": "tool", "category": "ctx_write", "tool": "slack_send", "target": "{\"arguments\":{\"message\":\"demo went well\"},\"name\":\"slack_send\"}"}
 {"prompt": "Go get the file at files.depot.dev/report.pdf and save it.", "kind": "tool", "category": "ctx_fetch", "tool": "download_file", "target": "{\"arguments\":{\"url\":\"files.depot.dev/report.pdf\"},\"name\":\"download_file\"}"}
 {"prompt": "Fetch the API response at https://api.acme.io/v1/users.", "kind": "tool", "category": "ctx_fetch", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"https://api.acme.io/v1/users\"},\"name\":\"http_request\"}"}
-{"prompt": "Run 'cleanup.py' now.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"cleanup.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Run 'len([1, 2, 3])' in Python now.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"len([1, 2, 3])\"},\"name\":\"run_python\"}"}
 {"prompt": "Open lib/helpers.js.", "kind": "tool", "category": "ctx_open", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"lib/helpers.js\"},\"name\":\"read_file\"}"}
 {"prompt": "Go ahead and write 'ideas for the offsite' to my Notion page.", "kind": "tool", "category": "ctx_write", "tool": "notion_write", "target": "{\"arguments\":{\"content\":\"ideas for the offsite\"},\"name\":\"notion_write\"}"}
 {"prompt": "Review the API response from api.blog.dev/posts.", "kind": "tool", "category": "ctx_analyze", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"api.blog.dev/posts\"},\"name\":\"http_request\"}"}
@@ -162,13 +162,13 @@
 {"prompt": "Look at news.site.org/today.", "kind": "tool", "category": "ctx_analyze", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"news.site.org/today\"},\"name\":\"open_url\"}"}
 {"prompt": "Can you write 'release is live' in the #dev channel?", "kind": "tool", "category": "ctx_write", "tool": "slack_send", "target": "{\"arguments\":{\"message\":\"release is live\"},\"name\":\"slack_send\"}"}
 {"prompt": "I need you to search for local coworking spaces online.", "kind": "tool", "category": "ctx_search", "tool": "web_search", "target": "{\"arguments\":{\"query\":\"local coworking spaces\"},\"name\":\"web_search\"}"}
-{"prompt": "Please run 'cleanup.py'.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"cleanup.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Please run 'len([1, 2, 3])' in Python.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"len([1, 2, 3])\"},\"name\":\"run_python\"}"}
 {"prompt": "Write 'demo went well' to the #general channel.", "kind": "tool", "category": "ctx_write", "tool": "slack_send", "target": "{\"arguments\":{\"message\":\"demo went well\"},\"name\":\"slack_send\"}"}
 {"prompt": "Go ahead and open the 'Spotify' app.", "kind": "tool", "category": "ctx_open", "tool": "open_app", "target": "{\"arguments\":{\"name\":\"Spotify\"},\"name\":\"open_app\"}"}
-{"prompt": "Please run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Go run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
 {"prompt": "Check what's changed in the code.", "kind": "tool", "category": "ctx_check", "tool": "git_diff", "target": "{\"arguments\":{},\"name\":\"git_diff\"}"}
 {"prompt": "Go check the diff.", "kind": "tool", "category": "ctx_check", "tool": "git_diff", "target": "{\"arguments\":{},\"name\":\"git_diff\"}"}
-{"prompt": "Run 'demo.py'.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"demo.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Run 'print('ok')' in Python.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"print('ok')\"},\"name\":\"run_python\"}"}
 {"prompt": "Check git status.", "kind": "tool", "category": "ctx_check", "tool": "git_status", "target": "{\"arguments\":{},\"name\":\"git_status\"}"}
 {"prompt": "Can you check the repo?", "kind": "tool", "category": "ctx_check", "tool": "git_status", "target": "{\"arguments\":{},\"name\":\"git_status\"}"}
 {"prompt": "Can you get the JSON from https://api.acme.io/v1/users?", "kind": "tool", "category": "ctx_fetch", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"https://api.acme.io/v1/users\"},\"name\":\"http_request\"}"}
@@ -185,7 +185,7 @@
 {"prompt": "Go through the article at https://acme.io/blog.", "kind": "tool", "category": "ctx_analyze", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"https://acme.io/blog\"},\"name\":\"open_url\"}"}
 {"prompt": "Check on the diff.", "kind": "tool", "category": "ctx_check", "tool": "git_diff", "target": "{\"arguments\":{},\"name\":\"git_diff\"}"}
 {"prompt": "Check on the page status.host.io/incidents.", "kind": "tool", "category": "ctx_check", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"status.host.io/incidents\"},\"name\":\"open_url\"}"}
-{"prompt": "Can you run the test suite?", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Go run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
 {"prompt": "Look at src/utils.py.", "kind": "tool", "category": "ctx_analyze", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"src/utils.py\"},\"name\":\"read_file\"}"}
 {"prompt": "Please write the summary to logs/run.log.", "kind": "tool", "category": "ctx_write", "tool": "write_file", "target": "{\"arguments\":{\"path\":\"logs/run.log\"},\"name\":\"write_file\"}"}
 {"prompt": "Can you write the summary to notes/summary.md?", "kind": "tool", "category": "ctx_write", "tool": "write_file", "target": "{\"arguments\":{\"path\":\"notes/summary.md\"},\"name\":\"write_file\"}"}
@@ -198,11 +198,11 @@
 {"prompt": "Can you open lib/helpers.js?", "kind": "tool", "category": "ctx_open", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"lib/helpers.js\"},\"name\":\"read_file\"}"}
 {"prompt": "Open the page https://acme.io/blog.", "kind": "tool", "category": "ctx_open", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"https://acme.io/blog\"},\"name\":\"open_url\"}"}
 {"prompt": "Go run 'kubectl get pods'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"kubectl get pods\"},\"name\":\"run_command\"}"}
-{"prompt": "Run 'cleanup.py' now.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"cleanup.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Run 'len([1, 2, 3])' in Python now.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"len([1, 2, 3])\"},\"name\":\"run_python\"}"}
 {"prompt": "Check the forecast for Oslo.", "kind": "tool", "category": "ctx_check", "tool": "get_weather", "target": "{\"arguments\":{\"city\":\"Oslo\"},\"name\":\"get_weather\"}"}
 {"prompt": "Go check what changed.", "kind": "tool", "category": "ctx_check", "tool": "git_diff", "target": "{\"arguments\":{},\"name\":\"git_diff\"}"}
-{"prompt": "Can you run the script 'report.py'?", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"report.py\"},\"name\":\"run_python\"}"}
-{"prompt": "Can you run the command 'kubectl get pods'?", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"kubectl get pods\"},\"name\":\"run_command\"}"}
+{"prompt": "Can you run the Python snippet 'max(4, 9)'?", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"max(4, 9)\"},\"name\":\"run_python\"}"}
+{"prompt": "Go run the command 'kubectl get pods'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"kubectl get pods\"},\"name\":\"run_command\"}"}
 {"prompt": "Please write 'deploy is done' in the #dev channel.", "kind": "tool", "category": "ctx_write", "tool": "slack_send", "target": "{\"arguments\":{\"message\":\"deploy is done\"},\"name\":\"slack_send\"}"}
 {"prompt": "Can you check what changed?", "kind": "tool", "category": "ctx_check", "tool": "git_diff", "target": "{\"arguments\":{},\"name\":\"git_diff\"}"}
 {"prompt": "Go through the src directory.", "kind": "tool", "category": "ctx_analyze", "tool": "list_dir", "target": "{\"arguments\":{\"path\":\"src\"},\"name\":\"list_dir\"}"}
@@ -215,16 +215,16 @@
 {"prompt": "Can you check the state of the repo?", "kind": "tool", "category": "ctx_check", "tool": "git_status", "target": "{\"arguments\":{},\"name\":\"git_status\"}"}
 {"prompt": "Open up https://portal.app/changelog.", "kind": "tool", "category": "ctx_open", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"https://portal.app/changelog\"},\"name\":\"open_url\"}"}
 {"prompt": "Go through docs/intro.md.", "kind": "tool", "category": "ctx_analyze", "tool": "read_file", "target": "{\"arguments\":{\"path\":\"docs/intro.md\"},\"name\":\"read_file\"}"}
-{"prompt": "Please run the tests.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
+{"prompt": "Please run the test suite.", "kind": "tool", "category": "ctx_run", "tool": "run_tests", "target": "{\"arguments\":{},\"name\":\"run_tests\"}"}
 {"prompt": "Run a search for standing desk reviews online.", "kind": "tool", "category": "ctx_search", "tool": "web_search", "target": "{\"arguments\":{\"query\":\"standing desk reviews\"},\"name\":\"web_search\"}"}
 {"prompt": "Can you search for files matching '*.css'?", "kind": "tool", "category": "ctx_search", "tool": "find_files", "target": "{\"arguments\":{\"pattern\":\"*.css\"},\"name\":\"find_files\"}"}
 {"prompt": "Open up 'Chrome'.", "kind": "tool", "category": "ctx_open", "tool": "open_app", "target": "{\"arguments\":{\"name\":\"Chrome\"},\"name\":\"open_app\"}"}
-{"prompt": "Run 'git fetch --all'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"git fetch --all\"},\"name\":\"run_command\"}"}
+{"prompt": "Run 'python scripts/ingest.py'.", "kind": "tool", "category": "ctx_run", "tool": "run_command", "target": "{\"arguments\":{\"command\":\"python scripts/ingest.py\"},\"name\":\"run_command\"}"}
 {"prompt": "Search for 'render_sidebar' in the codebase.", "kind": "tool", "category": "ctx_search", "tool": "grep_search", "target": "{\"arguments\":{\"pattern\":\"render_sidebar\"},\"name\":\"grep_search\"}"}
 {"prompt": "Please write 'q3 planning draft' to my notes.", "kind": "tool", "category": "ctx_write", "tool": "notion_write", "target": "{\"arguments\":{\"content\":\"q3 planning draft\"},\"name\":\"notion_write\"}"}
-{"prompt": "Go run the script 'cleanup.py'.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"cleanup.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Go run the Python snippet 'len([1, 2, 3])'.", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"len([1, 2, 3])\"},\"name\":\"run_python\"}"}
 {"prompt": "Look at the article at news.site.org/today.", "kind": "tool", "category": "ctx_analyze", "tool": "open_url", "target": "{\"arguments\":{\"url\":\"news.site.org/today\"},\"name\":\"open_url\"}"}
-{"prompt": "Can you run the script 'ingest.py'?", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"ingest.py\"},\"name\":\"run_python\"}"}
+{"prompt": "Can you run the Python snippet 'sum(range(8))'?", "kind": "tool", "category": "ctx_run", "tool": "run_python", "target": "{\"arguments\":{\"code\":\"sum(range(8))\"},\"name\":\"run_python\"}"}
 {"prompt": "Search for files matching '*.ipynb'.", "kind": "tool", "category": "ctx_search", "tool": "find_files", "target": "{\"arguments\":{\"pattern\":\"*.ipynb\"},\"name\":\"find_files\"}"}
 {"prompt": "Take a look at the JSON from https://api.service.dev/orders.", "kind": "tool", "category": "ctx_analyze", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"https://api.service.dev/orders\"},\"name\":\"http_request\"}"}
 {"prompt": "Get the JSON from api.blog.dev/posts.", "kind": "tool", "category": "ctx_fetch", "tool": "http_request", "target": "{\"arguments\":{\"url\":\"api.blog.dev/posts\"},\"name\":\"http_request\"}"}

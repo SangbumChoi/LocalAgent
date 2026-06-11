@@ -8,9 +8,8 @@ import pathlib
 
 from localagent.data.contextual import contextual_samples
 from localagent.data.paraphrase import paraphrase_samples
-from localagent.data.render import history_text
 from localagent.data.scenarios import scenario_episodes, scenario_samples
-from localagent.eval.freeform import FREEFORM_EVAL
+from localagent.eval.freeform import FREEFORM_EVAL, FREEFORM_TRAIN
 
 OUT = pathlib.Path("data/dumps")
 OUT.mkdir(parents=True, exist_ok=True)
@@ -47,8 +46,14 @@ for split in ("train", "eval"):
     dump_samples(f"scenarios_single_{split}", scenario_samples(20, seed=0, split=split))
     dump_episodes(f"scenarios_episodes_{split}", scenario_episodes(20, seed=0, split=split))
 
-with (OUT / "freeform_eval.jsonl").open("w") as f:
-    for q, gold in FREEFORM_EVAL:
-        f.write(json.dumps({"prompt": q, "tool": gold}) + "\n")
-print(f"{OUT/'freeform_eval.jsonl'}  ({len(FREEFORM_EVAL)} rows)")
+def dump_freeform(name, pairs):
+    p = OUT / f"{name}.jsonl"
+    with p.open("w") as f:
+        for q, gold in pairs:
+            f.write(json.dumps({"prompt": q, "tool": gold}) + "\n")
+    print(f"{p}  ({len(pairs)} rows)")
+
+
+dump_freeform("freeform_train", FREEFORM_TRAIN)
+dump_freeform("freeform_eval", FREEFORM_EVAL)
 print("DUMP_DONE")

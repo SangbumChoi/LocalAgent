@@ -84,13 +84,18 @@ GLOB_PATTERNS = {
     "train": ["*.css", "test_*.py", "**/*.java", "*.ipynb"],
     "eval": ["*.gradle", "**/*.scss", "conftest_*.py"],
 }
-PY_SCRIPTS = {
-    "train": ["demo.py", "ingest.py", "cleanup.py", "report.py"],
-    "eval": ["migrate.py", "export_data.py"],
+# run_python takes ACTUAL inline Python code, never a script FILENAME (running a `.py` file is a
+# shell command — see the `python X.py` entries in SHELL_COMMANDS below). Disjoint train/eval.
+PY_SNIPPETS = {
+    "train": ["print('ok')", "sum(range(8))", "len([1, 2, 3])", "max(4, 9)"],
+    "eval": ["min(5, 2)", "abs(-3)"],
 }
+# Shell commands for run_command. Running a script is `python X.py` (a shell invocation), so those
+# live here — NOT in run_python. Disjoint train/eval.
 SHELL_COMMANDS = {
-    "train": ["make deploy", "git fetch --all", "kubectl get pods", "docker build ."],
-    "eval": ["docker ps", "make lint", "git pull"],
+    "train": ["make deploy", "git fetch --all", "kubectl get pods", "docker build .",
+              "python demo.py", "python scripts/ingest.py"],
+    "eval": ["docker ps", "make lint", "git pull", "python migrate.py"],
 }
 WRITE_DESTS = {
     "train": ["notes/summary.md", "out/results.json", "reports/q1.txt", "logs/run.log"],
@@ -179,7 +184,9 @@ GROUPS: dict[str, dict] = {
                        "eval": ["any files matching '{u}'"]}},
         ],
     },
-    # "Run X" — .py script vs shell command vs the test suite.
+    # "Run X" — inline Python CODE (run_python) vs a shell command incl. `python X.py`
+    # (run_command) vs the test suite (run_tests). A script FILENAME is a shell command, so it
+    # lives in the run_command branch's pool, NOT in run_python.
     "run": {
         "skeletons": {
             "train": ["Run {v}.", "Go run {v}.", "Run {v} now.", "Please run {v}.",
@@ -187,9 +194,9 @@ GROUPS: dict[str, dict] = {
             "eval": ["Could you run {v}?", "Run {v} for me.", "Kick off {v}."],
         },
         "branches": [
-            {"tool": "run_python", "arg": "code", "pool": PY_SCRIPTS,
-             "wraps": {"train": ["the script '{u}'", "'{u}'"],
-                       "eval": ["the Python script '{u}'"]}},
+            {"tool": "run_python", "arg": "code", "pool": PY_SNIPPETS,
+             "wraps": {"train": ["the Python snippet '{u}'", "'{u}' in Python"],
+                       "eval": ["'{u}' through Python"]}},
             {"tool": "run_command", "arg": "command", "pool": SHELL_COMMANDS,
              "wraps": {"train": ["the command '{u}'", "'{u}'"],
                        "eval": ["the shell command '{u}'"]}},

@@ -69,13 +69,26 @@ NEWS_TOPICS = {
     "eval": ["the central bank meeting", "the wildfire updates", "the peace talks",
              "the box office numbers", "the vaccine rollout", "the budget deal"],
 }
-# open_url / http_request / download_file: domains
+# open_url / http_request: domains (a homepage / endpoint is fine for these two).
 DOMAINS = {
     "train": ["acme.io", "store.example.net", "blog.dev", "news.site.org", "shop.co",
               "portal.app", "files.example.com", "cdn.assets.io", "api.service.dev",
               "docs.product.com", "status.host.io", "mail.provider.net"],
     "eval": ["forum.example.org", "media.host.com", "data.service.io", "wiki.project.net",
              "downloads.app.co", "support.vendor.com"],
+}
+# download_file: ALWAYS a concrete file URL (path + extension), never a bare domain/status page.
+# Disjoint train/eval. Each value is a literal substring of the prompt.
+DOWNLOAD_URLS = {
+    "train": ["https://cdn.acme.io/release.zip", "files.example.com/report.pdf",
+              "https://assets.site.org/logo.png", "downloads.host.io/tool.deb",
+              "https://blog.dev/assets/data.csv", "cdn.assets.io/images.tar.gz",
+              "https://docs.product.com/manual.pdf", "store.example.net/export.json",
+              "https://portal.app/files/backup.zip", "mirror.service.dev/pkg.whl",
+              "https://files.example.com/sample.xlsx", "cdn.acme.io/fonts.woff2"],
+    "eval": ["https://media.host.com/clip.mp4", "downloads.app.co/installer.dmg",
+             "https://data.service.io/dump.sql", "wiki.project.net/files/notes.txt",
+             "https://support.vendor.com/patch.tar.gz", "forum.example.org/upload.png"],
 }
 # list_dir / find_files (glob) / make_dir / read_file / write_file / edit_file: paths & names
 DIR_PATHS = {
@@ -109,13 +122,15 @@ SHELL_COMMANDS = {
               "npm ci", "cargo test", "go vet ./...", "rake db:migrate", "tox"],
     "eval": ["du -sh", "free -m", "make clean", "yarn lint", "cargo fmt", "bundle install"],
 }
-# run_python: code snippets
+# run_python: ACTUAL inline Python code snippets (never a bare script filename — running a
+# `.py` file is a shell command and lives in run_command). Values ground as literal substrings.
 PY_SNIPPETS = {
     "train": ["sum([1, 2, 3])", "print(42)", "len('hello')", "max(3, 9)", "abs(-7)",
               "round(3.14159, 2)", "sorted([3, 1, 2])", "range(5)", "int('100')",
-              "str.upper('hi')", "bool(0)", "list(reversed([1, 2]))"],
+              "str.upper('hi')", "bool(0)", "list(reversed([1, 2]))",
+              "print(sum(range(10)))", "[x*x for x in range(4)]"],
     "eval": ["min(8, 2)", "pow(2, 10)", "divmod(17, 5)", "any([0, 1])", "tuple([1, 2])",
-             "hex(255)"],
+             "hex(255)", "print(len([1, 2, 3]))"],
 }
 # send_email: recipients
 EMAIL_NAMES = {
@@ -240,7 +255,7 @@ TOOL_SPECS: dict[str, dict] = {
         ],
     },
     "download_file": {
-        "group": "code", "arg": "url", "pool": DOMAINS, "quoted": False,
+        "group": "code", "arg": "url", "pool": DOWNLOAD_URLS, "quoted": False,
         "train": [
             "Download the file from {v}.", "Download {v}.", "Grab the file at {v}.",
             "Fetch the file from {v}.", "Save the file from {v}.", "Pull down {v}.",

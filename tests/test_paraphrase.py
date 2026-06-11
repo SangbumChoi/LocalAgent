@@ -7,6 +7,7 @@ grounding, and a TRUE train/eval split (disjoint in BOTH phrasings AND slot valu
 import json
 
 from localagent.agent.toolset import STANDARD_TOOLS
+from localagent.data.contextual import contextual_samples
 from localagent.data.paraphrase import TOOL_EXAMPLES, paraphrase_samples
 
 TOOL_NAMES = {t.name for t in STANDARD_TOOLS}
@@ -93,3 +94,41 @@ def test_determinism():
     a = paraphrase_samples(n=3, seed=42, split="train")
     b = paraphrase_samples(n=3, seed=42, split="train")
     assert [s.prompt for s in a] == [s.prompt for s in b]
+
+
+# ---- call-quality contracts (A. fixes) -------------------------------------------------------
+def _all_samples_both_splits(n=8):
+    out = []
+    for split in ("train", "eval"):
+        out.extend(paraphrase_samples(n=n, seed=13, split=split))
+        out.extend(contextual_samples(n=n, seed=14, split=split))
+    return out
+
+
+def test_run_python_code_is_never_a_py_filename():
+    # Running a `.py` script is a shell command, not inline run_python code.
+    for s in _all_samples_both_splits():
+        if s.ref_name != "run_python":
+            continue
+        code = json.loads(s.ref_args).get("code", "")
+        assert not code.endswith(".py"), f"run_python got a filename as code: {code!r}"
+        # a bare `name.py` with no call/operator is also a filename, not a snippet
+        assert any(c in code for c in "()[]+-*/= "), f"run_python code looks like a filename: {code!r}"
+
+
+def test_download_file_url_has_path_or_extension():
+    # Every download_file target must name an actual file (path segment or file extension),
+    # never a bare domain / status / homepage.
+    for s in _all_samples_both_splits():
+        if s.ref_name != "download_file":
+            continue
+        url = json.loads(s.ref_args)["url"]
+        tail = url.split("://", 1)[-1]
+        host = tail.split("/", 1)[0]
+        has_path = "/" in tail
+        has_ext = "." in (tail.rsplit("/", 1)[-1])  # a dotted final segment (file.ext)
+        assert has_path or has_ext, f"download_file url is a bare domain: {url!r}"
+        # the final path segment should look like a file (have an extension)
+        last = tail.rsplit("/", 1)[-1]
+        assert "." in last and not last.endswith("."), f"download_file url has no file: {url!r}"
+        assert last != host or has_path, f"download_file url is just a host: {url!r}"

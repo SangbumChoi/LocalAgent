@@ -7,6 +7,11 @@ already exists for the unrelated ``eval.scenarios_bench`` module; both must stay
 from localagent.agent.toolset import STANDARD_TOOLS
 from localagent.data.schema import Conversation, Role
 from localagent.data.scenarios import (
+    _CHAINED,
+    _ERROR,
+    _WORKFLOW,
+    ABSTAIN,
+    CLARIFY,
     scenario_episodes,
     scenario_samples,
 )
@@ -175,3 +180,33 @@ def _episode_arg_values(split):
 def test_train_eval_disjoint_episode_args():
     tr, ev = _episode_arg_values("train"), _episode_arg_values("eval")
     assert not (tr & ev)
+
+
+# ---- expanded-volume contracts (B. expand) ---------------------------------------------------
+def test_clarify_abstain_expanded_counts():
+    # ~2-3x the original variety (was 8 train / 5 eval clarify; 10 train / 6 eval abstain).
+    assert len(CLARIFY["train"]) >= 18 and len(CLARIFY["eval"]) >= 9
+    assert len(ABSTAIN["train"]) >= 18 and len(ABSTAIN["eval"]) >= 9
+    # disjoint skeletons across split for both
+    for pool in (CLARIFY, ABSTAIN):
+        tr = {p for p, _ in pool["train"]}
+        ev = {p for p, _ in pool["eval"]}
+        assert not (tr & ev)
+
+
+def test_episode_skeleton_variety_expanded():
+    # was 3 workflow / 2 chained / 3 error_recovery; now substantially more distinct builders.
+    assert len(_WORKFLOW) >= 5
+    assert len(_CHAINED) >= 4
+    assert len(_ERROR) >= 5
+
+
+def test_parallel_variety_expanded():
+    # many distinct parallel skeletons appear when sampling broadly
+    seen = set()
+    for split in ("train", "eval"):
+        for s in scenario_samples(40, seed=21, split=split):
+            if s.category != "parallel":
+                continue
+            seen.add(tuple(c["name"] for c in s.calls))
+    assert len(seen) >= 6, seen

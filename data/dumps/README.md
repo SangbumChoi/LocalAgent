@@ -23,6 +23,7 @@ configs:
   - {split: eval,  path: scenarios_episodes_eval.jsonl}
 - config_name: freeform
   data_files:
+  - {split: train, path: freeform_train.jsonl}
   - {split: eval,  path: freeform_eval.jsonl}
 ---
 
@@ -41,9 +42,9 @@ Synthetic data for training/evaluating a **generable tool-dispatch** model over 
 |---|---|---|
 | `paraphrase` | 1000 / 1000 | many natural phrasings per tool (all 50 tools), single-turn |
 | `contextual` | 230 / 230 | **referent-conditioned**: same instruction → different tool by referent ("Open status.host.io"→`open_url`, "Open 'Chrome'"→`open_app`, "Open docs/intro.md"→`read_file`) |
-| `scenarios_single` | 38 / 31 | clarify / **abstain** (over-trigger negatives, no tool) / parallel (≥2 calls) |
+| `scenarios_single` | 60 / 40 | clarify / **abstain** (over-trigger negatives, no tool) / parallel (≥2 calls) |
 | `scenarios_episodes` | 60 / 60 | multi-turn episodes: workflow / chained / error-recovery |
-| `freeform` | – / 44 | hand-written out-of-distribution eval queries (the honest generalization test) |
+| `freeform` | 86 / 45 | hand-written natural queries — **train** (86) + out-of-distribution **eval** (45) |
 
 ## Schema
 
