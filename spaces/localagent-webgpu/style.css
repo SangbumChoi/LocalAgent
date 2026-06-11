@@ -83,6 +83,7 @@ button#run:not(:disabled):hover { filter: brightness(1.08); }
 .call.abstain { border-left-color: var(--warn); }
 .call.abstain .tool { color: var(--warn); }
 .step-index { color: var(--muted); font-family: var(--mono); font-size: 0.78rem; margin-right: 6px; }
+.call .route { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 10px; background: var(--accent); color: #fff; font-family: var(--mono); font-size: 0.72rem; vertical-align: middle; }
 .timing { color: var(--muted); font-size: 0.78rem; margin-top: 6px; font-family: var(--mono); }
 
 footer { margin-top: 36px; color: var(--muted); font-size: 0.78rem; }

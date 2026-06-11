@@ -11,9 +11,10 @@
     <header>
       <h1>🛠️ LocalAgent <span class="sub">tool calling in your browser</span></h1>
       <p class="tagline">
-        A <strong>28M-param, from-scratch</strong> byte-level agent. The transformer runs on
-        <strong>WebGPU</strong> (<code>onnxruntime-web</code>); the tool head, grounding, and the
-        planner loop are light JS. <a href="https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte" target="_blank" rel="noopener">model</a> ·
+        A <strong>28M-param, from-scratch</strong> byte-level agent over <strong>50 tools</strong>.
+        The transformer runs on <strong>WebGPU</strong> (<code>onnxruntime-web</code>); the
+        <strong>route head → dense selector → pointer-copy</strong> dispatch and the planner loop are
+        light JS. <a href="https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte" target="_blank" rel="noopener">model</a> ·
         <a href="https://github.com/sangbumchoi/localagent" target="_blank" rel="noopener">code</a>
       </p>
     </header>
@@ -39,9 +40,10 @@
       <div class="examples">
         <span>Try:</span>
         <button class="chip" data-plan="0">What's the weather in Tokyo?</button>
-        <button class="chip" data-plan="0">How tall is Mount Everest?</button>
+        <button class="chip" data-plan="0">List the files in the src directory</button>
+        <button class="chip" data-plan="0">Open https://github.com/pytorch/pytorch</button>
         <button class="chip" data-plan="0">What does ephemeral mean?</button>
-        <button class="chip" data-plan="0">Set a timer for 10 minutes.</button>
+        <button class="chip" data-plan="0">Email Dana the quarterly report</button>
         <button class="chip" data-plan="1">Search the web for AI news, then save it to Notion.</button>
         <button class="chip" data-plan="1">Read config.yaml, run the tests, then commit.</button>
       </div>

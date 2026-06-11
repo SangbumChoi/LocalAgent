@@ -20,54 +20,44 @@ and cached.
 Model: [`SangbumChoi/localagent-tiny-30m-byte`](https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte).
 Source: [LocalAgent](https://github.com/sangbumchoi/localagent).
 
-## What it shows
+## What it shows (generable dispatch — no fixed-N classifier)
 
-- **Tool selection** — the model's *real* `tool_head` decision (a linear head on the ONNX
-  `hidden` output) over the 21-tool surface, with a confidence score, plus **abstention** when no
-  tool fits.
-- **Grounded arguments** — arguments copied from spans of your prompt, so the emitted call is
-  schema-valid by construction.
-- **Multi-step plans** — the learned `plan_rollout`: pick a tool → ground it → feed back a
-  simulated response → pick the next, until the model emits the *stop* (`text`) class.
+- **Route gate** — a 5-way head (`web_search / computer_use / code / app_action / text`) on the ONNX
+  `hidden` output; the `text` route is **abstention** (answer directly / no tool).
+- **Tool selection** — a **dense two-tower selector**: the query tower projects `hidden`, scored by
+  cosine against a precomputed per-tool description-embedding matrix over the **50-tool** surface
+  (`argmax_j q·tool_matrix[j]`). Adding/removing a tool is adding/removing a row — no retraining.
+- **Grounded arguments** — copied from spans of your prompt via the learned pointer head, so the
+  emitted call is schema-valid by construction.
+- **Multi-step plans** — the rollout: pick a tool → ground it → feed back a simulated response →
+  pick the next, until the route head emits `text`.
 
 ## How it runs (honest version)
 
-The transformer forward pass runs on **WebGPU** via an exported ONNX graph that emits both `logits`
-and the last `hidden` state. The **tool head** (one matmul + argmax over `hidden`), the
-**argument grounding**, and the **planner loop** are light JavaScript on top — a faithful port of
-the Python `tool_head` / grounding / `plan_rollout`. Arg grounding in-browser covers the common
-formats (paths, URLs, quoted strings, names, numbers); the full Python grounder is the source of
-truth. First load fetches `model.fp16.onnx` (~tens of MB) and caches it.
+The transformer forward pass runs on **WebGPU** via an exported ONNX graph that emits `logits` and
+the last `hidden` state. The **route head**, the **dense selector** (matmul + normalize + argmax over
+the precomputed tool matrix), the **pointer-copy** grounding, and the **planner loop** are light
+JavaScript on top — a faithful port of the Python `routes` / `dense_selector` / `pointer_head`
+pipeline (parity-checked at export: 100% argmax/top-1 agreement). First load fetches
+`model.fp16.onnx` (~57 MB) and caches it.
 
 ## Files
 - `index.html` / `style.css` — the UI shell.
-- `app.js` — byte tokenizer, onnxruntime-web session (WebGPU + WASM fallback), tool selection,
+- `app.js` — byte tokenizer, onnxruntime-web session (WebGPU + WASM fallback), route+selector dispatch,
   grounding, and the planner rollout.
-- `model.fp16.onnx`, `heads.json`, `meta.json` — the exported inference bundle (**not in the
-  source repo**; they are deploy artifacts).
+- `model.fp16.onnx`, `heads.json`, `meta.json`, `dispatch_heads.json` — the exported inference
+  bundle (**not in the source repo**; deploy artifacts). See `DEPLOY.md` for the exact commands.
 
 ## Deploy
-The model bundle is produced from a trained checkpoint, separately from the source tree:
+See **`DEPLOY.md`** for copy-paste build + push commands. In short: export the bundle from the latest
+checkpoint and upload the static app + the four bundle files into a `sdk: static` Space:
 
 ```bash
 python -c "from localagent.inference.export.to_onnx import export_web; \
-           export_web('runs/tiny-30m-byte-best.pt', 'runs/web_export')"
+           export_web('runs/tiny-30m-scenarios-best.pt', 'build/web')"
 ```
 
-Then upload **the four static files + the three bundle files** into a Hugging Face Space repo
-(`sdk: static`), all at the repo root, using git-lfs for the large ones:
-
-```bash
-huggingface-cli upload <user>/localagent-webgpu spaces/localagent-webgpu/ . --repo-type space
-huggingface-cli upload <user>/localagent-webgpu runs/web_export/model.fp16.onnx model.fp16.onnx --repo-type space
-huggingface-cli upload <user>/localagent-webgpu runs/web_export/heads.json heads.json --repo-type space
-huggingface-cli upload <user>/localagent-webgpu runs/web_export/meta.json meta.json --repo-type space
-```
-
-`app.js` fetches `model.fp16.onnx` / `heads.json` / `meta.json` relative to the page, so they must
-sit next to `index.html`. The export was verified for onnxruntime-CPU↔PyTorch parity
-(max |Δlogits| 7.6e-6; fp16 drift 1.4e-3, same tool argmax) and the in-browser tool-selection +
-pointer-grounding math was checked against the bundle (`get_weather{city:"Paris"}`,
-`read_file{path:"tests/test_api.py"}`, …). The graph is all standard opset-17 ops; onnxruntime-web
-falls back per-op to WASM for any op without a WebGPU kernel (`Trilu`/`Tile`/`Expand`), with
-identical results.
+`app.js` fetches `model.fp16.onnx` / `heads.json` / `meta.json` / `dispatch_heads.json` relative to
+the page, so they must sit next to `index.html`. Export is parity-checked vs PyTorch (max |Δlogits|
+7.6e-6; route-head & dense-selector argmax/top-1 100% agreement). The graph is standard opset-17;
+onnxruntime-web falls back per-op to WASM for any op without a WebGPU kernel, with identical results.
