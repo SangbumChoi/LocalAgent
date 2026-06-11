@@ -9,6 +9,7 @@ compare FREE-GENERATION (no heads at all) before vs after, to see if the selecti
 be internalised into the raw LM. Bounded + checkpointed.
 """
 import json
+import random
 import sys
 import time
 
@@ -22,7 +23,7 @@ from localagent.agent.routes import RouteHead
 from localagent.agent.toolset import STANDARD_TOOLS as TOOLS
 from localagent.data.contextual import contextual_samples
 from localagent.data.paraphrase import paraphrase_samples
-from localagent.data.render import IGNORE, assistant_body
+from localagent.data.render import IGNORE
 from localagent.data.schema import ToolCall
 from localagent.eval.tool_eval import match_calls
 from localagent.model import LocalAgentLM, ModelConfig
@@ -70,7 +71,7 @@ def eval_freegen(model, samples, label):
 pool = (paraphrase_samples(2 if QUICK else 30, seed=5, split="train")
         + contextual_samples(1 if QUICK else 20, seed=5, split="train"))
 pool = [s for s in pool if s.kind == "tool"]
-pool = pool[: 60 if QUICK else 900]
+pool = pool[: 60 if QUICK else 500]
 t0 = time.time()
 distilled = []
 kept = 0
@@ -99,8 +100,7 @@ for prompt, target_body in distilled:
     p = tok.encode(f"{USER}{prompt}{ASSISTANT}")
     b = tok.encode(target_body) + [tok.eos_id]
     rows.append((p + b, [IGNORE] * len(p) + b))
-steps = 40 if QUICK else 500
-import random
+steps = 40 if QUICK else 400
 rng = random.Random(0)
 m.train()
 opt = torch.optim.AdamW(m.parameters(), lr=5e-4, betas=(0.9, 0.95))
