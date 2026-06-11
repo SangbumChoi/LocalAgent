@@ -65,4 +65,23 @@ step-2400 backbone — `scripts/finalize_best.py`.)
 - Score: `scripts/scorecard.py`, `scripts/audit_args.py`; demo: `scripts/demo_dispatch.py`.
 
 ## Scenario behaviours (clarify / abstain / parallel / multi-turn)
-_(continuation run in progress; numbers appended when complete.)_
+The four SOTA families (`data/scenarios.py`) were folded onto the dispatch backbone
+(`scripts/train_scenarios.py`, pure-LM SFT on corpus + episodes). The model is then re-probed with
+behaviour coverage (`scripts/finalize_scenarios.py`: oversample clarify/abstain text for the route
+head; train the selector on per-turn episode contexts), since the naive probes had blind spots.
+
+| behaviour | naive probe | **with coverage** | held n |
+|---|---|---|---|
+| multi-turn next-tool selection | 5% | **74%** | 27 |
+| abstention (route an under-/non-actionable turn to text) | 0% | **33%** | 6 |
+| parallel (per-conjunct selection) | 50% | (noisy) | 3 |
+| free-form dispatch (regression check) | 43% | 48% top-1 / 41% call | 44 |
+
+**Multi-turn selection 5%→74%** is the headline: the model handles mid-episode next-tool selection
+well once the selector sees episode contexts — the earlier 0/5% were *probe blind spots*, not a
+training failure. Abstention moved off the floor but is hard (and the held set is tiny). Parallel's
+held set (n=3) is too small to read. Deployable checkpoint: `runs/tiny-30m-scenarios-best.pt`.
+
+Two findings reinforced here: (1) the per-segment scenario SFT also has a **sweet spot** — free-form
+peaked at step 800 and degraded by step 1200, so we finalize from the step-800 backbone; (2) match
+the **probe's training distribution to what you measure**, or behaviours look absent when they aren't.
