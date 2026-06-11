@@ -58,6 +58,24 @@ step-2400 backbone — `scripts/finalize_best.py`.)
   wiped) while the persistent disk (`runs/`, repo) survives. Training is therefore run in **bounded,
   per-segment-checkpointed, monitored chunks** and resumed from the latest checkpoint.
 
+## On-policy distillation (OPD) experiments — does swapping RL→OPD help?
+Motivated by DeepSeek-V4 replacing RL with on-policy distillation. Two experiments
+(`scripts/opd_grounded.py`, `scripts/opd_specialists.py`):
+
+**Exp 1 — sequence-distill the grounded oracle into free-generation.** The grounded decoder
+(route+selector+copy, ~57% OOD) is the teacher; we relabel prompts with its decoded calls, keep only
+its correct outputs (rejection sampling: 257/500), and SFT the LM to free-generate them. Result:
+
+| free-gen (no heads) | before | after OPD |
+|---|---|---|
+| paraphrase-eval name/full | 6% / 6% | **6% / 6%** |
+| contextual-eval name/full | 4% / 4% | **4% / 4%** |
+
+**Zero change.** Free generation of tool calls cannot be internalized into a 28M model by distillation
+— it is a *capacity* limit, not a data limit. This confirms the head-based architecture (discriminative
+selector + pointer-copy) is *necessary* at this scale, not merely convenient: the very functions OPD
+would need to teach (selection, verbatim arg-copy) are the ones the autoregressive LM can't represent.
+
 ## On-device export
 Both new heads export with the existing pipeline (`inference/export/to_dispatch.py`), parity-checked
 against PyTorch (route-head argmax 100% / dense-selector top-1 100% agreement, max|Δ| ~1e-5):
