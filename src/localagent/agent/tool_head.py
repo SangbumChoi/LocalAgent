@@ -21,6 +21,14 @@ CLASSES = ["get_weather", "calculator", "web_search", "planner",
            "read_file", "write_file", "grep_search", "run_command", "git_commit", "run_tests",
            "set_reminder", "set_timer",
            "calendar_event", "send_email", "open_url", "notion_write", "slack_send", "jira_issue",
+           # computer-use family
+           "screenshot", "click", "double_click", "type_text", "key_press", "scroll", "drag",
+           "wait", "move_cursor", "open_app",
+           # modern dev / agentic tools
+           "run_python", "edit_file", "apply_patch", "http_request", "sql_query", "list_dir",
+           "find_files", "git_diff", "git_status", "install_package", "kill_process",
+           "read_clipboard", "write_clipboard", "download_file", "unzip", "env_get", "make_dir",
+           "list_processes", "docker_run",
            "text"]
 
 

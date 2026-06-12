@@ -56,12 +56,21 @@ class Attention(nn.Module):
         self.k = nn.Linear(cfg.d_model, cfg.n_kv_heads * cfg.head_dim, bias=False)
         self.v = nn.Linear(cfg.d_model, cfg.n_kv_heads * cfg.head_dim, bias=False)
         self.o = nn.Linear(cfg.n_heads * cfg.head_dim, cfg.d_model, bias=False)
+        # QK-Norm (Qwen3/Kimi): per-head RMSNorm on Q and K before RoPE. Off by default so
+        # legacy models are byte-identical (the gains are not even allocated when disabled).
+        if cfg.qk_norm:
+            self.q_norm = RMSNorm(cfg.head_dim, cfg.norm_eps)
+            self.k_norm = RMSNorm(cfg.head_dim, cfg.norm_eps)
+        else:
+            self.q_norm = self.k_norm = None
 
     def forward(self, x, cos, sin, cache=None):
         B, T, _ = x.shape
         q = self.q(x).view(B, T, self.n_heads, self.hd).transpose(1, 2)
         k = self.k(x).view(B, T, self.n_kv_heads, self.hd).transpose(1, 2)
         v = self.v(x).view(B, T, self.n_kv_heads, self.hd).transpose(1, 2)
+        if self.q_norm is not None:
+            q, k = self.q_norm(q), self.k_norm(k)
         q, k = apply_rope(q, cos, sin), apply_rope(k, cos, sin)
         if cache is not None:
             pk, pv = cache
@@ -77,6 +86,43 @@ class Attention(nn.Module):
         return self.o(out), new_cache
 
 
+class GatedShortConv(nn.Module):
+    """LFM2 LIV-style double-gated depthwise short-conv mixer (a cheap, CPU-friendly
+    sub-quadratic alternative to attention).
+
+        B, C, h̃ = Linear(x)              # three width-d projections
+        y       = B ⊙ h̃                  # input gate
+        z       = DepthwiseCausalConv1d(y, k)   # per-channel causal conv (left-pad k-1)
+        o       = Linear_out(C ⊙ z)      # output gate
+
+    Decode: a short causal conv only needs the last k-1 inputs per channel, so the cache slot
+    holds a (B, d, k-1) ring of prior `y` values → O(1) single-token decode.
+    """
+
+    def __init__(self, cfg: ModelConfig):
+        super().__init__()
+        d, self.k = cfg.d_model, cfg.conv_kernel
+        self.in_proj = nn.Linear(d, 3 * d, bias=False)   # -> B, C, h̃
+        # depthwise (groups=d) causal conv; we left-pad manually so decode-state is exact.
+        self.conv = nn.Conv1d(d, d, kernel_size=self.k, groups=d, bias=False)
+        self.out_proj = nn.Linear(d, d, bias=False)
+
+    def forward(self, x, cos, sin, cache=None):
+        B, T, d = x.shape
+        gb, gc, h = self.in_proj(x).chunk(3, dim=-1)
+        y = (gb * h).transpose(1, 2)                     # (B, d, T)
+        if cache is None:
+            pad = F.pad(y, (self.k - 1, 0))              # causal left-pad
+            new_cache = None
+        else:
+            # cache holds the prior (k-1) `y` columns; prepend them, keep the new tail.
+            pad = torch.cat([cache, y], dim=2)
+            new_cache = pad[:, :, -(self.k - 1):].contiguous() if self.k > 1 else cache
+        z = self.conv(pad).transpose(1, 2)               # (B, T, d), causal
+        o = self.out_proj(gc * z)
+        return o, new_cache
+
+
 class SwiGLU(nn.Module):
     def __init__(self, cfg: ModelConfig):
         super().__init__()
@@ -89,10 +135,13 @@ class SwiGLU(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, cfg: ModelConfig):
+    def __init__(self, cfg: ModelConfig, kind: str = "attn"):
         super().__init__()
+        self.kind = kind
         self.attn_norm = RMSNorm(cfg.d_model, cfg.norm_eps)
-        self.attn = Attention(cfg)
+        # The mixer is either GQA attention or the gated short-conv; both share the
+        # (x, cos, sin, cache) -> (out, new_cache) contract so dispatch is uniform.
+        self.attn = GatedShortConv(cfg) if kind == "conv" else Attention(cfg)
         self.ffn_norm = RMSNorm(cfg.d_model, cfg.norm_eps)
         self.ffn = SwiGLU(cfg)
 
@@ -113,7 +162,7 @@ class LocalAgentLM(nn.Module):
         self.embed = nn.Embedding(cfg.vocab_size, cfg.embed_dim)
         self.in_proj = nn.Linear(cfg.embed_dim, cfg.d_model, bias=False) if cfg.factorized else None
         self.out_proj = nn.Linear(cfg.d_model, cfg.embed_dim, bias=False) if cfg.factorized else None
-        self.blocks = nn.ModuleList(Block(cfg) for _ in range(cfg.n_layers))
+        self.blocks = nn.ModuleList(Block(cfg, kind) for kind in cfg.block_types())
         self.loop_embed = (
             nn.Parameter(torch.zeros(cfg.n_loops, cfg.d_model)) if cfg.n_loops > 1 else None
         )
@@ -128,6 +177,8 @@ class LocalAgentLM(nn.Module):
         if isinstance(m, nn.Linear):
             nn.init.normal_(m.weight, mean=0.0, std=0.02)
         elif isinstance(m, nn.Embedding):
+            nn.init.normal_(m.weight, mean=0.0, std=0.02)
+        elif isinstance(m, nn.Conv1d):  # depthwise short-conv (hybrid blocks only)
             nn.init.normal_(m.weight, mean=0.0, std=0.02)
 
     def _rope_slice(self, pos: int, T: int, device, dtype):

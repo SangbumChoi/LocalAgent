@@ -16,9 +16,15 @@ from localagent.agent.tools import ToolRegistry
 
 class Agent:
     def __init__(self, tools: ToolRegistry, model=None, tokenizer=None, memory: Memory | None = None,
-                 catalog=None, retriever=None, retrieve_k: int = 10, tool_head=None, ptr_head=None):
+                 catalog=None, retriever=None, retrieve_k: int = 10, tool_head=None, ptr_head=None,
+                 route_head=None, selector=None):
         """`tools`: registry for dispatch. For a large tool space pass `catalog` (list of ToolSpec)
-        and optionally a `retriever` (built from the catalog if omitted)."""
+        and optionally a `retriever` (built from the catalog if omitted).
+
+        Dispatch path (preferred): pass a trained `selector` (a `dense_selector.BoundSelector`) and
+        optional `route_head` — the *generable* route->select->copy pipeline (`hybrid_decode`), which
+        scales to any tool pool. Falls back to the legacy fixed-N `tool_head` path when no selector
+        is given. `Agent.from_checkpoint(...)` wires all of this from a dispatch checkpoint."""
         self.tools = tools
         self.model = model
         self.tokenizer = tokenizer
@@ -26,10 +32,50 @@ class Agent:
         self.catalog = {t.name: t for t in (catalog or tools.specs())}
         self.retrieve_k = retrieve_k
         self.tool_head, self.ptr_head = tool_head, ptr_head
+        self.route_head, self.selector = route_head, selector
         self.retriever = retriever
         if self.retriever is None and catalog is not None:
             from localagent.agent.retriever import ToolRetriever
             self.retriever = ToolRetriever(list(self.catalog.values()))
+
+    @classmethod
+    def from_checkpoint(cls, ckpt_path: str, tools: ToolRegistry, **kw):
+        """Load model + pointer head + dense selector + route head from a dispatch checkpoint
+        (saved by train_dispatch_long / train_scenarios) and wire the generable dispatch path."""
+        import torch
+
+        from localagent.agent.dense_selector import (
+            BoundSelector, DenseToolSelector, tool_embeddings,
+        )
+        from localagent.agent.pointer_head import PointerHead
+        from localagent.agent.routes import RouteHead
+        from localagent.model import LocalAgentLM, ModelConfig
+        from localagent.model.tokenizer import load_tokenizer
+
+        ck = torch.load(ckpt_path, map_location="cpu")
+        cfg = ModelConfig(**ck["cfg"])
+        model = LocalAgentLM(cfg)
+        model.load_state_dict(ck["state_dict"])
+        model.eval()
+        specs = tools.specs()
+        examples = ck.get("examples", {})
+        ptr = None
+        if ck.get("ptr_head"):
+            ptr = PointerHead(cfg.d_model)
+            ptr.load_state_dict(ck["ptr_head"])
+            ptr.eval()
+        selector = route_head = None
+        if ck.get("dense_selector"):
+            emb_dim = tool_embeddings(specs[:1]).shape[1]
+            sel = DenseToolSelector(cfg.d_model, emb_dim=emb_dim, proj=ck.get("selector_proj", 256))
+            sel.load_state_dict(ck["dense_selector"])
+            selector = BoundSelector(sel, specs, examples=examples)
+        if ck.get("route_head"):
+            route_head = RouteHead(cfg.d_model)
+            route_head.load_state_dict(ck["route_head"])
+            route_head.eval()
+        return cls(tools, model=model, tokenizer=load_tokenizer(), catalog=specs,
+                   ptr_head=ptr, route_head=route_head, selector=selector, **kw)
 
     def _select_specs(self, msg: str):
         """Candidate ToolSpecs for this turn: top-k retrieved, or the whole (small) toolset."""
@@ -38,12 +84,17 @@ class Agent:
         return list(self.catalog.values())
 
     def chat(self, user_message: str, max_tool_hops: int = 6) -> str:
-        from localagent.agent.constrained import _best, _tool_bodies, grounded_decode
+        from localagent.agent.constrained import _tool_bodies, grounded_decode, hybrid_decode
         from localagent.agent.parser import extract_tool_calls
 
         specs = self._select_specs(user_message)
-        if self.model is not None:
-            # rank the (retrieved) candidates' grounded bodies with the model
+        if self.model is not None and self.selector is not None:
+            # generable path: route gate -> dense selector -> pointer-copy args (scales to any pool)
+            out = hybrid_decode(self.model, self.tokenizer, user_message, list(self.catalog.values()),
+                                selector=self.selector, route_head=self.route_head,
+                                ptr_head=self.ptr_head, top_m=1)
+        elif self.model is not None:
+            # legacy: rank the (retrieved) candidates' grounded bodies with the fixed-N tool head
             out = grounded_decode(self.model, self.tokenizer, user_message, specs,
                                   tool_head=self.tool_head, ptr_head=self.ptr_head)
         else:

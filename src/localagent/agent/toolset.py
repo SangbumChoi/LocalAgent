@@ -149,4 +149,180 @@ STANDARD_TOOLS = [
                     "properties": {"summary": {"type": "string", "format": "quoted"}},
                     "required": ["summary"]},
     ),
+    # --- computer-use family (text-grounded; all string args are literal prompt substrings) ---
+    # The model is byte-level text-only (no vision), so targets are SEMANTIC element descriptions
+    # copied from the request (quoted spans), never pixel coordinates. Enums/ints ground via the
+    # schema extractors (key_press.key, scroll.direction, wait.seconds).
+    ToolSpec(
+        name="screenshot", description="Take a screenshot of the screen.",
+        parameters={"type": "object", "properties": {}, "required": []},
+    ),
+    ToolSpec(
+        name="click", description="Click a UI element described in text.",
+        parameters={"type": "object",
+                    "properties": {"target": {"type": "string", "format": "quoted"}},
+                    "required": ["target"]},
+    ),
+    ToolSpec(
+        name="double_click", description="Double-click a UI element described in text.",
+        parameters={"type": "object",
+                    "properties": {"target": {"type": "string", "format": "quoted"}},
+                    "required": ["target"]},
+    ),
+    ToolSpec(
+        name="type_text", description="Type text into the focused field.",
+        parameters={"type": "object",
+                    "properties": {"text": {"type": "string", "format": "quoted"}},
+                    "required": ["text"]},
+    ),
+    ToolSpec(
+        name="key_press", description="Press a keyboard key.",
+        parameters={"type": "object",
+                    "properties": {"key": {"type": "string",
+                                           "enum": ["Enter", "Tab", "Escape", "Backspace", "Space",
+                                                    "Delete", "ArrowUp", "ArrowDown", "ArrowLeft",
+                                                    "ArrowRight"]}},
+                    "required": ["key"]},
+    ),
+    ToolSpec(
+        name="scroll", description="Scroll the view in a direction.",
+        parameters={"type": "object",
+                    "properties": {"direction": {"type": "string",
+                                                 "enum": ["up", "down", "left", "right"]}},
+                    "required": ["direction"]},
+    ),
+    ToolSpec(
+        name="drag", description="Drag from a source element to a destination element.",
+        parameters={"type": "object",
+                    "properties": {"source": {"type": "string", "format": "quoted"},
+                                   "dest": {"type": "string", "format": "quoted"}},
+                    "required": ["source", "dest"]},
+    ),
+    ToolSpec(
+        name="wait", description="Wait for a number of seconds.",
+        parameters={"type": "object",
+                    "properties": {"seconds": {"type": "integer"}},
+                    "required": ["seconds"]},
+    ),
+    ToolSpec(
+        name="move_cursor", description="Move the cursor to a UI element described in text.",
+        parameters={"type": "object",
+                    "properties": {"target": {"type": "string", "format": "quoted"}},
+                    "required": ["target"]},
+    ),
+    ToolSpec(
+        name="open_app", description="Open a desktop application by name.",
+        parameters={"type": "object",
+                    "properties": {"name": {"type": "string", "format": "quoted"}},
+                    "required": ["name"]},
+    ),
+    # --- modern dev / agentic tools (2025-era). Args ground as path/url/quoted/enum substrings. ---
+    ToolSpec(
+        name="run_python", description="Run a snippet of Python code.",
+        parameters={"type": "object",
+                    "properties": {"code": {"type": "string", "format": "quoted"}},
+                    "required": ["code"]},
+    ),
+    ToolSpec(
+        name="edit_file", description="Edit a file at a path.",
+        parameters={"type": "object",
+                    "properties": {"path": {"type": "string", "format": "path"}},
+                    "required": ["path"]},
+    ),
+    ToolSpec(
+        name="apply_patch", description="Apply a patch to a file at a path.",
+        parameters={"type": "object",
+                    "properties": {"path": {"type": "string", "format": "path"}},
+                    "required": ["path"]},
+    ),
+    ToolSpec(
+        name="http_request", description="Make an HTTP request to a URL.",
+        parameters={"type": "object",
+                    "properties": {"url": {"type": "string", "format": "url"},
+                                   "method": {"type": "string",
+                                              "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"]}},
+                    "required": ["url"]},
+    ),
+    ToolSpec(
+        name="sql_query", description="Run a SQL query.",
+        parameters={"type": "object",
+                    "properties": {"query": {"type": "string", "format": "quoted"}},
+                    "required": ["query"]},
+    ),
+    ToolSpec(
+        name="list_dir", description="List the contents of a directory.",
+        parameters={"type": "object",
+                    "properties": {"path": {"type": "string", "format": "path"}},
+                    "required": ["path"]},
+    ),
+    ToolSpec(
+        name="find_files", description="Find files matching a glob pattern.",
+        parameters={"type": "object",
+                    "properties": {"pattern": {"type": "string", "format": "quoted"}},
+                    "required": ["pattern"]},
+    ),
+    ToolSpec(
+        name="git_diff", description="Show the git diff.",
+        parameters={"type": "object", "properties": {}, "required": []},
+    ),
+    ToolSpec(
+        name="git_status", description="Show the git status.",
+        parameters={"type": "object", "properties": {}, "required": []},
+    ),
+    ToolSpec(
+        name="install_package", description="Install a package by name.",
+        parameters={"type": "object",
+                    "properties": {"name": {"type": "string", "format": "quoted"}},
+                    "required": ["name"]},
+    ),
+    ToolSpec(
+        name="kill_process", description="Kill a running process by name.",
+        parameters={"type": "object",
+                    "properties": {"name": {"type": "string", "format": "quoted"}},
+                    "required": ["name"]},
+    ),
+    ToolSpec(
+        name="read_clipboard", description="Read the system clipboard.",
+        parameters={"type": "object", "properties": {}, "required": []},
+    ),
+    ToolSpec(
+        name="write_clipboard", description="Write text to the system clipboard.",
+        parameters={"type": "object",
+                    "properties": {"text": {"type": "string", "format": "quoted"}},
+                    "required": ["text"]},
+    ),
+    ToolSpec(
+        name="download_file", description="Download a file from a URL.",
+        parameters={"type": "object",
+                    "properties": {"url": {"type": "string", "format": "url"}},
+                    "required": ["url"]},
+    ),
+    ToolSpec(
+        name="unzip", description="Unzip an archive at a path.",
+        parameters={"type": "object",
+                    "properties": {"path": {"type": "string", "format": "path"}},
+                    "required": ["path"]},
+    ),
+    ToolSpec(
+        name="env_get", description="Read an environment variable by name.",
+        parameters={"type": "object",
+                    "properties": {"name": {"type": "string", "format": "quoted"}},
+                    "required": ["name"]},
+    ),
+    ToolSpec(
+        name="make_dir", description="Create a directory at a path.",
+        parameters={"type": "object",
+                    "properties": {"path": {"type": "string", "format": "path"}},
+                    "required": ["path"]},
+    ),
+    ToolSpec(
+        name="list_processes", description="List running processes.",
+        parameters={"type": "object", "properties": {}, "required": []},
+    ),
+    ToolSpec(
+        name="docker_run", description="Run a Docker container from an image.",
+        parameters={"type": "object",
+                    "properties": {"image": {"type": "string", "format": "quoted"}},
+                    "required": ["image"]},
+    ),
 ]

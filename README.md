@@ -6,6 +6,42 @@ ML pipeline (nanochat in spirit), with **training + evaluation**, that runs on *
 and exports to **PyTorch / GGUF / ONNX / ExecuTorch**. A **data flywheel** lets it improve from
 the conversations it has while running locally.
 
+> **🤗 Model · 🚀 Demo · 📦 Data — all on the Hub (under `danelcsb`):**
+> [**model**](https://huggingface.co/danelcsb/localagent-tiny-30m-byte) ·
+> [**live WebGPU demo**](https://huggingface.co/spaces/danelcsb/localagent-webgpu) ·
+> [**dataset**](https://huggingface.co/datasets/danelcsb/localagent-dispatch-data)
+
+## TL;DR — generable tool dispatch (latest)
+
+A **28M, from-scratch, byte-level** agent that maps a natural request to a tool call over a
+**50-tool** surface, via a **generable** pipeline (no fixed-N classifier — adding a tool is one row,
+no retraining):
+
+    request → route head (5-way modality gate) → dense two-tower selector (scores ANY tool by its
+              description embedding) → pointer-copy arguments → tool(args)
+
+Trained on a **corrected, paraphrase-rich + referent-conditioned** dataset. Held-out results
+(disjoint phrasings & slot values):
+
+| metric | score |
+|---|---|
+| free-form OOD call-name (45 hand-written) | **53%** (top-1 56%) |
+| paraphrase-eval selection (100) | **63%** |
+| referent-conditioned (URL vs file vs app) selection (46) | **72%** |
+| multi-turn next-tool selection (27) | **74%** |
+
+**Key findings** (full write-up in [`docs/DISPATCH_RESULTS.md`](docs/DISPATCH_RESULTS.md)): selection
+needs a *trained* component (a fixed-N classifier carries it but doesn't scale; free-generation at
+28M is ~0%); **arg values must be copied, not generated**; training has a **sweet spot** (~3.2k
+steps — longer *degrades* OOD); and the SOTA "RL→on-policy-distillation" / specialist-distillation
+moves **don't transfer** to a 28M model (capacity-bound). Deploys via
+`Agent.from_checkpoint(ckpt, tools)`; exports to ONNX/JSON for the browser (parity-checked 100%).
+
+---
+
+> Below is the broader from-scratch pipeline (ToolCaller, the 3 size tiers, training/export/flywheel)
+> that this dispatch work sits on top of.
+
 ## Reliable tool calling on *your* tools — no training required
 
 Give `ToolCaller` any JSON-schema tools (multi-argument, real APIs) and it returns a
@@ -122,6 +158,40 @@ different things: **data** 62→71% (the data-starved tools), **model size** 1M�
 (the same-shaped tools the small head can't separate). See
 `runs/analyze_ultra-tiny-1m/dataset_compare.png`.
 
+### Pretrained 28M agent — strong on both axes 🤗
+The deployable checkpoint is the **`tiny-30m-byte`** model (byte-level, `d_model` 512 × 10 layers,
+GQA, pretrained from scratch). It is on the Hub:
+**[danelcsb/localagent-tiny-30m-byte](https://huggingface.co/danelcsb/localagent-tiny-30m-byte)**.
+
+Earlier configs forced a trade-off — the single-turn-only deploy hit ~83% single-turn but only ~18%
+multi-turn, while joint multi-turn tuning lifted episodes but dragged single-turn down each round.
+Two training changes close the gap: **gradient accumulation** (effective batch 32 inside an 11.8 GB
+CPU footprint, so the small-batch noise that was sinking single-turn is gone) and a **down-weighted
+multi-turn head** (`mt_weight=0.3`, so episode contexts stop pulling the shared tool head off the
+single-turn distribution). The result is the first config that is **strong on both at once**:
+
+| axis | this 28M | single-turn-only deploy |
+|---|---|---|
+| single-turn held-out (21 tools, disjoint slot values) | **71.3%** | ~83% |
+| multi-turn step-accuracy (coding episodes) | **74%** | ~18% |
+
+Reproduce: `python scripts/analyze_loop.py --model configs/model/tiny-30m-byte.yaml --rounds 4
+--batch 16 --accum 2 --mt-weight 0.3 --episodes 120`. Load it (pure PyTorch, no `transformers`):
+
+```python
+import json, torch
+from huggingface_hub import hf_hub_download
+from safetensors.torch import load_file
+from localagent.model import LocalAgentLM, ModelConfig
+
+repo = "danelcsb/localagent-tiny-30m-byte"
+cfg_d = json.load(open(hf_hub_download(repo, "config.json")))
+cfg = ModelConfig(**{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__})
+model = LocalAgentLM(cfg)
+model.load_state_dict(load_file(hf_hub_download(repo, "model.safetensors")))
+model.eval()
+```
+
 **Parallel two-call turns + 4× rebalanced dataset.** Real usage is "do X *and* Y" (two tool calls),
 not a calc-dominated single-call stream. The dataset adds a **parallel** category (one turn → two
 calls, e.g. *"Compose an email to Judy and search for how tall is Everest"* → `send_email` +
@@ -208,7 +278,7 @@ tests/
 | Agent data synthesis + flywheel | 🚧 stubs (Phases 3/8) |
 | Eval harness (multi-turn, parity) | 🚧 stubs (Phase 5) |
 | Agent runtime + memory + demos | 🚧 stubs (Phase 7) |
-| Export to Hugging Face Hub (config + safetensors + heads + model card) | ✅ implemented (`scripts/push_to_hf.py`) |
+| Export to Hugging Face Hub (config + safetensors + heads + model card) | ✅ implemented (`scripts/push_to_hf.py`) — published: [`danelcsb/localagent-tiny-30m-byte`](https://huggingface.co/danelcsb/localagent-tiny-30m-byte) |
 | Export GGUF/ONNX/ExecuTorch | 🚧 stubs (Phase 9) |
 
 Full plan: [`docs/ROADMAP.md`](docs/ROADMAP.md). Stubs raise `NotImplementedError` with a

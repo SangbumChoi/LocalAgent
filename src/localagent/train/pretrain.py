@@ -10,11 +10,16 @@ import random
 
 import torch
 
-from localagent.train.loop import cosine_lr, set_lr
+from localagent.train.loop import cosine_lr, set_lr, wsd_lr
 
 
 def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e-3,
-             warmup=30, device="cpu", log=print):
+             warmup=30, device="cpu", log=print, lr_schedule="cosine", decay_frac=0.2):
+    """Next-token CE over a packed byte stream. `lr_schedule="wsd"` (opt-in, MiniCPM) replaces the
+    cosine LR with Warmup-Stable-Decay (warmup -> flat plateau -> exponential `lr*0.5^((s-S)/T)`
+    over the last `decay_frac` of steps); default "cosine" is byte-for-byte the old schedule."""
+    if lr_schedule not in ("cosine", "wsd"):
+        raise ValueError(f"pretrain() lr_schedule must be 'cosine' or 'wsd', got {lr_schedule!r}")
     model.train()
     model.to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), weight_decay=0.1)
@@ -24,7 +29,10 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
     rng = random.Random(0)
     hist = []
     for step in range(steps):
-        set_lr(opt, cosine_lr(step, steps, lr, warmup, 0.1))
+        if lr_schedule == "wsd":
+            set_lr(opt, wsd_lr(step, steps, lr, warmup, decay_frac, min_ratio=0.0))
+        else:
+            set_lr(opt, cosine_lr(step, steps, lr, warmup, 0.1))
         starts = [rng.randint(0, n - seq_len - 2) for _ in range(batch_size)]
         batch = torch.stack([data[s:s + seq_len + 1] for s in starts]).to(device)
         x, y = batch[:, :-1], batch[:, 1:]

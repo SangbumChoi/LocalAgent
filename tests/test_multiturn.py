@@ -26,9 +26,14 @@ def test_all_coding_types_are_producible():
 def test_productivity_and_planner_episodes_exist():
     g = Generator(5, 0, "train")
     prod = {g.productivity_episode().meta["type"] for _ in range(300)}
-    plan = {g.planner_episode().meta["type"] for _ in range(200)}
+    # planner_episode() yields the multi-step (>=1 tool call) plan types; 0-step "don't over-plan"
+    # cases come from plan_episode()/plan_episodes(). plan_episodes() covers ALL plan types.
+    plan = {g.planner_episode().meta["type"] for _ in range(400)}
+    all_plan = {g.plan_episode().meta["type"] for _ in range(1500)}
+    multi_types = {t for t, (_a, ln) in g._PLAN_BUILDERS.items() if ln >= 1}
     assert prod == set(Generator._PRODUCTIVITY_TYPES)
-    assert plan == set(Generator._PLANNER_TYPES)
+    assert plan == multi_types
+    assert all_plan == set(Generator._PLANNER_TYPES)
     # productivity episodes are not coding episodes
     assert g.productivity_episode().meta["kind"] == "productivity_episode"
     assert g.planner_episode().meta["kind"] == "planner_episode"
@@ -46,10 +51,11 @@ def test_planner_episode_starts_with_canonical_text_plan():
         assert any(m.role == Role.assistant and m.tool_calls for m in conv.messages)
 
 
-def test_episodes_mix_spans_all_three_kinds():
-    eps = Generator(5, 1, "train").episodes(300)
+def test_episodes_mix_spans_all_kinds():
+    eps = Generator(5, 1, "train").episodes(400)
     kinds = {e.meta["kind"] for e in eps}
-    assert kinds == {"coding_episode", "productivity_episode", "planner_episode"}
+    assert kinds == {"coding_episode", "productivity_episode", "planner_episode",
+                     "computer_use_episode"}
 
 
 def test_episodes_mix_false_is_coding_only():

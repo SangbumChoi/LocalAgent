@@ -21,7 +21,12 @@ import torch
 from localagent.agent.toolset import STANDARD_TOOLS as TOOLS
 from localagent.data.agent_synth import REALISTIC_WEIGHTS, Generator
 from localagent.data.render import build_pretrain_stream
-from localagent.eval.harness import evaluate_grounded, multi_turn_eval
+from localagent.eval.harness import (
+    evaluate_grounded,
+    format_plan_eval,
+    multi_turn_eval,
+    plan_eval,
+)
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.model.tokenizer import load_tokenizer
 from localagent.train.device import resolve_device
@@ -47,6 +52,9 @@ def main():
                          "large effective batch within a small memory footprint)")
     ap.add_argument("--mt-weight", type=float, default=1.0,
                     help="weight on the multi-turn (episode) head training; <1 protects single-turn")
+    ap.add_argument("--planner", action="store_true",
+                    help="planner->action mode: train on plan_episodes and score with plan_eval "
+                         "(whole-plan + per-step + grounded + plan-length) via the learned rollout")
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
     device = resolve_device("auto")
@@ -74,17 +82,25 @@ def main():
     best_overall = -1.0
     for r in range(1, args.rounds + 1):
         train = Generator(level=r, seed=r, split="train").generate_weighted(n_train, weights)
-        # NEW: multi-turn trajectory episodes (coding + computer-use + planner-then-execute), so the
-        # model learns the plan->act decomposition and follow-up args grounded in tool responses.
-        episodes = Generator(level=r, seed=5000 + r, split="train").episodes(n_ep)
+        # Multi-turn trajectory episodes: in --planner mode these are planner->execute *plans*
+        # (ordered tool intents, scored by the learned rollout); otherwise the mixed
+        # coding/computer-use episodes. Either way they train the plan->act decomposition and
+        # follow-up args grounded in tool responses.
+        _ep = (lambda g: g.plan_episodes) if args.planner else (lambda g: g.episodes)
+        episodes = _ep(Generator(level=r, seed=5000 + r, split="train"))(n_ep)
         held = Generator(level=r, seed=1000 + r, split="eval").generate_balanced(n_eval)
-        held_ep = Generator(level=r, seed=6000 + r, split="eval").episodes(max(8, n_ep // 4))
+        held_ep = _ep(Generator(level=r, seed=6000 + r, split="eval"))(max(8, n_ep // 4))
         steps = s1 if r == 1 else sinc
         _, head, ptr = sft(model, train, tok, steps=steps, batch_size=args.batch, lr=1.5e-3,
                            device=device, log=lambda *a: None, joint_tool_head=True,
                            conversations=episodes, accum_steps=args.accum, mt_weight=args.mt_weight)
         res = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
-        mt = multi_turn_eval(model, held_ep, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
+        if args.planner:
+            pe = plan_eval(model, tok, TOOLS, held_ep, tool_head=head, ptr_head=ptr, device=device)
+            mt = {**pe["teacher_forced"], "steps": pe["steps"]}     # keep downstream mt[...] working
+        else:
+            pe = None
+            mt = multi_turn_eval(model, held_ep, tok, TOOLS, device=device, tool_head=head, ptr_head=ptr)
         cats = res["categories"]
         weak = sorted(cats.items(), key=lambda kv: kv[1])[:5]
         # ANALYZE -> reweight: failing categories oversampled next round, on the realistic base
@@ -93,15 +109,21 @@ def main():
         print(f"\n=== Round {r}: overall={res['overall']*100:.1f}%  "
               f"(trained with {len(train)} single-turn + {len(episodes)} episodes) ===", flush=True)
         print("  weakest: " + ", ".join(f"{c}={a*100:.0f}%" for c, a in weak), flush=True)
-        print(f"  multi-turn: step_acc={mt['step_acc']*100:.0f}% episode_acc={mt['episode_acc']*100:.0f}%"
-              f" ({mt['steps']} steps)", flush=True)
+        if pe is not None:
+            print("  " + format_plan_eval(pe).replace("\n", "\n  "), flush=True)
+        else:
+            print(f"  multi-turn: step_acc={mt['step_acc']*100:.0f}% "
+                  f"episode_acc={mt['episode_acc']*100:.0f}% ({mt['steps']} steps)", flush=True)
         print("  -> next round oversamples: " + ", ".join(
             f"{c}x{new_weights[c]}" for c, _ in weak), flush=True)
         hist.append({"round": r, "overall": res["overall"], "categories": cats, "multi_turn": mt,
-                     "weights_for_next": new_weights, "n_train": len(train), "n_episodes": len(episodes)})
+                     "planner": pe, "weights_for_next": new_weights,
+                     "n_train": len(train), "n_episodes": len(episodes)})
         weights = new_weights
-        # value parallel AND trajectory step-accuracy in the best-save score
+        # value parallel AND trajectory step-accuracy (and whole-plan acc in --planner mode)
         score = res["overall"] + 0.5 * cats.get("parallel", 0.0) + 0.3 * mt["step_acc"]
+        if pe is not None:
+            score += 0.4 * pe["whole_plan_acc"]
         if score > best_overall:     # keep the BEST round, not the last (can regress)
             best_overall = score
             torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict(),
