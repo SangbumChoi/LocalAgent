@@ -57,14 +57,56 @@ class Row:
 
 
 def _tool_catalog(tools: list[dict]) -> str:
-    """Compact `name(arg1, arg2) - description` catalog from xLAM tool dicts (in-context schemas)."""
+    """Compact `name(arg1, arg2) - description` catalog from tool dicts (in-context schemas).
+    Handles flat `{name,description,parameters}` and OpenAI-style `{function:{...}}` wrappers."""
     lines = []
-    for t in tools:
+    for raw in tools:
+        t = raw.get("function", raw) if isinstance(raw, dict) else {}
         params = (t.get("parameters") or {})
-        # xLAM params can be {name:{type,description}} or JSON-schema {properties:{...}}
+        # params can be {name:{type,description}} or JSON-schema {properties:{...}}
         names = list((params.get("properties") or params).keys())
         lines.append(f"{t.get('name','')}({', '.join(names)}) - {t.get('description','')}".strip())
     return "\n".join(lines)
+
+
+def hermes_sft_samples(tok, n: int = 60000, config: str = "func_calling_singleturn",
+                       log=print) -> list["Row"]:
+    """Parse NousResearch/hermes-function-calling-v1 (public): ShareGPT turns with `<tools>[...]`
+    in the system turn and `<tool_call>{json}</tool_call>` in the assistant turn — matches our
+    render format directly. Defensive: skips rows that don't parse."""
+    import re
+
+    from localagent.agent.incontext import TOOLS_MARKER
+    load_dataset = _require_datasets()
+    ds = load_dataset("NousResearch/hermes-function-calling-v1", config, split="train")
+    rows: list[Row] = []
+    for r in ds:
+        convs = r.get("conversations") or r.get("messages") or []
+        by = {}
+        for c in convs:
+            by.setdefault(c.get("from") or c.get("role"), c.get("value") or c.get("content"))
+        sysv = by.get("system", "") or ""
+        humv = by.get("human") or by.get("user") or ""
+        gptv = by.get("gpt") or by.get("assistant") or ""
+        mt = re.search(r"<tools>\s*(\[.*?\]|\{.*?\})\s*</tools>", sysv, re.S)
+        mc = re.search(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", gptv, re.S)
+        if not (mt and mc and humv):
+            continue
+        try:
+            tools = json.loads(mt.group(1))
+            call = json.loads(mc.group(1))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(tools, dict):
+            tools = [tools]
+        prompt = f"{TOOLS_MARKER}\n{_tool_catalog(tools)}\n{humv.strip()}"
+        target = json.dumps({"name": call.get("name"), "arguments": call.get("arguments", {})},
+                            separators=(",", ":"), sort_keys=True)
+        rows.append(Row(prompt=prompt, target=target, ref_name=call.get("name", "")))
+        if len(rows) >= n:
+            break
+    log(f"  [hermes] {len(rows)} SFT samples")
+    return rows
 
 
 def xlam_sft_samples(tok, n: int = 60000, dataset: str = "Salesforce/xlam-function-calling-60k",

@@ -51,16 +51,42 @@ print(f"device={DEVICE} cfg={cfg.name} params~{cfg.estimate_params()/1e6:.1f}M s
       f"real={args.real} quick={args.quick}", flush=True)
 
 
+_api = None
+
+
 def save(tag):
     p = f"{args.out}/{cfg.name}-{tag}.pt"
     torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict()}, p)
     print(f"  saved {p}", flush=True)
+    if args.push:                       # push each stage immediately so progress survives a later crash
+        global _api
+        try:
+            from huggingface_hub import HfApi
+            _api = _api or HfApi()
+            _api.create_repo(args.push, repo_type="model", exist_ok=True)
+            _api.upload_file(path_or_fileobj=p, path_in_repo=f"{tag}.pt", repo_id=args.push)
+            print(f"  pushed {tag}.pt -> {args.push}", flush=True)
+        except Exception as e:          # noqa: BLE001 - a push hiccup must not kill training
+            print(f"  (push of {tag} failed: {e})", flush=True)
     return p
 
 
 def synth_samples(n):
     from localagent.data.agent_synth import Generator
     return Generator(level=3, seed=7).generate_balanced(n)
+
+
+def real_sft_data(n):
+    """Real public function-calling SFT: try Hermes (public) then xLAM (gated); skip on failure."""
+    from localagent.data.hf_datasets import hermes_sft_samples, xlam_sft_samples
+    for loader in (hermes_sft_samples, xlam_sft_samples):
+        try:
+            rows = loader(tok, n=n)
+            if rows:
+                return rows
+        except Exception as e:          # noqa: BLE001 - gated/unavailable/schema -> next option
+            print(f"  (SFT loader {loader.__name__} unavailable: {e})", flush=True)
+    return None
 
 
 t0 = time.time()
@@ -79,10 +105,10 @@ if "pretrain" in stages:
 # ---- 2. SFT (tool-call instruction tuning) ----
 if "sft" in stages:
     print("\n=== SFT ===", flush=True)
-    if args.real:
-        from localagent.data.hf_datasets import xlam_sft_samples
-        sft_data = xlam_sft_samples(tok, n=500 if args.quick else 60000)
-    else:
+    sft_data = real_sft_data(500 if args.quick else 60000) if args.real else None
+    if not sft_data:
+        if args.real:
+            print("  (no real SFT dataset available -> synthetic tool data)", flush=True)
         sft_data = synth_samples(2 if args.quick else 40)
     sft(model, sft_data, tok, steps=args.sft_steps, batch_size=max(8, args.batch // 2),
         device=DEVICE)
