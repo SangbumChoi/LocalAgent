@@ -134,3 +134,23 @@ held set (n=3) is too small to read. Deployable checkpoint: `runs/tiny-30m-scena
 Two findings reinforced here: (1) the per-segment scenario SFT also has a **sweet spot** — free-form
 peaked at step 800 and degraded by step 1200, so we finalize from the step-800 backbone; (2) match
 the **probe's training distribution to what you measure**, or behaviours look absent when they aren't.
+
+## Retrain on corrected data (v2)
+After the annotator fixes (`run X.py`→`run_command`, file-URL `download_file`) + the free-form TRAIN
+set, a fresh backbone fine-tune from the 50-tool base on the *corrected* corpus (sweet-spot ~step
+3200) beat the prior model decisively on the disjoint held sets:
+
+| metric (n) | prior (scenarios-best) | **corrected retrain** |
+|---|---|---|
+| free-form OOD call-name (45) | 40% | **53%** |
+| free-form top-1 | 47% | **56%** |
+| paraphrase-eval selection (100) | 46% | **63%** |
+| referent-conditioned (contextual) selection (46) | 22% | **72%** |
+
+The biggest jump is **contextual 22→72%** — the old backbone had learned the wrong `run X.py`→
+`run_python` association; training on corrected labels fixed the features (and `download_file`/
+`make_dir` cases). Note: re-probing the heads with the free-form train set oversampled *regressed*
+the aggregate (53→42%) — overfitting the 86 train prompts — so the deployed heads are the backbone's
+own FINAL probes, not the free-form-oversampled ones. Residual hard case: `run python X.py` still
+mis-selects `read_file` (a dense-selector confusion; forcing it hurt everything else). Deployed as
+`danelcsb/localagent-tiny-30m-byte` + the WebGPU Space.
