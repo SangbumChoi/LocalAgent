@@ -6,15 +6,41 @@ ML pipeline (nanochat in spirit), with **training + evaluation**, that runs on *
 and exports to **PyTorch / GGUF / ONNX / ExecuTorch**. A **data flywheel** lets it improve from
 the conversations it has while running locally.
 
-> **🤗 Pretrained checkpoint:** the 28M byte-level agent is on the Hub —
-> **[SangbumChoi/localagent-tiny-30m-byte](https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte)**
-> (config + safetensors + tool/pointer heads + model card). **71.3% single-turn** held-out **and
-> 74% multi-turn** step-accuracy — strong on both. Loads in pure PyTorch, no `transformers`.
+> **🤗 Model · 🚀 Demo · 📦 Data — all on the Hub (under `danelcsb`):**
+> [**model**](https://huggingface.co/danelcsb/localagent-tiny-30m-byte) ·
+> [**live WebGPU demo**](https://huggingface.co/spaces/danelcsb/localagent-webgpu) ·
+> [**dataset**](https://huggingface.co/datasets/danelcsb/localagent-dispatch-data)
 
-> **🚀 Live WebGPU demo:** run the agent **client-side in your browser** (no server) —
-> **[danelcsb/localagent-webgpu](https://huggingface.co/spaces/danelcsb/localagent-webgpu)**.
-> The transformer runs on `onnxruntime-web` (WebGPU, WASM fallback); the tool head, pointer-head
-> grounding, and the `plan_rollout` are ported to JS. Source in [`spaces/localagent-webgpu/`](./spaces/localagent-webgpu/).
+## TL;DR — generable tool dispatch (latest)
+
+A **28M, from-scratch, byte-level** agent that maps a natural request to a tool call over a
+**50-tool** surface, via a **generable** pipeline (no fixed-N classifier — adding a tool is one row,
+no retraining):
+
+    request → route head (5-way modality gate) → dense two-tower selector (scores ANY tool by its
+              description embedding) → pointer-copy arguments → tool(args)
+
+Trained on a **corrected, paraphrase-rich + referent-conditioned** dataset. Held-out results
+(disjoint phrasings & slot values):
+
+| metric | score |
+|---|---|
+| free-form OOD call-name (45 hand-written) | **53%** (top-1 56%) |
+| paraphrase-eval selection (100) | **63%** |
+| referent-conditioned (URL vs file vs app) selection (46) | **72%** |
+| multi-turn next-tool selection (27) | **74%** |
+
+**Key findings** (full write-up in [`docs/DISPATCH_RESULTS.md`](docs/DISPATCH_RESULTS.md)): selection
+needs a *trained* component (a fixed-N classifier carries it but doesn't scale; free-generation at
+28M is ~0%); **arg values must be copied, not generated**; training has a **sweet spot** (~3.2k
+steps — longer *degrades* OOD); and the SOTA "RL→on-policy-distillation" / specialist-distillation
+moves **don't transfer** to a 28M model (capacity-bound). Deploys via
+`Agent.from_checkpoint(ckpt, tools)`; exports to ONNX/JSON for the browser (parity-checked 100%).
+
+---
+
+> Below is the broader from-scratch pipeline (ToolCaller, the 3 size tiers, training/export/flywheel)
+> that this dispatch work sits on top of.
 
 ## Reliable tool calling on *your* tools — no training required
 
@@ -135,7 +161,7 @@ different things: **data** 62→71% (the data-starved tools), **model size** 1M�
 ### Pretrained 28M agent — strong on both axes 🤗
 The deployable checkpoint is the **`tiny-30m-byte`** model (byte-level, `d_model` 512 × 10 layers,
 GQA, pretrained from scratch). It is on the Hub:
-**[SangbumChoi/localagent-tiny-30m-byte](https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte)**.
+**[danelcsb/localagent-tiny-30m-byte](https://huggingface.co/danelcsb/localagent-tiny-30m-byte)**.
 
 Earlier configs forced a trade-off — the single-turn-only deploy hit ~83% single-turn but only ~18%
 multi-turn, while joint multi-turn tuning lifted episodes but dragged single-turn down each round.
@@ -158,7 +184,7 @@ from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file
 from localagent.model import LocalAgentLM, ModelConfig
 
-repo = "SangbumChoi/localagent-tiny-30m-byte"
+repo = "danelcsb/localagent-tiny-30m-byte"
 cfg_d = json.load(open(hf_hub_download(repo, "config.json")))
 cfg = ModelConfig(**{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__})
 model = LocalAgentLM(cfg)
@@ -252,7 +278,7 @@ tests/
 | Agent data synthesis + flywheel | 🚧 stubs (Phases 3/8) |
 | Eval harness (multi-turn, parity) | 🚧 stubs (Phase 5) |
 | Agent runtime + memory + demos | 🚧 stubs (Phase 7) |
-| Export to Hugging Face Hub (config + safetensors + heads + model card) | ✅ implemented (`scripts/push_to_hf.py`) — published: [`SangbumChoi/localagent-tiny-30m-byte`](https://huggingface.co/SangbumChoi/localagent-tiny-30m-byte) |
+| Export to Hugging Face Hub (config + safetensors + heads + model card) | ✅ implemented (`scripts/push_to_hf.py`) — published: [`danelcsb/localagent-tiny-30m-byte`](https://huggingface.co/danelcsb/localagent-tiny-30m-byte) |
 | Export GGUF/ONNX/ExecuTorch | 🚧 stubs (Phase 9) |
 
 Full plan: [`docs/ROADMAP.md`](docs/ROADMAP.md). Stubs raise `NotImplementedError` with a
