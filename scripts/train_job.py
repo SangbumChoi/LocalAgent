@@ -1,0 +1,117 @@
+"""End-to-end GPU training: pretrain -> SFT -> GRPO, for the byte-level tiny-30m agent.
+
+Designed to run as a Hugging Face Job on a GPU (`scripts/launch_hf_job.sh`), but the same code runs
+on CPU for a `--quick` smoke. Data is REAL public datasets with `--real` (FineWeb-edu pretrain +
+xLAM function-calling SFT) or the in-repo synthetic generators otherwise. Each stage checkpoints to
+`runs/`; with `--push <repo>` the final model is uploaded to the Hub.
+
+  # local smoke (CPU, synthetic):
+  python scripts/train_job.py --quick
+  # full GPU run (in the Job, real data):
+  python scripts/train_job.py --real --stages pretrain,sft,grpo --push danelcsb/localagent-30m-v2
+"""
+import argparse
+import os
+import time
+
+import torch
+
+from localagent.data.render import build_pretrain_stream
+from localagent.model import LocalAgentLM, ModelConfig
+from localagent.model.tokenizer import load_tokenizer
+from localagent.train.pretrain import pretrain
+from localagent.train.rl import grpo
+from localagent.train.sft import sft
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--config", default="configs/model/tiny-30m-byte.yaml")
+ap.add_argument("--stages", default="pretrain,sft,grpo")
+ap.add_argument("--real", action="store_true", help="use real HF datasets (needs `datasets`)")
+ap.add_argument("--quick", action="store_true", help="tiny CPU smoke")
+ap.add_argument("--out", default="runs/job")
+ap.add_argument("--push", default="", help="HF model repo to push the final checkpoint to")
+# stage budgets (full-run defaults; --quick shrinks them)
+ap.add_argument("--pretrain-steps", type=int, default=6000)
+ap.add_argument("--sft-steps", type=int, default=3000)
+ap.add_argument("--grpo-steps", type=int, default=300)
+ap.add_argument("--seq-len", type=int, default=512)
+ap.add_argument("--batch", type=int, default=64)
+args = ap.parse_args()
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+if args.quick:
+    args.pretrain_steps, args.sft_steps, args.grpo_steps = 30, 30, 6
+    args.batch, args.seq_len = 16, 128
+stages = set(args.stages.split(","))
+os.makedirs(args.out, exist_ok=True)
+tok = load_tokenizer()
+cfg = ModelConfig.from_yaml(args.config)
+model = LocalAgentLM(cfg).to(DEVICE)
+print(f"device={DEVICE} cfg={cfg.name} params~{cfg.estimate_params()/1e6:.1f}M stages={sorted(stages)} "
+      f"real={args.real} quick={args.quick}", flush=True)
+
+
+def save(tag):
+    p = f"{args.out}/{cfg.name}-{tag}.pt"
+    torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict()}, p)
+    print(f"  saved {p}", flush=True)
+    return p
+
+
+def synth_samples(n):
+    from localagent.data.agent_synth import Generator
+    return Generator(level=3, seed=7).generate_balanced(n)
+
+
+t0 = time.time()
+# ---- 1. PRETRAIN (raw text -> next-byte LM) ----
+if "pretrain" in stages:
+    print("\n=== PRETRAIN ===", flush=True)
+    if args.real:
+        from localagent.data.hf_datasets import fineweb_byte_stream
+        stream = fineweb_byte_stream(tok, max_chars=2_000_000 if args.quick else 200_000_000)
+    else:
+        stream = build_pretrain_stream(synth_samples(2 if args.quick else 40), tok)
+    pretrain(model, stream, tok, steps=args.pretrain_steps, batch_size=args.batch,
+             seq_len=args.seq_len, device=DEVICE, lr_schedule="wsd")
+    save("pretrain")
+
+# ---- 2. SFT (tool-call instruction tuning) ----
+if "sft" in stages:
+    print("\n=== SFT ===", flush=True)
+    if args.real:
+        from localagent.data.hf_datasets import xlam_sft_samples
+        sft_data = xlam_sft_samples(tok, n=500 if args.quick else 60000)
+    else:
+        sft_data = synth_samples(2 if args.quick else 40)
+    sft(model, sft_data, tok, steps=args.sft_steps, batch_size=max(8, args.batch // 2),
+        device=DEVICE)
+    save("sft")
+
+# ---- 3. GRPO (RL with a verifiable tool-call reward) ----
+if "grpo" in stages:
+    print("\n=== GRPO (verifiable reward) ===", flush=True)
+    rl_data = [s for s in synth_samples(1 if args.quick else 20) if s.kind == "tool"]
+    grpo(model, rl_data, tok, steps=args.grpo_steps, device=DEVICE,
+         prompts_per_step=4 if args.quick else 8)
+    save("grpo")
+
+final = save("final")
+print(f"\nALL STAGES DONE in {(time.time()-t0)/60:.1f} min -> {final}", flush=True)
+
+# ---- optional: push to the Hub ----
+if args.push:
+    import json
+
+    from safetensors.torch import save_file
+    json.dump(cfg.__dict__, open(f"{args.out}/config.json", "w"), indent=2)
+    save_file({k: v.contiguous().cpu() for k, v in model.state_dict().items()},
+              f"{args.out}/model.safetensors")
+    from huggingface_hub import HfApi
+    api = HfApi()
+    api.create_repo(args.push, repo_type="model", exist_ok=True)
+    api.upload_file(path_or_fileobj=final, path_in_repo="model.pt", repo_id=args.push)
+    api.upload_file(path_or_fileobj=f"{args.out}/config.json", path_in_repo="config.json", repo_id=args.push)
+    api.upload_file(path_or_fileobj=f"{args.out}/model.safetensors", path_in_repo="model.safetensors", repo_id=args.push)
+    print(f"PUSHED -> https://huggingface.co/{args.push}", flush=True)
+print("JOB_DONE", flush=True)
