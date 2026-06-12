@@ -20,6 +20,7 @@ STAGES="${STAGES:-pretrain,sft,grpo}"
 # The job: install deps, clone the repo @ branch, install the package, run the full pipeline, push.
 read -r -d '' CMD <<EOF || true
 set -e
+apt-get update -q && apt-get install -y -q git
 pip install -q -U "datasets>=2.19" "huggingface_hub>=0.24" safetensors pyyaml
 git clone --depth 1 -b ${BRANCH} ${REPO_URL} /work && cd /work
 pip install -q -e .
