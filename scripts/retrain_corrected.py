@@ -39,7 +39,9 @@ class FF:  # lightweight (prompt -> tool) sample for the probes (no args needed)
         self.category, self.group, self.target, self.calls = "freeform", "freeform", "", None
 
 
-ck = torch.load("runs/tiny-30m-scenarios-best.pt", map_location="cpu")
+import os
+BASE=os.environ.get("BASE_CKPT","runs/tiny-30m-dispatch-long.pt")
+ck = torch.load(BASE, map_location="cpu")
 cfg = ModelConfig(**ck["cfg"])
 m = LocalAgentLM(cfg); m.load_state_dict(ck["state_dict"]); m.eval()
 ptr = PointerHead(cfg.d_model); ptr.load_state_dict(ck["ptr_head"]); ptr.eval()
