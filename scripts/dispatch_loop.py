@@ -67,7 +67,9 @@ def verify(bound, rh):
     by_tool = defaultdict(lambda: [0, 0]); ok = rok = 0
     feats = {}
     for q, gold in held:
-        f = feats.get(q) or _feat(m, tok, q, "cpu"); feats[q] = f
+        if q not in feats:
+            feats[q] = _feat(m, tok, q, "cpu")
+        f = feats[q]
         hit = bound.rank(f)[0] == gold
         ok += hit; rok += int(route_of(bound.rank(f)[0]) == route_of(gold))
         by_tool[gold][0] += hit; by_tool[gold][1] += 1
