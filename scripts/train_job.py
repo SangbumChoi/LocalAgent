@@ -30,6 +30,7 @@ ap.add_argument("--real", action="store_true", help="use real HF datasets (needs
 ap.add_argument("--quick", action="store_true", help="tiny CPU smoke")
 ap.add_argument("--out", default="runs/job")
 ap.add_argument("--push", default="", help="HF model repo to push the final checkpoint to")
+ap.add_argument("--init-hub", default="", help="resume: 'repo:file.pt' to load + skip pretrain")
 # stage budgets (full-run defaults; --quick shrinks them)
 ap.add_argument("--pretrain-steps", type=int, default=6000)
 ap.add_argument("--sft-steps", type=int, default=3000)
@@ -47,6 +48,13 @@ os.makedirs(args.out, exist_ok=True)
 tok = load_tokenizer()
 cfg = ModelConfig.from_yaml(args.config)
 model = LocalAgentLM(cfg).to(DEVICE)
+if args.init_hub:                                         # resume from a pushed checkpoint
+    from huggingface_hub import hf_hub_download
+    repo, fname = args.init_hub.split(":")
+    ick = torch.load(hf_hub_download(repo, fname), map_location=DEVICE)
+    model.load_state_dict(ick["state_dict"])
+    stages.discard("pretrain")                            # already pretrained
+    print(f"resumed from {args.init_hub}; skipping pretrain", flush=True)
 print(f"device={DEVICE} cfg={cfg.name} params~{cfg.estimate_params()/1e6:.1f}M stages={sorted(stages)} "
       f"real={args.real} quick={args.quick}", flush=True)
 
@@ -98,18 +106,27 @@ if "pretrain" in stages:
         stream = fineweb_byte_stream(tok, max_chars=2_000_000 if args.quick else 200_000_000)
     else:
         stream = build_pretrain_stream(synth_samples(2 if args.quick else 40), tok)
-    pretrain(model, stream, tok, steps=args.pretrain_steps, batch_size=args.batch,
+    hold = min(len(stream) // 10, 500_000)                 # held-out tail for BPB
+    val, train_stream = stream[-hold:], stream[:-hold] if hold else stream
+    pretrain(model, train_stream, tok, steps=args.pretrain_steps, batch_size=args.batch,
              seq_len=args.seq_len, device=DEVICE, lr_schedule="wsd")
+    if val:
+        from localagent.eval.bpb import bits_per_byte
+        print(f"  held-out BPB = {bits_per_byte(model, val, seq_len=args.seq_len, device=DEVICE):.3f} "
+              f"bits/byte", flush=True)
     save("pretrain")
 
 # ---- 2. SFT (tool-call instruction tuning) ----
 if "sft" in stages:
     print("\n=== SFT ===", flush=True)
-    sft_data = real_sft_data(500 if args.quick else 60000) if args.real else None
-    if not sft_data:
-        if args.real:
-            print("  (no real SFT dataset available -> synthetic tool data)", flush=True)
-        sft_data = synth_samples(2 if args.quick else 40)
+    from localagent.data.render import render_sft
+    sft_data = real_sft_data(500 if args.quick else 60000) if args.real else []
+    # drop samples whose rendered length overflows the model context (real fn-calling prompts can be
+    # very long: full in-context tool schemas), then mix in synthetic so SFT always has enough.
+    sft_data = [s for s in (sft_data or []) if len(render_sft(s, tok)[0]) <= cfg.max_seq_len]
+    if len(sft_data) < (5 if args.quick else 2000):
+        print(f"  ({len(sft_data)} real SFT rows fit ctx -> mixing in synthetic)", flush=True)
+        sft_data += synth_samples(2 if args.quick else 40)
     sft(model, sft_data, tok, steps=args.sft_steps, batch_size=max(8, args.batch // 2),
         device=DEVICE)
     save("sft")

@@ -16,6 +16,7 @@ PUSH_REPO="${PUSH_REPO:-danelcsb/localagent-30m-v2}"
 TIMEOUT="${TIMEOUT:-6h}"
 REAL="${REAL:---real}"                   # set REAL="" to run on the in-repo synthetic data instead
 STAGES="${STAGES:-pretrain,sft,grpo}"
+INIT_HUB="${INIT_HUB:-}"                  # resume: 'repo:file.pt' (e.g. to skip a finished pretrain)
 
 # The job: install deps, clone the repo @ branch, install the package, run the full pipeline, push.
 read -r -d '' CMD <<EOF || true
@@ -24,7 +25,7 @@ apt-get update -q && apt-get install -y -q git
 pip install -q -U "datasets>=2.19" "huggingface_hub>=0.24" safetensors pyyaml
 git clone --depth 1 -b ${BRANCH} ${REPO_URL} /work && cd /work
 pip install -q -e .
-python scripts/train_job.py ${REAL} --stages ${STAGES} \
+python scripts/train_job.py ${REAL} --stages ${STAGES} ${INIT_HUB:+--init-hub ${INIT_HUB}} \
   --pretrain-steps 6000 --sft-steps 3000 --grpo-steps 300 \
   --batch 64 --seq-len 512 --push ${PUSH_REPO}
 EOF
