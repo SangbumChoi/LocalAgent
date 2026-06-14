@@ -54,8 +54,19 @@ colab auth -s la                                   # Google account
 HF_TOKEN=hf_xxx bash scripts/launch_colab.sh       # T4; pushes to danelcsb/localagent-30m-v2
 #   GPU=A100 PUSH_REPO=you/model bash scripts/launch_colab.sh
 ```
-`launch_colab.sh` provisions the runtime, uploads an HF token (for the push), runs
-`scripts/colab_bootstrap.py` remotely (clone → `pip install -e .` → `train_job.py`), downloads the
-final checkpoint, and stops the runtime. (`colab exec -f` runs a *Python* file remotely, so the
-bootstrap shells out to git/pip itself.) The Colab CLI also ships a Claude Code **skill**, so in an
-env where it's installed an agent can drive these steps directly.
+`launch_colab.sh` provisions the runtime, uploads an HF token, runs `scripts/colab_bootstrap.py`
+remotely (clone → install → `train_job.py`), downloads the final checkpoint, and stops the runtime.
+(`colab exec -f` runs a *Python* file remotely, so the bootstrap shells out to git/pip itself.)
+
+**Colab-hardened bootstrap:**
+- **Keeps Colab's torch** — installs with `pip install -e . --no-deps` + the extras, so a fresh torch
+  wheel can't clobber the CUDA-matched one and drop you to CPU.
+- **Auto-resumes** — if `sft.pt`/`pretrain.pt` already landed on the push repo (Colab disconnects on a
+  ~2-3h run), it `--init-hub`s from the latest stage and skips what's done. Combined with the
+  per-stage pushes, a dropped session costs minutes, not hours.
+- **Bigger batch** (256) to use the GPU on a 28M model.
+- *Deferred:* mixed precision (`autocast`) — a real ~2-4× speedup, but needs a GradScaler for T4 fp16
+  and on-GPU testing, so it's not wired yet.
+
+The Colab CLI also ships a Claude Code **skill**, so in an env where it's installed an agent can drive
+these steps directly.
