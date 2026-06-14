@@ -43,3 +43,19 @@ and pays off most for open-ended text quality rather than verifiable tool calls.
 The project's finding is that **28M is capacity-bound** on hard OOD selection. A real GPU
 pretrain→SFT→GRPO on real data is the right way to test how far the method goes at this size; to
 break the ceiling, raise `PARAM_BUDGET` and add a larger config (a follow-up, more GPU time).
+
+## Alternative GPU backend: Google Colab CLI (free T4)
+The same `train_job.py` runs on a Colab GPU via the [Colab CLI](https://github.com/googlecolab/google-colab-cli)
+— a **free T4** is enough for this 28M model (A100 on Pro). Cheaper than HF Jobs for the loop habit.
+
+```bash
+uv tool install google-colab-cli
+colab auth -s la                                   # Google account
+HF_TOKEN=hf_xxx bash scripts/launch_colab.sh       # T4; pushes to danelcsb/localagent-30m-v2
+#   GPU=A100 PUSH_REPO=you/model bash scripts/launch_colab.sh
+```
+`launch_colab.sh` provisions the runtime, uploads an HF token (for the push), runs
+`scripts/colab_bootstrap.py` remotely (clone → `pip install -e .` → `train_job.py`), downloads the
+final checkpoint, and stops the runtime. (`colab exec -f` runs a *Python* file remotely, so the
+bootstrap shells out to git/pip itself.) The Colab CLI also ships a Claude Code **skill**, so in an
+env where it's installed an agent can drive these steps directly.
