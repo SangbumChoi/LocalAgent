@@ -13,6 +13,7 @@ import torch
 import torch.nn.functional as F
 
 from localagent.data.render import IGNORE, render_sft
+from localagent.train.device import Amp, resolve_dtype
 from localagent.train.loop import cosine_lr, in_decay_window, pad_batch, set_lr, wsd_lr
 
 
@@ -35,7 +36,7 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         conversations=None, accum_steps=1, mt_weight=1.0,
         teacher=None, kd_type="topk", kd_k=16, kd_weight=0.5, kd_temperature=2.0,
         lr_schedule="cosine", decay_frac=0.2, decay_samples=None, shuffle=True,
-        init_tool_head=None, init_ptr_head=None):
+        init_tool_head=None, init_ptr_head=None, amp=False, amp_dtype="auto"):
     """SFT with masked LM loss over single-turn samples + optional multi-turn `conversations`
     (which teach tool->response->follow-up continuation). With `joint_tool_head`, also trains
     jointly a tool-selection head AND a pointer/copy argument head (on the single-turn samples).
@@ -158,6 +159,8 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
                         break
                 mt.append((cid, lab, pa, gsx, gex))
     opt = torch.optim.AdamW(params, lr=lr, betas=(0.9, 0.95), weight_decay=0.0)
+    dev = torch.device(device) if isinstance(device, str) else device
+    a = Amp(dev, resolve_dtype(dev, amp_dtype) if amp else torch.float32, enabled=amp)
     rng = random.Random(0)
     hist = []
     lm_cursor = [0]  # mutable cell: contiguous read position for ordered (shuffle=False) passes
@@ -251,11 +254,11 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         opt.zero_grad(set_to_none=True)
         step_loss = 0.0
         for _ in range(accum_steps):
-            loss = _micro_loss(lm_pool) / accum_steps
-            loss.backward()                  # free this micro-batch's graph before the next forward
+            with a.autocast():
+                loss = _micro_loss(lm_pool) / accum_steps
+            a.backward(loss)                 # free this micro-batch's graph before the next forward
             step_loss += loss.item() * accum_steps
-        torch.nn.utils.clip_grad_norm_(params, 1.0)
-        opt.step()
+        a.step(opt, params)                  # unscale -> clip -> step -> update (fp32: clip+step)
         hist.append(step_loss)
         if step % max(1, steps // 8) == 0 or step == steps - 1:
             log(f"  [sft] step {step:4d}/{steps}  loss {step_loss:.3f}")

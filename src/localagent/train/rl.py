@@ -15,6 +15,7 @@ import torch.nn.functional as F
 
 from localagent.data.render import prompt_text
 from localagent.eval.harness import _correct
+from localagent.train.device import Amp, resolve_dtype
 from localagent.train.loop import cosine_lr, set_lr
 
 
@@ -50,8 +51,10 @@ def _logprob_sum(model, prompt_ids, gen_ids, device):
 
 
 def grpo(model, samples, tok, *, steps=60, prompts_per_step=8, group_size=4, lr=2e-4,
-         temperature=1.0, max_new=64, device="cpu", log=print):
+         temperature=1.0, max_new=64, device="cpu", log=print, amp=False, amp_dtype="auto"):
     model.to(device)
+    dev = torch.device(device) if isinstance(device, str) else device
+    amp_h = Amp(dev, resolve_dtype(dev, amp_dtype) if amp else torch.float32, enabled=amp)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95))
     rng = random.Random(0)
     hist = []
@@ -73,13 +76,15 @@ def grpo(model, samples, tok, *, steps=60, prompts_per_step=8, group_size=4, lr=
                 continue  # no signal in this group
             adv = (rewards - rewards.mean()) / (rewards.std() + 1e-6)
             model.train()
-            gl = [(-a * _logprob_sum(model, pid, r, device)) for r, a in zip(rollouts, adv) if r]
-            if gl:
-                (torch.stack(gl).mean() / len(batch)).backward()  # accumulate grads, free graph
+            with amp_h.autocast():
+                gl = [(-adv_i * _logprob_sum(model, pid, r, device))
+                      for r, adv_i in zip(rollouts, adv) if r]
+                g_loss = torch.stack(gl).mean() / len(batch) if gl else None
+            if g_loss is not None:
+                amp_h.backward(g_loss)                            # accumulate grads, free graph
                 n_updated += 1
         if n_updated:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            opt.step()
+            amp_h.step(opt, model.parameters())
         avg_r = sum(rewards_log) / max(1, len(rewards_log))
         hist.append(avg_r)
         if step % max(1, steps // 6) == 0 or step == steps - 1:

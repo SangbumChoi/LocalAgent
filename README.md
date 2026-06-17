@@ -125,6 +125,52 @@ bash scripts/speedrun.sh
 pytest        # core (config/model/schema/agent) tests pass today
 ```
 
+## Training from scratch — how it works
+
+Training is **three from-scratch stages**, each a small readable loop in `src/localagent/train/`
+that shares one collator/LR/optimizer helper (`loop.py`) and one device/precision abstraction
+(`device.py`). The model persists across stages:
+
+    pretrain (next-byte LM)  →  SFT (tool-call instruction tuning + heads)  →  GRPO (verifiable-reward RL)
+
+| Stage | Module | Learns | Loss / signal | Key knobs |
+|---|---|---|---|---|
+| **Pretrain** | `train/pretrain.py` → `pretrain()` | byte distribution + conversation format | next-token CE over a packed byte stream | `steps`, `batch_size`, `seq_len`, `lr_schedule` (`cosine`/`wsd`), `decay_frac` |
+| **SFT** | `train/sft.py` → `sft()` | produce the assistant span (tool calls / text); optional **tool-selection head** + **pointer/copy arg head** | masked LM CE on the assistant body + EOS (+ aux head/pointer CE) | `joint_tool_head`, `accum_steps`, `conversations` (multi-turn), `lr_schedule`, `decay_samples`, optional `teacher` (distill-through-SFT) |
+| **GRPO (RL)** | `train/rl.py` → `grpo()` | push a near-but-not-100% SFT model the rest of the way | **verifiable reward ∈ {0,1}** from the eval correctness check (no learned reward model); group-relative advantages | `steps`, `prompts_per_step`, `group_size`, `temperature`, `max_new` |
+
+Shared pieces: `train/loop.py` (`pad_batch`, `cosine_lr`/`wsd_lr`, `set_lr`), `train/device.py`
+(`resolve_device`, `resolve_dtype`, `Amp`, `enable_tf32`), `train/distill.py` (Top-K KD, optional).
+The eval reward GRPO optimizes is *exactly* the held-out metric (`eval/harness.py::_correct`), so RL
+can't game it. Each loop's `run(config_path)` raises `NotImplementedError` on purpose — stages are
+driven **in-process** by the scripts below, not by hidden config magic.
+
+### Run it
+```bash
+# CPU-friendly ultra-tiny (~1M) enrichment loop with held-out eval (the smoke path):
+python scripts/flywheel.py --quick            # fast end-to-end
+python scripts/flywheel.py --rounds 5         # full SFT(+GRPO)→eval→enrich flywheel
+
+# GPU: pretrain→SFT→GRPO on one accelerator, mixed precision auto-on (synthetic data):
+python scripts/train_gpu.py --size tiny       # ~28M byte-level; --size ultra-tiny | small
+python scripts/train_gpu.py --size tiny --quick   # smoke (runs on CPU too)
+
+# GPU + REAL public data (FineWeb-edu pretrain, Hermes/xLAM SFT) and Hub upload (HF Jobs):
+python scripts/train_job.py --real --stages pretrain,sft,grpo --push <user>/<repo>
+```
+
+### GPU / mixed precision
+One device abstraction runs the *same* loops on **CUDA / MPS / Intel-XPU / CPU**
+(`resolve_device("auto")`). On an accelerator the scripts above also enable:
+
+- **AMP (mixed precision)** — `Amp` wraps autocast + an fp16-only `GradScaler`; it picks **bf16 on
+  Ampere+** and **fp16 on older GPUs** (e.g. a Colab T4), or force it with `--dtype {bf16,fp16,fp32}`.
+  AMP is **opt-in per loop** (`amp=True`) and a strict no-op in fp32, so the CPU path is unchanged.
+- **TF32** matmuls (`enable_tf32()`) for a free speedup on the fp32 ops.
+
+Pass `--no-amp` to force fp32. To wire AMP into your own driver, call any loop with
+`amp=True, amp_dtype="auto"`.
+
 ## Repo layout
 ```
 configs/                YAML for every model/train/data stage
@@ -147,7 +193,7 @@ tests/
 | Area | State |
 |---|---|
 | Model: 3 tiers (decoder, **KV cache**, config, budget guard) + factorized embeddings + depth-recurrence | ✅ implemented |
-| Training: pretrain + SFT + GRPO (verifiable reward), CPU/GPU | ✅ implemented |
+| Training: pretrain + SFT + GRPO (verifiable reward), CPU/GPU + **mixed precision (bf16/fp16 AMP) & TF32** | ✅ implemented (`scripts/train_gpu.py`, `train/device.py::Amp`) |
 | Synthetic data + render + eval harness (AST + grounded) | ✅ implemented |
 | **`ToolCaller`** — schema-guided constrained decoding on any JSON-schema tools (multi-arg, retrieval, abstention), no training | ✅ implemented (`agent/caller.py`, `agent/schema_decode.py`) |
 | **Dual-head (tool classifier) + grounded constrained decoding** → ~83% held-out across 15 tools | ✅ implemented (`agent/constrained.py`, `agent/tool_head.py`) |

@@ -37,9 +37,15 @@ ap.add_argument("--sft-steps", type=int, default=3000)
 ap.add_argument("--grpo-steps", type=int, default=300)
 ap.add_argument("--seq-len", type=int, default=512)
 ap.add_argument("--batch", type=int, default=64)
+ap.add_argument("--no-amp", action="store_true", help="disable mixed precision (force fp32)")
+ap.add_argument("--dtype", default="auto", help="auto|bf16|fp16|fp32 autocast dtype")
 args = ap.parse_args()
 
+from localagent.train.device import enable_tf32  # noqa: E402
+
+enable_tf32()
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+AMP = not args.no_amp and DEVICE != "cpu"                 # AMP only helps on accelerators
 if args.quick:
     args.pretrain_steps, args.sft_steps, args.grpo_steps = 30, 30, 6
     args.batch, args.seq_len = 16, 128
@@ -109,7 +115,7 @@ if "pretrain" in stages:
     hold = min(len(stream) // 10, 500_000)                 # held-out tail for BPB
     val, train_stream = stream[-hold:], stream[:-hold] if hold else stream
     pretrain(model, train_stream, tok, steps=args.pretrain_steps, batch_size=args.batch,
-             seq_len=args.seq_len, device=DEVICE, lr_schedule="wsd")
+             seq_len=args.seq_len, device=DEVICE, lr_schedule="wsd", amp=AMP, amp_dtype=args.dtype)
     if val:
         from localagent.eval.bpb import bits_per_byte
         print(f"  held-out BPB = {bits_per_byte(model, val, seq_len=args.seq_len, device=DEVICE):.3f} "
@@ -128,7 +134,7 @@ if "sft" in stages:
         print(f"  ({len(sft_data)} real SFT rows fit ctx -> mixing in synthetic)", flush=True)
         sft_data += synth_samples(2 if args.quick else 40)
     sft(model, sft_data, tok, steps=args.sft_steps, batch_size=max(8, args.batch // 2),
-        device=DEVICE)
+        device=DEVICE, amp=AMP, amp_dtype=args.dtype)
     save("sft")
 
 # ---- 3. GRPO (RL with a verifiable tool-call reward) ----
@@ -136,7 +142,7 @@ if "grpo" in stages:
     print("\n=== GRPO (verifiable reward) ===", flush=True)
     rl_data = [s for s in synth_samples(1 if args.quick else 20) if s.kind == "tool"]
     grpo(model, rl_data, tok, steps=args.grpo_steps, device=DEVICE,
-         prompts_per_step=4 if args.quick else 8)
+         prompts_per_step=4 if args.quick else 8, amp=AMP, amp_dtype=args.dtype)
     save("grpo")
 
 final = save("final")
