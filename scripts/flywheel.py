@@ -34,7 +34,7 @@ from localagent.agent.constrained import grounded_decode
 from localagent.agent.toolset import STANDARD_TOOLS as TOOLS
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.model.tokenizer import load_tokenizer
-from localagent.train.device import resolve_device
+from localagent.train.device import enable_tf32, resolve_device
 from localagent.train.pretrain import pretrain
 from localagent.train.rl import grpo
 from localagent.train.sft import sft
@@ -51,13 +51,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=5)
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--no-amp", action="store_true", help="disable GPU mixed precision (force fp32)")
+    ap.add_argument("--compile", action="store_true", help="torch.compile the pretrain/SFT forward")
     args = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
+    enable_tf32()
     device = resolve_device("auto")
+    amp = not args.no_amp and device.type != "cpu"          # AMP only on accelerators
     tok = load_tokenizer("byte")
     cfg = ModelConfig.from_yaml("configs/model/ultra-tiny-1m.yaml")
-    model = LocalAgentLM(cfg).to(device)
-    print(f"model {cfg.name}: {model.num_params()/1e6:.3f}M params on {device}", flush=True)
+    model = LocalAgentLM(cfg).to(device)                    # raw handle: save / eval / GRPO rollouts
+    fwd = torch.compile(model) if args.compile else model  # compiled forward shares params with model
+    print(f"model {cfg.name}: {model.num_params()/1e6:.3f}M params on {device} "
+          f"(amp={amp} compile={args.compile})", flush=True)
 
     n_train = 400 if args.quick else 2500
     n_eval = 12 if args.quick else 30        # per category (balanced held-out)
@@ -68,8 +74,8 @@ def main():
     grpo_steps = 4 if args.quick else 4
 
     g0 = Generator(level=1, seed=0, split="train").generate(n_train)
-    pre_loss = pretrain(model, build_pretrain_stream(g0, tok), tok, steps=pre_steps,
-                        batch_size=64, device=device)
+    pre_loss = pretrain(fwd, build_pretrain_stream(g0, tok), tok, steps=pre_steps,
+                        batch_size=64, device=device, amp=amp)
 
     metrics = {"rounds": [], "pretrain_loss": pre_loss}
     for r in range(1, args.rounds + 1):
@@ -80,10 +86,11 @@ def main():
         steps = sft1 if r == 1 else sft_inc
         print(f"\n=== Round {r} (level {r}, {len(train)} single-turn + {len(episodes)} episodes "
               f"/ {len(held)} held-out) ===", flush=True)
-        sft_loss, head, ptr = sft(model, train, tok, steps=steps, batch_size=32, lr=1.5e-3,
+        sft_loss, head, ptr = sft(fwd, train, tok, steps=steps, batch_size=32, lr=1.5e-3,
                                   device=device, log=lambda *a: None, joint_tool_head=True,
-                                  conversations=episodes)
-        grpo(model, train, tok, steps=grpo_steps, device=device, log=lambda *a: None)  # RL stage
+                                  conversations=episodes, amp=amp)
+        grpo(model, train, tok, steps=grpo_steps, device=device, log=lambda *a: None,  # RL stage
+             amp=amp)
         # single-turn: heuristic grounding (best on clean templates); multi-turn: pointer head
         # (only it can ground a follow-up arg in an earlier tool response).
         gr = evaluate_grounded(model, held, tok, TOOLS, device=device, tool_head=head)

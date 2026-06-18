@@ -44,6 +44,8 @@ def main() -> None:
     ap.add_argument("--device", default="auto", help="auto|cuda|mps|xpu|cpu")
     ap.add_argument("--dtype", default="auto", help="auto|bf16|fp16|fp32 (autocast dtype)")
     ap.add_argument("--no-amp", action="store_true", help="disable mixed precision (force fp32)")
+    ap.add_argument("--compile", action="store_true",
+                    help="torch.compile the dense pretrain/SFT forward (experimental; GPU win)")
     ap.add_argument("--quick", action="store_true", help="tiny smoke run (CPU OK)")
     ap.add_argument("--stages", default="pretrain,sft,grpo")
     ap.add_argument("--out", default="runs/gpu")
@@ -69,9 +71,12 @@ def main() -> None:
 
     cfg = ModelConfig.from_yaml(SIZES[args.size])
     tok = load_tokenizer("byte" if cfg.vocab_size == 256 else "bpe")
-    model = LocalAgentLM(cfg).to(device)
+    model = LocalAgentLM(cfg).to(device)                    # raw handle: used for save / KV-cache RL
+    # torch.compile only wraps the dense pretrain/SFT forward; it shares params with `model`, so the
+    # raw module still owns the weights (save + GRPO rollouts run on `model` to avoid KV recompiles).
+    fwd = torch.compile(model) if args.compile else model
     seq_len = min(args.seq_len, cfg.max_seq_len)
-    print(f"device={device} dtype={str(dtype).split('.')[-1]} amp={amp} | "
+    print(f"device={device} dtype={str(dtype).split('.')[-1]} amp={amp} compile={args.compile} | "
           f"cfg={cfg.name} params~{model.num_params()/1e6:.1f}M | stages={sorted(stages)}", flush=True)
 
     def save(tag: str) -> str:
@@ -87,7 +92,7 @@ def main() -> None:
         print("\n=== PRETRAIN (next-byte LM) ===", flush=True)
         stream = build_pretrain_stream(samples, tok)
         tic = time.time()
-        pretrain(model, stream, tok, steps=args.pretrain_steps, batch_size=args.batch,
+        pretrain(fwd, stream, tok, steps=args.pretrain_steps, batch_size=args.batch,
                  seq_len=seq_len, device=device, lr_schedule="wsd", amp=amp, amp_dtype=args.dtype)
         toks = args.pretrain_steps * args.batch * seq_len
         print(f"  ~{toks/(time.time()-tic)/1e3:.1f}k tok/s", flush=True)
@@ -95,7 +100,7 @@ def main() -> None:
 
     if "sft" in stages:
         print("\n=== SFT (tool-call instruction tuning + heads) ===", flush=True)
-        sft(model, samples, tok, steps=args.sft_steps, batch_size=max(8, args.batch // 2),
+        sft(fwd, samples, tok, steps=args.sft_steps, batch_size=max(8, args.batch // 2),
             device=device, joint_tool_head=True, amp=amp, amp_dtype=args.dtype)
         save("sft")
 

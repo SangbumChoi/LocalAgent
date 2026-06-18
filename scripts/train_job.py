@@ -39,6 +39,7 @@ ap.add_argument("--seq-len", type=int, default=512)
 ap.add_argument("--batch", type=int, default=64)
 ap.add_argument("--no-amp", action="store_true", help="disable mixed precision (force fp32)")
 ap.add_argument("--dtype", default="auto", help="auto|bf16|fp16|fp32 autocast dtype")
+ap.add_argument("--compile", action="store_true", help="torch.compile the pretrain/SFT forward")
 args = ap.parse_args()
 
 from localagent.train.device import enable_tf32  # noqa: E402
@@ -61,8 +62,11 @@ if args.init_hub:                                         # resume from a pushed
     model.load_state_dict(ick["state_dict"])
     stages.discard("pretrain")                            # already pretrained
     print(f"resumed from {args.init_hub}; skipping pretrain", flush=True)
+# torch.compile wraps only the dense pretrain/SFT forward; `model` (raw) still owns the weights and
+# is used for save + GRPO rollouts (KV-cache decoding recompiles badly under compile).
+fwd = torch.compile(model) if args.compile else model
 print(f"device={DEVICE} cfg={cfg.name} params~{cfg.estimate_params()/1e6:.1f}M stages={sorted(stages)} "
-      f"real={args.real} quick={args.quick}", flush=True)
+      f"real={args.real} quick={args.quick} amp={AMP} compile={args.compile}", flush=True)
 
 
 _api = None
@@ -114,7 +118,7 @@ if "pretrain" in stages:
         stream = build_pretrain_stream(synth_samples(2 if args.quick else 40), tok)
     hold = min(len(stream) // 10, 500_000)                 # held-out tail for BPB
     val, train_stream = stream[-hold:], stream[:-hold] if hold else stream
-    pretrain(model, train_stream, tok, steps=args.pretrain_steps, batch_size=args.batch,
+    pretrain(fwd, train_stream, tok, steps=args.pretrain_steps, batch_size=args.batch,
              seq_len=args.seq_len, device=DEVICE, lr_schedule="wsd", amp=AMP, amp_dtype=args.dtype)
     if val:
         from localagent.eval.bpb import bits_per_byte
@@ -133,7 +137,7 @@ if "sft" in stages:
     if len(sft_data) < (5 if args.quick else 2000):
         print(f"  ({len(sft_data)} real SFT rows fit ctx -> mixing in synthetic)", flush=True)
         sft_data += synth_samples(2 if args.quick else 40)
-    sft(model, sft_data, tok, steps=args.sft_steps, batch_size=max(8, args.batch // 2),
+    sft(fwd, sft_data, tok, steps=args.sft_steps, batch_size=max(8, args.batch // 2),
         device=DEVICE, amp=AMP, amp_dtype=args.dtype)
     save("sft")
 

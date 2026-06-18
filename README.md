@@ -167,9 +167,13 @@ One device abstraction runs the *same* loops on **CUDA / MPS / Intel-XPU / CPU**
   Ampere+** and **fp16 on older GPUs** (e.g. a Colab T4), or force it with `--dtype {bf16,fp16,fp32}`.
   AMP is **opt-in per loop** (`amp=True`) and a strict no-op in fp32, so the CPU path is unchanged.
 - **TF32** matmuls (`enable_tf32()`) for a free speedup on the fp32 ops.
+- **`torch.compile`** (opt-in `--compile`) on the dense pretrain/SFT forward. It wraps a *copy* that
+  shares parameters with the raw model, so the raw module still owns the weights — save and the
+  GRPO KV-cache rollouts run on the uncompiled model (incremental decoding recompiles badly).
 
 Pass `--no-amp` to force fp32. To wire AMP into your own driver, call any loop with
-`amp=True, amp_dtype="auto"`.
+`amp=True, amp_dtype="auto"`. `--no-amp` / `--compile` are available on `train_gpu.py`,
+`train_job.py`, and `flywheel.py` (the latter auto-enables AMP only on a GPU).
 
 ## Repo layout
 ```
