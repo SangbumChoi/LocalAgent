@@ -16,7 +16,7 @@ from localagent.train.loop import cosine_lr, set_lr, wsd_lr
 
 def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e-3,
              warmup=30, device="cpu", log=print, lr_schedule="cosine", decay_frac=0.2,
-             amp=False, amp_dtype="auto"):
+             amp=False, amp_dtype="auto", log_every=None):
     """Next-token CE over a packed byte stream. `lr_schedule="wsd"` (opt-in, MiniCPM) replaces the
     cosine LR with Warmup-Stable-Decay (warmup -> flat plateau -> exponential `lr*0.5^((s-S)/T)`
     over the last `decay_frac` of steps); default "cosine" is byte-for-byte the old schedule.
@@ -49,7 +49,7 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
         a.backward(loss)
         a.step(opt, model.parameters())
         hist.append(loss.item())
-        if step % max(1, steps // 8) == 0 or step == steps - 1:
+        if step % (log_every or max(1, steps // 8)) == 0 or step == steps - 1:
             log(f"  [pretrain] step {step:4d}/{steps}  loss {loss.item():.3f}")
     return hist
 

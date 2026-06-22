@@ -36,7 +36,7 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
         conversations=None, accum_steps=1, mt_weight=1.0,
         teacher=None, kd_type="topk", kd_k=16, kd_weight=0.5, kd_temperature=2.0,
         lr_schedule="cosine", decay_frac=0.2, decay_samples=None, shuffle=True,
-        init_tool_head=None, init_ptr_head=None, amp=False, amp_dtype="auto"):
+        init_tool_head=None, init_ptr_head=None, amp=False, amp_dtype="auto", log_every=None):
     """SFT with masked LM loss over single-turn samples + optional multi-turn `conversations`
     (which teach tool->response->follow-up continuation). With `joint_tool_head`, also trains
     jointly a tool-selection head AND a pointer/copy argument head (on the single-turn samples).
@@ -260,7 +260,7 @@ def sft(model, samples, tok, *, steps=1200, batch_size=32, lr=1e-3, warmup=40,
             step_loss += loss.item() * accum_steps
         a.step(opt, params)                  # unscale -> clip -> step -> update (fp32: clip+step)
         hist.append(step_loss)
-        if step % max(1, steps // 8) == 0 or step == steps - 1:
+        if step % (log_every or max(1, steps // 8)) == 0 or step == steps - 1:
             log(f"  [sft] step {step:4d}/{steps}  loss {step_loss:.3f}")
     return hist, tool_head, ptr_head
 

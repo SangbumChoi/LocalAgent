@@ -136,3 +136,145 @@ def xlam_sft_samples(tok, n: int = 60000, dataset: str = "Salesforce/xlam-functi
             break
     log(f"  [xlam] {len(rows)} SFT samples")
     return rows
+
+
+# ---- EVAL BENCHMARKS loaded as TRAINING data --------------------------------------------------
+# ⚠️ CONTAMINATION WARNING: the loaders below turn well-known *evaluation* benchmarks into SFT
+# rows at the user's explicit request. Any accuracy you later report on these same benchmarks is
+# **contaminated and not an honest held-out number** — do not present it as one. Each loader is
+# isolated so a failure (e.g. gated GPQA) never kills the rest of the run.
+
+def aime_sft_samples(tok, n: int = 60, dataset: str = "Maxwell-Jia/AIME_2024",
+                     with_solution: bool = False, log=print) -> list[Row]:
+    """⚠️ AIME eval benchmark as TRAINING data. Maps `Problem -> Answer` (integer 0-999), or the full
+    worked `Solution` with `with_solution=True`. Fields: Problem, Answer, Solution."""
+    load_dataset = _require_datasets()
+    ds = load_dataset(dataset, split="train")
+    rows: list[Row] = []
+    for r in ds:
+        prob = (r.get("Problem") or "").strip()
+        ans = str(r.get("Answer") if r.get("Answer") is not None else "").strip()
+        if not prob or not ans:
+            continue
+        tgt = (r.get("Solution") or "").strip() if with_solution else ans
+        rows.append(Row(prompt=prob, target=tgt or ans, kind="text", ref_name="",
+                        category="aime", group="math"))
+        if len(rows) >= n:
+            break
+    log(f"  [aime] {len(rows)} SFT rows from {dataset}")
+    return rows
+
+
+def bigcodebench_sft_samples(tok, n: int = 200, dataset: str = "bigcode/bigcodebench",
+                             split: str = "v0.1.4", log=print) -> list[Row]:
+    """⚠️ BigCodeBench eval benchmark as TRAINING data. Maps `instruct_prompt -> code_prompt +
+    canonical_solution` (so the target is runnable-shaped). Streamed to avoid a full download."""
+    load_dataset = _require_datasets()
+    ds = load_dataset(dataset, split=split, streaming=True)
+    rows: list[Row] = []
+    for r in ds:
+        instr = (r.get("instruct_prompt") or r.get("complete_prompt") or "").strip()
+        sol = (r.get("canonical_solution") or "").strip()
+        if not instr or not sol:
+            continue
+        head = (r.get("code_prompt") or "").strip()
+        tgt = (head + "\n" + sol).strip() if head else sol
+        rows.append(Row(prompt=instr, target=tgt, kind="text", category="bigcodebench", group="code"))
+        if len(rows) >= n:
+            break
+    log(f"  [bigcodebench] {len(rows)} SFT rows from {dataset}:{split}")
+    return rows
+
+
+def mtbench_sft_samples(tok, n: int = 80, dataset: str = "HuggingFaceH4/mt_bench_prompts",
+                        log=print) -> list[Row]:
+    """⚠️ MTBench eval benchmark. Only rows that ship a `reference` answer (mostly math/reasoning)
+    are SFT-able; the open-ended judge-scored rows have NO gold target and are skipped (logged).
+    Maps turn-1 `prompt[0] -> reference[0]`."""
+    load_dataset = _require_datasets()
+    ds = load_dataset(dataset, split="train")
+    rows: list[Row] = []
+    skipped = 0
+    for r in ds:
+        prompt = r.get("prompt") or []
+        ref = r.get("reference") or []
+        if not prompt or not ref:
+            skipped += 1
+            continue
+        rows.append(Row(prompt=str(prompt[0]).strip(), target=str(ref[0]).strip(), kind="text",
+                        category="mtbench", group=str(r.get("category", "mtbench"))))
+        if len(rows) >= n:
+            break
+    log(f"  [mtbench] {len(rows)} SFT rows (+{skipped} skipped: open-ended, no reference answer)")
+    return rows
+
+
+def gpqa_sft_samples(tok, n: int = 198, config: str = "gpqa_diamond", log=print) -> list[Row]:
+    """⚠️ GPQA-Diamond eval benchmark as TRAINING data. GATED — needs `HF_TOKEN` + accepted terms on
+    the dataset page, else this raises and the combined loader skips it. Builds a 4-way MCQ
+    (`Question` + shuffled options) and maps it to the correct letter."""
+    import random
+
+    load_dataset = _require_datasets()
+    ds = load_dataset("Idavidrein/gpqa", config, split="train")
+    rng = random.Random(0)
+    rows: list[Row] = []
+    letters = "ABCD"
+    for r in ds:
+        q = (r.get("Question") or "").strip()
+        correct = (r.get("Correct Answer") or "").strip()
+        wrong = [(r.get(f"Incorrect Answer {i}") or "").strip() for i in (1, 2, 3)]
+        opts = [correct] + [w for w in wrong if w]
+        if not q or len(opts) < 2:
+            continue
+        rng.shuffle(opts)
+        body = "\n".join(f"{letters[i]}. {o}" for i, o in enumerate(opts))
+        rows.append(Row(prompt=f"{q}\n{body}", target=letters[opts.index(correct)], kind="text",
+                        category="gpqa", group="science"))
+        if len(rows) >= n:
+            break
+    log(f"  [gpqa] {len(rows)} SFT rows from gpqa/{config}")
+    return rows
+
+
+def livecodebench_sft_samples(tok, n: int = 200, log=print) -> list[Row]:
+    """⚠️ LiveCodeBench eval benchmark. It ships problems + HIDDEN tests but NO public reference
+    solutions (it is graded by running tests), and its only loader is a dataset *script* (removed in
+    `datasets>=4`). So there is no honest (prompt -> target) SFT row to build. Returns [] and logs."""
+    log("  [livecodebench] no public reference solutions + script-loader removed in datasets>=4 "
+        "-> not SFT-able, skipped (use it for eval-by-tests instead)")
+    return []
+
+
+BENCH_LOADERS = {
+    "aime": aime_sft_samples,
+    "bigcodebench": bigcodebench_sft_samples,
+    "mtbench": mtbench_sft_samples,
+    "gpqa": gpqa_sft_samples,
+    "livecodebench": livecodebench_sft_samples,
+}
+
+
+def benchmark_sft_samples(tok, which: list[str] | None = None, per_source: int = 200,
+                          log=print) -> tuple[list[Row], dict[str, int]]:
+    """Load the requested eval BENCHMARKS as TRAINING rows (⚠️ contaminates those benchmarks).
+    Returns `(rows, counts_by_source)`. Each source is isolated in try/except so one failure
+    (gated GPQA, an unavailable LiveCodeBench, a schema change) never kills the others."""
+    which = which or list(BENCH_LOADERS)
+    rows: list[Row] = []
+    counts: dict[str, int] = {}
+    for name in which:
+        if name not in BENCH_LOADERS:
+            log(f"  [{name}] unknown benchmark -> skipped")
+            counts[name] = 0
+            continue
+        try:
+            r = BENCH_LOADERS[name](tok, n=per_source, log=log)
+        except Exception as e:  # noqa: BLE001 - gated/unavailable/schema -> log + skip, keep going
+            log(f"  [{name}] FAILED: {type(e).__name__}: {str(e)[:140]} -> skipped")
+            r = []
+        counts[name] = len(r)
+        rows.extend(r)
+    log(f"  [benchmarks] total {len(rows)} SFT rows: {counts}")
+    return rows, counts
+
