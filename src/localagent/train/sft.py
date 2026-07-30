@@ -43,6 +43,7 @@ from localagent.train.device import autocast_ctx
 from localagent.train.loop import (
     cosine_lr,
     pad_batch,
+    router_loss_terms,
     set_lr,
     validate_pad_to_input_tokens,
     wsd_lr,
@@ -397,7 +398,13 @@ def _resume_sha256(value: Any) -> str:
 
 
 def _sealed_resume_sha256(payload: Mapping[str, Any]) -> str:
-    return _resume_sha256({field: payload.get(field) for field in _SFT_RESUME_SEALED_FIELDS})
+    # v1 checkpoints predate component-level router/LM reporting. Preserve validation of those
+    # envelopes while sealing the optional histories whenever a newly written checkpoint carries
+    # them. Their presence, rather than a format-version guess, selects the extended envelope.
+    fields = list(_SFT_RESUME_SEALED_FIELDS)
+    if "loss_components" in payload:
+        fields.append("loss_components")
+    return _resume_sha256({field: payload.get(field) for field in fields})
 
 
 def _valid_sha256(value: Any) -> bool:
@@ -1411,6 +1418,9 @@ def sft(
         weight_decay=weight_decay,
     )
     hist: list[float] = []
+    lm_loss_history: list[float | None] = []
+    router_aux_loss_history: list[float | None] = []
+    router_weighted_loss_history: list[float | None] = []
     sampling_schedule = SFTSamplingSchedule(
         prepared,
         batch_size=batch_size,
@@ -1586,6 +1596,38 @@ def sft(
             checkpoint.get("loss_history"),
             completed_steps=start_step,
         )
+        loss_components = checkpoint.get("loss_components")
+        if loss_components is None:
+            # Legacy v1 envelopes did not record the decomposition. Preserve the unknown prefix
+            # explicitly rather than deriving it from the combined objective.
+            lm_loss_history = [None] * start_step
+            router_aux_loss_history = [None] * start_step
+            router_weighted_loss_history = [None] * start_step
+        else:
+            if not isinstance(loss_components, Mapping):
+                raise ValueError("SFT resume loss_components must be a mapping")
+            destinations = {
+                "lm_loss": lm_loss_history,
+                "router_aux": router_aux_loss_history,
+                "router_weighted": router_weighted_loss_history,
+            }
+            for name, destination in destinations.items():
+                values = loss_components.get(name)
+                if not isinstance(values, list) or len(values) != start_step:
+                    raise ValueError(
+                        f"SFT resume loss_components[{name!r}] is inconsistent"
+                    )
+                if any(
+                    value is not None
+                    and (isinstance(value, bool) or not isinstance(value, (int, float)))
+                    for value in values
+                ):
+                    raise ValueError(
+                        f"SFT resume loss_components[{name!r}] must contain numbers or null"
+                    )
+                destination.extend(
+                    None if value is None else float(value) for value in values
+                )
         if checkpoint.get("dataset_token_accounting") != dataset_accounting:
             raise ValueError("SFT resume checkpoint dataset token accounting mismatch")
         if checkpoint.get("token_accounting_scope") != "language_model_microbatches":
@@ -1695,7 +1737,8 @@ def sft(
             device,
             pad_to_input_tokens=fixed_input_width,
         )
-        _, loss = model(x, targets=y)
+        _, lm_loss = model(x, targets=y)
+        loss, router_aux, router_weighted = router_loss_terms(model, lm_loss)
         if kd_cache is not None:
             # KD micro-batch sampled from the SFT rows (the only rows with cached teacher
             # targets), batched exactly like distill.py: inputs = row[:-1], mask on labels[1:].
@@ -1781,7 +1824,7 @@ def sft(
                         F.cross_entropy(sl, torch.tensor([mb[r][3] for r in prw], device=device))
                         + F.cross_entropy(el, torch.tensor([mb[r][4] for r in prw], device=device))
                     )
-        return loss
+        return loss, lm_loss, router_aux, router_weighted
 
     def save(step: int) -> None:
         if checkpoint_path is None:
@@ -1801,6 +1844,11 @@ def sft(
             "grad_scaler": scaler.state_dict() if use_grad_scaler else None,
             "step": step,
             "loss_history": hist,
+            "loss_components": {
+                "lm_loss": lm_loss_history,
+                "router_aux": router_aux_loss_history,
+                "router_weighted": router_weighted_loss_history,
+            },
             "dataset_token_accounting": dataset_accounting,
             "token_accounting": training_accounting,
             "token_accounting_scope": "language_model_microbatches",
@@ -1851,6 +1899,9 @@ def sft(
             set_lr(opt, cosine_lr(step, steps, lr, warmup, 0.1))
         opt.zero_grad(set_to_none=True)
         step_loss = 0.0
+        step_lm_loss = 0.0
+        step_router_aux = 0.0
+        step_router_weighted = 0.0
         selections = [
             sampling_schedule.next_microbatch(step=step, total_steps=steps)
             for _ in range(accum_steps)
@@ -1883,10 +1934,23 @@ def sft(
             strict=True,
         ):
             with autocast_ctx(device_obj, amp_dtype):
-                unscaled_loss = _micro_loss(selection)
+                (
+                    unscaled_loss,
+                    lm_loss,
+                    router_aux,
+                    router_weighted,
+                ) = _micro_loss(selection)
                 loss = unscaled_loss * loss_weight
             scaler.scale(loss).backward()  # free this micro-batch's graph before the next forward
             unscaled_loss_value = unscaled_loss.item()
+            report_weight = (
+                loss_weight
+                if loss_normalization == SFT_LOSS_NORMALIZATION_UPDATE_TOKENS
+                else 1.0
+            )
+            step_lm_loss += float(lm_loss.detach()) * report_weight
+            step_router_aux += float(router_aux.detach()) * report_weight
+            step_router_weighted += float(router_weighted.detach()) * report_weight
             if loss_normalization == SFT_LOSS_NORMALIZATION_UPDATE_TOKENS:
                 step_loss += unscaled_loss_value * loss_weight
             else:
@@ -1897,8 +1961,17 @@ def sft(
         scaler.step(opt)
         scaler.update()
         hist.append(step_loss)
+        lm_loss_history.append(step_lm_loss)
+        router_aux_loss_history.append(step_router_aux)
+        router_weighted_loss_history.append(step_router_weighted)
         if step % max(1, steps // 8) == 0 or step == steps - 1:
-            log(f"  [sft] step {step:4d}/{steps}  loss {step_loss:.3f}")
+            message = f"  [sft] step {step:4d}/{steps}  loss {step_loss:.3f}"
+            if model.cfg.sparse_ffn:
+                message += (
+                    f"  lm {step_lm_loss:.3f}  router_aux {step_router_aux:.3f}  "
+                    f"router_weighted {step_router_weighted:.3f}"
+                )
+            log(message)
         if checkpoint_every and (step + 1) % checkpoint_every == 0:
             save(step)
     save(stop_step - 1)
@@ -1911,6 +1984,12 @@ def sft(
             "planned_optimizer_updates": steps,
             "completed_optimizer_updates": len(hist),
             "partial": len(hist) < steps,
+        },
+        "loss_components": {
+            "optimization": hist,
+            "lm_loss": lm_loss_history,
+            "router_aux": router_aux_loss_history,
+            "router_weighted": router_weighted_loss_history,
         },
     }
     if prepared.conversation_prompt_contract != LEGACY_CONVERSATION_PROMPT_CONTRACT:

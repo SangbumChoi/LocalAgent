@@ -88,6 +88,9 @@ Remaining misses are free-text multi-word args (the pointer-head frontier).
   readable script you can fork.
 - **Portable training** — one device abstraction covers CUDA/MPS/XPU/CPU; ONNX/WebGPU export is
   implemented, while GGUF and ExecuTorch remain roadmap items.
+- **Capacity experiments without budget fiction** — an opt-in Micro-MoE executes only selected
+  experts in PyTorch and reports both all stored parameters and the nominal active token path;
+  dense remains the WebGPU control until sparse export and browser measurements pass.
 - **Research flywheel** — deterministic synthesize/train/evaluate/enrich loops are implemented;
   production storage, mining, and feedback ingestion remain roadmap items.
 
@@ -101,6 +104,9 @@ how it all fits together.
 [`docs/TRAINING_SYSTEM.md`](docs/TRAINING_SYSTEM.md) is the current Kimi K2/K2.5/K3,
 GLM/Grok/SOLAR/nanochat comparison and the concrete dataset → pretrain → midtrain → SFT → RL
 recipe.
+[`docs/SPARSE_EXPERTS_REAL_DATA.md`](docs/SPARSE_EXPERTS_REAL_DATA.md) defines the active-matched
+43.86M sparse/17.30M dense experiment, pinned public xLAM/Mind2Web ingestion, and the quality,
+router, and deployment promotion gates.
 The runnable GPU path is
 [`notebooks/localagent_pretraining_colab.ipynb`](notebooks/localagent_pretraining_colab.ipynb):
 licensed corpus streaming, mixed-precision training, resumable checkpoints, and verified Google
@@ -428,6 +434,7 @@ tests/
 | Area | State |
 |---|---|
 | Model: 3 tiers (decoder, **KV cache**, config, budget guard) + factorized embeddings + depth-recurrence | ✅ implemented |
+| Opt-in sparse routed FFN with honest total/active counts, load balancing, and diagnostics | ✅ PyTorch research path; 🚧 sparse ONNX/WebGPU lowering and measured promotion |
 | Training: pretrain + SFT + GRPO (verifiable reward), CPU/GPU | ✅ implemented |
 | Synthetic data + render + eval harness (AST + grounded) | ✅ implemented |
 | **`ToolCaller`** — schema-guided constrained decoding on any JSON-schema tools (multi-arg, retrieval, abstention), no training | ✅ implemented (`agent/caller.py`, `agent/schema_decode.py`) |
@@ -441,10 +448,11 @@ tests/
 | Tokenizer training | ✅ byte + trained BPE with atomic agent markers |
 | Corpus filtering, provenance, deterministic split, memory-mapped packing | ✅ implemented (`scripts/prepare_corpus.py`) |
 | Canonical agent-data export (single/multi-turn/irrelevance + schema verification) | ✅ implemented (`localagent synth ...`) |
+| Pinned public xLAM/Mind2Web TRAIN ingestion + provenance/decontamination manifest | ✅ implemented (`scripts/ingest_public_agent_data.py`) |
 | Pretrain / midtrain / SFT / Distill / exact-AST RL loops | ✅ core loops; config runners for pretrain, midtrain, SFT, and RL |
 | Compatible pretrained-checkpoint depth growth | ✅ explicit layer map, self-hashed verification, fresh-optimizer `init_from`; not function-preserving |
 | Agent data synthesis + research flywheel | ✅ deterministic synthesis/evaluation loop; 🚧 production feedback ingestion |
-| Eval harness | ✅ AST, grounded, multi-turn, realtime, and deterministic browser primitives; 🚧 unified frozen-suite runner/general text eval |
+| Eval harness | ✅ AST, grounded, multi-turn, public real-use/router gates, realtime, and deterministic browser primitives; 🚧 unified frozen-suite runner/general text eval |
 | Agent runtime + memory + demos | ✅ checkpoint-backed runtime and web demos; 🚧 two-tier memory and chat CLI |
 | Export to Hugging Face Hub (config + safetensors + heads + model card) | ✅ implemented (`scripts/push_to_hf.py`) — published: [`danelcsb/localagent-tiny-30m-byte`](https://huggingface.co/danelcsb/localagent-tiny-30m-byte) |
 | Export | ✅ ONNX/WebGPU + cache-bearing prefill/decode + Hugging Face; 🚧 GGUF, ExecuTorch, and real Q4 |

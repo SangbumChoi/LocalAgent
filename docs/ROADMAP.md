@@ -56,7 +56,10 @@ Stubs reference these phase numbers in their `TODO(phase-N)` markers.
 - [x] `agent_synth.py`: deterministic synthesis → irrelevance negatives → schema verification.
 - [x] Export rule-audited, non-executed `Conversation`s as JSONL with a dataset manifest, frozen
       train/eval split, and pinned exact-prompt holdouts.
-- [ ] External teacher/verifier adapters and xLAM/ToolACE-format importer.
+- [x] Offline, identity-pinned xLAM and Mind2Web TRAIN importers with canonical `Conversation`
+      output, deterministic enrichment, provenance, license/split policy, exact-prompt
+      decontamination, and self-hashed manifests.
+- [ ] External teacher/verifier adapters and a ToolACE-format importer.
 - Exit: a few-thousand-sample rule-audited agent dataset on disk, with executed-environment
   verification required before any stronger claim.
 
@@ -81,6 +84,8 @@ Stubs reference these phase numbers in their `TODO(phase-N)` markers.
       SFT pilot. The capability gate failed: all tool-required actions abstained and DOM success
       was 0/8 unique tasks (0/720 repeated timing opportunities).
 - [ ] Config-driven frozen-suite runner plus general-text evaluation.
+- [x] Public real-use snapshot audit and explicit quality/coverage/router-diversity promotion
+      gates layered over strict AST and teacher-forced multi-turn scoring.
 - Exit: a reproducible scorecard for any checkpoint.
 
 ## Phase 6 — Distillation

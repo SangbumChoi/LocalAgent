@@ -49,6 +49,10 @@ Kimi Delta Attention.
 
 - **Blocks:** pre-norm RMSNorm → MQA/GQA attention with RoPE and optional QK-Norm, or gated
   causal short-convolution → SwiGLU MLP, with residuals.
+- **Optional sparse FFN:** `ffn_num_experts > 1` replaces each dense SwiGLU with a stable top-k
+  routed expert bank. The hard budget counts every stored expert; a separate nominal active count
+  includes the router and selected experts. Dense configs allocate no router and preserve legacy
+  state keys.
 - **Tied** input/output embeddings (the embedding table dominates param count at this scale).
 - **Inference state:** attention stores K/V per token; short-convolution stores a fixed tail.
   Recurrent passes share weights but retain separate cache slots, preserving exact cached/fresh
@@ -63,6 +67,8 @@ Kimi Delta Attention.
   | `webgpu-10m-attn-4k` | 384 / 384 | 4 × 1, all attention | 6 / 1 | 624 | 10,547,072 | matched 10M control |
   | `webgpu-96m-hybrid` | 640 / 640 | 18 × 1, 12 conv + 6 attention | 10 / 1 | 1728 | 95,320,448 | near-budget quality/feasibility |
   | `webgpu-96m-attn` | 640 / 640 | 18 × 1, all attention | 10 / 1 | 1984 | 95,298,944 | matched 96M control |
+  | `webgpu-44m-moe` | 320 / 320 | 9 × 1, 6 conv + 3 attention | 5 / 1 | 8×512, top-2 | 43,862,464 total / 17,320,384 active | opt-in capacity treatment |
+  | `webgpu-17m-dense-moe-control` | 320 / 320 | 9 × 1, 6 conv + 3 attention | 5 / 1 | 1024 | 17,297,344 | active-matched dense control |
 
   The 1M tier pays for a common BPE vocabulary through factorized embeddings and recovers
   effective depth six through shared-weight recurrence. The 10M and 96M FFN widths deliberately
@@ -135,9 +141,13 @@ build prompt(system+tools+history+memory) → generate →
   3. inject **irrelevance negatives**, 4. **dual verification** (rule: schema/AST valid; model:
   semantic), 5. emit verified `Conversation`s. Pluggable "teacher" backend (any OpenAI-style
   endpoint or a local model).
-- `flywheel.py` — ingest logged conversations + feedback from the store, **mine** good
-  trajectories, **verify** them through the same dual checker, and append to the SFT/distill
-  pool. Closes the loop in §7.
+- `public_agent.py` — offline, hash-pinned xLAM/Mind2Web/local audit adapters. It canonicalizes
+  public action records into `Conversation`, preserves per-row provenance, rejects benchmark and
+  license/split boundary violations, checks exact prompt holdouts, and writes a self-hashed
+  mixture manifest.
+- `flywheel.py` — ingest canonical conversation exports, **mine** positive/provenance-bound
+  training rows, **verify** split/schema/provenance policy, and idempotently append to the
+  SFT/distill pool. Production SQLite feedback ingestion remains Phase 8.
 
 ## 5. Training (`localagent.train`)
 
@@ -170,6 +180,9 @@ path fails closed on lineage, execution, or sealed-state drift.
   text-generation side.
 - `harness.py` — runs a config'd suite, writes a JSON report; also drives a **multi-turn**
   simulated-user + tool-sandbox eval (tau-bench-lite).
+- `real_use.py` — fail-closed audit and promotion gates for frozen public action suites, including
+  dataset/category/behavior/capability coverage and optional sparse-router utilization, entropy,
+  dead-expert, and category-divergence evidence.
 - Exported models are checked for **parity** vs the PyTorch reference here.
 
 ## 7. Conversation store + data flywheel (`localagent.agent.memory` + `localagent.data.flywheel`)

@@ -150,7 +150,20 @@ def _model_config_sha256(config_path: Path, config: dict[str, Any]) -> str:
     )
     model_config = ModelConfig.from_yaml(str(model_path))
     model_config.assert_within_budget()
-    return canonical_sha256(model_config.__dict__)
+    identity = dict(model_config.__dict__)
+    # The tracked 2027–2029 comparison predates the opt-in sparse-FFN fields. Preserve the exact
+    # identity of a legacy YAML that did not declare them; newly authored configs (including the
+    # sparse candidate) bind the complete current schema.
+    raw_model = yaml.safe_load(model_path.read_text(encoding="utf-8"))
+    sparse_fields = {
+        "ffn_num_experts",
+        "ffn_top_k",
+        "router_aux_loss_coef",
+    }
+    if isinstance(raw_model, dict) and sparse_fields.isdisjoint(raw_model):
+        for field in sparse_fields:
+            identity.pop(field)
+    return canonical_sha256(identity)
 
 
 def _without_pair_identity(config: dict[str, Any]) -> dict[str, Any]:

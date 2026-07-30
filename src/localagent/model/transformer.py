@@ -9,6 +9,8 @@ Decode path:           one token at a time, attends to the cached K/V (state-of-
 
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -142,6 +144,82 @@ class SwiGLU(nn.Module):
         return self.down(F.silu(self.gate(x)) * self.up(x))
 
 
+class SparseSwiGLU(nn.Module):
+    """Token-routed bank of SwiGLU experts with deterministic sparse dispatch.
+
+    Router logits are ranked with a stable descending sort, so exact ties prefer the lower expert
+    index. Only selected token/expert pairs execute an expert; this PyTorch path deliberately does
+    not compute every expert and mask afterward. The dynamic index dispatch is not currently a
+    promise that LocalAgent's ONNX/WebGPU exporter will retain sparse compute -- runtimes need a
+    dedicated sparse-dispatch lowering before making that performance claim.
+    """
+
+    def __init__(self, cfg: ModelConfig):
+        super().__init__()
+        self.num_experts = cfg.ffn_num_experts
+        self.top_k = cfg.ffn_top_k
+        self.router = nn.Linear(cfg.d_model, self.num_experts, bias=False)
+        self.experts = nn.ModuleList(SwiGLU(cfg) for _ in range(self.num_experts))
+        self._last_aux_loss: torch.Tensor | None = None
+        self._last_routing_record: dict[str, object] | None = None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        shape = x.shape
+        flat = x.reshape(-1, shape[-1])
+        router_logits = self.router(flat)
+        # Keep probability/auxiliary-loss arithmetic in fp32 even when experts run in fp16/bf16.
+        router_probs = F.softmax(router_logits.float(), dim=-1)
+        # Stable ordering makes tie behavior explicit: expert 0 precedes expert 1, and so on.
+        ranked = torch.argsort(router_logits.float(), dim=-1, descending=True, stable=True)
+        selected = ranked[:, : self.top_k]
+        selected_probs = router_probs.gather(-1, selected)
+        if self.top_k == 1:
+            # A raw Switch-style gate keeps a task-loss gradient into a top-1 router.
+            gates = selected_probs
+        else:
+            gates = selected_probs / selected_probs.sum(dim=-1, keepdim=True).clamp_min(1e-9)
+
+        output = torch.zeros_like(flat)
+        for expert_index, expert in enumerate(self.experts):
+            token_and_slot = (selected == expert_index).nonzero(as_tuple=False)
+            if token_and_slot.numel() == 0:
+                continue
+            token_index = token_and_slot[:, 0]
+            slot_index = token_and_slot[:, 1]
+            expert_input = flat.index_select(0, token_index)
+            expert_output = expert(expert_input)
+            expert_gate = gates[token_index, slot_index].to(expert_output.dtype).unsqueeze(-1)
+            # token_index is unique within one expert, and experts are accumulated serially.
+            output = output.index_add(0, token_index, expert_output * expert_gate)
+
+        counts = torch.bincount(selected.reshape(-1), minlength=self.num_experts)
+        assignment_load = counts.to(router_probs.dtype) / max(1, selected.numel())
+        mean_probability = router_probs.mean(dim=0)
+        # Switch-style differentiable load-balancing objective. Hard assignment load is detached;
+        # router probability retains gradients. Uniform routing has a baseline value of 1.
+        aux_loss = self.num_experts * torch.sum(assignment_load.detach() * mean_probability)
+        entropy = -(router_probs * router_probs.clamp_min(1e-9).log()).sum(dim=-1).mean()
+        self._last_aux_loss = aux_loss
+        self._last_routing_record = {
+            "tokens": flat.shape[0],
+            "expert_counts": counts.detach(),
+            "router_probability": mean_probability.detach(),
+            "router_entropy": entropy.detach(),
+            "load_balance_loss": aux_loss.detach(),
+        }
+        return output.reshape(shape)
+
+    def routing_aux_loss(self) -> torch.Tensor | None:
+        """Differentiable load-balancing loss from this expert bank's latest invocation."""
+
+        return self._last_aux_loss
+
+    def routing_record(self) -> dict[str, object] | None:
+        """Detached routing telemetry from this expert bank's latest invocation."""
+
+        return self._last_routing_record
+
+
 class Block(nn.Module):
     def __init__(self, cfg: ModelConfig, kind: str = "attn"):
         super().__init__()
@@ -151,7 +229,7 @@ class Block(nn.Module):
         # (x, cos, sin, cache) -> (out, new_cache) contract so dispatch is uniform.
         self.attn = GatedShortConv(cfg) if kind == "conv" else Attention(cfg)
         self.ffn_norm = RMSNorm(cfg.d_model, cfg.norm_eps)
-        self.ffn = SwiGLU(cfg)
+        self.ffn = SparseSwiGLU(cfg) if cfg.sparse_ffn else SwiGLU(cfg)
 
     def forward(self, x, cos, sin, cache=None, use_cache: bool = False):
         mixer_input = self.attn_norm(x)
@@ -183,6 +261,8 @@ class LocalAgentLM(nn.Module):
             None if cfg.tie_embeddings else nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False)
         )
         self._rope = None
+        self._last_routing_aux_losses: list[torch.Tensor] = []
+        self._last_routing_records: list[dict[str, object]] = []
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -222,12 +302,21 @@ class LocalAgentLM(nn.Module):
             x = self.in_proj(x)
         cos, sin = self._rope_slice(pos, x.shape[1], x.device, x.dtype)
         new_caches = [None] * self.n_cache_slots()
+        self._last_routing_aux_losses = []
+        self._last_routing_records = []
         slot = 0
         for loop in range(self.cfg.n_loops):
             if self.loop_embed is not None:
                 x = x + self.loop_embed[loop]
             for blk in self.blocks:
                 x, nc = blk(x, cos, sin, caches[slot], use_cache=return_cache)
+                if isinstance(blk.ffn, SparseSwiGLU):
+                    aux_loss = blk.ffn.routing_aux_loss()
+                    record = blk.ffn.routing_record()
+                    if aux_loss is not None:
+                        self._last_routing_aux_losses.append(aux_loss)
+                    if record is not None:
+                        self._last_routing_records.append(record)
                 new_caches[slot] = nc
                 slot += 1
         feats = self.norm(x)
@@ -266,3 +355,105 @@ class LocalAgentLM(nn.Module):
                 seen.add(id(p))
                 total += p.numel()
         return total
+
+    def active_num_params(self) -> int:
+        """Nominal parameters on one token's routed path (not checkpoint or peak-memory size)."""
+
+        return self.cfg.estimate_active_params()
+
+    def routing_aux_loss(self) -> torch.Tensor | None:
+        """Differentiable mean router load-balancing loss from the most recent forward.
+
+        Dense models return ``None``. Sparse models include every block invocation (and every
+        recurrent loop invocation) in an unweighted mean.
+        """
+
+        if not self._last_routing_aux_losses:
+            return None
+        return torch.stack(self._last_routing_aux_losses).mean()
+
+    def routing_diagnostics(self) -> dict[str, object]:
+        """Return detached, JSON-safe aggregate routing telemetry for the latest forward."""
+
+        if not self.cfg.sparse_ffn:
+            return {
+                "enabled": False,
+                "total_parameters": self.num_params(),
+                "active_parameters": self.active_num_params(),
+            }
+
+        records = self._last_routing_records
+        counts = torch.zeros(self.cfg.ffn_num_experts, dtype=torch.long)
+        probability_sum = torch.zeros(self.cfg.ffn_num_experts, dtype=torch.float64)
+        entropy_sum = 0.0
+        aux_sum = 0.0
+        tokens = 0
+        for record in records:
+            record_tokens = int(record["tokens"])
+            record_counts = record["expert_counts"]
+            record_probability = record["router_probability"]
+            record_entropy = record["router_entropy"]
+            record_aux = record["load_balance_loss"]
+            assert isinstance(record_counts, torch.Tensor)
+            assert isinstance(record_probability, torch.Tensor)
+            assert isinstance(record_entropy, torch.Tensor)
+            assert isinstance(record_aux, torch.Tensor)
+            counts += record_counts.to(device="cpu", dtype=torch.long)
+            probability_sum += (
+                record_probability.to(device="cpu", dtype=torch.float64) * record_tokens
+            )
+            entropy_sum += float(record_entropy.to(device="cpu")) * record_tokens
+            aux_sum += float(record_aux.to(device="cpu"))
+            tokens += record_tokens
+
+        assignments = int(counts.sum())
+        if assignments:
+            expert_load_tensor = counts.to(torch.float64) / assignments
+            expert_load = expert_load_tensor.tolist()
+            mean_load = 1.0 / self.cfg.ffn_num_experts
+            load_cv = float(
+                expert_load_tensor.std(unbiased=False) / max(mean_load, torch.finfo(torch.float64).eps)
+            )
+        else:
+            expert_load = [0.0] * self.cfg.ffn_num_experts
+            load_cv = 0.0
+        expert_token_fraction = (
+            (counts.to(torch.float64) / tokens).tolist()
+            if tokens
+            else [0.0] * self.cfg.ffn_num_experts
+        )
+        router_probability = (
+            (probability_sum / tokens).tolist()
+            if tokens
+            else [0.0] * self.cfg.ffn_num_experts
+        )
+        router_entropy = entropy_sum / tokens if tokens else 0.0
+        dead_experts = [
+            expert_index
+            for expert_index, count in enumerate(counts.tolist())
+            if count == 0
+        ]
+        return {
+            "enabled": True,
+            "num_experts": self.cfg.ffn_num_experts,
+            "top_k": self.cfg.ffn_top_k,
+            "invocations": len(records),
+            "tokens": tokens,
+            "assignments": assignments,
+            "expert_counts": counts.tolist(),
+            "expert_load": expert_load,
+            "expert_token_fraction": expert_token_fraction,
+            "active_experts": self.cfg.ffn_num_experts - len(dead_experts),
+            "dead_experts": dead_experts,
+            "router_probability": router_probability,
+            "router_entropy": router_entropy,
+            "router_entropy_normalized": (
+                router_entropy / math.log(self.cfg.ffn_num_experts)
+                if self.cfg.ffn_num_experts > 1
+                else 0.0
+            ),
+            "load_cv": load_cv,
+            "load_balance_loss": aux_sum / len(records) if records else 0.0,
+            "total_parameters": self.num_params(),
+            "active_parameters": self.active_num_params(),
+        }

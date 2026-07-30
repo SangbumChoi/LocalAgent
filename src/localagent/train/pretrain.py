@@ -16,7 +16,7 @@ from typing import Any
 import torch
 
 from localagent.train.device import autocast_ctx
-from localagent.train.loop import cosine_lr, set_lr, wsd_lr
+from localagent.train.loop import cosine_lr, router_loss_terms, set_lr, wsd_lr
 
 
 def _verify_configured_corpus_freeze(
@@ -206,6 +206,9 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
     rng = random.Random(seed)
     eval_rng = random.Random(seed + 1)
     hist = []
+    lm_loss_history: list[float] = []
+    router_aux_loss_history: list[float] = []
+    router_weighted_loss_history: list[float] = []
     validation_history: list[dict[str, Any]] = []
     start_step = 0
     input_tokens_seen = 0
@@ -246,6 +249,30 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
         input_tokens_seen = int(saved_accounting["input_tokens"])
         loss_tokens_seen = int(saved_accounting["loss_tokens"])
         hist = list(checkpoint["loss_history"])
+        loss_components = checkpoint.get("loss_components")
+        if loss_components is None:
+            if model.cfg.sparse_ffn:
+                raise ValueError(
+                    "sparse pretrain resume checkpoint is missing router loss components"
+                )
+            lm_loss_history = list(hist)
+            router_aux_loss_history = [0.0] * len(hist)
+            router_weighted_loss_history = [0.0] * len(hist)
+        else:
+            if not isinstance(loss_components, Mapping):
+                raise ValueError("pretrain resume loss_components must be a mapping")
+            component_names = {
+                "lm_loss": lm_loss_history,
+                "router_aux": router_aux_loss_history,
+                "router_weighted": router_weighted_loss_history,
+            }
+            for name, destination in component_names.items():
+                values = loss_components.get(name)
+                if not isinstance(values, list) or len(values) != len(hist):
+                    raise ValueError(
+                        f"pretrain resume loss_components[{name!r}] is inconsistent"
+                    )
+                destination.extend(float(value) for value in values)
         validation_history = [
             {
                 "step": int(record["step"]),
@@ -321,6 +348,11 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
                 },
             },
             "loss_history": hist,
+            "loss_components": {
+                "lm_loss": lm_loss_history,
+                "router_aux": router_aux_loss_history,
+                "router_weighted": router_weighted_loss_history,
+            },
             "validation_history": validation_history,
             "rng_state": rng.getstate(),
             "eval_rng_state": eval_rng.getstate(),
@@ -359,12 +391,19 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
             set_lr(opt, cosine_lr(step, steps, lr, warmup, 0.1))
         opt.zero_grad(set_to_none=True)
         step_loss = 0.0
+        step_lm_loss = 0.0
+        step_router_aux = 0.0
+        step_router_weighted = 0.0
         for _ in range(accum_steps):
             x, y = batch_from(stream)
             with autocast_ctx(device_obj, amp_dtype):
-                _, loss = model(x, targets=y)
+                _, lm_loss = model(x, targets=y)
+                loss, router_aux, router_weighted = router_loss_terms(model, lm_loss)
             scaler.scale(loss / accum_steps).backward()
             step_loss += float(loss.detach()) / accum_steps
+            step_lm_loss += float(lm_loss.detach()) / accum_steps
+            step_router_aux += float(router_aux.detach()) / accum_steps
+            step_router_weighted += float(router_weighted.detach()) / accum_steps
             input_count, loss_count = _full_lm_token_counts(x, y)
             input_tokens_seen += input_count
             loss_tokens_seen += loss_count
@@ -373,6 +412,9 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
         scaler.step(opt)
         scaler.update()
         hist.append(step_loss)
+        lm_loss_history.append(step_lm_loss)
+        router_aux_loss_history.append(step_router_aux)
+        router_weighted_loss_history.append(step_router_weighted)
         should_eval = bool(val_data is not None and eval_every and (
             step % eval_every == 0 or step == steps - 1
         ))
@@ -388,6 +430,11 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
                 f"  [pretrain] step {step:4d}/{steps}  loss {step_loss:.3f}  "
                 f"loss_tokens {loss_tokens_seen:,}"
             )
+            if model.cfg.sparse_ffn:
+                message += (
+                    f"  lm {step_lm_loss:.3f}  router_aux {step_router_aux:.3f}  "
+                    f"router_weighted {step_router_weighted:.3f}"
+                )
             if val_loss is not None:
                 message += f"  val {val_loss:.3f}"
             log(message)
@@ -410,6 +457,12 @@ def pretrain(model, stream, tok, *, steps=400, batch_size=32, seq_len=128, lr=3e
         },
         "validation_history": validation_history,
         "validation_last": validation_history[-1] if validation_history else None,
+        "loss_components": {
+            "optimization": hist,
+            "lm_loss": lm_loss_history,
+            "router_aux": router_aux_loss_history,
+            "router_weighted": router_weighted_loss_history,
+        },
     }
     return (hist, metrics) if return_metrics else hist
 

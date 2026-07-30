@@ -101,3 +101,24 @@ def in_decay_window(step: int, total: int, decay_frac: float) -> bool:
 def set_lr(opt, lr: float) -> None:
     for g in opt.param_groups:
         g["lr"] = lr
+
+
+def router_loss_terms(
+    model,
+    lm_loss: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Combine an opt-in router auxiliary objective with a pure language-model loss.
+
+    Returns ``(optimization_loss, router_aux_loss, router_weighted_loss)``. The model's normal
+    target loss remains pure cross-entropy, so held-out evaluation is never contaminated by the
+    balancing objective. Dense models return exact scalar zeros for both router terms.
+    """
+
+    coefficient = float(getattr(model.cfg, "router_aux_loss_coef", 0.0))
+    router_aux_fn = getattr(model, "routing_aux_loss", None)
+    router_aux = router_aux_fn() if callable(router_aux_fn) else None
+    if router_aux is None:
+        zero = lm_loss.new_zeros(())
+        return lm_loss, zero, zero
+    router_weighted = router_aux * coefficient
+    return lm_loss + router_weighted, router_aux, router_weighted

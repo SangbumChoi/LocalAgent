@@ -16,6 +16,7 @@ entirely, which is what lets a 1M model spend its budget on computation instead 
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import yaml
@@ -44,6 +45,12 @@ class ModelConfig:
     qk_norm: bool = False  # RMSNorm on Q/K per-head before RoPE (Qwen3-style)
     conv_kernel: int = 3  # depthwise causal short-conv kernel (LFM2 LIV)
     layer_types: list[str] | None = None  # per-layer block kind: "attn"|"conv"; None => all "attn"
+    # --- Sparse routed FFN (small-model MoE) ---
+    # One expert is the legacy dense SwiGLU path: no router is allocated and state-dict keys stay
+    # unchanged. With >1 experts, every block owns an independent router and expert bank.
+    ffn_num_experts: int = 1
+    ffn_top_k: int = 1
+    router_aux_loss_coef: float = 0.0
 
     def __post_init__(self) -> None:
         if self.embed_dim is None:
@@ -61,6 +68,19 @@ class ModelConfig:
             assert any(t == "attn" for t in self.layer_types), (
                 "keep >=1 attention layer for verbatim argument-copying"
             )
+        assert isinstance(self.ffn_num_experts, int) and not isinstance(
+            self.ffn_num_experts, bool
+        ), "ffn_num_experts must be an integer"
+        assert self.ffn_num_experts >= 1, "ffn_num_experts must be >= 1"
+        assert isinstance(self.ffn_top_k, int) and not isinstance(self.ffn_top_k, bool), (
+            "ffn_top_k must be an integer"
+        )
+        assert 1 <= self.ffn_top_k <= self.ffn_num_experts, (
+            "ffn_top_k must be in [1, ffn_num_experts]"
+        )
+        assert math.isfinite(self.router_aux_loss_coef) and self.router_aux_loss_coef >= 0.0, (
+            "router_aux_loss_coef must be finite and non-negative"
+        )
 
     def block_types(self) -> list[str]:
         """Resolved per-layer block kinds; None => all attention (legacy behavior)."""
@@ -78,6 +98,12 @@ class ModelConfig:
     def effective_depth(self) -> int:
         return self.n_layers * self.n_loops
 
+    @property
+    def sparse_ffn(self) -> bool:
+        """Whether blocks use routed expert banks instead of the legacy dense SwiGLU."""
+
+        return self.ffn_num_experts > 1
+
     @classmethod
     def from_yaml(cls, path: str) -> ModelConfig:
         with open(path) as f:
@@ -85,15 +111,21 @@ class ModelConfig:
         fields = {k: v for k, v in raw.items() if k in cls.__dataclass_fields__}
         return cls(**fields)
 
-    def estimate_params(self) -> int:
-        """Closed-form parameter estimate; used for the budget assertion and reporting."""
+    def _estimate_params(self, *, active_only: bool) -> int:
         d, h, kv, hd, k = self.d_model, self.n_heads, self.n_kv_heads, self.head_dim, self.embed_dim
         embed_table = self.vocab_size * k  # vocab × embed_dim (tied/shared)
         in_proj = k * d if self.factorized else 0
         out_proj = d * k if self.factorized else 0
         head = 0 if self.tie_embeddings else self.vocab_size * k
         loop_embed = self.n_loops * d if self.n_loops > 1 else 0
-        ffn = 3 * d * self.ffn_hidden  # SwiGLU: gate, up, down (shared by both block kinds)
+        expert = 3 * d * self.ffn_hidden  # SwiGLU: gate, up, down
+        if self.sparse_ffn:
+            # The d×E router scores every expert and is therefore always active. The total budget
+            # owns E expert banks per block; a nominal token executes only top-k of those banks.
+            routed_experts = self.ffn_top_k if active_only else self.ffn_num_experts
+            ffn = d * self.ffn_num_experts + routed_experts * expert
+        else:
+            ffn = expert
 
         def attn_mixer() -> int:
             qk = 2 * hd if self.qk_norm else 0  # RMSNorm(head_dim) gains on Q and K (shared/head)
@@ -115,6 +147,26 @@ class ModelConfig:
             total_blocks += mixer + ffn + 2 * d  # + two RMSNorm gains (pre-mixer, pre-ffn)
         final = d  # final norm
         return embed_table + in_proj + out_proj + head + loop_embed + total_blocks + final
+
+    def estimate_params(self) -> int:
+        """Total stored parameters, including every routed expert.
+
+        This is the count enforced by the hard budget. It intentionally does not substitute an
+        "activated parameters" figure for the actual checkpoint size.
+        """
+
+        return self._estimate_params(active_only=False)
+
+    def estimate_active_params(self) -> int:
+        """Nominal parameters on one token's routed path.
+
+        The count includes all shared/dense parameters, the complete router in every parameter
+        block, and ``ffn_top_k`` expert banks per block. Tied and recurrently shared weights are
+        counted once, matching :meth:`estimate_params`. A batch or recurrent execution may route
+        different tokens to every expert, so this is not a peak-memory or checkpoint-size claim.
+        """
+
+        return self._estimate_params(active_only=True)
 
     def assert_within_budget(self) -> None:
         n = self.estimate_params()
@@ -149,3 +201,10 @@ class ModelConfig:
         if bits <= 0:
             raise ValueError("bits must be positive")
         return (self.estimate_params() * bits + 7) // 8
+
+    def estimate_active_weight_bytes(self, bits: int = 16) -> int:
+        """Nominal routed-path weight bytes; not checkpoint size or peak runtime memory."""
+
+        if bits <= 0:
+            raise ValueError("bits must be positive")
+        return (self.estimate_active_params() * bits + 7) // 8

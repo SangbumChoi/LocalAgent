@@ -110,9 +110,16 @@ Lean fully into retrieval: the weights encode *control/skills*, a kNN/RETRO-lite
 add is a retrieval *head* that conditions generation on fetched snippets, so the tiny model never
 needs to memorize.
 
-### 2e. Micro-MoE for the `small` tier (optional)
-Many tiny FFN experts, top-1 routed. Raises capacity at ~constant inference cost. Likely overkill
-/ unstable below ~30M; only considered for `small` and clearly marked optional.
+### 2e. Micro-MoE for the `small` tier — **IMPLEMENTED AS AN OPT-IN EXPERIMENT**
+Each block can now replace its dense SwiGLU with a deterministically routed expert bank. The
+PyTorch reference executes only selected token/expert pairs and exposes load, entropy, dead-expert,
+and total/active-parameter diagnostics. The first treatment stores 43.86M parameters while
+selecting a nominal 17.32M per-token path; its dense control has 17.30M total/active parameters.
+
+This is not the deployment default. Every expert still increases download and resident memory,
+and the ONNX/WebGPU exporter has no proven sparse-dispatch lowering. Promotion requires matched
+quality, routing-diversity, memory, and measured browser-latency gates. See
+[`SPARSE_EXPERTS_REAL_DATA.md`](./SPARSE_EXPERTS_REAL_DATA.md).
 
 ## 3. Recommendation
 
@@ -122,7 +129,7 @@ Many tiny FFN experts, top-1 routed. Raises capacity at ~constant inference cost
    decoding. This is where a small, original design beats "shrink a Llama," because it converts the
    hardest tiny-model task (valid tool calls) into easy ones (classify + copy + masked decode).
 3. **Keep as switches:** **2c** (SSM backbone) for the edge/NPU export story, **2d** retrieval head
-   for knowledge offload. **2e** stays optional.
+   for knowledge offload. **2e** is implemented but remains an opt-in research candidate.
 
 Everything here is additive to the existing pipeline — same `Conversation` schema, same
 train/eval/export stages, same data flywheel. See `docs/ROADMAP.md` for where each lands.

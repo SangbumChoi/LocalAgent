@@ -12,10 +12,10 @@ that does not.
 | [Kimi Linear](https://arxiv.org/abs/2510.26692) | KDA/MLA layerwise hybrid reduces KV memory at extreme context | Retain periodic full attention for verbatim copying and cheap mixers elsewhere. At the current 4K context, one KV head already makes cache cost small. |
 | [Attention Residuals](https://arxiv.org/abs/2603.15031) | content-dependent aggregation across depth mitigates PreNorm dilution | Track as an ablation, not a default. It adds depth-state traffic and needs a measured browser kernel before adoption. |
 | [Kimi K2](https://arxiv.org/abs/2507.20534) | MuonClip adds QK-logit clipping to Muon; large agent synthesis and joint RL use environment feedback | Treat MuonClip/QK-Clip and QK-Norm as distinct mechanisms. Keep LocalAgent's QK-Norm as an independently motivated baseline; test clipping or Muon only in isolated ablations. |
-| [Kimi K2.5](https://arxiv.org/abs/2602.02276) | Continual pretraining atop K2-Base on approximately 15T mixed visual/text tokens, followed by native multimodal post-training and learned parallel Agent Swarm orchestration | Transfer explicit continual-stage accounting and verified parallel-task construction only. LocalAgent does not implement vision, MoE/MLA, Agent Swarm, or its reported parallel-agent training; vendor swarm latency is not a browser measurement. |
+| [Kimi K2.5](https://arxiv.org/abs/2602.02276) | Continual pretraining atop K2-Base on approximately 15T mixed visual/text tokens, followed by native multimodal post-training and learned parallel Agent Swarm orchestration | Transfer explicit continual-stage accounting and verified parallel-task construction only. LocalAgent does not reproduce K2.5 vision, frontier MoE/MLA, Agent Swarm, or its parallel-agent training; the bounded Micro-MoE is an independent matched experiment, and vendor swarm latency is not a browser measurement. |
 | [GLM-4.5](https://arxiv.org/abs/2508.06471) | unified agent/reasoning/code data, multistage training, environment RL | A scheduled general/code/agent midtraining mixture and executable agent tasks. |
 | [GLM-5.2](https://z.ai/blog/glm-5.2) | The official release describes 1M context, one IndexShare indexer per four sparse-attention layers, MTP IndexShare/KVShare, a 128K long-context midtraining stage, and critic-assisted PPO for compacted long trajectories with anti-reward-hacking work | Transfer long-horizon data, executable evaluation, and anti-hacking controls. Do not import million-token sparse attention into a 4K browser model. Add critic-assisted online PPO only after a real long-horizon environment exists; the current bounded exact-reward stage remains explicitly offline. |
-| [Grok-1](https://github.com/xai-org/grok-1) | RoPE, strongly grouped KV heads, sparse MoE | Adopt RoPE/GQA. Reject MoE: all experts still consume browser memory and sparse dispatch is poorly portable. |
+| [Grok-1](https://github.com/xai-org/grok-1) | RoPE, strongly grouped KV heads, sparse MoE | Adopt RoPE/GQA. Keep dense as the deployment control, but test an opt-in Micro-MoE with honest total/active accounting; all experts still consume browser memory and WebGPU needs a measured sparse dispatch. |
 | [Grok 4.5](https://x.ai/news/grok-4-5) | xAI reports coding/science/engineering/math data, hundreds of thousands of multi-step software tasks, automated plus model grading, and asynchronous multi-hour RL; the release reports served throughput but does not publish a transferable architecture recipe | Transfer executable multi-step task construction and asynchronous rollout as later environment work. Do not infer architecture or equate frontier served throughput with a local WebGPU decode measurement. |
 | [Upstage SOLAR-10.7B](https://arxiv.org/abs/2312.15166) | Depth up-scaling expands a compatible pretrained transformer by duplicating layers, then continues pretraining | The reported method starts from a larger pretrained parent and inherits its knowledge; LocalAgent trains from scratch and has no compatible parent. Treat layer duplication plus continued training only as a checkpoint-growth ablation, with matched added compute—not as knowledge transfer or a WebGPU-latency claim. |
 | [DeepSeek-V3](https://arxiv.org/abs/2412.19437) | MTP is an auxiliary training objective; its reported decode gain uses a speculative-decoding framework and accepted-token verification | MTP is optional and train-only by default. It is not free speculative decoding: keep a head only after a browser verifier, acceptance, and end-to-end latency ablation. |
@@ -30,6 +30,15 @@ The `webgpu-35m-hybrid` configuration is the prespecified quality-treatment cand
 34M dense parameters, 16K BPE, 12 narrow blocks, 8 short-conv mixers, 4 full GQA blocks, one KV
 head, and QK-Norm. Its estimated Q4 weights are under 24 MiB; actual tokens/second must be measured
 in the target browser/runtime and is never inferred from parameter count.
+
+### Opt-in sparse-capacity pair
+
+`webgpu-44m-moe` stores 43,862,464 parameters and selects a nominal 17,320,384-parameter path
+(eight 512-wide experts, top-2). `webgpu-17m-dense-moe-control` has 17,297,344 total/active
+parameters with the same width, tokenizer, nine-layer mixer topology, and 1,024 active FFN units.
+The hard budget always uses the total count. The active count is not a checkpoint, memory, prefill,
+or throughput claim. See [`SPARSE_EXPERTS_REAL_DATA.md`](./SPARSE_EXPERTS_REAL_DATA.md) for the
+matched data, router, quality, and target-browser gates.
 
 ### Shared-paper deployment tiers
 
@@ -121,17 +130,20 @@ browser run says so. The measured 10M tier remains the autoregressive deployment
 
 “Kimi-like” is therefore a falsifiable transfer hypothesis, not a scale model. The treatment keeps
 periodic global retrieval among cheaper mixers; the matched control is all attention. It omits
-KDA, Attention Residuals, MoE, MLA, SiTU, and K3's quantization-aware recipe until each has an
-exportable WebGPU implementation and a measured benefit at 4K context. The official K3 repository
+KDA, Attention Residuals, MLA, SiTU, and K3's quantization-aware recipe until each has an
+exportable WebGPU implementation and a measured benefit at 4K context. Micro-MoE is now an
+opt-in PyTorch experiment, not part of the deployed hybrid treatment or a browser-speed claim.
+The official K3 repository
 now gives the 69-KDA/24-Gated-MLA layer composition, major dimensions, data domains, optimizer,
 schedule, context curriculum, and SFT/RL/MOPD sequence. The exact source inventory, mixture
 weights, token count, selected peak learning rate/batch/TPP values, and a directly runnable
 end-to-end recipe are still not public; LocalAgent does not fill those narrower gaps with
 third-party inference.
 
-The default no-MoE implementation remains “dense” for deployment simplicity, but the mixer is an
-experimental axis. Dense all-attention is the control rather than a universal winner: Kimi
-Linear's matched result and LocalAgent's own latency screens both justify testing a dense hybrid.
+The default no-MoE implementation remains “dense” for deployment simplicity, while both the mixer
+and sparse-capacity choice are experimental axes. Dense all-attention is the mixer control rather
+than a universal winner; the 17.30M dense FFN is the active-matched control for the 43.86M-total
+Micro-MoE. Neither comparison substitutes parameter arithmetic for measured target-device results.
 
 The first matched hardware gate now supports keeping the hybrid as the treatment: across three
 Apple M5 Chrome 150 page/session runs, its random-weight hidden-only graph reduced warm p95

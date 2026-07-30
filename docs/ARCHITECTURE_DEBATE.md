@@ -67,12 +67,16 @@ small windowed attention on the CPU fallback. (LFM2; Nemotron-H.)
 **Scaler:** MoE decouples capacity from active FLOPs — the default above ~30B-active. **Everyone else:**
 every MoE model in the corpus is *huge*; none is small, because MoE needs enough params-per-expert to be
 worth the routing tax, and load-balancing is unstable with tiny batches.
-**Verdict (ours):** ❌ **No MoE.** A dense no-MoE model is the deployment baseline because every expert
-still increases browser download and resident weight memory, while routing adds poorly portable dispatch.
-This is a scoped engineering choice, not a theorem that dense is always better per active FLOP or that
-dense all-attention is universally best. We still compare dense all-attention with a dense hybrid on the
-target device. ([MobileLLM](https://arxiv.org/abs/2402.14905);
-[Kimi Linear](https://arxiv.org/abs/2510.26692).)
+**Verdict (ours):** ⚠️ **Dense deployment control plus an opt-in Micro-MoE experiment.** A dense no-MoE
+model remains the deployment baseline because every expert increases browser download and resident
+weight memory, while dynamic dispatch is poorly portable. The PyTorch research path now implements
+actual top-k expert execution, honest total/active accounting, a training-only balance loss, and routing
+diagnostics. Its 43.86M-total/17.32M-active treatment is compared with a topology-matched 17.30M dense
+control. It cannot earn a WebGPU-speed claim until a sparse export, parity, and target-browser benchmark
+exist. This tests capacity per active path rather than assuming that frontier MoE transfers.
+([MobileLLM](https://arxiv.org/abs/2402.14905);
+[Kimi Linear](https://arxiv.org/abs/2510.26692);
+[OLMoE](https://arxiv.org/abs/2409.02060).)
 
 ### 4. Learn-from-scratch vs distill-from-teacher  ← *the load-bearing axis*
 **Data/Distillation Camp:** the
@@ -163,7 +167,8 @@ only as separately controlled optimizer/stability ablations.
 | **Model merging across rounds** | Arcee, LFM2.5 | ✅ | ✅ | soup → TIES |
 | **μP tiny-proxy LR transfer** | MiniCPM | proxy | ✅ | verify transferred LR with one short run (recurrence breaks clean μP) |
 | **MTP auxiliary head (train-only)** | DeepSeek-V3 | ❌ | ⚠️ try | drop at inference |
-| MoE / MLA / frontier quantization infrastructure / sparse long context | DeepSeek, Llama-4, Kimi | ❌ | ❌ | deployment anti-patterns at our scale |
+| Micro-MoE FFN | Switch, DeepSeekMoE, OLMoE, Kimi | ❌ default | ⚠️ matched experiment | PyTorch sparse dispatch; WebGPU promotion requires measured export/runtime gates |
+| MLA / frontier quantization infrastructure / sparse long context | DeepSeek, Llama-4, Kimi | ❌ | ❌ | deployment anti-patterns at our scale |
 | RL as the primary capability source | DeepSeek-R1 comparison | ⚠️ unverified | ⚠️ unverified | distillation first; executable-reward RL remains an ablation |
 | Mamba/SSM/linear-attention mixers | Nemotron-H, MiniMax | ❌ | ❌ | Liquid HW-search: lose to conv+GQA on CPU |
 

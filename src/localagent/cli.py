@@ -24,6 +24,11 @@ def _model_info(args) -> None:
     n = cfg.estimate_params()
     cfg.assert_within_budget()
     print(f"{cfg.name}: ~{n/1e6:.2f}M params (budget 100M) — OK")
+    if cfg.sparse_ffn:
+        print(
+            f"  active/token≈{cfg.estimate_active_params()/1e6:.2f}M params "
+            f"(router + top-{cfg.ffn_top_k}/{cfg.ffn_num_experts} experts per layer)"
+        )
     print(f"  d_model={cfg.d_model} layers={cfg.n_layers} heads={cfg.n_heads}/{cfg.n_kv_heads} "
           f"ffn={cfg.ffn_hidden} vocab={cfg.vocab_size}")
     extras = []
@@ -31,6 +36,11 @@ def _model_info(args) -> None:
         extras.append(f"factorized embed_dim={cfg.embed_dim}")
     if cfg.n_loops > 1:
         extras.append(f"depth-recurrence x{cfg.n_loops} (effective depth {cfg.effective_depth})")
+    if cfg.sparse_ffn:
+        extras.append(
+            f"sparse FFN top-{cfg.ffn_top_k}/{cfg.ffn_num_experts} "
+            f"router_aux={cfg.router_aux_loss_coef:g}"
+        )
     if extras:
         print("  " + " · ".join(extras))
     print(

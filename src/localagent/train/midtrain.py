@@ -39,7 +39,7 @@ from localagent.data.render import (
 from localagent.data.schema import Conversation
 from localagent.model.config import ModelConfig
 from localagent.train.device import autocast_ctx
-from localagent.train.loop import cosine_lr, pad_batch, set_lr, wsd_lr
+from localagent.train.loop import cosine_lr, pad_batch, router_loss_terms, set_lr, wsd_lr
 from localagent.train.stage_data import (
     assert_checkpoint_compatible as assert_checkpoint_compatible,  # noqa: PLC0414
 )
@@ -924,6 +924,9 @@ def midtrain(
     )
     rng = random.Random(seed)
     history: list[float] = []
+    lm_loss_history: list[float] = []
+    router_aux_loss_history: list[float] = []
+    router_weighted_loss_history: list[float] = []
     draws = {source.name: 0 for source in mixture.sources}
     source_names = mixture.source_names
     token_accounting = _empty_token_accounting(source_names)
@@ -988,6 +991,30 @@ def midtrain(
             checkpoint.get("loss_history"),
             completed_steps=start_step,
         )
+        loss_components = checkpoint.get("loss_components")
+        if loss_components is None:
+            if model.cfg.sparse_ffn:
+                raise ValueError(
+                    "sparse midtrain resume checkpoint is missing router loss components"
+                )
+            lm_loss_history = list(history)
+            router_aux_loss_history = [0.0] * len(history)
+            router_weighted_loss_history = [0.0] * len(history)
+        else:
+            if not isinstance(loss_components, Mapping):
+                raise ValueError("midtrain resume loss_components must be a mapping")
+            component_names = {
+                "lm_loss": lm_loss_history,
+                "router_aux": router_aux_loss_history,
+                "router_weighted": router_weighted_loss_history,
+            }
+            for name, destination in component_names.items():
+                values = loss_components.get(name)
+                if not isinstance(values, list) or len(values) != len(history):
+                    raise ValueError(
+                        f"midtrain resume loss_components[{name!r}] is inconsistent"
+                    )
+                destination.extend(float(value) for value in values)
         recorded_draws = checkpoint.get("source_draws")
         if not isinstance(recorded_draws, Mapping) or set(recorded_draws) != set(draws):
             raise ValueError("resume checkpoint source set does not match midtrain mixture")
@@ -1098,6 +1125,11 @@ def midtrain(
             "grad_scaler": scaler.state_dict() if use_grad_scaler else None,
             "step": step,
             "loss_history": history,
+            "loss_components": {
+                "lm_loss": lm_loss_history,
+                "router_aux": router_aux_loss_history,
+                "router_weighted": router_weighted_loss_history,
+            },
             "source_draws": draws,
             "token_accounting": token_accounting,
             "mixture_state": mixture_state,
@@ -1141,6 +1173,9 @@ def midtrain(
         set_lr(optimizer, current_lr)
         optimizer.zero_grad(set_to_none=True)
         step_loss = 0.0
+        step_lm_loss = 0.0
+        step_router_aux = 0.0
+        step_router_weighted = 0.0
         sampled_batches = []
         for _ in range(accum_steps):
             sampled = next_midtrain_microbatch(
@@ -1164,19 +1199,35 @@ def midtrain(
         step_loss_tokens = sum(batch[2] for batch in sampled_batches)
         for x, y, loss_tokens in sampled_batches:
             with autocast_ctx(device_obj, amp_dtype):
-                _, loss = model(x, targets=y)
+                _, lm_loss = model(x, targets=y)
+                loss, router_aux, router_weighted = router_loss_terms(model, lm_loss)
             loss_weight = (
                 1.0 / accum_steps if mixture.unit == "draws" else loss_tokens / step_loss_tokens
             )
             scaler.scale(loss * loss_weight).backward()
             step_loss += float(loss.detach()) * loss_weight
+            step_lm_loss += float(lm_loss.detach()) * loss_weight
+            step_router_aux += float(router_aux.detach()) * loss_weight
+            step_router_weighted += float(router_weighted.detach()) * loss_weight
         scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
         scaler.step(optimizer)
         scaler.update()
         history.append(step_loss)
+        lm_loss_history.append(step_lm_loss)
+        router_aux_loss_history.append(step_router_aux)
+        router_weighted_loss_history.append(step_router_weighted)
         if step % max(1, steps // 8) == 0 or step == steps - 1:
-            log(f"  [midtrain] step {step:4d}/{steps}  loss {step_loss:.3f}  source_draws={draws}")
+            message = (
+                f"  [midtrain] step {step:4d}/{steps}  loss {step_loss:.3f}  "
+                f"source_draws={draws}"
+            )
+            if model.cfg.sparse_ffn:
+                message += (
+                    f"  lm {step_lm_loss:.3f}  router_aux {step_router_aux:.3f}  "
+                    f"router_weighted {step_router_weighted:.3f}"
+                )
+            log(message)
         if checkpoint_every and (step + 1) % checkpoint_every == 0:
             save(step)
 
@@ -1209,6 +1260,12 @@ def midtrain(
             token_accounting=token_accounting,
         ),
         "heldout_eval": heldout_eval,
+        "loss_components": {
+            "optimization": history,
+            "lm_loss": lm_loss_history,
+            "router_aux": router_aux_loss_history,
+            "router_weighted": router_weighted_loss_history,
+        },
     }
     if prompt_contract != LEGACY_CONVERSATION_PROMPT_CONTRACT:
         metrics["conversation_prompt_contract"] = prompt_contract

@@ -72,19 +72,23 @@ Kimi K2.5's [official report](https://arxiv.org/abs/2602.02276) describes contin
 atop K2-Base on approximately 15T mixed visual/text tokens, native multimodal post-training, and
 learned parallel Agent Swarm orchestration. LocalAgent transfers explicit continual-stage
 accounting and verified parallel-task construction only. It does not implement vision, MoE/MLA,
-Agent Swarm, or the reported parallel-agent training, and it does not treat vendor swarm latency
-as an on-device browser measurement. The repository source was audited at
+Agent Swarm, or the reported parallel-agent training as the deployment path: the bounded
+Micro-MoE below is an independent active-matched experiment, not a K2.5 reproduction. It also
+does not treat vendor swarm latency as an on-device browser measurement. The repository source was audited at
 [`3e60763`](https://github.com/MoonshotAI/Kimi-K2.5/tree/3e60763b943e93c443287c383e0468ffe05b188f).
 
 **We adopt:** the architectural *principles* of hybrid sequence mixers, periodic exact-retrieval
 attention, stable Q/K dynamics, explicitly measured information flow across depth, small-model
 mixture ablations, verified trajectory synthesis, and executable white-box agent environments.
 
-**We drop:** literal KDA/MLA, Attention Residuals, MoE sparsity, and million-token infrastructure
-until browser kernels make them beneficial. The current short-conv mixer is not labeled or treated
-as KDA, and its theoretical Q4 byte count is not K3-style quantization-aware training. Per-Head
-Muon, cosine/WSD tuning, MTP drafting, and QAT remain separate measured ablations rather than
-changes justified by K3's frontier-scale result alone.
+**We drop from the deployment default:** literal KDA/MLA, Attention Residuals, and million-token
+infrastructure until browser kernels make them beneficial. We now test one bounded Micro-MoE
+transfer in PyTorch: actual top-k FFN dispatch, a total-budgeted 43.86M model, and a 17.30M
+active-matched dense control. It remains unpromoted until specialization, quality, resident
+memory, sparse export, and browser latency all pass. The current short-conv mixer is not labeled
+or treated as KDA, and its theoretical Q4 byte count is not K3-style quantization-aware training.
+Per-Head Muon, cosine/WSD tuning, MTP drafting, and QAT remain separate measured ablations rather
+than changes justified by K3's frontier-scale result alone.
 
 See [`TRAINING_SYSTEM.md`](./TRAINING_SYSTEM.md) for the 2026 source comparison and staged recipe.
 
@@ -265,8 +269,22 @@ A verifiable, multi-stage synthetic data pipeline for function-calling, with for
 **actual execution checking**, and semantic verification; ships a 60k function-calling dataset
 with a clean JSON schema.
 
-**We adopt:** the **multi-stage verification** idea (format → execution → semantic) and the
-**function-calling JSON schema** as our on-disk format for agent samples.
+**We adopt:** the **multi-stage verification** idea (format → execution → semantic), the
+**function-calling JSON schema** as our on-disk format for agent samples, and a pinned offline
+TRAIN adapter for the public 60K release. The adapter's rule verification does not upgrade source
+records into a claim that LocalAgent executed them.
+
+### Mind2Web, WebLINX, and public split policy
+
+Mind2Web contributes crowdsourced, grounded multi-step web tasks. LocalAgent ingests only the
+pinned public Mind2Web TRAIN shards and converts positive CLICK/TYPE/SELECT targets into canonical
+browser trajectories; held-out benchmark material remains outside training. WebLINX is retained
+for evaluation/non-default research because its CC-BY-NC-SA-4.0 terms do not fit the default
+training mixture. BFCL remains external evaluation only. Every accepted file is bound by upstream
+revision, license evidence, byte count, SHA-256, and exact-prompt decontamination.
+
+See [`SPARSE_EXPERTS_REAL_DATA.md`](./SPARSE_EXPERTS_REAL_DATA.md) for exact revisions and the
+frozen real-use evaluation contract.
 
 ### ToolACE ([paper](https://arxiv.org/abs/2409.00920))
 An agentic **self-evolution** synthesis loop over a large API pool, a **complexity evaluator**
@@ -418,7 +436,8 @@ implemented converters, measured runtimes, or completed parity paths.
 | Upstage SOLAR-10.7B | optional layer-duplication checkpoint-growth ablation; no inherited knowledge without a compatible pretrained parent |
 | nanoGPT | compact model/train skeleton + optimizer choice |
 | SmolLM2 | GQA + depth-over-width + data-centric curation @ <100M |
-| APIGen/xLAM | multi-stage verification + function-calling JSON schema |
+| APIGen/xLAM | multi-stage verification + function-calling JSON schema + pinned TRAIN adapter |
+| Mind2Web | grounded public TRAIN web-action trajectories with held-out split protection |
 | ToolACE | multi-agent synthesis + complexity targeting + dual verify |
 | Hammer | irrelevance negatives + function masking |
 | MiniLLM / OPD | reverse-KL + on-policy distillation |
@@ -446,4 +465,5 @@ For the **model architecture** itself — what the 2024–2026 frontier and smal
 (Qwen3, DeepSeek-V3/R1, Nemotron-H, Llama-4, LFM2, MobileLLM, MiniCPM, Phi, Gemma-3n, …) teach a
 sub-100M on-device tool agent, staged as a multi-persona debate with adopt/skip verdicts for our
 1M/30M tiers — see [`ARCHITECTURE_DEBATE.md`](./ARCHITECTURE_DEBATE.md). Headline: distillation
-(30M→1M) and a gated short-conv + GQA hybrid port; MoE/MLA/FP8/SSM/sparse-long-context do not.
+(30M→1M), a gated short-conv + GQA hybrid port, and an opt-in active-matched Micro-MoE experiment;
+MLA/FP8/SSM/sparse-long-context remain excluded from the browser default.
