@@ -1,5 +1,5 @@
 # ~29M-param BYTE-level HYBRID tier — the gated short-conv + GQA + QK-Norm backbone
-# (co-#1 lever in docs/ARCHITECTURE_DEBATE.md, axes 2 & 8; LFM2/Nemotron-H + Qwen3/Kimi).
+# (co-#1 lever in docs/ARCHITECTURE_DEBATE.md, axes 2 & 8; LFM2/Nemotron-H + Qwen3-style QK-Norm).
 #
 # Budget-matched to tiny-30m-byte.yaml (same vocab=256, d_model, depth, heads, max_seq_len) so
 # the A/B is fair: the only changes are the per-layer block schedule and QK-Norm. The mixer

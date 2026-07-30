@@ -86,10 +86,23 @@ def train_dense_selector(model, samples, tok, tools, *, steps=400, batch_size=64
 
     model.eval()
     name_idx = {t.name: i for i, t in enumerate(tools)}
-    rows = [(s.prompt, name_idx[s.ref_name]) for s in samples
+    rows = [(s, name_idx[s.ref_name]) for s in samples
             if s.kind == "tool" and s.ref_name in name_idx]
+    if not rows:
+        raise ValueError("dense selector needs a tool decision present in the candidate tool list")
     with torch.no_grad():   # frozen-feature probe: cache detached features (no autograd graph/leak)
-        feats = torch.stack([_feat(model, tok, p, device) for p, _ in rows])
+        feats = torch.stack(
+            [
+                _feat(
+                    model,
+                    tok,
+                    sample.prompt,
+                    device,
+                    framed=bool(getattr(sample, "framed", False)),
+                )
+                for sample, _ in rows
+            ]
+        )
     labels = torch.tensor([j for _, j in rows], device=device)
     embs = tool_embeddings(tools, device=device, examples=examples)
     sel = DenseToolSelector(model.cfg.d_model, emb_dim=embs.shape[1], proj=proj).to(device)

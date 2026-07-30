@@ -12,7 +12,8 @@
       <h1>🛠️ LocalAgent <span class="sub">tool calling in your browser</span></h1>
       <p class="tagline">
         A <strong>28M-param, from-scratch</strong> byte-level agent over <strong>50 tools</strong>.
-        The transformer runs on <strong>WebGPU</strong> (<code>onnxruntime-web</code>); the
+        The transformer requests the <strong>WebGPU</strong> execution provider
+        (<code>onnxruntime-web</code>; per-node placement is not exposed); the
         <strong>route head → dense selector → pointer-copy</strong> dispatch and the planner loop are
         light JS. <a href="https://huggingface.co/danelcsb/localagent-tiny-30m-byte" target="_blank" rel="noopener">model</a> ·
         <a href="https://github.com/sangbumchoi/localagent" target="_blank" rel="noopener">code</a>
@@ -61,7 +62,8 @@
   </main>
 
   <!-- onnxruntime-web (WASM + WebGPU execution providers) -->
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.webgpu.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/ort.webgpu.min.js"></script>
+  <script src="tokenizer.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

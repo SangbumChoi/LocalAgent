@@ -64,6 +64,14 @@ button#run {
 button#run:disabled { opacity: 0.45; cursor: not-allowed; }
 button#run:not(:disabled):hover { filter: brightness(1.08); }
 
+.primary-button, .secondary-button {
+  border-radius: 10px; padding: 10px 16px; font-size: 0.9rem; cursor: pointer; font-weight: 600;
+}
+.primary-button { background: var(--accent); color: #11102a; border: 0; }
+.secondary-button { background: var(--panel); color: var(--fg); border: 1px solid var(--panel-2); }
+.primary-button:disabled, .secondary-button:disabled { opacity: 0.45; cursor: not-allowed; }
+.button-row { display: flex; gap: 8px; }
+
 .examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
 .examples span { color: var(--muted); font-size: 0.82rem; }
 .chip {
@@ -86,4 +94,107 @@ button#run:not(:disabled):hover { filter: brightness(1.08); }
 .call .route { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 10px; background: var(--accent); color: #fff; font-family: var(--mono); font-size: 0.72rem; vertical-align: middle; }
 .timing { color: var(--muted); font-size: 0.78rem; margin-top: 6px; font-family: var(--mono); }
 
+.benchmark-panel {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  border: 1px solid var(--panel-2); border-radius: 12px; padding: 16px;
+}
+.benchmark-settings { display: flex; flex-wrap: wrap; gap: 16px; }
+.benchmark-settings label { color: var(--muted); font-size: 0.82rem; }
+.benchmark-settings input {
+  display: block; width: 120px; margin-top: 5px; padding: 7px 9px;
+  color: var(--fg); background: var(--bg); border: 1px solid var(--panel-2); border-radius: 7px;
+}
+.metric-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px; margin: 18px 0;
+}
+.metric {
+  background: var(--bg); border: 1px solid var(--panel-2); border-radius: 9px; padding: 10px;
+}
+.metric span { display: block; color: var(--muted); font-size: 0.75rem; }
+.metric strong { display: block; color: var(--accent-2); font: 600 1.1rem var(--mono); margin-top: 4px; }
+.benchmark-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.benchmark-table th, .benchmark-table td {
+  border-bottom: 1px solid var(--panel-2); padding: 7px 5px; text-align: right;
+}
+.benchmark-table th:first-child, .benchmark-table td:first-child { text-align: left; }
+.benchmark-panel details { margin-top: 14px; color: var(--muted); font-size: 0.8rem; }
+.benchmark-panel details pre {
+  max-height: 360px; overflow: auto; color: var(--fg); background: var(--bg);
+  border-radius: 8px; padding: 10px; font: 0.75rem/1.4 var(--mono); white-space: pre-wrap;
+}
+
 footer { margin-top: 36px; color: var(--muted); font-size: 0.78rem; }
+
+/* Single-step local DOM microtask harness. */
+.browser-task-main { max-width: 980px; }
+.browser-task-panel { margin-bottom: 18px; }
+.browser-task-scope {
+  margin: 14px 0 0; color: var(--muted); font-size: 0.82rem;
+  border-left: 3px solid var(--warn); padding-left: 10px;
+}
+.browser-task-controls { align-items: flex-end; }
+.browser-task-fixture-shell {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  border: 1px solid var(--panel-2); border-radius: 12px; padding: 16px;
+}
+.browser-task-fixture-heading {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  margin-bottom: 12px;
+}
+.browser-task-fixture-heading h2 { margin: 0; font-size: 1rem; }
+.browser-task-fixture-heading p { margin: 3px 0 0; color: var(--muted); font-size: 0.82rem; }
+.browser-task-fixture-heading .badge { flex: none; margin-left: 0; }
+.browser-task-stage {
+  min-height: 210px; padding: 18px; overflow: hidden;
+  background: #f7f8fc; color: #202238; border: 1px solid #d9dced; border-radius: 10px;
+}
+.browser-task-placeholder { margin: 68px 0; color: #686b82; text-align: center; }
+.browser-task-fixture-copy { display: flex; flex-direction: column; margin-bottom: 18px; }
+.browser-task-fixture-copy strong { font-size: 1rem; }
+.browser-task-fixture-copy span { color: #686b82; font-size: 0.82rem; }
+.browser-task-fixture-button, .browser-task-drag-card {
+  padding: 9px 14px; color: #202238; background: #fff; border: 1px solid #b8bdd5;
+  border-radius: 8px; cursor: pointer; font: 600 0.9rem system-ui, sans-serif;
+}
+.browser-task-fixture-button:focus, .browser-task-drag-card:focus,
+.browser-task-fixture-input:focus {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+.browser-task-fixture-input {
+  display: block; width: min(100%, 460px); margin-top: 6px; padding: 9px 11px;
+  color: #202238; background: #fff; border: 1px solid #b8bdd5; border-radius: 8px;
+  font: 0.9rem system-ui, sans-serif;
+}
+.browser-task-dialog {
+  width: min(100%, 460px); margin-top: 14px; padding: 12px;
+  color: #202238; background: #fff8dd; border: 1px solid #e3c563; border-radius: 8px;
+}
+.browser-task-scroll-pane {
+  width: min(100%, 520px); height: 118px; overflow: auto;
+  background: #fff; border: 1px solid #b8bdd5; border-radius: 8px;
+}
+.browser-task-scroll-content {
+  min-height: 420px; padding: 10px 14px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.browser-task-drag-board {
+  display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 12px;
+}
+.browser-task-drop-zone {
+  min-height: 112px; padding: 12px; color: #55596f; background: #fff;
+  border: 2px dashed #b8bdd5; border-radius: 9px;
+}
+.browser-task-drag-card { display: block; margin-top: 14px; cursor: grab; }
+.browser-task-navigation-frame {
+  display: block; width: 100%; height: 150px; background: var(--bg);
+  border: 1px solid var(--panel-2); border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .browser-task-controls { align-items: stretch; flex-direction: column; }
+  .browser-task-controls .button-row { width: 100%; }
+  .browser-task-controls button { flex: 1; }
+  .browser-task-drag-board { grid-template-columns: 1fr; }
+}

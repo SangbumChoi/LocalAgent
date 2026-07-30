@@ -1,69 +1,1598 @@
-/* LocalAgent — in-browser tool calling on onnxruntime-web (WebGPU + WASM fallback).
+/* LocalAgent — in-browser tool calling on onnxruntime-web (WebGPU + explicit WASM control).
  *
- * The transformer forward pass runs as an ONNX graph emitting `logits` and `hidden`. The GENERABLE
+ * The transformer forward pass runs as an ONNX graph emitting `hidden` (and optionally `logits`).
+ * The GENERABLE
  * dispatch (route head -> dense two-tower selector -> pointer-copy args) is ported here from the
  * Python pipeline. Bundle contract (see localagent.inference.export):
- *   model.fp16.onnx      inputs: input_ids[int64, 1xT]  outputs: logits[1,T,256], hidden[1,T,d]
+ *   model.fp16.onnx      inputs: input_ids[int64, 1xT]  outputs: logits[1,T,V], hidden[1,T,d]
  *   dispatch_heads.json  { route_head:{weight:[5][d],bias:[5],routes:[5],stop_index},
  *                          dense_selector:{q_proj_weight:[p][d],q_proj_bias:[p],proj:p,
  *                                          tool_matrix:[N][p],tool_names:[N],normalize_query} }
  *   heads.json           { pointer_head:{arg_idx,arg_emb,start_W,end_W}, ... }   (args copy)
- *   meta.json            { d_model, markers:{...}, tools:[{name,args,schema}] }   (50 tools)
+ *   meta.json            { model_file, action_model_file, d_model, markers, tools } (50 tools)
  *
  * Selection is NOT a fixed-N classifier: the dense selector scores every tool by its description
  * embedding, so adding/removing a tool is adding/removing a tool_matrix row.
  */
 
-const MODEL_URL = "model.fp16.onnx";
-let SESSION = null;
+const ACTION_POLICIES = Object.freeze({
+  STRUCTURED: "structured_one_forward",
+  RAW_AR: "raw_autoregressive_json",
+  CONSTRAINED_AR: "grounded_candidate_trie_autoregressive",
+});
+let MODEL_URL = "model.fp16.onnx"; // Compatibility alias: structured/action graph.
+let LOGITS_MODEL_URL = "model.fp16.onnx";
+let SESSION = null; // Compatibility alias: structured/action session.
+let LOGITS_SESSION = null;
+let CACHED_PREFILL_SESSION = null;
+let CACHED_DECODE_SESSION = null;
+let CACHED_DECODE_BUNDLE = null;
 let HEADS = null;
 let META = null;
 let DISPATCH = null;
+let TOKENIZER = null;
+let BUNDLE_MANIFEST = null;
 let BACKEND = "wasm";
+const BUNDLE_LOAD_TIMING = {};
+const BUNDLE_ASSET_CACHE = new Map();
+const BUNDLE_ASSET_EVIDENCE = new Map();
+const MODEL_ARTIFACT_CACHE = new Map();
+const MODEL_BYTE_EVIDENCE = new Map();
+const OPENAI_FULL_CATALOG_V1 = "openai_full_catalog_v1";
+const BPE_EOS_MARKER = "<|end|>";
+const TOOL_CATALOG_OPEN = "<|tool_catalog|>";
+const TOOL_CATALOG_CLOSE = "</|tool_catalog|>";
+const CACHED_DECODE_STRATEGY = "prefill_then_kv_cached_decode";
+const BENCHMARK_GRADE = window.__localAgentBenchmarkGrade === true ||
+  Number.isFinite(window.__localAgentBenchmarkStart) ||
+  Number.isFinite(window.__localAgentBrowserTasksStart);
+const REQUESTED_BACKEND = window.__localAgentRequestedBackend ||
+  new URLSearchParams(window.location.search).get("backend") || "auto";
 
-// ---- bundle loading -------------------------------------------------------
-async function loadBundle() {
-  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
-  [HEADS, META, DISPATCH] = await Promise.all([
-    fetch("heads.json").then((r) => r.json()),
-    fetch("meta.json").then((r) => r.json()),
-    fetch("dispatch_heads.json").then((r) => r.json()),
-  ]);
+function sessionOptions(provider) {
+  if (provider !== "webgpu" && provider !== "wasm") {
+    throw new Error(`Unknown execution provider '${provider}'.`);
+  }
+  return { executionProviders: [provider] };
+}
+
+function manifestArtifactFor(fileName, manifest = BUNDLE_MANIFEST) {
+  if (!fileName || !manifest?.artifacts) return null;
+  const matches = Object.values(manifest.artifacts)
+    .filter((artifact) => artifact?.file === fileName);
+  if (matches.length > 1) {
+    throw new Error(`Bundle manifest contains duplicate entries for ${fileName}.`);
+  }
+  return matches[0] || null;
+}
+
+async function sha256Bytes(bytes) {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("Web Crypto SHA-256 is unavailable; model bytes cannot be verified.");
+  }
+  const digest = await globalThis.crypto.subtle.digest(
+    "SHA-256",
+    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+  );
+  return Array.from(
+    new Uint8Array(digest),
+    (value) => value.toString(16).padStart(2, "0")
+  ).join("");
+}
+
+async function verifyArtifactBytesAgainstManifest(
+  artifactUrl,
+  bytes,
+  manifest,
+  manifestRequired = false
+) {
+  const sha256 = await sha256Bytes(bytes);
+  const expected = manifestArtifactFor(artifactUrl, manifest);
+  const manifestVerified = expected != null &&
+    expected.sha256 === sha256 &&
+    expected.bytes === bytes.byteLength;
+  if (manifestRequired && !expected) {
+    throw new Error(`Bundle manifest has no entry for fetched artifact ${artifactUrl}.`);
+  }
+  if (expected && expected.sha256 !== sha256) {
+    throw new Error(
+      `SHA-256 mismatch for ${artifactUrl}: fetched ${sha256}, manifest ${expected.sha256}.`
+    );
+  }
+  if (expected && expected.bytes !== bytes.byteLength) {
+    throw new Error(
+      `Byte-length mismatch for ${artifactUrl}: fetched ${bytes.byteLength}, ` +
+      `manifest ${expected.bytes}.`
+    );
+  }
+  return Object.freeze({
+    file: artifactUrl,
+    bytes: bytes.byteLength,
+    sha256,
+    manifest_bytes: expected?.bytes ?? null,
+    manifest_sha256: expected?.sha256 ?? null,
+    manifest_verified: manifestVerified,
+    fetch_contract: "browser_fetch_arraybuffer_sha256_before_parse_or_session",
+    verification_scope: "exact_fetched_response_body_bytes",
+  });
+}
+
+async function verifyModelBytesAgainstManifest(
+  modelUrl,
+  bytes,
+  manifest,
+  manifestRequired = false
+) {
+  const evidence = await verifyArtifactBytesAgainstManifest(
+    modelUrl,
+    bytes,
+    manifest,
+    manifestRequired
+  );
+  return Object.freeze({
+    ...evidence,
+    session_source: "in_memory_verified_bytes",
+  });
+}
+
+async function verifyPinnedArtifactBytes(artifactUrl, bytes, expectedIdentity) {
+  if (
+    !Number.isInteger(expectedIdentity?.bytes) ||
+    expectedIdentity.bytes < 1 ||
+    !/^[0-9a-f]{64}$/.test(expectedIdentity?.sha256 || "")
+  ) {
+    throw new Error(`Pinned identity for ${artifactUrl} is invalid.`);
+  }
+  const sha256 = await sha256Bytes(bytes);
+  if (bytes.byteLength !== expectedIdentity.bytes) {
+    throw new Error(
+      `Pinned byte-length mismatch for ${artifactUrl}: fetched ${bytes.byteLength}, ` +
+      `expected ${expectedIdentity.bytes}.`
+    );
+  }
+  if (sha256 !== expectedIdentity.sha256) {
+    throw new Error(
+      `Pinned SHA-256 mismatch for ${artifactUrl}: fetched ${sha256}, ` +
+      `expected ${expectedIdentity.sha256}.`
+    );
+  }
+  return Object.freeze({
+    file: artifactUrl,
+    bytes: bytes.byteLength,
+    sha256,
+    expected_bytes: expectedIdentity.bytes,
+    expected_sha256: expectedIdentity.sha256,
+    identity_source: expectedIdentity.identity_source || null,
+    identity_verified: true,
+    verification_scope: "exact_fetched_response_body_bytes_before_parse",
+  });
+}
+
+function validateBenchmarkBundleContract(meta = META, manifest = BUNDLE_MANIFEST) {
+  if (!manifest) {
+    throw new Error("Benchmark-grade runs require bundle-manifest.json.");
+  }
+  if (
+    !Number.isInteger(manifest.schema_version) ||
+    manifest.schema_version < 3
+  ) {
+    throw new Error("Benchmark-grade runs require bundle manifest schema_version >= 3.");
+  }
+  if (
+    manifest.parity_gate?.hard_gate !== true ||
+    manifest.parity_gate?.passed !== true
+  ) {
+    throw new Error("Benchmark-grade runs require a passed hard export parity gate.");
+  }
+  if (!meta.model_file) {
+    throw new Error("Benchmark-grade runs require meta.json model_file.");
+  }
+  if (!meta.action_model_file) {
+    throw new Error(
+      "Benchmark-grade structured runs require a hidden-only action_model_file; " +
+      "re-export with action_only=True."
+    );
+  }
+  if (meta.action_model_file === meta.model_file) {
+    throw new Error("The benchmark action graph must be distinct from the logits graph.");
+  }
+  const graphContracts = [
+    [meta.model_file, ["logits", "hidden"]],
+    [meta.action_model_file, ["hidden"]],
+  ];
+  for (const [fileName, expectedOutputs] of graphContracts) {
+    const artifact = manifestArtifactFor(fileName, manifest);
+    if (!artifact) {
+      throw new Error(`Bundle manifest does not bind required model artifact ${fileName}.`);
+    }
+    if (
+      !Number.isInteger(artifact.bytes) ||
+      artifact.bytes < 1 ||
+      !/^[0-9a-f]{64}$/.test(artifact.sha256)
+    ) {
+      throw new Error(`Bundle manifest has invalid byte/hash evidence for ${fileName}.`);
+    }
+    const parity = manifest.parity_gate.results?.[fileName];
+    if (parity?.passed !== true) {
+      throw new Error(`Bundle manifest lacks passed graph parity for ${fileName}.`);
+    }
+    if (
+      !Array.isArray(parity.expected_outputs) ||
+      parity.expected_outputs.length !== expectedOutputs.length ||
+      parity.expected_outputs.some((name, index) => name !== expectedOutputs[index])
+    ) {
+      throw new Error(`Bundle manifest has the wrong output contract for ${fileName}.`);
+    }
+    if (
+      parity.artifact?.sha256 !== artifact.sha256 ||
+      parity.artifact?.bytes !== artifact.bytes
+    ) {
+      throw new Error(`Bundle manifest parity is not content-bound to ${fileName}.`);
+    }
+    for (const outputName of expectedOutputs) {
+      const delta = parity.max_abs_diff_by_output?.[outputName];
+      const threshold = parity.threshold_max_abs_diff_by_output?.[outputName];
+      if (
+        !Number.isFinite(delta) ||
+        !Number.isFinite(threshold) ||
+        threshold < 0 ||
+        delta > threshold
+      ) {
+        throw new Error(`Bundle manifest parity evidence is invalid for ${fileName}.`);
+      }
+    }
+  }
+  return true;
+}
+
+async function fetchBundleArtifactBytes(artifactUrl, manifestRequired = BENCHMARK_GRADE) {
+  if (BUNDLE_ASSET_CACHE.has(artifactUrl)) return BUNDLE_ASSET_CACHE.get(artifactUrl);
+  const pending = (async () => {
+    const response = await fetch(artifactUrl);
+    if (!response.ok) {
+      throw new Error(`Missing deploy artifact ${artifactUrl} (HTTP ${response.status}).`);
+    }
+    const contentType = response.headers.get("content-type") || "";
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (manifestRequired && !globalThis.crypto?.subtle) {
+      throw new Error(
+        "Benchmark-grade runs require Web Crypto SHA-256 before parsing or session creation."
+      );
+    }
+    const evidence = globalThis.crypto?.subtle
+      ? await verifyArtifactBytesAgainstManifest(
+        artifactUrl,
+        bytes,
+        BUNDLE_MANIFEST,
+        manifestRequired
+      )
+      : Object.freeze({
+        file: artifactUrl,
+        bytes: bytes.byteLength,
+        sha256: null,
+        manifest_bytes: manifestArtifactFor(artifactUrl)?.bytes ?? null,
+        manifest_sha256: manifestArtifactFor(artifactUrl)?.sha256 ?? null,
+        manifest_verified: false,
+        fetch_contract: "browser_fetch_arraybuffer_without_webcrypto_demo_only",
+        verification_scope: "unverified_demo_only",
+      });
+    BUNDLE_ASSET_EVIDENCE.set(artifactUrl, evidence);
+    return { bytes, contentType, evidence };
+  })();
+  BUNDLE_ASSET_CACHE.set(artifactUrl, pending);
   try {
-    SESSION = await ort.InferenceSession.create(MODEL_URL, {
-      executionProviders: ["webgpu", "wasm"],
-    });
-    BACKEND = "webgpu";
-  } catch (e) {
-    console.warn("WebGPU unavailable, falling back to WASM:", e);
-    SESSION = await ort.InferenceSession.create(MODEL_URL, { executionProviders: ["wasm"] });
-    BACKEND = "wasm";
+    return await pending;
+  } catch (error) {
+    BUNDLE_ASSET_CACHE.delete(artifactUrl);
+    throw error;
   }
 }
 
-// ---- byte tokenizer (vocab 256) ------------------------------------------
-// Markers are literal strings encoded as UTF-8 bytes — identical to the Python byte tokenizer.
+async function fetchJsonArtifact(artifactUrl, manifestRequired = BENCHMARK_GRADE) {
+  const artifact = await fetchBundleArtifactBytes(artifactUrl, manifestRequired);
+  if (!artifact.contentType.includes("json")) {
+    throw new Error(
+      `Deploy artifact ${artifactUrl} returned ` +
+      `${artifact.contentType || "an unknown content type"}, expected JSON.`
+    );
+  }
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(artifact.bytes);
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Deploy artifact ${artifactUrl} is not valid JSON: ${error.message}`);
+  }
+  return { ...artifact, text, value };
+}
+
+async function fetchPinnedJsonArtifact(artifactUrl, expectedIdentity) {
+  const response = await fetch(artifactUrl);
+  if (!response.ok) {
+    throw new Error(`Missing pinned suite artifact ${artifactUrl} (HTTP ${response.status}).`);
+  }
+  const contentType = response.headers.get("content-type") || "";
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const evidence = await verifyPinnedArtifactBytes(artifactUrl, bytes, expectedIdentity);
+  if (!contentType.includes("json")) {
+    throw new Error(
+      `Pinned suite artifact ${artifactUrl} returned ` +
+      `${contentType || "an unknown content type"}, expected JSON.`
+    );
+  }
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Pinned suite artifact ${artifactUrl} is not valid JSON: ${error.message}`);
+  }
+  return { bytes, contentType, evidence, text, value };
+}
+
+function bundleArtifactEvidence(artifactUrl) {
+  return BUNDLE_ASSET_EVIDENCE.get(artifactUrl) || null;
+}
+
+function bundleManifestByteEvidence() {
+  const evidence = bundleArtifactEvidence("bundle-manifest.json");
+  if (!evidence) return null;
+  return Object.freeze({
+    ...evidence,
+    role: "parsed_bundle_manifest_trust_anchor",
+    external_expected_identity: null,
+    external_verification_status: "not_available_self_describing_manifest",
+  });
+}
+
+function cachedDecodeBundleEvidence() {
+  return CACHED_DECODE_BUNDLE?.evidence || null;
+}
+
+function runtimeAssetEvidence() {
+  const evidence = {
+    heads_json: bundleArtifactEvidence("heads.json"),
+    meta_json: bundleArtifactEvidence("meta.json"),
+    dispatch_heads_json: bundleArtifactEvidence("dispatch_heads.json"),
+    tokenizer: META?.tokenizer_file
+      ? bundleArtifactEvidence(META.tokenizer_file)
+      : null,
+  };
+  if (BENCHMARK_GRADE) {
+    for (const [name, value] of Object.entries(evidence)) {
+      if (name === "tokenizer" && !META?.tokenizer_file) continue;
+      if (!value?.manifest_verified) {
+        throw new Error(`Benchmark runtime asset ${name} lacks verified fetched-byte evidence.`);
+      }
+    }
+  }
+  return Object.freeze(evidence);
+}
+
+async function fetchModelArtifact(modelUrl) {
+  if (MODEL_ARTIFACT_CACHE.has(modelUrl)) return MODEL_ARTIFACT_CACHE.get(modelUrl);
+  const pending = (async () => {
+    const artifact = await fetchBundleArtifactBytes(modelUrl, BENCHMARK_GRADE);
+    const evidence = Object.freeze({
+      ...artifact.evidence,
+      session_source: artifact.evidence.manifest_verified
+        ? "in_memory_verified_bytes"
+        : "in_memory_unverified_bytes_demo_only",
+    });
+    MODEL_BYTE_EVIDENCE.set(modelUrl, evidence);
+    return { bytes: artifact.bytes, evidence };
+  })();
+  MODEL_ARTIFACT_CACHE.set(modelUrl, pending);
+  try {
+    return await pending;
+  } catch (error) {
+    MODEL_ARTIFACT_CACHE.delete(modelUrl);
+    throw error;
+  }
+}
+
+function modelArtifactEvidence(modelUrl) {
+  return MODEL_BYTE_EVIDENCE.get(modelUrl) || null;
+}
+
+function validateSessionOutputs(session, modelUrl, expectedOutputs) {
+  if (!expectedOutputs) return;
+  const actual = Array.from(session.outputNames || []);
+  if (
+    actual.length !== expectedOutputs.length ||
+    actual.some((name, index) => name !== expectedOutputs[index])
+  ) {
+    throw new Error(
+      `Model ${modelUrl} output contract mismatch: expected ` +
+      `${JSON.stringify(expectedOutputs)}, got ${JSON.stringify(actual)}.`
+    );
+  }
+}
+
+function exactJsonEqual(left, right) {
+  return canonicalActionJson(left) === canonicalActionJson(right);
+}
+
+function isLowerSha256(value) {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+}
+
+function cachedPresentNames(contract) {
+  return contract.cache_slots.flatMap((slot) => slot.present_outputs);
+}
+
+function cachedPastNames(contract) {
+  return contract.cache_slots.flatMap((slot) => slot.past_inputs);
+}
+
+function expectedCachedDtype(precision) {
+  if (precision === "fp16") return "float16";
+  if (precision === "fp32") return "float32";
+  throw new Error(`Unsupported cached graph precision '${precision}'.`);
+}
+
+function validateCachedIo(entries, names, cacheDtype, shapes, label) {
+  if (!Array.isArray(entries) || entries.length !== names.length) {
+    throw new Error(`${label} typed I/O does not match its declared names.`);
+  }
+  entries.forEach((entry, index) => {
+    const name = names[index];
+    const dtype = name === "input_ids" || name === "next_token"
+      ? "int64"
+      : cacheDtype;
+    if (
+      entry?.name !== name ||
+      entry.dtype !== dtype ||
+      !exactJsonEqual(entry.shape, shapes.get(name))
+    ) {
+      throw new Error(`${label} tensor ${name} has a stale dtype or shape.`);
+    }
+  });
+}
+
+function validateCachedGraphContract(metadata) {
+  if (
+    metadata?.artifact_type !== "localagent_cached_autoregressive_onnx" ||
+    metadata.schema_version !== 1 ||
+    !metadata.model?.config ||
+    !Number.isInteger(metadata.vocab_size) ||
+    metadata.vocab_size < 1 ||
+    metadata.model.config.vocab_size !== metadata.vocab_size
+  ) {
+    throw new Error("Cached metadata is not a supported LocalAgent autoregressive bundle.");
+  }
+  const config = metadata.model.config;
+  const contract = metadata.graph_contract;
+  const precision = metadata.default_precision;
+  const cacheDtype = expectedCachedDtype(precision);
+  if (
+    !contract ||
+    !Array.isArray(contract.cache_slots) ||
+    !contract.cache_slots.length ||
+    contract.decode_token_axis_fixed_one !== true ||
+    contract.cache_update_strategy !==
+      "attention K/V append one token; short-conv state replaces its fixed-width tail" ||
+    contract.prefill_projection !==
+      "only the final normalized prompt feature is projected to vocabulary logits"
+  ) {
+    throw new Error("Cached metadata has an incomplete cache contract.");
+  }
+  if (
+    !Number.isInteger(config.n_layers) ||
+    !Number.isInteger(config.n_loops) ||
+    !Number.isInteger(config.n_heads) ||
+    !Number.isInteger(config.n_kv_heads) ||
+    !Number.isInteger(config.d_model) ||
+    config.d_model % config.n_heads !== 0 ||
+    config.n_heads % config.n_kv_heads !== 0 ||
+    !Array.isArray(config.layer_types) ||
+    config.layer_types.length !== config.n_layers ||
+    contract.cache_slots.length !== config.n_layers * config.n_loops
+  ) {
+    throw new Error("Cached model config cannot define the declared cache layout.");
+  }
+
+  const shapeByName = new Map();
+  contract.cache_slots.forEach((slot, index) => {
+    const layer = index % config.n_layers;
+    const loop = Math.floor(index / config.n_layers);
+    const kind = config.layer_types[layer];
+    const expectedPast = kind === "attn"
+      ? [`past_${index}_key`, `past_${index}_value`]
+      : [`past_${index}_conv`];
+    const expectedPresent = kind === "attn"
+      ? [`present_${index}_key`, `present_${index}_value`]
+      : [`present_${index}_conv`];
+    const expectedShape = kind === "attn"
+      ? ["batch", config.n_kv_heads, "cache_sequence", config.d_model / config.n_heads]
+      : ["batch", config.d_model, config.conv_kernel - 1];
+    const expectedUpdate = kind === "attn"
+      ? "append_one_token_along_axis_2"
+      : "replace_with_latest_fixed_width_tail";
+    if (
+      slot?.slot !== index ||
+      slot.loop !== loop ||
+      slot.layer !== layer ||
+      slot.kind !== kind ||
+      !exactJsonEqual(slot.past_inputs, expectedPast) ||
+      !exactJsonEqual(slot.present_outputs, expectedPresent) ||
+      !exactJsonEqual(slot.shape, expectedShape) ||
+      slot.update !== expectedUpdate ||
+      slot.dtype_by_precision?.[precision] !== cacheDtype
+    ) {
+      throw new Error(`Cached cache slot ${index} is stale or inconsistent with model config.`);
+    }
+    [...expectedPast, ...expectedPresent].forEach((name) => {
+      if (shapeByName.has(name)) throw new Error(`Duplicate cached tensor name ${name}.`);
+      shapeByName.set(name, expectedShape);
+    });
+  });
+
+  const presentNames = cachedPresentNames(contract);
+  const pastNames = cachedPastNames(contract);
+  const graph = contract.graphs?.[precision];
+  const prefillInputs = ["input_ids"];
+  const outputs = ["next_token", "logits", ...presentNames];
+  const decodeInputs = ["input_ids", ...pastNames];
+  if (
+    graph?.cache_dtype !== cacheDtype ||
+    graph.prefill?.file !== `prefill.${precision}.onnx` ||
+    graph.decode?.file !== `decode.${precision}.onnx` ||
+    !exactJsonEqual(graph.prefill.input_names, prefillInputs) ||
+    !exactJsonEqual(graph.prefill.output_names, outputs) ||
+    !exactJsonEqual(graph.decode.input_names, decodeInputs) ||
+    !exactJsonEqual(graph.decode.output_names, outputs)
+  ) {
+    throw new Error("Cached prefill/decode names do not match the production ABI.");
+  }
+  const prefillInputShapes = new Map([["input_ids", ["batch", "prompt_sequence"]]]);
+  const decodeInputShapes = new Map([["input_ids", ["batch", 1]], ...shapeByName]);
+  const outputShapes = new Map([
+    ["next_token", ["batch"]],
+    ["logits", ["batch", "vocab_size"]],
+    ...presentNames.map((name) => [name, shapeByName.get(name)]),
+  ]);
+  validateCachedIo(
+    graph.prefill.inputs,
+    prefillInputs,
+    cacheDtype,
+    prefillInputShapes,
+    `${precision}.prefill.inputs`
+  );
+  validateCachedIo(
+    graph.prefill.outputs,
+    outputs,
+    cacheDtype,
+    outputShapes,
+    `${precision}.prefill.outputs`
+  );
+  validateCachedIo(
+    graph.decode.inputs,
+    decodeInputs,
+    cacheDtype,
+    decodeInputShapes,
+    `${precision}.decode.inputs`
+  );
+  validateCachedIo(
+    graph.decode.outputs,
+    outputs,
+    cacheDtype,
+    outputShapes,
+    `${precision}.decode.outputs`
+  );
+  if (
+    contract.next_token?.name !== "next_token" ||
+    contract.next_token?.dtype !== "int64" ||
+    !exactJsonEqual(contract.next_token?.shape, ["batch"]) ||
+    contract.next_token?.decode !==
+      "compatibility argmax over the exported final-token logits" ||
+    contract.logits?.name !== "logits" ||
+    contract.logits?.description !==
+      "unnormalized LM scores for the final input token only" ||
+    contract.logits?.dtype_by_precision?.[precision] !== cacheDtype ||
+    !exactJsonEqual(contract.logits?.shape, ["batch", metadata.vocab_size])
+  ) {
+    throw new Error("Cached token/logits metadata does not match the production ABI.");
+  }
+  const firstAttention = contract.cache_slots.find((slot) => slot.kind === "attn");
+  if (
+    !firstAttention ||
+    contract.decode_position?.caller_position_input !== false ||
+    contract.decode_position?.derived_from !== firstAttention.past_inputs[0] ||
+    contract.decode_position?.rule !==
+      "RoPE position = first attention past-key axis-2 length"
+  ) {
+    throw new Error("Cached decode position is not derived from its first attention cache.");
+  }
+  return Object.freeze({
+    cacheDtype,
+    contract,
+    decodeFile: graph.decode.file,
+    decodeInputs,
+    outputs,
+    pastNames,
+    precision,
+    prefillFile: graph.prefill.file,
+    presentNames,
+  });
+}
+
+function validateTrainingLineageExport(lineageExport, metadata) {
+  const checkpoint = metadata.checkpoint;
+  if (
+    lineageExport?.kind !== "localagent_training_lineage_export" ||
+    lineageExport.schema_version !== 1 ||
+    lineageExport.stage !== "rl" ||
+    lineageExport.checkpoint_sha256 !== checkpoint.sha256 ||
+    lineageExport.conversation_prompt_contract !== OPENAI_FULL_CATALOG_V1 ||
+    !exactJsonEqual(lineageExport.lineage, checkpoint.lineage) ||
+    !Array.isArray(lineageExport.training_artifact_sha256) ||
+    !lineageExport.training_artifact_sha256.length ||
+    new Set(lineageExport.training_artifact_sha256).size !==
+      lineageExport.training_artifact_sha256.length ||
+    lineageExport.training_artifact_sha256.some((value) => !isLowerSha256(value))
+  ) {
+    throw new Error("Cached training-lineage sidecar does not identify the final RL checkpoint.");
+  }
+  return lineageExport;
+}
+
+function validateProductionCachedBundle(
+  metadata,
+  provenance,
+  actionMetadata,
+  tokenizerEvidence,
+  lineageExport
+) {
+  const graph = validateCachedGraphContract(metadata);
+  const checkpoint = metadata.checkpoint;
+  const lineage = checkpoint?.lineage;
+  const requiredLineageHashes = [
+    "config_sha256",
+    "data_sha256",
+    "model_config_sha256",
+    "tokenizer_sha256",
+    "parent_checkpoint_sha256",
+  ];
+  if (
+    checkpoint?.stage !== "rl" ||
+    !Number.isInteger(checkpoint.step) ||
+    checkpoint.step < 0 ||
+    !isLowerSha256(checkpoint.sha256) ||
+    checkpoint.conversation_prompt_contract !== OPENAI_FULL_CATALOG_V1 ||
+    lineage?.version !== 1 ||
+    lineage.stage !== "rl" ||
+    requiredLineageHashes.some((field) => !isLowerSha256(lineage[field])) ||
+    lineage.model_config_sha256 !== metadata.model.config_canonical_sha256 ||
+    lineage.tokenizer_sha256 !== metadata.tokenizer?.sha256 ||
+    typeof lineage.git?.dirty !== "boolean" ||
+    !/^[0-9a-f]{40}$/.test(lineage.git?.commit || "") ||
+    !isLowerSha256(lineage.git?.repository_sha256) ||
+    !isLowerSha256(lineage.git?.worktree_sha256) ||
+    checkpoint.lineage_export?.kind !== "localagent_training_lineage_export" ||
+    checkpoint.lineage_export?.schema_version !== 1 ||
+    typeof checkpoint.lineage_export?.file !== "string" ||
+    !checkpoint.lineage_export.file
+  ) {
+    throw new Error("Cached metadata does not carry canonical final-RL lineage.");
+  }
+  if (
+    metadata.encoding !== "bytelevel-bpe" ||
+    metadata.tokenizer?.kind !== "bpe" ||
+    metadata.tokenizer?.verified !== true ||
+    metadata.tokenizer?.vocab_size !== metadata.vocab_size ||
+    metadata.tokenizer?.file !== "tokenizer.json" ||
+    !isLowerSha256(metadata.tokenizer.sha256) ||
+    metadata.eos_id !== 0 ||
+    metadata.pad_id !== 0
+  ) {
+    throw new Error("Final cached bundle must carry its exact verified BPE tokenizer identity.");
+  }
+  if (
+    !actionMetadata ||
+    actionMetadata.encoding !== metadata.encoding ||
+    actionMetadata.vocab_size !== metadata.vocab_size ||
+    actionMetadata.d_model !== metadata.d_model ||
+    actionMetadata.max_seq_len !== metadata.max_seq_len ||
+    actionMetadata.eos_id !== metadata.eos_id ||
+    actionMetadata.pad_id !== metadata.pad_id ||
+    !exactJsonEqual(actionMetadata.markers, metadata.markers) ||
+    !exactJsonEqual(actionMetadata.tools, metadata.tools) ||
+    tokenizerEvidence?.sha256 !== metadata.tokenizer.sha256
+  ) {
+    throw new Error(
+      "Cached model tokenizer/catalog metadata disagrees with the structured browser bundle."
+    );
+  }
+  if (
+    provenance?.schema_version !== 1 ||
+    provenance.artifact_type !== "trained_checkpoint_cached_decode_onnx" ||
+    provenance.trained !== true ||
+    provenance.weights?.source !== "strict_lineage_validated_lm_checkpoint" ||
+    provenance.weights.checkpoint_sha256 !== checkpoint.sha256 ||
+    provenance.weights.checkpoint_stage !== "rl" ||
+    provenance.weights.checkpoint_step !== checkpoint.step ||
+    !exactJsonEqual(provenance.checkpoint_lineage, lineage) ||
+    !exactJsonEqual(provenance.graph_contract, metadata.graph_contract) ||
+    !exactJsonEqual(provenance.tokenizer, metadata.tokenizer) ||
+    provenance.auxiliary_heads?.available !== false ||
+    provenance.auxiliary_heads?.exported !== false ||
+    provenance.auxiliary_heads?.validated !== true
+  ) {
+    throw new Error("Cached provenance does not bind the final trained model metadata.");
+  }
+  const parity = provenance.parity?.results?.[graph.precision];
+  if (
+    provenance.parity?.hard_gate !== true ||
+    parity?.hard_gate !== true ||
+    parity.passed !== true ||
+    parity.greedy_next_token_exact !== true ||
+    parity.cache_dtype !== graph.cacheDtype ||
+    !exactJsonEqual(
+      parity.final_token_logits_shape,
+      ["batch", metadata.vocab_size]
+    ) ||
+    !Number.isFinite(parity.max_logits_abs_diff) ||
+    parity.max_logits_abs_diff < 0 ||
+    parity.max_logits_abs_diff > parity.logits_atol ||
+    parity.reference_independence?.onnx_logits_vs_pytorch_cached_path !== true ||
+    parity.reference_independence
+      ?.pytorch_cached_vs_fresh_full_context_logits !== true
+  ) {
+    throw new Error("Cached logits/cache parity is missing or failed.");
+  }
+  for (const [kind, file] of [
+    ["prefill", graph.prefillFile],
+    ["decode", graph.decodeFile],
+  ]) {
+    const artifact = provenance.artifacts?.[file];
+    const parityArtifact = parity.artifacts?.[kind];
+    if (
+      artifact?.file !== file ||
+      artifact.precision !== graph.precision ||
+      !Number.isInteger(artifact.bytes) ||
+      artifact.bytes < 1 ||
+      !isLowerSha256(artifact.sha256) ||
+      parityArtifact?.bytes !== artifact.bytes ||
+      parityArtifact?.sha256 !== artifact.sha256
+    ) {
+      throw new Error(`Cached ${kind} graph is not content-bound to passed parity.`);
+    }
+  }
+  validateTrainingLineageExport(lineageExport, metadata);
+  return graph;
+}
+
+function cachedOutputLocations(provider, presentNames) {
+  const cacheLocation = provider === "webgpu" ? "gpu-buffer" : "cpu";
+  return Object.fromEntries([
+    ["next_token", "cpu"],
+    ["logits", "cpu"],
+    ...presentNames.map((name) => [name, cacheLocation]),
+  ]);
+}
+
+function cachedSessionOptions(provider, presentNames) {
+  return {
+    executionProviders: [provider],
+    preferredOutputLocation: cachedOutputLocations(provider, presentNames),
+  };
+}
+
+async function createBundleSession(modelUrl, provider, expectedOutputs = null) {
+  const artifact = await fetchModelArtifact(modelUrl);
+  const session = await ort.InferenceSession.create(
+    artifact.bytes.slice(),
+    sessionOptions(provider)
+  );
+  validateSessionOutputs(session, modelUrl, expectedOutputs);
+  return session;
+}
+
+// ---- bundle loading -------------------------------------------------------
+async function loadBundle() {
+  const loadStart = performance.now();
+  if (
+    BENCHMARK_GRADE &&
+    REQUESTED_BACKEND !== "webgpu" &&
+    REQUESTED_BACKEND !== "wasm"
+  ) {
+    throw new Error(
+      "Benchmark-grade runs require an explicit ?backend=webgpu or ?backend=wasm condition."
+    );
+  }
+  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/";
+  const metadataStart = performance.now();
+  let manifestDocument;
+  try {
+    manifestDocument = await fetchJsonArtifact("bundle-manifest.json", false);
+  } catch (error) {
+    if (BENCHMARK_GRADE) throw error;
+    console.warn("Bundle manifest unavailable; continuing in demo-only mode:", error);
+    manifestDocument = null;
+  }
+  BUNDLE_MANIFEST = manifestDocument?.value ?? null;
+  const [headsDocument, metaDocument, dispatchDocument] = await Promise.all([
+    fetchJsonArtifact("heads.json", BENCHMARK_GRADE),
+    fetchJsonArtifact("meta.json", BENCHMARK_GRADE),
+    fetchJsonArtifact("dispatch_heads.json", BENCHMARK_GRADE),
+  ]);
+  HEADS = headsDocument.value;
+  META = metaDocument.value;
+  DISPATCH = dispatchDocument.value;
+  BUNDLE_LOAD_TIMING.metadata_ms = performance.now() - metadataStart;
+  const tokenizerStart = performance.now();
+  if (META.encoding === "bytelevel-bpe") {
+    if (!META.tokenizer_file) {
+      throw new Error("BPE metadata is missing tokenizer_file.");
+    }
+    const tokenizerDocument = await fetchJsonArtifact(
+      META.tokenizer_file,
+      BENCHMARK_GRADE
+    );
+    TOKENIZER = await LocalAgentTokenizer.fromMeta(META, async (requestedPath) => {
+      if (requestedPath !== META.tokenizer_file) {
+        throw new Error(`Unexpected tokenizer asset request ${requestedPath}.`);
+      }
+      return tokenizerDocument.value;
+    });
+  } else {
+    TOKENIZER = await LocalAgentTokenizer.fromMeta(META, async () => {
+      throw new Error("Byte-tokenizer bundles must not request a tokenizer asset.");
+    });
+  }
+  BUNDLE_LOAD_TIMING.tokenizer_ms = performance.now() - tokenizerStart;
+  LOGITS_MODEL_URL = META.model_file || LOGITS_MODEL_URL;
+  if (BENCHMARK_GRADE && !META.action_model_file) {
+    throw new Error(
+      "Benchmark-grade runs cannot fall back from a missing action graph to the logits graph."
+    );
+  }
+  MODEL_URL = META.action_model_file || LOGITS_MODEL_URL;
+  if (BENCHMARK_GRADE) validateBenchmarkBundleContract();
+  const actionOutputs = BENCHMARK_GRADE ? ["hidden"] : null;
+  const sessionStart = performance.now();
+  if (REQUESTED_BACKEND === "wasm") {
+    SESSION = await createBundleSession(MODEL_URL, "wasm", actionOutputs);
+    BACKEND = "wasm";
+    BUNDLE_LOAD_TIMING.session_create_ms = performance.now() - sessionStart;
+    BUNDLE_LOAD_TIMING.total_ms = performance.now() - loadStart;
+    return;
+  }
+  if (REQUESTED_BACKEND === "webgpu") {
+    SESSION = await createBundleSession(MODEL_URL, "webgpu", actionOutputs);
+    BACKEND = "webgpu";
+    BUNDLE_LOAD_TIMING.session_create_ms = performance.now() - sessionStart;
+    BUNDLE_LOAD_TIMING.total_ms = performance.now() - loadStart;
+    return;
+  }
+  if (REQUESTED_BACKEND !== "auto") {
+    throw new Error(`Unknown backend '${REQUESTED_BACKEND}'; expected auto, webgpu, or wasm.`);
+  }
+  try {
+    SESSION = await createBundleSession(MODEL_URL, "webgpu", actionOutputs);
+    BACKEND = "webgpu";
+  } catch (e) {
+    console.warn("WebGPU unavailable, falling back to WASM:", e);
+    SESSION = await createBundleSession(MODEL_URL, "wasm", actionOutputs);
+    BACKEND = "wasm";
+  }
+  BUNDLE_LOAD_TIMING.session_create_ms = performance.now() - sessionStart;
+  BUNDLE_LOAD_TIMING.total_ms = performance.now() - loadStart;
+}
+
+async function ensureLogitsSession() {
+  if (LOGITS_SESSION) return LOGITS_SESSION;
+  if (LOGITS_MODEL_URL === MODEL_URL) {
+    if (BENCHMARK_GRADE) {
+      throw new Error(
+        "Benchmark-grade autoregressive controls require a distinct full logits graph."
+      );
+    }
+    LOGITS_SESSION = SESSION;
+    BUNDLE_LOAD_TIMING.logits_session_create_ms = 0;
+    return LOGITS_SESSION;
+  }
+  const started = performance.now();
+  // BACKEND was resolved while loading the action graph. The full graph must use that exact
+  // provider; a failure is surfaced instead of silently changing the comparison backend.
+  LOGITS_SESSION = await createBundleSession(
+    LOGITS_MODEL_URL,
+    BACKEND,
+    BENCHMARK_GRADE ? ["logits", "hidden"] : null
+  );
+  BUNDLE_LOAD_TIMING.logits_session_create_ms = performance.now() - started;
+  return LOGITS_SESSION;
+}
+
+function requestedCachedMetadataUrl(meta = META) {
+  const query = new URLSearchParams(window.location?.search || "");
+  return window.__localAgentCachedMetaUrl ||
+    query.get("cached_meta") ||
+    meta?.cached_decode_meta_file ||
+    "cached/meta.json";
+}
+
+function cachedArtifactUrl(fileName, metadataUrl) {
+  return new URL(fileName, new URL(metadataUrl, document.baseURI)).href;
+}
+
+async function fetchCachedArtifact(artifactUrl, expectedIdentity, label) {
+  const response = await fetch(artifactUrl);
+  if (!response.ok) throw new Error(`Missing ${label} ${artifactUrl} (HTTP ${response.status}).`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const actualSha256 = await sha256Bytes(bytes);
+  if (expectedIdentity) {
+    if (
+      !Number.isInteger(expectedIdentity.bytes) ||
+      expectedIdentity.bytes < 1 ||
+      !isLowerSha256(expectedIdentity.sha256) ||
+      expectedIdentity.bytes !== bytes.byteLength ||
+      expectedIdentity.sha256 !== actualSha256
+    ) {
+      throw new Error(`${label} bytes/hash do not match cached provenance.`);
+    }
+  }
+  return {
+    bytes,
+    evidence: Object.freeze({
+      bytes: bytes.byteLength,
+      file: artifactUrl,
+      sha256: actualSha256,
+      verified: Boolean(expectedIdentity),
+      verification_scope: "exact_fetched_response_body_before_parse_or_session",
+    }),
+  };
+}
+
+function parseCachedJson(artifact, label) {
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(artifact.bytes));
+  } catch (error) {
+    throw new Error(`${label} is not valid UTF-8 JSON: ${error.message}`);
+  }
+}
+
+function validateCachedSessionContract(session, graph, kind) {
+  const expectedInputs = graph[`${kind}Inputs`];
+  const actualInputs = Array.from(session.inputNames || []);
+  const actualOutputs = Array.from(session.outputNames || []);
+  if (!exactJsonEqual(actualInputs, expectedInputs)) {
+    throw new Error(
+      `Cached ${kind} session inputs ${JSON.stringify(actualInputs)} do not match ` +
+      `${JSON.stringify(expectedInputs)}.`
+    );
+  }
+  if (!exactJsonEqual(actualOutputs, graph.outputs)) {
+    throw new Error(
+      `Cached ${kind} session outputs ${JSON.stringify(actualOutputs)} do not match ` +
+      `${JSON.stringify(graph.outputs)}.`
+    );
+  }
+}
+
+function validateFullCatalogTokenizer(tokenizer = TOKENIZER) {
+  if (
+    !tokenizer ||
+    !exactJsonEqual(tokenizer.encode(BPE_EOS_MARKER), [tokenizer.eosId])
+  ) {
+    throw new Error(
+      "openai_full_catalog_v1 requires the canonical EOS marker to encode to eos_id."
+    );
+  }
+  for (const suffix of [
+    "<|system|>boundary-check",
+    "<|user|>boundary-check",
+    "<|tool|>boundary-check",
+    "<|assistant|>boundary-check",
+  ]) {
+    if (
+      !exactJsonEqual(
+        tokenizer.encode(BPE_EOS_MARKER + suffix),
+        [tokenizer.eosId, ...tokenizer.encode(suffix)]
+      )
+    ) {
+      throw new Error(
+        `openai_full_catalog_v1 tokenizer does not preserve the EOS boundary before ${suffix}.`
+      );
+    }
+  }
+}
+
+async function ensureCachedDecodeSessions() {
+  if (CACHED_DECODE_BUNDLE) return CACHED_DECODE_BUNDLE;
+  const metadataRequest = requestedCachedMetadataUrl();
+  const metadataUrl = new URL(metadataRequest, document.baseURI).href;
+  const provenanceRequest = META.cached_decode_provenance_file ||
+    `${metadataRequest.slice(0, metadataRequest.lastIndexOf("/") + 1)}provenance.json`;
+  const provenanceUrl = new URL(provenanceRequest, document.baseURI).href;
+  const manifestProvenancePin = manifestArtifactFor(provenanceRequest);
+  if (BENCHMARK_GRADE && !manifestProvenancePin) {
+    throw new Error(
+      `Benchmark bundle manifest does not pin cached provenance request ${metadataRequest}.`
+    );
+  }
+  const provenanceArtifact = await fetchCachedArtifact(
+    provenanceUrl,
+    manifestProvenancePin,
+    "cached provenance"
+  );
+  const provenance = parseCachedJson(provenanceArtifact, "cached provenance");
+  const metadataPin = provenance.artifacts?.["meta.json"];
+  const metadataArtifact = await fetchCachedArtifact(
+    metadataUrl,
+    metadataPin,
+    "cached metadata"
+  );
+  const metadata = parseCachedJson(metadataArtifact, "cached metadata");
+  const lineageFile = metadata.checkpoint?.lineage_export?.file;
+  const lineageArtifact = await fetchCachedArtifact(
+    cachedArtifactUrl(lineageFile || "missing-training-lineage.json", metadataUrl),
+    provenance.artifacts?.[lineageFile],
+    "cached training lineage"
+  );
+  const lineageExport = parseCachedJson(lineageArtifact, "cached training lineage");
+  validateFullCatalogTokenizer();
+  const graph = validateProductionCachedBundle(
+    metadata,
+    provenance,
+    META,
+    bundleArtifactEvidence(META.tokenizer_file),
+    lineageExport
+  );
+
+  const prefillArtifact = await fetchCachedArtifact(
+    cachedArtifactUrl(graph.prefillFile, metadataUrl),
+    provenance.artifacts[graph.prefillFile],
+    "cached prefill graph"
+  );
+  const decodeArtifact = await fetchCachedArtifact(
+    cachedArtifactUrl(graph.decodeFile, metadataUrl),
+    provenance.artifacts[graph.decodeFile],
+    "cached decode graph"
+  );
+  const options = cachedSessionOptions(BACKEND, graph.presentNames);
+  const [prefillSession, decodeSession] = await Promise.all([
+    ort.InferenceSession.create(prefillArtifact.bytes.slice(), options),
+    ort.InferenceSession.create(decodeArtifact.bytes.slice(), options),
+  ]);
+  const sessionContract = {
+    ...graph,
+    prefillInputs: ["input_ids"],
+    decodeInputs: graph.decodeInputs,
+  };
+  validateCachedSessionContract(prefillSession, sessionContract, "prefill");
+  validateCachedSessionContract(decodeSession, sessionContract, "decode");
+  CACHED_PREFILL_SESSION = prefillSession;
+  CACHED_DECODE_SESSION = decodeSession;
+  CACHED_DECODE_BUNDLE = Object.freeze({
+    ...graph,
+    decodeSession,
+    evidence: Object.freeze({
+      decode: decodeArtifact.evidence,
+      lineage: lineageArtifact.evidence,
+      metadata: metadataArtifact.evidence,
+      prefill: prefillArtifact.evidence,
+      provenance: provenanceArtifact.evidence,
+    }),
+    lineageExport,
+    metadata,
+    prefillSession,
+    provenance,
+  });
+  return CACHED_DECODE_BUNDLE;
+}
+
+async function prepareActionPolicy(policy) {
+  if (!Object.values(ACTION_POLICIES).includes(policy)) {
+    throw new Error(`Unknown action policy '${policy}'.`);
+  }
+  if (policy !== ACTION_POLICIES.STRUCTURED) await ensureCachedDecodeSessions();
+}
+
+// ---- tokenizer ------------------------------------------------------------
+// Markers are literal strings. The bundle metadata selects UTF-8 bytes or the exact trained
+// ByteLevel BPE tokenizer, both matching localagent.model.tokenizer.
 const enc = new TextEncoder();
-function bytesOf(s) { return Array.from(enc.encode(s)); }
 function mark(name) { return META.markers[name].text; } // markers carry { text, ids }
 
+const RESERVED_FULL_CATALOG_MARKERS = Object.freeze([
+  BPE_EOS_MARKER,
+  "<|system|>",
+  "<|user|>",
+  "<|assistant|>",
+  "<|tool|>",
+  "<tool_call>",
+  "</tool_call>",
+  "<tool_response>",
+  "</tool_response>",
+  TOOL_CATALOG_OPEN,
+  TOOL_CATALOG_CLOSE,
+]);
+
+function assertNoPromptMarker(value, label) {
+  if (typeof value !== "string") throw new Error(`${label} must be text.`);
+  const marker = RESERVED_FULL_CATALOG_MARKERS.find((candidate) => value.includes(candidate));
+  if (marker) throw new Error(`${label} contains reserved prompt marker ${marker}.`);
+}
+
+function renderFullFunctionCatalog(meta = META) {
+  if (!Array.isArray(meta?.tools) || !meta.tools.length) {
+    throw new Error("openai_full_catalog_v1 requires a non-empty complete tool catalog.");
+  }
+  const names = new Set();
+  const tools = meta.tools.map((tool, index) => {
+    if (
+      typeof tool?.name !== "string" ||
+      !tool.name ||
+      typeof tool.description !== "string" ||
+      !tool.schema ||
+      typeof tool.schema !== "object" ||
+      Array.isArray(tool.schema)
+    ) {
+      throw new Error(`Tool catalog entry ${index} is incomplete.`);
+    }
+    assertNoPromptMarker(tool.name, `tool ${index} name`);
+    assertNoPromptMarker(tool.description, `tool ${tool.name} description`);
+    if (names.has(tool.name)) throw new Error(`Tool catalog repeats ${tool.name}.`);
+    names.add(tool.name);
+    return {
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.schema,
+      },
+    };
+  });
+  return TOOL_CATALOG_OPEN + canonicalActionJson({ tools }) + TOOL_CATALOG_CLOSE;
+}
+
+function renderFullCatalogContextText(query, steps = [], meta = META) {
+  assertNoPromptMarker(query, "user message");
+  const marker = (name) => meta.markers[name].text;
+  let history = marker("user") + query;
+  for (const [index, step] of (steps || []).entries()) {
+    if (typeof step?.tool !== "string" || !step.tool) {
+      throw new Error(`Tool step ${index} has no tool name.`);
+    }
+    const response = step.response || "ok";
+    assertNoPromptMarker(response, `tool step ${index} response`);
+    history += marker("assistant") + canonicalToolCompletion({
+      tool: step.tool,
+      args: step.args,
+    }, meta) + BPE_EOS_MARKER;
+    history += marker("tool") + marker("tool_response_open") +
+      response + marker("tool_response_close");
+  }
+  return renderFullFunctionCatalog(meta) + BPE_EOS_MARKER + history + marker("assistant");
+}
+
 // Render a user turn the way the model was trained.
-function renderContext(query, steps) {
+function renderContextText(query, steps) {
   let s = mark("user") + query + mark("assistant");
   for (const st of steps || []) {
     s += mark("tool_call_open") + st.tool + "(" + JSON.stringify(st.args) + ")" + mark("tool_call_close");
     s += mark("tool") + mark("tool_response_open") + (st.response || "ok") + mark("tool_response_close");
     s += mark("assistant");
   }
-  return bytesOf(s);
+  return s;
+}
+function renderContext(query, steps) {
+  return TOKENIZER.encode(renderContextText(query, steps));
+}
+
+function padPromptIds(baseIds, assistantIds, whitespaceId, targetInputTokens) {
+  if (targetInputTokens == null) return [...baseIds];
+  const target = Number.parseInt(targetInputTokens, 10);
+  if (!Number.isInteger(target) || target < 1) {
+    throw new Error("targetInputTokens must be a positive integer.");
+  }
+  if (baseIds.length > target) {
+    throw new Error(`Natural prompt has ${baseIds.length} tokens, above target ${target}.`);
+  }
+  if (!assistantIds.length || assistantIds.length > baseIds.length) {
+    throw new Error("Assistant marker ids are missing from bundle metadata.");
+  }
+  const suffixStart = baseIds.length - assistantIds.length;
+  if (!assistantIds.every((tokenId, index) => baseIds[suffixStart + index] === tokenId)) {
+    throw new Error("Rendered prompt does not end with the declared assistant marker ids.");
+  }
+  return [
+    ...baseIds.slice(0, suffixStart),
+    ...Array(target - baseIds.length).fill(whitespaceId),
+    ...assistantIds,
+  ];
+}
+
+function padPromptIdsTrailing(baseIds, whitespaceId, targetInputTokens) {
+  if (targetInputTokens == null) return [...baseIds];
+  const target = Number.parseInt(targetInputTokens, 10);
+  if (!Number.isInteger(target) || target < 1) {
+    throw new Error("targetInputTokens must be a positive integer.");
+  }
+  if (baseIds.length > target) {
+    throw new Error(`Natural prompt has ${baseIds.length} tokens, above target ${target}.`);
+  }
+  return [...baseIds, ...Array(target - baseIds.length).fill(whitespaceId)];
+}
+
+function actionPrompt(
+  query,
+  targetInputTokens = null,
+  paddingPlacement = "pre_assistant"
+) {
+  const naturalText = renderContextText(query, []);
+  const naturalIds = TOKENIZER.encode(naturalText);
+  const assistantIds = META.markers?.assistant?.ids || TOKENIZER.encode(mark("assistant"));
+  const whitespaceIds = TOKENIZER.encode(" ");
+  if (whitespaceIds.length !== 1) {
+    throw new Error("The exported tokenizer must encode one neutral space as exactly one token.");
+  }
+  let ids;
+  let decisionInputTokens;
+  let contextPaddingPlacement;
+  if (paddingPlacement === "trailing_compute") {
+    ids = padPromptIdsTrailing(naturalIds, whitespaceIds[0], targetInputTokens);
+    decisionInputTokens = naturalIds.length;
+    contextPaddingPlacement = targetInputTokens == null
+      ? "none"
+      : "after_natural_assistant_marker";
+  } else if (paddingPlacement === "pre_assistant") {
+    ids = padPromptIds(naturalIds, assistantIds, whitespaceIds[0], targetInputTokens);
+    decisionInputTokens = ids.length;
+    contextPaddingPlacement = targetInputTokens == null
+      ? "none"
+      : "before_assistant_marker";
+  } else {
+    throw new Error(`Unknown context padding placement '${paddingPlacement}'.`);
+  }
+  const materializedText = TOKENIZER.decode(ids, false);
+  return {
+    ids,
+    inputBytes: enc.encode(materializedText).length,
+    naturalInputTokens: naturalIds.length,
+    paddingTokens: ids.length - naturalIds.length,
+    contextPaddingPlacement,
+    decisionInputTokens,
+    decisionFeatureIndex: decisionInputTokens - 1,
+  };
+}
+
+function cachedActionPrompt(query, targetInputTokens = null) {
+  const naturalText = renderFullCatalogContextText(query);
+  const naturalIds = TOKENIZER.encode(naturalText);
+  const assistantIds = META.markers?.assistant?.ids || TOKENIZER.encode(mark("assistant"));
+  const whitespaceIds = TOKENIZER.encode(" ");
+  if (whitespaceIds.length !== 1) {
+    throw new Error("The exported tokenizer must encode one neutral space as exactly one token.");
+  }
+  const ids = padPromptIds(
+    naturalIds,
+    assistantIds,
+    whitespaceIds[0],
+    targetInputTokens
+  );
+  return {
+    ids,
+    inputBytes: enc.encode(TOKENIZER.decode(ids, false)).length,
+    naturalInputTokens: naturalIds.length,
+    paddingTokens: ids.length - naturalIds.length,
+    contextPaddingPlacement: targetInputTokens == null
+      ? "none"
+      : "before_assistant_marker",
+    decisionInputTokens: ids.length,
+    decisionFeatureIndex: ids.length - 1,
+    promptContract: OPENAI_FULL_CATALOG_V1,
+    toolCatalogSize: META.tools.length,
+  };
 }
 
 // ---- model forward --------------------------------------------------------
-async function forward(ids) {
+async function forwardWithSession(ids, session) {
   const arr = BigInt64Array.from(ids.map((x) => BigInt(x)));
   const input = new ort.Tensor("int64", arr, [1, ids.length]);
-  const out = await SESSION.run({ input_ids: input });
+  const out = await session.run({ input_ids: input });
   return out; // { logits, hidden }
+}
+
+async function forward(ids) {
+  return forwardWithSession(ids, SESSION);
+}
+
+async function forwardLogits(ids) {
+  const session = await ensureLogitsSession();
+  const out = await forwardWithSession(ids, session);
+  if (!out.logits) {
+    throw new Error(
+      `Full graph ${LOGITS_MODEL_URL} did not expose logits; this is not an autoregressive bundle.`
+    );
+  }
+  return out.logits;
+}
+
+function float16BitsToNumber(bits) {
+  const sign = bits & 0x8000 ? -1 : 1;
+  const exponent = (bits >> 10) & 0x1f;
+  const fraction = bits & 0x03ff;
+  if (exponent === 0x1f) return fraction ? Number.NaN : sign * Number.POSITIVE_INFINITY;
+  if (exponent === 0) return sign * 2 ** -14 * (fraction / 1024);
+  return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
+}
+
+function materializeCachedLogits(tensor, bundle, label) {
+  const vocabSize = bundle.metadata.vocab_size;
+  if (
+    !tensor ||
+    tensor.type !== bundle.cacheDtype ||
+    !exactJsonEqual(tensor.dims, [1, vocabSize]) ||
+    !tensor.data ||
+    tensor.data.length !== vocabSize
+  ) {
+    throw new Error(
+      `${label} must be ${bundle.cacheDtype} [1, ${vocabSize}] CPU logits.`
+    );
+  }
+  if (tensor.location && tensor.location !== "cpu") {
+    throw new Error(`${label} must be materialized on CPU for token selection.`);
+  }
+  const values = new Float32Array(vocabSize);
+  const rawFloat16 = bundle.cacheDtype === "float16" &&
+    tensor.data instanceof Uint16Array &&
+    tensor.data.constructor?.name !== "Float16Array";
+  for (let index = 0; index < vocabSize; index++) {
+    const value = rawFloat16
+      ? float16BitsToNumber(tensor.data[index])
+      : Number(tensor.data[index]);
+    if (!Number.isFinite(value)) throw new Error(`${label} contains a non-finite value.`);
+    values[index] = value;
+  }
+  return values;
+}
+
+function cachedCompatibilityToken(tensor, vocabSize, label) {
+  if (
+    !tensor ||
+    tensor.type !== "int64" ||
+    !exactJsonEqual(tensor.dims, [1]) ||
+    !tensor.data ||
+    tensor.data.length !== 1
+  ) {
+    throw new Error(`${label} must be an int64 [1] CPU compatibility token.`);
+  }
+  if (tensor.location && tensor.location !== "cpu") {
+    throw new Error(`${label} must be materialized on CPU.`);
+  }
+  const token = Number(tensor.data[0]);
+  if (!Number.isSafeInteger(token) || token < 0 || token >= vocabSize) {
+    throw new Error(`${label} contains an invalid token ID.`);
+  }
+  return token;
+}
+
+function validateCachedCacheTensor(tensor, slot, sequenceLength, bundle, name) {
+  const config = bundle.metadata.model.config;
+  const dims = slot.kind === "attn"
+    ? [1, config.n_kv_heads, sequenceLength, config.d_model / config.n_heads]
+    : [1, config.d_model, config.conv_kernel - 1];
+  if (
+    !tensor ||
+    tensor.type !== bundle.cacheDtype ||
+    !exactJsonEqual(tensor.dims, dims)
+  ) {
+    throw new Error(
+      `${name} must be ${bundle.cacheDtype} ${JSON.stringify(dims)}; got ` +
+      `${tensor?.type || "missing"} ${JSON.stringify(tensor?.dims || null)}.`
+    );
+  }
+  const expectedLocation = BACKEND === "webgpu" ? "gpu-buffer" : "cpu";
+  if (tensor.location && tensor.location !== expectedLocation) {
+    throw new Error(`${name} cache location ${tensor.location} != ${expectedLocation}.`);
+  }
+}
+
+function validateCachedStepOutputs(outputs, bundle, sequenceLength, label) {
+  const logits = materializeCachedLogits(outputs?.logits, bundle, `${label}.logits`);
+  const compatibilityToken = cachedCompatibilityToken(
+    outputs?.next_token,
+    bundle.metadata.vocab_size,
+    `${label}.next_token`
+  );
+  const logitsArgmax = greedyToken(logits);
+  if (compatibilityToken !== logitsArgmax) {
+    throw new Error(
+      `${label} next_token ${compatibilityToken} disagrees with logits argmax ${logitsArgmax}.`
+    );
+  }
+  const caches = new Map();
+  for (const slot of bundle.contract.cache_slots) {
+    for (const name of slot.present_outputs) {
+      validateCachedCacheTensor(outputs?.[name], slot, sequenceLength, bundle, name);
+      caches.set(name, outputs[name]);
+    }
+  }
+  return { caches, compatibilityToken, logits, logitsArgmax };
+}
+
+function disposeOrtTensor(tensor) {
+  if (typeof tensor?.dispose === "function") tensor.dispose();
+}
+
+function disposeCachedOutputs(outputs, bundle, keepCaches = false) {
+  disposeOrtTensor(outputs?.next_token);
+  disposeOrtTensor(outputs?.logits);
+  if (!keepCaches) {
+    for (const name of bundle.presentNames) disposeOrtTensor(outputs?.[name]);
+  }
+}
+
+function disposeCacheTensors(caches) {
+  for (const tensor of caches?.values?.() || []) disposeOrtTensor(tensor);
+  caches?.clear?.();
+}
+
+function cachedFeeds(caches, bundle) {
+  const feeds = {};
+  for (const slot of bundle.contract.cache_slots) {
+    slot.past_inputs.forEach((pastName, index) => {
+      const presentName = slot.present_outputs[index];
+      const tensor = caches.get(presentName);
+      if (!tensor) throw new Error(`Missing direct cache binding ${presentName} -> ${pastName}.`);
+      feeds[pastName] = tensor;
+    });
+  }
+  return feeds;
+}
+
+function createCachedAutoregressiveRunner(bundle, promptIds) {
+  if (!bundle?.prefillSession || !bundle?.decodeSession) {
+    throw new Error("Cached prefill/decode sessions are not ready.");
+  }
+  if (!Array.isArray(promptIds) || !promptIds.length) {
+    throw new Error("Cached autoregressive runner requires a non-empty prompt.");
+  }
+  let caches = new Map();
+  let sequenceLength = promptIds.length;
+  let prefilled = false;
+  let disposed = false;
+
+  async function prefill() {
+    if (disposed || prefilled) throw new Error("Cached prefill may run exactly once.");
+    const input = new ort.Tensor(
+      "int64",
+      BigInt64Array.from(promptIds, (token) => BigInt(token)),
+      [1, promptIds.length]
+    );
+    let outputs;
+    try {
+      outputs = await bundle.prefillSession.run({ input_ids: input });
+      const decision = validateCachedStepOutputs(
+        outputs,
+        bundle,
+        sequenceLength,
+        "cached.prefill"
+      );
+      caches = decision.caches;
+      prefilled = true;
+      disposeCachedOutputs(outputs, bundle, true);
+      return {
+        compatibilityToken: decision.compatibilityToken,
+        logits: decision.logits,
+        logitsArgmax: decision.logitsArgmax,
+      };
+    } catch (error) {
+      disposeCachedOutputs(outputs, bundle);
+      throw error;
+    } finally {
+      disposeOrtTensor(input);
+    }
+  }
+
+  async function decode(inputToken) {
+    if (disposed || !prefilled) throw new Error("Cached decode requires one completed prefill.");
+    if (
+      !Number.isSafeInteger(inputToken) ||
+      inputToken < 0 ||
+      inputToken >= bundle.metadata.vocab_size
+    ) {
+      throw new Error("Cached decode input is outside the model vocabulary.");
+    }
+    const input = new ort.Tensor(
+      "int64",
+      BigInt64Array.of(BigInt(inputToken)),
+      [1, 1]
+    );
+    let outputs;
+    try {
+      outputs = await bundle.decodeSession.run({
+        input_ids: input,
+        ...cachedFeeds(caches, bundle),
+      });
+      const decision = validateCachedStepOutputs(
+        outputs,
+        bundle,
+        sequenceLength + 1,
+        `cached.decode[${sequenceLength}]`
+      );
+      disposeCacheTensors(caches);
+      caches = decision.caches;
+      sequenceLength += 1;
+      disposeCachedOutputs(outputs, bundle, true);
+      return {
+        compatibilityToken: decision.compatibilityToken,
+        logits: decision.logits,
+        logitsArgmax: decision.logitsArgmax,
+      };
+    } catch (error) {
+      disposeCachedOutputs(outputs, bundle);
+      throw error;
+    } finally {
+      disposeOrtTensor(input);
+    }
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    disposeCacheTensors(caches);
+  }
+
+  return Object.freeze({ decode, dispose, prefill });
+}
+
+function seededTokenRandom(seedText) {
+  let state = 2166136261;
+  for (let index = 0; index < seedText.length; index++) {
+    state ^= seedText.charCodeAt(index);
+    state = Math.imul(state, 16777619);
+  }
+  return () => {
+    state += 0x6D2B79F5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function selectTokenFromLogits(logits, options = {}, allowedTokenIds = null) {
+  const candidates = allowedTokenIds == null
+    ? Array.from({ length: logits.length }, (_, token) => token)
+    : Array.from(allowedTokenIds);
+  if (!candidates.length) throw new Error("Token selection has no allowed candidates.");
+  if (
+    candidates.some((token) =>
+      !Number.isInteger(token) || token < 0 || token >= logits.length
+    )
+  ) {
+    throw new Error("Token selection contains an out-of-vocabulary candidate.");
+  }
+  const temperature = Number(options.temperature ?? 0);
+  if (!Number.isFinite(temperature) || temperature < 0) {
+    throw new Error("temperature must be finite and non-negative.");
+  }
+  if (temperature === 0) return argmaxAllowed(logits, candidates);
+  const requestedTopK = Number.parseInt(options.topK ?? candidates.length, 10);
+  if (!Number.isInteger(requestedTopK) || requestedTopK < 1) {
+    throw new Error("topK must be a positive integer.");
+  }
+  const ranked = candidates
+    .map((token) => ({ token, value: logits[token] }))
+    .sort((left, right) => right.value - left.value || left.token - right.token)
+    .slice(0, Math.min(requestedTopK, candidates.length));
+  const maximum = ranked[0].value;
+  const weights = ranked.map((entry) => Math.exp((entry.value - maximum) / temperature));
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  if (!Number.isFinite(total) || total <= 0) {
+    throw new Error("Sampling probabilities are invalid.");
+  }
+  const random = options.random || seededTokenRandom(String(options.seed ?? "localagent"));
+  let threshold = random() * total;
+  for (let index = 0; index < ranked.length; index++) {
+    threshold -= weights[index];
+    if (threshold <= 0) return ranked[index].token;
+  }
+  return ranked.at(-1).token;
 }
 
 // ---- generable dispatch: route head -> dense two-tower selector ------------
@@ -77,6 +1606,7 @@ function linrow(W, b, x) {                 // W[o][d] · x[d] + b[o] -> [o]
   return out;
 }
 function argmax(v) { let bi = 0; for (let i = 1; i < v.length; i++) if (v[i] > v[bi]) bi = i; return bi; }
+function greedyToken(logits) { return argmax(logits); }
 function softmaxAt(v, i) { let m = -Infinity; for (const x of v) m = Math.max(m, x); let z = 0; for (const x of v) z += Math.exp(x - m); return Math.exp(v[i] - m) / z; }
 
 function dispatchSelect(hiddenTensor, T) {
@@ -98,9 +1628,14 @@ function dispatchSelect(hiddenTensor, T) {
   return { name: S.tool_names[bi], route: R.routes[ri], conf: (bs + 1) / 2, isStop: false };
 }
 
-// ---- argument grounding via the learned pointer head (port of pointer_head) ----
+// ---- argument grounding: learned pointer head + schema-typed extraction -------
 //   q = arg_emb[arg_idx[arg]];  qs = start_W·q;  qe = end_W·q
 //   start = argmax_t hidden[t]·qs;  end = argmax_{t>=start} hidden[t]·qe;  value = bytes[start..end]
+//
+// The pointer head covers open-ended copy arguments. Enums, numbers, booleans, and string
+// arguments without a learned pointer embedding are grounded deterministically from their JSON
+// Schema, matching localagent.agent.schema_decode. A required value that cannot be grounded makes
+// the action incomplete (`args: null`) instead of silently substituting an empty string.
 function matvec(M, v) {
   const d = v.length, out = new Float32Array(d);
   for (let i = 0; i < d; i++) { const Mi = M[i]; let a = 0; for (let j = 0; j < d; j++) a += Mi[j] * v[j]; out[i] = a; }
@@ -117,43 +1652,675 @@ function pointerSpan(arg, ids, H, T) {
   for (let t = 0; t < T; t++) { const v = dotAt(H, t, d, qs); if (v > sb) { sb = v; s = t; } }
   let e = s, eb = -Infinity;
   for (let t = s; t < T; t++) { const v = dotAt(H, t, d, qe); if (v > eb) { eb = v; e = t; } }
-  try { return new TextDecoder().decode(new Uint8Array(ids.slice(s, e + 1))); } catch { return ""; }
+  try { return TOKENIZER.decode(ids.slice(s, e + 1), false); } catch { return ""; }
 }
-function groundArgs(tool, ids, hiddenTensor, T) {
-  const spec = (META.tools || []).find((t) => t.name === tool);
-  const args = {};
-  if (!spec) return args;
-  const H = hiddenTensor.data;
-  for (const arg of spec.args || []) {
-    args[arg] = HEADS.pointer_head.arg_idx[arg] != null ? pointerSpan(arg, ids, H, T) : "";
+
+const PATH_HINTS = new Set([
+  "path", "file", "filepath", "filename", "source", "src", "dest", "destination", "target",
+]);
+const URL_HINTS = new Set(["url", "link", "website", "site", "href", "address", "endpoint"]);
+const ENTITY_HINTS = new Set([
+  "name", "recipient", "person", "city", "location", "user", "author", "artist", "assignee",
+  "owner", "contact", "to", "sender",
+]);
+const QUOTED_HINTS = new Set([
+  "message", "subject", "title", "content", "body", "text", "note", "summary", "caption",
+  "comment", "description", "label",
+]);
+
+function groundingPools(prompt) {
+  const body = prompt.trim().split(/\s+/).slice(1).join(" ");
+  const arithmetic = prompt.match(/\d+\s*[-+*/]\s*\d+(?:\s*[-+*/]\s*\d+)*/);
+  return {
+    quoted: Array.from(prompt.matchAll(/'([^']+)'|"([^"]+)"/g), (m) => m[1] || m[2]),
+    path: Array.from(
+      prompt.matchAll(/[A-Za-z0-9_.\-/]+\/[A-Za-z0-9_.\-/]*|[A-Za-z0-9_.\-/]+\.[A-Za-z0-9]{1,5}\b/g),
+      (m) => m[0].replace(/\.$/, "")
+    ),
+    url: Array.from(
+      prompt.matchAll(/(?:https?:\/\/)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:\/[\w./-]*)?/g),
+      (m) => m[0].replace(/\.$/, "")
+    ),
+    caps: Array.from(body.matchAll(/(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+)*/g), (m) => m[0]),
+    number: Array.from(prompt.matchAll(/-?\d+(?:\.\d+)?/g), (m) => m[0]),
+    arithmetic: arithmetic ? [arithmetic[0].replace(/\s+/g, "")] : [],
+  };
+}
+
+function popGrounding(pool) {
+  return pool.length ? pool.shift() : null;
+}
+
+function stripGrounding(value) {
+  return value
+    .replace(/^[^A-Za-z0-9'"]+/, "")
+    .replace(/\s*(online|please)?\s*[.?!]*$/i, "")
+    .trim();
+}
+
+function freeTextGrounding(prompt) {
+  const low = prompt.toLowerCase();
+  const tails = [];
+  for (const prep of ["for", "about", "to", "in", "on", "of", "with", "from"]) {
+    const index = low.indexOf(` ${prep} `);
+    if (index >= 0) {
+      const tail = stripGrounding(prompt.slice(index + prep.length + 2));
+      if (tail) tails.push(tail);
+    }
   }
-  return args;
+  if (tails.length) return tails.sort((a, b) => b.length - a.length)[0];
+  const words = prompt.trim().split(/\s+/);
+  return words.length > 1 ? stripGrounding(words.slice(1).join(" ")) : null;
+}
+
+function cuePresent(prompt, cue) {
+  const escaped = cue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped.replace(/\s+/g, "\\s+")}\\b`, "i").test(prompt);
+}
+
+function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
+  const type = schema.type || "string";
+  const format = schema.format;
+  const tail = () => required ? freeTextGrounding(prompt) : null;
+
+  if (schema.enum) {
+    return schema.enum.find((value) => cuePresent(prompt, String(value))) ?? null;
+  }
+  if (type === "boolean") {
+    if (["turn on", "enable", "yes", "true", "activate", "on"].some((cue) =>
+      cuePresent(prompt, cue))) return true;
+    if (["turn off", "disable", "no", "false", "deactivate", "off"].some((cue) =>
+      cuePresent(prompt, cue))) return false;
+    return null;
+  }
+  if (format === "arithmetic" || name.includes("express")) {
+    return popGrounding(pools.arithmetic);
+  }
+  if (type === "integer" || type === "number") {
+    const raw = popGrounding(pools.number);
+    if (raw == null) return null;
+    const value = type === "integer" ? Math.trunc(Number(raw)) : Number(raw);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  const copied = pointerValue && pointerValue.trim();
+  if (copied) return copied;
+  if (format === "quoted") return popGrounding(pools.quoted) || tail();
+  if (format === "path") return popGrounding(pools.path);
+  if (format === "url") return popGrounding(pools.url);
+  if (PATH_HINTS.has(name)) return popGrounding(pools.path);
+  if (URL_HINTS.has(name)) return popGrounding(pools.url);
+  if (QUOTED_HINTS.has(name)) return popGrounding(pools.quoted) || tail();
+  if (ENTITY_HINTS.has(name)) return popGrounding(pools.caps) || tail();
+  return popGrounding(pools.quoted) || tail();
+}
+
+function groundedArgsValid(args, schema) {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return false;
+  const properties = schema.properties || {};
+  for (const name of schema.required || []) {
+    if (!(name in args)) return false;
+  }
+  for (const [name, value] of Object.entries(args)) {
+    const property = properties[name];
+    if (!property) return false;
+    if (property.enum && !property.enum.includes(value)) return false;
+    if (property.type === "string" && typeof value !== "string") return false;
+    if (property.type === "integer" && !Number.isInteger(value)) return false;
+    if (property.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
+      return false;
+    }
+    if (property.type === "boolean" && typeof value !== "boolean") return false;
+  }
+  return true;
+}
+
+function groundFromSchema(prompt, schema, pointerValues = {}) {
+  const properties = schema.properties || {};
+  const required = new Set(schema.required || []);
+  const pools = groundingPools(prompt);
+  const args = {};
+  for (const [arg, argSchema] of Object.entries(properties)) {
+    const value = fillSchemaArg(
+      prompt, arg, argSchema, pools, required.has(arg), pointerValues[arg] || null
+    );
+    if (value != null && value !== "") {
+      args[arg] = value;
+    } else if (required.has(arg)) {
+      return null;
+    }
+  }
+  return groundedArgsValid(args, schema) ? args : null;
+}
+
+function groundArgs(tool, prompt, ids, hiddenTensor, T) {
+  const spec = (META.tools || []).find((t) => t.name === tool);
+  if (!spec) return null;
+  const schema = spec.schema || {};
+  const H = hiddenTensor.data;
+  const pointerValues = {};
+  for (const arg of Object.keys(schema.properties || {})) {
+    if (HEADS.pointer_head.arg_idx[arg] != null) {
+      pointerValues[arg] = pointerSpan(arg, ids, H, T);
+    }
+  }
+  return groundFromSchema(prompt, schema, pointerValues);
+}
+
+// ---- complete-action policy baselines ------------------------------------
+function validateActionForMeta(action, meta = META) {
+  if (!action || typeof action !== "object") {
+    return { valid: false, error: "action_not_object" };
+  }
+  if (action.abstain === true) return { valid: true, error: null };
+  const spec = (meta?.tools || []).find((tool) => tool.name === action.tool);
+  if (!spec) return { valid: false, error: "unknown_tool" };
+  if (!groundedArgsValid(action.args, spec.schema || {})) {
+    return { valid: false, error: "invalid_arguments" };
+  }
+  return { valid: true, error: null };
+}
+
+function canonicalActionJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalActionJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.keys(value).sort().map(
+      (key) => `${JSON.stringify(key)}:${canonicalActionJson(value[key])}`
+    );
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function canonicalToolCompletion(action, meta = META) {
+  const payload = { arguments: action.args, name: action.tool };
+  const open = meta.markers.tool_call_open.text;
+  const close = meta.markers.tool_call_close.text;
+  return `${open}${canonicalActionJson(payload)}${close}`;
+}
+
+function invalidGeneratedAction(parseKind, generatedText, error) {
+  return {
+    action: { abstain: false, tool: null, args: null },
+    generated_text: generatedText,
+    parse_kind: parseKind,
+    parse_failure: true,
+    parse_error: error,
+    schema_valid: false,
+    validation_failure: false,
+    validation_error: null,
+  };
+}
+
+function parseGeneratedAction(generatedText, stopReason, meta = META) {
+  const trimmed = generatedText.trim();
+  const open = meta?.markers?.tool_call_open?.text || "<tool_call>";
+  const close = meta?.markers?.tool_call_close?.text || "</tool_call>";
+  let payloadText = trimmed;
+  let parseKind = "raw_json";
+  if (trimmed.startsWith(open) || trimmed.endsWith(close)) {
+    if (!trimmed.startsWith(open) || !trimmed.endsWith(close)) {
+      return invalidGeneratedAction("framed_json", generatedText, "incomplete_tool_call_frame");
+    }
+    payloadText = trimmed.slice(open.length, trimmed.length - close.length);
+    parseKind = "framed_json";
+  } else if (!trimmed.startsWith("{")) {
+    // A model trained on mixed tool and text turns may emit ordinary answer text. Once EOS is
+    // reached (or the constrained grammar observes a non-tool first token), that is a valid
+    // no-tool decision, not JSON masquerading as a tool call.
+    if (stopReason === "eos" || (stopReason === "candidate_terminal" && !trimmed)) {
+      return {
+        action: { abstain: true },
+        generated_text: generatedText,
+        parse_kind: "direct_text",
+        parse_failure: false,
+        parse_error: null,
+        schema_valid: true,
+        validation_failure: false,
+        validation_error: null,
+      };
+    }
+    return invalidGeneratedAction("unframed_text", generatedText, "completion_is_not_json");
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(payloadText);
+  } catch (error) {
+    return invalidGeneratedAction(parseKind, generatedText, `invalid_json: ${error.message}`);
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return invalidGeneratedAction(parseKind, generatedText, "json_root_not_object");
+  }
+
+  let action;
+  if (payload.abstain === true) {
+    action = { abstain: true };
+  } else if (typeof payload.name === "string" && "arguments" in payload) {
+    action = { tool: payload.name, args: payload.arguments };
+  } else if (typeof payload.tool === "string" && "args" in payload) {
+    action = { tool: payload.tool, args: payload.args };
+  } else {
+    return invalidGeneratedAction(parseKind, generatedText, "json_action_shape_invalid");
+  }
+  const validation = validateActionForMeta(action, meta);
+  return {
+    action,
+    generated_text: generatedText,
+    parse_kind: parseKind,
+    parse_failure: false,
+    parse_error: null,
+    schema_valid: validation.valid,
+    validation_failure: !validation.valid,
+    validation_error: validation.error,
+  };
+}
+
+function buildCandidateTrie(candidates) {
+  const root = { children: new Map(), terminal: null };
+  for (const candidate of candidates) {
+    let node = root;
+    for (const tokenId of candidate.token_ids) {
+      if (!node.children.has(tokenId)) {
+        node.children.set(tokenId, { children: new Map(), terminal: null });
+      }
+      node = node.children.get(tokenId);
+    }
+    if (node.terminal && canonicalActionJson(node.terminal.action) !==
+        canonicalActionJson(candidate.action)) {
+      throw new Error("Two constrained actions encode to the same token sequence.");
+    }
+    node.terminal = candidate;
+  }
+  return root;
+}
+
+function groundedActionCandidates(query, meta = META, tokenizer = TOKENIZER) {
+  // EOS is the canonical no-tool candidate. Every constrained next-token decision, including the
+  // root, is therefore masked to an edge in this trie.
+  const candidates = [{
+    action: { abstain: true },
+    completion: "",
+    token_ids: [tokenizer.eosId],
+  }];
+  for (const spec of meta?.tools || []) {
+    const args = groundFromSchema(query, spec.schema || {});
+    if (args == null) continue;
+    const action = { tool: spec.name, args };
+    const completion = canonicalToolCompletion(action, meta);
+    const tokenIds = tokenizer.encode(completion);
+    if (!tokenIds.length) continue;
+    candidates.push({ action, completion, token_ids: tokenIds });
+  }
+  return candidates;
+}
+
+function tensorLastTokenLogits(logitsTensor, sequenceLength) {
+  const vocab = logitsTensor.dims?.[logitsTensor.dims.length - 1] || META.vocab_size;
+  const offset = (sequenceLength - 1) * vocab;
+  return logitsTensor.data.subarray
+    ? logitsTensor.data.subarray(offset, offset + vocab)
+    : Array.from(logitsTensor.data).slice(offset, offset + vocab);
+}
+
+function argmaxAllowed(logits, allowedTokenIds) {
+  let bestToken = null;
+  let bestLogit = -Infinity;
+  for (const tokenId of allowedTokenIds) {
+    const value = logits[tokenId];
+    if (bestToken == null || value > bestLogit || (value === bestLogit && tokenId < bestToken)) {
+      bestLogit = value;
+      bestToken = tokenId;
+    }
+  }
+  if (bestToken == null) throw new Error("Constrained decoder reached an empty trie node.");
+  return bestToken;
+}
+
+function autoregressiveTiming(
+  started,
+  tokenizedAt,
+  inferenceMs,
+  decodeControlMs,
+  parseValidateMs,
+  tokenTimes
+) {
+  const completedAt = performance.now();
+  return {
+    tokenize_ms: tokenizedAt - started,
+    inference_ms: inferenceMs,
+    decode_control_ms: decodeControlMs,
+    dispatch_ms: 0,
+    parse_validate_ms: parseValidateMs,
+    // TTFT begins when the tokenized request is submitted to inference. TTFA deliberately starts
+    // earlier and includes tokenization plus parse/validation because it is user-visible latency.
+    ttft_ms: tokenTimes.length ? tokenTimes[0] - tokenizedAt : null,
+    tpot_ms: tokenTimes.length > 1
+      ? (tokenTimes[tokenTimes.length - 1] - tokenTimes[0]) / (tokenTimes.length - 1)
+      : null,
+    ttfa_ms: completedAt - started,
+  };
+}
+
+function generationLimit(promptIds, requestedMax) {
+  const requested = Math.max(1, Number.parseInt(requestedMax, 10) || 192);
+  if (!META.max_seq_len) return requested;
+  const available = META.max_seq_len - promptIds.length;
+  if (available <= 0) {
+    throw new Error(
+      `Prompt has ${promptIds.length} tokens but model max_seq_len is ${META.max_seq_len}.`
+    );
+  }
+  return Math.min(requested, available);
+}
+
+async function rawAutoregressiveAction(query, options = {}) {
+  const started = performance.now();
+  const prompt = cachedActionPrompt(query, options.targetInputTokens);
+  const promptIds = prompt.ids;
+  const inputBytes = prompt.inputBytes;
+  const tokenizedAt = performance.now();
+  const maxOutputTokens = generationLimit(promptIds, options.maxOutputTokens);
+  const bundle = await ensureCachedDecodeSessions();
+  const runner = createCachedAutoregressiveRunner(bundle, promptIds);
+  const selectionOptions = {
+    ...options,
+    random: options.random || seededTokenRandom(
+      String(options.seed ?? `raw:${query}`)
+    ),
+  };
+  const generated = [];
+  const visible = [];
+  const tokenTimes = [];
+  let inferenceMs = 0;
+  let decodeControlMs = 0;
+  let stopReason = "max_tokens";
+
+  try {
+    for (let step = 0; step < maxOutputTokens; step++) {
+      const inferenceStarted = performance.now();
+      const decision = step === 0
+        ? await runner.prefill()
+        : await runner.decode(generated.at(-1));
+      const inferenceEnded = performance.now();
+      inferenceMs += inferenceEnded - inferenceStarted;
+      const controlStarted = performance.now();
+      const tokenId = selectTokenFromLogits(decision.logits, selectionOptions);
+      generated.push(tokenId);
+      if (tokenId !== TOKENIZER.eosId) visible.push(tokenId);
+      tokenTimes.push(performance.now());
+      decodeControlMs += performance.now() - controlStarted;
+      if (tokenId === TOKENIZER.eosId) {
+        stopReason = "eos";
+        break;
+      }
+    }
+  } finally {
+    runner.dispose();
+  }
+
+  const generatedText = TOKENIZER.decode(visible, false);
+  const parseStarted = performance.now();
+  const parsed = parseGeneratedAction(generatedText, stopReason);
+  const parseValidateMs = performance.now() - parseStarted;
+  const timing = autoregressiveTiming(
+    started, tokenizedAt, inferenceMs, decodeControlMs, parseValidateMs, tokenTimes
+  );
+  return {
+    ...parsed.action,
+    policy: ACTION_POLICIES.RAW_AR,
+    generated_text: parsed.generated_text,
+    parse_kind: parsed.parse_kind,
+    parse_failure: parsed.parse_failure,
+    parse_error: parsed.parse_error,
+    schema_valid: parsed.schema_valid,
+    validation_failure: parsed.validation_failure,
+    validation_error: parsed.validation_error,
+    stop_reason: stopReason,
+    output_tokens: visible.length,
+    decode_steps: generated.length,
+    inference_passes: generated.length,
+    prefill_passes: generated.length ? 1 : 0,
+    cached_decode_passes: Math.max(0, generated.length - 1),
+    decode_cache: true,
+    decode_strategy: CACHED_DECODE_STRATEGY,
+    token_selection: Number(options.temperature ?? 0) > 0
+      ? "temperature_top_k_sampling_from_logits"
+      : "deterministic_argmax_from_logits",
+    next_token_role: "compatibility_argmax_cross_check",
+    prompt_contract: prompt.promptContract,
+    tool_catalog_size: prompt.toolCatalogSize,
+    input_tokens: promptIds.length,
+    input_bytes: inputBytes,
+    natural_input_tokens: prompt.naturalInputTokens,
+    context_padding_tokens: prompt.paddingTokens,
+    context_padding_placement: prompt.contextPaddingPlacement,
+    decision_input_tokens: prompt.decisionInputTokens,
+    decision_feature_index: prompt.decisionFeatureIndex,
+    timing,
+    ms: timing.ttfa_ms,
+  };
+}
+
+async function constrainedAutoregressiveAction(query, options = {}) {
+  const started = performance.now();
+  const prompt = cachedActionPrompt(query, options.targetInputTokens);
+  const promptIds = prompt.ids;
+  const inputBytes = prompt.inputBytes;
+  const candidates = groundedActionCandidates(query);
+  if (!candidates.length) {
+    throw new Error("Prompt-grounded constrained decoder produced no schema-valid candidates.");
+  }
+  const root = buildCandidateTrie(candidates);
+  let node = root;
+  const tokenizedAt = performance.now();
+  const maxOutputTokens = generationLimit(promptIds, options.maxOutputTokens);
+  const bundle = await ensureCachedDecodeSessions();
+  const runner = createCachedAutoregressiveRunner(bundle, promptIds);
+  const selectionOptions = {
+    ...options,
+    random: options.random || seededTokenRandom(
+      String(options.seed ?? `constrained:${query}`)
+    ),
+  };
+  const generated = [];
+  const tokenTimes = [];
+  let inferenceMs = 0;
+  let decodeControlMs = 0;
+  let stopReason = "max_tokens";
+
+  try {
+    for (let step = 0; step < maxOutputTokens; step++) {
+      const inferenceStarted = performance.now();
+      const decision = step === 0
+        ? await runner.prefill()
+        : await runner.decode(generated.at(-1));
+      const inferenceEnded = performance.now();
+      inferenceMs += inferenceEnded - inferenceStarted;
+      const controlStarted = performance.now();
+      const tokenId = selectTokenFromLogits(
+        decision.logits,
+        selectionOptions,
+        node.children.keys()
+      );
+      generated.push(tokenId);
+      tokenTimes.push(performance.now());
+      node = node.children.get(tokenId);
+      decodeControlMs += performance.now() - controlStarted;
+      if (node.terminal) {
+        stopReason = "candidate_terminal";
+        break;
+      }
+    }
+  } finally {
+    runner.dispose();
+  }
+
+  const visible = generated.filter((tokenId) => tokenId !== TOKENIZER.eosId);
+  const generatedText = TOKENIZER.decode(visible, false);
+  const parseStarted = performance.now();
+  const parsed = parseGeneratedAction(generatedText, stopReason);
+  const parseValidateMs = performance.now() - parseStarted;
+  const timing = autoregressiveTiming(
+    started, tokenizedAt, inferenceMs, decodeControlMs, parseValidateMs, tokenTimes
+  );
+  return {
+    ...parsed.action,
+    policy: ACTION_POLICIES.CONSTRAINED_AR,
+    generated_text: parsed.generated_text,
+    parse_kind: parsed.parse_kind,
+    parse_failure: parsed.parse_failure,
+    parse_error: parsed.parse_error,
+    schema_valid: parsed.schema_valid,
+    validation_failure: parsed.validation_failure,
+    validation_error: parsed.validation_error,
+    stop_reason: stopReason,
+    output_tokens: visible.length,
+    decode_steps: generated.length,
+    inference_passes: generated.length,
+    prefill_passes: generated.length ? 1 : 0,
+    cached_decode_passes: Math.max(0, generated.length - 1),
+    decode_cache: true,
+    decode_strategy: CACHED_DECODE_STRATEGY,
+    token_selection: Number(options.temperature ?? 0) > 0
+      ? "temperature_top_k_sampling_from_allowed_logits"
+      : "deterministic_argmax_from_allowed_logits",
+    next_token_role: "unconstrained_compatibility_argmax_cross_check",
+    prompt_contract: prompt.promptContract,
+    tool_catalog_size: prompt.toolCatalogSize,
+    candidate_count: candidates.length,
+    input_tokens: promptIds.length,
+    input_bytes: inputBytes,
+    natural_input_tokens: prompt.naturalInputTokens,
+    context_padding_tokens: prompt.paddingTokens,
+    context_padding_placement: prompt.contextPaddingPlacement,
+    decision_input_tokens: prompt.decisionInputTokens,
+    decision_feature_index: prompt.decisionFeatureIndex,
+    timing,
+    ms: timing.ttfa_ms,
+  };
 }
 
 // ---- single grounded call -------------------------------------------------
-async function callOnce(query) {
-  const ids = renderContext(query, []);
+async function structuredAction(query, options = {}) {
   const t0 = performance.now();
+  const prompt = actionPrompt(
+    query,
+    options.targetInputTokens,
+    "trailing_compute"
+  );
+  const ids = prompt.ids;
+  const inputBytes = prompt.inputBytes;
+  const t1 = performance.now();
   const out = await forward(ids);
-  const sel = dispatchSelect(out.hidden, ids.length);
-  const ms = performance.now() - t0;
-  if (sel.isStop) return { abstain: true, route: sel.route, conf: sel.conf, ms };
-  return { tool: sel.name, route: sel.route, args: groundArgs(sel.name, ids, out.hidden, ids.length), conf: sel.conf, ms };
+  const t2 = performance.now();
+  const sel = dispatchSelect(out.hidden, prompt.decisionInputTokens);
+  const result = sel.isStop
+    ? { abstain: true, route: sel.route, conf: sel.conf }
+    : {
+        tool: sel.name,
+        route: sel.route,
+        args: groundArgs(
+          sel.name,
+          query,
+          ids,
+          out.hidden,
+          prompt.decisionInputTokens
+        ),
+        conf: sel.conf,
+      };
+  const t3 = performance.now();
+  const validation = validateActionForMeta(result);
+  const t4 = performance.now();
+  const timing = {
+    tokenize_ms: t1 - t0,
+    inference_ms: t2 - t1,
+    decode_control_ms: 0,
+    dispatch_ms: t3 - t2,
+    parse_validate_ms: t4 - t3,
+    ttft_ms: null,
+    tpot_ms: null,
+    ttfa_ms: t4 - t0,
+  };
+  return {
+    ...result,
+    policy: ACTION_POLICIES.STRUCTURED,
+    generated_text: null,
+    parse_kind: "structured_heads",
+    parse_failure: false,
+    parse_error: null,
+    schema_valid: validation.valid,
+    validation_failure: !validation.valid,
+    validation_error: validation.error,
+    stop_reason: "one_forward",
+    output_tokens: 0,
+    decode_steps: 0,
+    inference_passes: 1,
+    decode_cache: null,
+    decode_strategy: "one_forward_structured_heads",
+    input_tokens: ids.length,
+    input_bytes: inputBytes,
+    natural_input_tokens: prompt.naturalInputTokens,
+    context_padding_tokens: prompt.paddingTokens,
+    context_padding_placement: prompt.contextPaddingPlacement,
+    decision_input_tokens: prompt.decisionInputTokens,
+    decision_feature_index: prompt.decisionFeatureIndex,
+    timing,
+    ms: timing.ttfa_ms,
+  };
+}
+
+async function callPolicyOnce(query, policy = ACTION_POLICIES.STRUCTURED, options = {}) {
+  await prepareActionPolicy(policy);
+  if (policy === ACTION_POLICIES.STRUCTURED) return structuredAction(query, options);
+  if (policy === ACTION_POLICIES.RAW_AR) return rawAutoregressiveAction(query, options);
+  return constrainedAutoregressiveAction(query, options);
+}
+
+async function callOnce(query) {
+  return callPolicyOnce(query, ACTION_POLICIES.STRUCTURED);
 }
 
 // ---- planner rollout ------------------------------------------------------
 async function planRollout(query, maxSteps = 4) {
   const steps = [];
+  const stepTimings = [];
   const t0 = performance.now();
   for (let i = 0; i < maxSteps; i++) {
+    const s0 = performance.now();
     const ids = renderContext(query, steps);
+    const s1 = performance.now();
     const out = await forward(ids);
+    const s2 = performance.now();
     const sel = dispatchSelect(out.hidden, ids.length);
-    if (sel.isStop) break;
-    const args = groundArgs(sel.name, ids, out.hidden, ids.length);
+    if (sel.isStop) {
+      const s3 = performance.now();
+      stepTimings.push({
+        step: i,
+        input_tokens: ids.length,
+        stopped: true,
+        tokenize_ms: s1 - s0,
+        inference_ms: s2 - s1,
+        dispatch_ms: s3 - s2,
+        ttfa_ms: s3 - s0,
+      });
+      break;
+    }
+    const groundingText = [query, ...steps.map((step) => step.response || "")].join(" ");
+    const args = groundArgs(sel.name, groundingText, ids, out.hidden, ids.length);
+    const s3 = performance.now();
     steps.push({ tool: sel.name, route: sel.route, args, conf: sel.conf, response: simResponse(sel.name, args) });
+    stepTimings.push({
+      step: i,
+      input_tokens: ids.length,
+      stopped: false,
+      tokenize_ms: s1 - s0,
+      inference_ms: s2 - s1,
+      dispatch_ms: s3 - s2,
+      ttfa_ms: s3 - s0,
+    });
   }
-  return { steps, ms: performance.now() - t0 };
+  return { steps, stepTimings, ms: performance.now() - t0 };
 }
 
 // A compact simulated tool response so downstream steps have context.
@@ -236,15 +2403,67 @@ function wireUI() {
   });
 }
 
-(async function main() {
-  wireUI();
-  try {
-    setStatus("loading", "Loading model… (first load downloads & caches the weights)");
-    await loadBundle();
-    setStatus("ready", "Model ready — runs locally in your browser.", BACKEND);
-    $("run").disabled = false;
-  } catch (e) {
-    console.error(e);
-    setStatus("error", "Failed to load the model bundle: " + e.message);
-  }
-})();
+let LOCALAGENT_READY;
+if (window.__localAgentSkipInit) {
+  LOCALAGENT_READY = Promise.resolve({ backend: null });
+} else {
+  LOCALAGENT_READY = (async function main() {
+    wireUI();
+    try {
+      setStatus("loading", "Loading model… (first load downloads & caches the weights)");
+      await loadBundle();
+      setStatus("ready", "Model ready — runs locally in your browser.", BACKEND);
+      $("run").disabled = false;
+      return { backend: BACKEND };
+    } catch (e) {
+      console.error(e);
+      setStatus("error", "Failed to load the model bundle: " + e.message);
+      throw e;
+    }
+  })();
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    ACTION_POLICIES,
+    argmaxAllowed,
+    bundleArtifactEvidence,
+    bundleManifestByteEvidence,
+    buildCandidateTrie,
+    cachedActionPrompt,
+    cachedDecodeBundleEvidence,
+    cachedFeeds,
+    cachedOutputLocations,
+    cachedSessionOptions,
+    canonicalActionJson,
+    createCachedAutoregressiveRunner,
+    greedyToken,
+    groundedActionCandidates,
+    materializeCachedLogits,
+    padPromptIds,
+    padPromptIdsTrailing,
+    parseGeneratedAction,
+    renderFullCatalogContextText,
+    renderFullFunctionCatalog,
+    runtimeAssetEvidence,
+    fillSchemaArg,
+    fetchPinnedJsonArtifact,
+    groundFromSchema,
+    groundedArgsValid,
+    groundingPools,
+    manifestArtifactFor,
+    modelArtifactEvidence,
+    sha256Bytes,
+    selectTokenFromLogits,
+    validateActionForMeta,
+    validateBenchmarkBundleContract,
+    validateCachedGraphContract,
+    validateCachedStepOutputs,
+    validateProductionCachedBundle,
+    validateSessionOutputs,
+    validateTrainingLineageExport,
+    verifyArtifactBytesAgainstManifest,
+    verifyModelBytesAgainstManifest,
+    verifyPinnedArtifactBytes,
+  };
+}

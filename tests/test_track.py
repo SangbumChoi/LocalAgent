@@ -12,9 +12,12 @@ def test_run_and_metrics(tmp_path):
 
 def test_content_addressed_dedup(tmp_path):
     tr = Tracker(str(tmp_path / "t"))
-    a = tmp_path / "w.pt"; a.write_bytes(b"same-weights")
-    b = tmp_path / "w2.pt"; b.write_bytes(b"same-weights")   # identical content
-    c = tmp_path / "w3.pt"; c.write_bytes(b"different")
+    a = tmp_path / "w.pt"
+    a.write_bytes(b"same-weights")
+    b = tmp_path / "w2.pt"
+    b.write_bytes(b"same-weights")  # identical content
+    c = tmp_path / "w3.pt"
+    c.write_bytes(b"different")
     rid = tr.start_run("r")
     s1 = tr.log_artifact(rid, str(a), "state")
     s2 = tr.log_artifact(rid, str(b), "state")               # same bytes -> same hash, no copy
@@ -27,7 +30,8 @@ def test_content_addressed_dedup(tmp_path):
 
 def test_latest_artifact_roundtrip(tmp_path):
     tr = Tracker(str(tmp_path / "t"))
-    p = tmp_path / "d.jsonl"; p.write_text('{"x":1}\n')
+    p = tmp_path / "d.jsonl"
+    p.write_text('{"x":1}\n')
     rid = tr.start_run("r")
     tr.log_artifact(rid, str(p), "dataset")
     path = tr.latest_artifact("dataset")

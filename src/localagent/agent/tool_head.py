@@ -37,8 +37,17 @@ def label_of(sample) -> str:
 
 
 @torch.no_grad()
-def _feat(model, tok, prompt: str, device) -> torch.Tensor:
-    ids = torch.tensor([tok.encode(f"{USER}{prompt}{ASSISTANT}")], dtype=torch.long, device=device)
+def _feat(model, tok, prompt: str, device, *, framed: bool = False) -> torch.Tensor:
+    """Return the final prompt feature for raw user text or an already-framed history.
+
+    Training trajectories pass a history that already ends in ``ASSISTANT``. Keeping that explicit
+    avoids silently wrapping it in a second ``USER ... ASSISTANT`` pair. Left truncation matches
+    the model's inference context window and is inert for legacy single-turn prompts that fit.
+    """
+
+    text = prompt if framed else f"{USER}{prompt}{ASSISTANT}"
+    encoded = tok.encode(text)[-model.cfg.max_seq_len :]
+    ids = torch.tensor([encoded], dtype=torch.long, device=device)
     _, feats = model(ids, return_hidden=True)
     return feats[0, -1]  # final prompt-token features (d_model)
 
@@ -62,7 +71,12 @@ def train_tool_head(model, samples, tok, *, steps=300, batch_size=64, lr=5e-3, d
     model.eval()
     head = ToolHead(model.cfg.d_model).to(device)
     # cache frozen features + labels once (linear probe)
-    feats = torch.stack([_feat(model, tok, s.prompt, device) for s in samples])
+    feats = torch.stack(
+        [
+            _feat(model, tok, s.prompt, device, framed=bool(getattr(s, "framed", False)))
+            for s in samples
+        ]
+    )
     labels = torch.tensor([CLASSES.index(label_of(s)) for s in samples], device=device)
     opt = torch.optim.AdamW(head.parameters(), lr=lr)
     import random

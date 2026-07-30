@@ -24,7 +24,8 @@ dependencies = [
 [project.optional-dependencies]
 data = ["datasets>=2.18", "requests>=2.31"]          # corpus + teacher data fetching
 demo = ["gradio>=4.0", "matplotlib>=3.7"]              # web demo + flywheel/benchmark viz
-export = ["onnx>=1.16", "onnxruntime>=1.18"]           # ONNX path (GGUF/ExecuTorch use their own toolchains)
+# ONNX path (GGUF/ExecuTorch use their own toolchains).
+export = ["onnx>=1.16", "onnxruntime>=1.18", "onnxscript>=0.5"]
 hub = ["huggingface_hub>=0.23", "safetensors>=0.4"]    # push trained weights to the HF Hub
 dev = ["pytest>=8.0", "ruff>=0.4"]
 
@@ -37,6 +38,12 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+# Keep the repository's documented lint contract stable across Ruff releases.
+# Ruff 0.16 broadened its implicit defaults; these are Ruff's historical defaults
+# and the rules this codebase has treated as required.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -150,8 +150,10 @@ def evaluate_grounded(model, samples, tok, tools, device="cpu", tool_head=None, 
                                   tool_head=tool_head, ptr_head=ptr_head)
         ok = _correct(s, out)
         n_correct += ok
-        by_group[s.group][0] += ok; by_group[s.group][1] += 1
-        by_cat[s.category][0] += ok; by_cat[s.category][1] += 1
+        by_group[s.group][0] += ok
+        by_group[s.group][1] += 1
+        by_cat[s.category][0] += ok
+        by_cat[s.category][1] += 1
     return {
         "overall": n_correct / len(samples),
         "groups": {g: c / t for g, (c, t) in by_group.items()},
@@ -225,9 +227,12 @@ def multi_turn_eval(model, episodes, tok, tools, device="cpu", tool_head=None, p
                                   ptr_head=ptr_head, framed=True)
             pred = extract_tool_calls(out)
             ok = bool(pred) and match_calls([pred[0]], [m.tool_calls[0]])
-            step_ok += ok; step_tot += 1; all_ok = all_ok and ok
+            step_ok += ok
+            step_tot += 1
+            all_ok = all_ok and ok
         if has_step:
-            ep_tot += 1; ep_ok += all_ok
+            ep_tot += 1
+            ep_ok += all_ok
     return {"step_acc": step_ok / max(1, step_tot), "episode_acc": ep_ok / max(1, ep_tot),
             "steps": step_tot, "episodes": ep_tot}
 

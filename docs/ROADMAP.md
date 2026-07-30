@@ -11,51 +11,115 @@ Stubs reference these phase numbers in their `TODO(phase-N)` markers.
 - Outcome: `pip install -e .`, `localagent --help`, `pytest` (schema/model/config tests) pass.
 
 ## Phase 1 — Model & tokenizer
-- [ ] Finish the decoder (GQA + RoPE + SwiGLU + KV cache), forward/generate.
-- [ ] Train BPE tokenizer with agent special tokens; round-trip tests.
-- [ ] `tiny-30m` constructs and runs a forward pass on CPU.
+- [x] Finish the decoder (GQA + RoPE + SwiGLU + KV cache), forward/generate.
+- [x] Train BPE tokenizer with agent special tokens; round-trip tests.
+- [x] `tiny-30m` constructs and runs a forward pass on CPU.
 - Exit: untrained model generates tokens; param count < 100M asserted.
 
 ## Phase 2 — Pretrain
-- [ ] Corpus download + quality filter + shard packing.
-- [ ] `pretrain.py` loop (AdamW/Muon, cosine LR, grad accum, ckpt/resume) on CPU & GPU.
-- [ ] `speedrun.sh` pretrains a toy model end-to-end.
+- [x] Corpus download + quality filter + document-level split + shard packing.
+- [x] `pretrain.py` loop (AdamW, cosine/WSD LR, grad accum, ckpt/resume) on CPU & GPU.
+- [x] `speedrun.sh` pretrains a toy model end-to-end.
+- [x] Preserve the observed exploratory seed-2026 10.5M matched proxy, then complete the clean
+      prospective seed-2027–2029 confirmation with exact held-out scorecards
+      ([summary](./paper/results/webgpu-proxy-1tpp-10m-seeds2027-2029.summary.json);
+      [raw bundle](./paper/results/raw/pretrain-proxy-seeds2027-2029/)).
+- [ ] Externally timestamp, then complete the prespecified 35M,
+      at-least-five-token-per-parameter, multi-seed architecture screen before promotion to the
+      20-TPP/downstream comparison.
+- [ ] Train a latency-feasible 10M-class candidate at the full token budget for the autoregressive
+      deployment track. The measured 34M hybrid misses 100 tokens/s at every context and remains
+      only a structured-action/scientific candidate without runtime gains.
+- [ ] Isolated Muon/MuonClip optimizer ablation with stability metrics.
 - Exit: loss decreases; coherent-ish completions at toy scale.
 
+## Phase 2.5 — Domain midtrain
+- [x] Scheduled general/code/agent mixture with masked canonical conversations.
+- [x] WSD continuation, resumable checkpoints, and deterministic per-source held-out pre/post
+      metrics.
+- [ ] Run token-budget/mixture ablations on the WebGPU tier.
+- [x] Run the confirmatory seed-2027 10M hybrid through a bounded midtrain/SFT/offline-RL pilot
+      with frozen held-out metrics and artifact lineage. Midtrain and SFT improved their targeted
+      held-out metrics, but midtrain slightly regressed general replay and RL produced zero
+      held-out delta; this does not complete the 34M five-TPP screen or the subsequent
+      20-TPP/downstream quality selection.
+- [x] Implement and freeze the corrected fixed-compute browser arm: append filler after the
+      natural assistant marker, dispatch from that marker's hidden position, and bound pointer
+      scans to natural tokens.
+- [ ] Externally timestamp v0.4, then run three corrected action and DOM browser sessions.
+      Train/evaluate the prespecified
+      pre-marker-padding materialization separately only if claiming genuine fixed-512-context
+      capability.
+- Exit: agent/code scores rise without unacceptable general-validation regression.
+
 ## Phase 3 — Agent data
-- [ ] `agent_synth.py`: tool pool → multi-agent synthesis → irrelevance negatives → dual verify.
-- [ ] Export verified `Conversation`s as JSONL; importer for xLAM/ToolACE-format data.
-- Exit: a few-thousand-sample verified agent dataset on disk.
+- [x] `agent_synth.py`: deterministic synthesis → irrelevance negatives → schema verification.
+- [x] Export rule-audited, non-executed `Conversation`s as JSONL with a dataset manifest, frozen
+      train/eval split, and pinned exact-prompt holdouts.
+- [ ] External teacher/verifier adapters and xLAM/ToolACE-format importer.
+- Exit: a few-thousand-sample rule-audited agent dataset on disk, with executed-environment
+  verification required before any stronger claim.
 
 ## Phase 4 — SFT
-- [ ] `sft.py`: loss-masked chat+tool training, function masking.
-- [ ] Tool format wired through tokenizer + parser.
+- [x] `sft.py`: config-driven, loss-masked chat+tool training with route/select/copy heads.
+- [x] Export and measure the seed-2027 SFT structured action graph in three WebGPU sessions.
+      Fixed-512 TTFA was fast, but only 1/20 cases was exact and it was the abstention case.
+- [x] Run the 1M parent-anchor continuation with immutable archives and frozen retention gates.
+      Step 12 was the strict teacher-forced winner, but its bound development greedy scorecard
+      had 170/820 EOS completions and zero valid protocol outputs; confirmatory evaluation,
+      fallback selection, RL, and candidate WebGPU promotion were correctly withheld.
+- [ ] Schema-preserving function masking / tool-renaming augmentation.
+- [ ] Test explicit autoregressive protocol distillation or the full-budget 10M tier; additional
+      teacher-forced loss reduction alone is not a justified continuation of the failed 1M lane.
+- [x] Tool format wired through tokenizer + parser.
 - Exit: model emits valid `<tool_call>`s and abstains on irrelevant queries.
 
 ## Phase 5 — Eval harness
-- [ ] `tool_eval.py` AST scoring (single/parallel/multiple/irrelevance) + `text_eval.py`.
-- [ ] Multi-turn simulated-user + tool-sandbox harness; JSON reports.
+- [x] AST call matching and single/parallel/irrelevance benchmark primitives.
+- [x] Multi-turn simulated-tool replay and deterministic browser microaction harnesses.
+- [x] Preserve three fixed-512 complete-action runs and three executable local-DOM runs for the
+      SFT pilot. The capability gate failed: all tool-required actions abstained and DOM success
+      was 0/8 unique tasks (0/720 repeated timing opportunities).
+- [ ] Config-driven frozen-suite runner plus general-text evaluation.
 - Exit: a reproducible scorecard for any checkpoint.
 
 ## Phase 6 — Distillation
-- [ ] `distill.py`: off-policy seq-KD (default) + on-policy reverse-KL (MiniLLM/OPD); teacher backend.
-- [ ] Trajectory-level distillation with first-thought prefix.
+- [x] `distill.py`: off-policy top-k/logit KD and on-policy reverse-KL experiments.
+- [ ] General teacher adapter and trajectory-level distillation with concise decision prefixes.
 - Exit: distilled student beats SFT-only baseline on the tool-eval scorecard.
 
 ## Phase 7 — Agent runtime + memory + demos
-- [ ] `agent/runtime.py` loop; `agent/memory.py` two-tier memory as tools.
-- [ ] `chat_cli.py` and `web/app.py` visualizing the tool/memory trace.
+- [x] `agent/runtime.py` checkpoint-backed tool loop with tokenizer-aware loading.
+- [ ] `agent/memory.py` two-tier memory as tools.
+- [ ] Finish `chat_cli.py`; the web demo and WebGPU benchmark surfaces are implemented.
 - Exit: hold a multi-turn, tool-using, memory-backed conversation locally.
 
 ## Phase 8 — Data flywheel
 - [ ] Conversation store (SQLite) + feedback schema (AITL).
-- [ ] `flywheel.py`: ingest → mine → verify → append → schedule retrain → eval → redeploy.
+- [x] Deterministic synth → train → evaluate → failure-reweight research loop.
+- [ ] Production ingest → mine → verify → append → retrain → evaluate → redeploy loop.
 - Exit: a logged session produces verified new training samples and a retrain run.
 
 ## Phase 9 — Export (CPU/GPU/NPU)
-- [ ] `export/`: GGUF, ONNX, ExecuTorch converters + Q4 quantizer + parity tests.
+- [x] ONNX/WebGPU and Hugging Face export with tokenizer/head metadata, fail-closed graph parity,
+      and browser-side artifact-byte verification for benchmark runs.
+- [x] Separate prompt-prefill/fixed-one-token cache-bearing ONNX graphs with multi-step trajectory
+      parity and GPU-buffer cache rebinding in the standalone browser latency harness.
+- [x] Bind the exploratory seed-2026 pretrain checkpoints to parity-gated graphs and three
+      preserved browser runs; keep held-out quality separate and fail the joint gate when p95
+      TPOT exceeds its threshold.
+- [x] Export the seed-2027 SFT checkpoint as a parity-gated fp16 one-forward action graph and bind
+      its exact checkpoint/tokenizer/head/graph identities to preserved browser payloads.
+- [ ] Integrate cache-bearing decode with the trained complete-action autoregressive controls.
+- [ ] GGUF, ExecuTorch, and real Q4 converters with runtime parity tests.
 - Exit: same weights run via PyTorch, llama.cpp, ONNX Runtime, and ExecuTorch with matching outputs.
 
 ## Phase 10 — RL (optional)
-- [ ] `rl.py`: GRPO with tool-correctness + task-success reward.
+- [x] Config-driven autoregressive clipped GRPO with exact normalized tool-AST/text rewards, format
+      shaping, reference KL, and explicit structured-head invalidation after backbone updates.
+- [x] Run a bounded seed-2027 offline-RL pilot: 6/128 groups were informative, 12 optimizer
+      updates were realized, and every held-out metric was unchanged.
+- [x] Enforce candidate-bound readiness: the retained 1M step-12 candidate failed development, so
+      no confirmatory, RL-preflight, production-RL, or reward artifact was created for it.
+- [ ] BrowserGym/MiniWoB-style multi-step environments and final-state task rewards.
 - Exit: measurable lift on multi-turn task success.

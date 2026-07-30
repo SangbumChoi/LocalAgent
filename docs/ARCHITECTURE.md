@@ -17,9 +17,9 @@ local **agent** (tool calling + text generation). Design choices are justified i
    DATA                  TRAIN                          EVAL              SERVE
  ┌────────────┐   ┌──────────────────────┐      ┌──────────────┐   ┌──────────────┐
  │ pretrain   │   │ pretrain (from scratch)│      │ tool_eval    │   │ agent.runtime│
- │ corpus     │──▶│ sft (chat + tools)    │─────▶│  (BFCL-AST)  │──▶│ + tools      │
- │ agent_synth│   │ distill (rev-KL / OPD)│      │ text_eval    │   │ + memory     │
- │ flywheel   │   │ rl (GRPO, optional)   │      │ multi-turn   │   │ demos/ (UI)  │
+ │ corpus     │──▶│ domain midtrain       │─────▶│ (AST/schema) │──▶│ + tools      │
+ │ agent_synth│   │ SFT / distill         │      │ text_eval    │   │ + memory     │
+ │ flywheel   │   │ offline RL (optional) │      │ multi-turn   │   │ demos/ (UI)  │
  └────────────┘   └──────────────────────┘      └──────────────┘   └──────┬───────┘
        ▲                                                                   │
        │                                                                   ▼
@@ -30,8 +30,8 @@ local **agent** (tool calling + text generation). Design choices are justified i
                                │ redeploy                      │    └──────────────┘
                                └──────────────────────────────┘
                                             │
-                      EXPORT (inference/export): PyTorch ▸ GGUF ▸ ONNX ▸ ExecuTorch
-                      runs on CPU / GPU / NPU
+                      EXPORT: PyTorch ▸ ONNX/WebGPU today
+                              GGUF / ExecuTorch remain honest stubs
 ```
 
 Everything is a small Python module under `src/localagent/`, driven by YAML configs in
@@ -42,29 +42,40 @@ tokenizer.
 
 ## 2. The model (`localagent.model`)
 
-A compact Llama-style decoder, sized to stay **< 100M params**, favoring **depth over width**
-and **GQA** (per SmolLM2).
+A compact decoder, sized to stay strictly **< 100M params**, favoring depth over width and a
+small KV-head count. Sequence mixing is an experimental axis: periodic full causal
+attention is compared against cheap causal short-convolution, rather than calling the latter
+Kimi Delta Attention.
 
-- **Blocks:** pre-norm RMSNorm → GQA self-attention (RoPE positions) → SwiGLU MLP, residual.
+- **Blocks:** pre-norm RMSNorm → MQA/GQA attention with RoPE and optional QK-Norm, or gated
+  causal short-convolution → SwiGLU MLP, with residuals.
 - **Tied** input/output embeddings (the embedding table dominates param count at this scale).
-- **KV cache** for generation; sliding-window optional.
-- **Three tiers** (`configs/model/`) — each with a distinct job, not just "the same model,
-  smaller" (see [`ARCHITECTURE_IDEAS.md`](./ARCHITECTURE_IDEAS.md)):
+- **Inference state:** attention stores K/V per token; short-convolution stores a fixed tail.
+  Recurrent passes share weights but retain separate cache slots, preserving exact cached/fresh
+  parity.
+- **Shared-paper tiers:** one frozen 16K BPE tokenizer and corpus split, 2K packed pretraining
+  rows, and a 4K model limit make loss and prompt-capacity comparisons meaningful.
 
-  | config | d_model | blocks×loops | heads / kv | ffn | vocab | ~params | role |
-  |---|---|---|---|---|---|---|---|
-  | `ultra-tiny-1m` | 192 | 2×6 (depth 12) | 6 / 2 | 640 | byte 256 | ~1.0M | tool router |
-  | `tiny-30m`  | 384 | 12×1 | 6 / 2  | 1024 | 32k | ~31M | agent |
-  | `small-90m` | 640 | 16×1 | 10 / 2 | 1728 | 32k | ~89M | capable agent |
+  | config | d_model / embed | unique blocks × loops | heads / kv | ffn | exact params | job |
+  |---|---|---|---|---|---:|---|
+  | `webgpu-1m-bpe-router` | 128 / 32 | 2 × 3, `[conv, attn]` | 2 / 1 | 432 | 980,480 | recurrent router/planner |
+  | `webgpu-10m-hybrid-4k` | 384 / 384 | 4 × 1, `[conv, attn, conv, attn]` | 6 / 1 | 512 | 10,524,544 | latency-feasible AR candidate |
+  | `webgpu-10m-attn-4k` | 384 / 384 | 4 × 1, all attention | 6 / 1 | 624 | 10,547,072 | matched 10M control |
+  | `webgpu-96m-hybrid` | 640 / 640 | 18 × 1, 12 conv + 6 attention | 10 / 1 | 1728 | 95,320,448 | near-budget quality/feasibility |
+  | `webgpu-96m-attn` | 640 / 640 | 18 × 1, all attention | 10 / 1 | 1984 | 95,298,944 | matched 96M control |
 
-  The ultra-tiny tier adds three structural levers — **byte vocab**, **factorized embeddings**
-  (`embed_dim`), and **depth-recurrence** (`n_loops`, shared-weight passes) — that make ~1M
-  feasible. Param budget is asserted at construction so configs can't silently exceed 100M.
+  The 1M tier pays for a common BPE vocabulary through factorized embeddings and recovers
+  effective depth six through shared-weight recurrence. The 10M and 96M FFN widths deliberately
+  compensate for mixer parameter differences; each comparison estimates the complete matched
+  package, not an isolated mixer substitution. Legacy byte 1M and 30M/90M configs remain useful
+  smoke/reference models but are not the shared-paper tiers.
 
 **Tokenizer** (`model/tokenizer.py`): a byte-level BPE (trained with the `tokenizers` lib) with
 **agent special tokens** so tool use is in-vocabulary:
-`<|system|> <|user|> <|assistant|> <|tool|>`, `<tool_call>` / `</tool_call>`,
-`<tool_response>` / `</tool_response>`, and `<|eot|>`.
+`<|end|>`, `<|user|>`, `<|assistant|>`, `<|tool|>`, `<tool_call>` / `</tool_call>`, and
+`<tool_response>` / `</tool_response>`. The full-catalog contract additionally reserves
+`<|system|>` and `<|tool_catalog|>` framing and rejects those literal boundaries recursively
+from user-controlled data.
 
 ---
 
@@ -72,17 +83,16 @@ and **GQA** (per SmolLM2).
 
 ### Wire format (ChatML-ish, tool-native)
 ```
-<|system|>
-You are LocalAgent. Tools:
-{json schema of available tools}
+<|tool_catalog|>{"tools":[{"type":"function","function":{...}}]}</|tool_catalog|><|end|>
+<|system|>You are LocalAgent.
 <|user|>
 What's the weather in Paris?
 <|assistant|>
-<tool_call>{"name": "get_weather", "arguments": {"city": "Paris"}}</tool_call><|eot|>
+<tool_call>{"arguments":{"city":"Paris"},"name":"get_weather"}</tool_call><|end|>
 <|tool|>
 <tool_response>{"temp_c": 19, "cond": "cloudy"}</tool_response>
 <|assistant|>
-It's 19°C and cloudy in Paris.<|eot|>
+It's 19°C and cloudy in Paris.<|end|>
 ```
 The model decides between **emitting text** and **emitting a `<tool_call>`** (or abstaining — the
 irrelevance case from Hammer/BFCL).
@@ -96,8 +106,9 @@ build prompt(system+tools+history+memory) → generate →
 ```
 - `agent/tools.py` — a **tool registry** (`@tool` decorator → name, JSON schema, callable),
   with a sandbox boundary and a few built-ins (calc, web stub, memory tools).
-- `agent/parser.py` — robust extraction of tool calls into an **AST** (also reused by the
-  evaluator) + tolerant JSON repair.
+- `agent/parser.py` — tolerant extraction/repair for legacy interactive runtime use. Training,
+  RL rewards, and scorecards use a separate strict whole-output parser so repaired or
+  mixed-content generations cannot earn exact credit.
 - `agent/memory.py` — **two-tier MemGPT-style memory**: `core` (always in context) + `archival`
   (out-of-context, searchable), exposed to the model as tools (`memory_append`,
   `memory_search`, `memory_replace`) with a paging/consolidation policy.
@@ -109,8 +120,16 @@ build prompt(system+tools+history+memory) → generate →
 - `schema.py` — canonical dataclasses: `Message`, `ToolSpec`, `ToolCall`, `Conversation`,
   `Sample`. One JSONL line = one `Conversation`. This is the single interchange format across
   synth, flywheel, SFT, and eval (APIGen/xLAM-style).
-- `pretrain_corpus.py` — streaming/packing of a quality-filtered text corpus into token shards
-  (data-centric, SmolLM2-style). Toy default downloads a small public sample.
+- `pretrain_corpus.py` — descriptor-bound streaming, disk-backed quality filtering,
+  exact/near-dedup, document-level splitting, train-only tokenizer fitting, and immutable
+  memory-mapped packed shards. The production paper corpus has 504,010 retained documents and
+  528,669,610 verified BPE tokens.
+- `conversation_artifact.py` — one-pass JSONL verification against manifest byte/hash/count
+  declarations, catalog interning, recursively immutable verified rows, and semantic plus
+  exact-rendered-prompt contamination audits.
+- `prompt_contract.py` — one exact full OpenAI-style function catalog and role-history
+  materialization shared by midtraining, SFT, RL, and evaluation. It emits one masked row per
+  assistant decision and forbids truncation.
 - `agent_synth.py` — the **synthetic agent-data generator** (ToolACE + APIGen + Hammer):
   1. sample tools from an API pool, 2. multi-agent dialog synthesis at a **target complexity**,
   3. inject **irrelevance negatives**, 4. **dual verification** (rule: schema/AST valid; model:
@@ -127,18 +146,26 @@ accelerators, autocast + dtype policy) so the *same* loop runs on GPU, CPU, or N
 
 | stage | file | objective |
 |---|---|---|
-| Pretrain | `pretrain.py` | next-token CE on packed corpus shards; AdamW/Muon, cosine LR, grad accum, checkpointing |
-| SFT | `sft.py` | next-token CE on `Conversation`s, **loss-masked** to assistant + tool-call spans; **function masking** (Hammer) |
+| Pretrain | `pretrain.py` | next-token CE on packed corpus shards; AdamW, cosine/WSD, exact accounting, periodic resumable checkpoints |
+| Midtrain | `midtrain.py` | scheduled general/code/structured/agent continuation with token-faithful mixture accounting and resumable state |
+| SFT | `sft.py` | exact full-catalog decision prompts, loss masked to the current assistant body + EOS, plus optional route/select/copy heads |
 | Distill | `distill.py` | **off-policy seq-KD** (default) and **on-policy reverse-KL** (MiniLLM/OPD) from a teacher; trajectory-level |
-| RL | `rl.py` | optional **GRPO** with a tool-correctness + task-success reward |
+| RL | `rl.py` | optional offline group-relative clipped-ratio update with reference KL and strict exact tool/text rewards |
 
-Checkpoints are plain `state_dict` + config, resumable.
+Checkpoints are plain PyTorch mappings with model/config/tokenizer/data/code lineage. Pretraining
+and midtraining restore optimizer, RNG, sampler, accounting, and validation state. SFT and RL also
+write periodic atomic checkpoints and restore their optimizer, backend RNG, deterministic
+decision/prompt schedule, accounting, history, and stage-specific auxiliary state. Every resume
+path fails closed on lineage, execution, or sealed-state drift.
 
 ## 6. Evaluation (`localagent.eval`)
 
-- `tool_eval.py` — **AST-based** BFCL-style scoring: parse predicted vs reference calls, compare
-  trees; metrics for **single / parallel / multiple / multi-turn** and an **irrelevance**
-  (correct-abstention) score.
+- `tool_eval.py` — strict whole-output AST/schema scoring for single, parallel, sequential,
+  multi-turn, text, and abstention decisions. It is an internal **BFCL-style** scorecard, not an
+  official BFCL result; official BFCL uses its own released generator/checker.
+- `agent_scorecard.py` — binds the model, checkpoint, tokenizer, training contract, cases,
+  evaluator source, 4K prompt/decode budget, and deterministic generation into a self-hashed
+  result. It fails closed on prompt-contract or lineage drift.
 - `text_eval.py` — perplexity + a few task accuracies (small ARC/GSM-style sets) for the
   text-generation side.
 - `harness.py` — runs a config'd suite, writes a JSON report; also drives a **multi-turn**
@@ -160,23 +187,30 @@ This is what makes the system improve from real local usage instead of staying s
 
 ## 8. Inference & export (`localagent.inference`)
 
-- `generate.py` — KV-cached sampling (greedy / temp / top-p) used by the agent runtime and eval.
-- `export/` — one converter per target: `to_gguf.py`, `to_onnx.py`, `to_executorch.py`, plus a
-  shared **Q4_0-style quantizer** and a **parity** check. Goal: the same trained weights run on
-  CPU/GPU/NPU through whichever runtime fits the device.
+- `generate.py` — KV-cached sampling (greedy / temperature / top-p) for PyTorch runtime/eval.
+- `export/to_onnx.py` — PyTorch/ONNX parity plus separate cache-bearing prefill and single-token
+  decode graphs used by the WebGPU latency harness. The matched random-weight 10.5M hybrid clears
+  100 tok/s at 128–1,536 cached contexts on one M5/Chrome setup; that is a systems result, not
+  learned capability.
+- The browser agent now consumes lineage-bound post-training prefill/decode exports for both
+  unrestricted and schema-constrained autoregressive controls. It lazily loads one prefill and one
+  fixed-`T=1` decode graph, rebinds cache tensors without JavaScript readback, and reports the
+  cache strategy explicitly. A final trained 4K bundle and real 3.6K-prompt WebGPU score remain
+  required; integration is not performance evidence.
+- `to_gguf.py` and `to_executorch.py` remain explicit `NotImplementedError` stubs. Theoretical
+  Q4 byte counts are not presented as an implemented browser quantizer.
 
 ## 9. Demos (`demos/`)
 
-- `chat_cli.py` — terminal agent chat (tool calls + memory visible).
-- `web/app.py` — a small web UI (Gradio) that **visualizes** the agent loop: the live
-  tool-call/tool-response trace, token stream, and memory state — the "visualizing the demos"
-  goal.
+- The static WebGPU demo and benchmark surfaces visualize tool/action paths and measured runtime
+  evidence. The CLI `chat` command remains an honest Phase-7 stub.
 
 ## 10. Orchestration (`localagent.pipeline.flow` + `scripts/speedrun.sh`)
 
-`flow.py` wires stages into a runnable DAG (`pretrain → sft → distill → eval → export`) with
-artifact tracking; `speedrun.sh` runs the entire thing at toy scale on one machine (CPU-OK), the
-nanochat-style "one command, end to end" entry point.
+`flow.py` dispatches config-bound stages (`pretrain → midtrain → SFT → optional distill/RL →
+eval → export`) with lineage-bearing artifacts. `speedrun.sh` remains the toy CPU-oriented
+nanochat-style smoke path; the real paper recipe is intentionally a separately frozen,
+resource-gated sequence in [`TRAINING_SYSTEM.md`](./TRAINING_SYSTEM.md).
 
 ---
 

@@ -4,6 +4,9 @@ model_config: configs/model/tiny-30m.yaml
 data:
   shards_dir: data/shards
   seq_len: 2048
+  tokenizer:
+    kind: bpe
+    path: data/tokenizer-32k.json
 optim:
   name: adamw          # adamw | muon
   lr: 3.0e-4           # SmolLM2 reference
@@ -11,6 +14,7 @@ optim:
   betas: [0.9, 0.95]
   grad_clip: 1.0
 schedule:
+  type: cosine
   warmup_steps: 200
   total_steps: 20000
   min_lr_ratio: 0.1    # cosine to 10% of peak

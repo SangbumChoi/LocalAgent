@@ -6,15 +6,50 @@ Kept tiny and dependency-free so pretrain/sft/grpo all reuse it (Phase 2/4/10).
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import torch
 
 from localagent.data.render import IGNORE
 
 
-def pad_batch(rows: list[tuple[list[int], list[int]]], pad_id: int, device):
-    """rows of (input_ids, labels) -> padded (x, y) tensors. y padded with IGNORE."""
+def validate_pad_to_input_tokens(
+    value: Any,
+    *,
+    label: str = "pad_to_input_tokens",
+) -> int | None:
+    """Validate an optional fixed post-shift language-model input width."""
+
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"{label} must be a positive integer")
+    return value
+
+
+def pad_batch(
+    rows: list[tuple[list[int], list[int]]],
+    pad_id: int,
+    device,
+    pad_to_input_tokens: int | None = None,
+):
+    """Return next-token tensors, optionally padded to an exact post-shift input width.
+
+    ``pad_to_input_tokens`` describes the width returned to the language model, not the raw
+    rendered row width.  The raw rows are therefore padded to one additional token before the
+    shared next-token shift.  Rows are never truncated.
+    """
+
+    fixed_input_width = validate_pad_to_input_tokens(pad_to_input_tokens)
     maxlen = max(len(r[0]) for r in rows)
+    if fixed_input_width is not None:
+        required_input_width = maxlen - 1
+        if required_input_width > fixed_input_width:
+            raise ValueError(
+                "row requires more input tokens than pad_to_input_tokens: "
+                f"required={required_input_width}, configured={fixed_input_width}"
+            )
+        maxlen = fixed_input_width + 1
     xs, ys = [], []
     for ids, labels in rows:
         n = maxlen - len(ids)

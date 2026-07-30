@@ -13,6 +13,9 @@ checkpoints/
 data/raw/
 data/shards/
 data/synth/
+# Protected benchmark prompts, labels, and acquisition receipts must never be staged.
+/private/
+/data/private/
 runs/
 *.gguf
 *.onnx

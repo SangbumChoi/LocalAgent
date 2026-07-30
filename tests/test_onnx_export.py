@@ -22,8 +22,8 @@ def test_onnx_export_parity(tmp_path):
     sess = ort.InferenceSession(str(out), providers=["CPUExecutionProvider"])
     x = torch.randint(0, 256, (1, 12))
     with torch.no_grad():
-        ref = m(x)[0].numpy()
+        ref = m(x)[0][:, -1, :].numpy()
     got = sess.run(["logits"], {"input_ids": x.numpy()})[0]
-    assert got.shape == ref.shape
+    assert got.shape == ref.shape == (1, cfg.vocab_size)
     assert np.abs(ref - got).max() < 1e-3                 # numerical parity
     assert (ref.argmax(-1) == got.argmax(-1)).all()       # same decoded tokens

@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 from localagent.model.config import ModelConfig
 
-# A KV cache is a list (one slot per loop×layer pass) of (k, v) tensors, or None entries.
+# One cache slot per loop×layer pass: attention stores (k, v), short-conv stores its input tail.
 KVCache = list
 
 
@@ -56,7 +56,7 @@ class Attention(nn.Module):
         self.k = nn.Linear(cfg.d_model, cfg.n_kv_heads * cfg.head_dim, bias=False)
         self.v = nn.Linear(cfg.d_model, cfg.n_kv_heads * cfg.head_dim, bias=False)
         self.o = nn.Linear(cfg.n_heads * cfg.head_dim, cfg.d_model, bias=False)
-        # QK-Norm (Qwen3/Kimi): per-head RMSNorm on Q and K before RoPE. Off by default so
+        # QK-Norm (Qwen3-style): per-head RMSNorm on Q and K before RoPE. Off by default so
         # legacy models are byte-identical (the gains are not even allocated when disabled).
         if cfg.qk_norm:
             self.q_norm = RMSNorm(cfg.head_dim, cfg.norm_eps)
@@ -107,17 +107,25 @@ class GatedShortConv(nn.Module):
         self.conv = nn.Conv1d(d, d, kernel_size=self.k, groups=d, bias=False)
         self.out_proj = nn.Linear(d, d, bias=False)
 
-    def forward(self, x, cos, sin, cache=None):
+    def forward(self, x, cos, sin, cache=None, use_cache: bool = False):
         B, T, d = x.shape
         gb, gc, h = self.in_proj(x).chunk(3, dim=-1)
         y = (gb * h).transpose(1, 2)                     # (B, d, T)
         if cache is None:
             pad = F.pad(y, (self.k - 1, 0))              # causal left-pad
-            new_cache = None
         else:
-            # cache holds the prior (k-1) `y` columns; prepend them, keep the new tail.
+            # cache holds the prior (k-1) `y` columns; prepend them before the new inputs.
             pad = torch.cat([cache, y], dim=2)
-            new_cache = pad[:, :, -(self.k - 1):].contiguous() if self.k > 1 else cache
+        cache_enabled = use_cache or cache is not None
+        if cache_enabled:
+            # Slicing the padded prefill also retains leading zeros when T < k-1.
+            new_cache = (
+                pad[:, :, -(self.k - 1):].contiguous()
+                if self.k > 1
+                else pad[:, :, :0].contiguous()
+            )
+        else:
+            new_cache = None
         z = self.conv(pad).transpose(1, 2)               # (B, T, d), causal
         o = self.out_proj(gc * z)
         return o, new_cache
@@ -145,8 +153,12 @@ class Block(nn.Module):
         self.ffn_norm = RMSNorm(cfg.d_model, cfg.norm_eps)
         self.ffn = SwiGLU(cfg)
 
-    def forward(self, x, cos, sin, cache=None):
-        a, new_cache = self.attn(self.attn_norm(x), cos, sin, cache)
+    def forward(self, x, cos, sin, cache=None, use_cache: bool = False):
+        mixer_input = self.attn_norm(x)
+        if self.kind == "conv":
+            a, new_cache = self.attn(mixer_input, cos, sin, cache, use_cache=use_cache)
+        else:
+            a, new_cache = self.attn(mixer_input, cos, sin, cache)
         x = x + a
         x = x + self.ffn(self.ffn_norm(x))
         return x, new_cache
@@ -192,11 +204,16 @@ class LocalAgentLM(nn.Module):
     def n_cache_slots(self) -> int:
         return self.cfg.n_loops * self.cfg.n_layers
 
-    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None,
-                pos: int = 0, caches=None, return_hidden: bool = False):
-        """If `caches` is provided (a list of n_cache_slots entries), runs the cached path and
-        returns (logits, loss, new_caches). Otherwise returns (logits, loss). With
-        `return_hidden`, also returns the post-final-norm (d_model) features for a probe/head."""
+    def forward_features(self, idx: torch.Tensor, pos: int = 0, caches=None):
+        """Run the embedding and decoder backbone, returning post-final-norm features.
+
+        This deliberately stops before the factorized output projection and LM head.  Action
+        heads consume these ``d_model``-wide features directly, so browser runtimes can avoid
+        materializing a ``vocab_size``-wide logits tensor when text generation is not needed.
+
+        As with :meth:`forward`, passing ``caches`` enables the cached path and returns
+        ``(features, new_caches)``.  Without caches, only ``features`` is returned.
+        """
         return_cache = caches is not None
         if caches is None:
             caches = [None] * self.n_cache_slots()
@@ -210,10 +227,25 @@ class LocalAgentLM(nn.Module):
             if self.loop_embed is not None:
                 x = x + self.loop_embed[loop]
             for blk in self.blocks:
-                x, nc = blk(x, cos, sin, caches[slot])
+                x, nc = blk(x, cos, sin, caches[slot], use_cache=return_cache)
                 new_caches[slot] = nc
                 slot += 1
-        feats = self.norm(x)               # (B, T, d_model) features for the tool head
+        feats = self.norm(x)
+        if return_cache:
+            return feats, new_caches
+        return feats
+
+    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None,
+                pos: int = 0, caches=None, return_hidden: bool = False):
+        """If `caches` is provided (a list of n_cache_slots entries), runs the cached path and
+        returns (logits, loss, new_caches). Otherwise returns (logits, loss). With
+        `return_hidden`, also returns the post-final-norm (d_model) features for a probe/head."""
+        return_cache = caches is not None
+        features_out = self.forward_features(idx, pos=pos, caches=caches)
+        if return_cache:
+            feats, new_caches = features_out
+        else:
+            feats = features_out
         h = self.out_proj(feats) if self.out_proj is not None else feats
         logits = F.linear(h, self.embed.weight) if self.lm_head is None else self.lm_head(h)
         if return_hidden:

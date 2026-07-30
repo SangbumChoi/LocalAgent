@@ -16,7 +16,7 @@ from localagent.eval.toolcall_bench import gold_set as _gold
 P = {"type": "string", "format": "path"}
 Q = {"type": "string", "format": "quoted"}
 S = {"type": "string"}
-I = {"type": "integer"}
+INT_SCHEMA = {"type": "integer"}
 _PATHS_T, _PATHS_E = ["src/app.py", "lib/util.js"], ["api/routes.go", "web/main.ts"]
 _PATHS_T2, _PATHS_E2 = ["test/old.py", "core/a.py"], ["pkg/x.rs", "cmd/run.go"]
 
@@ -90,7 +90,8 @@ CODE_TOOLS = [
      [("title", Q, ["add caching", "fix login"], ["update docs", "drop dead code"])],
      ["{verb} a pull request '{a0}'.", "{verb} a PR titled '{a0}'."], "open", ["create", "file"]),
     ("comment_on_pr", "comment on a pull request",
-     [("number", I, ["42", "7"], ["13", "99"]), ("body", Q, ["looks good", "needs work"], ["ship it", "nit"])],
+     [("number", INT_SCHEMA, ["42", "7"], ["13", "99"]),
+      ("body", Q, ["looks good", "needs work"], ["ship it", "nit"])],
      ["{verb} on PR {a0} with '{a1}'.", "{verb} '{a1}' on PR {a0}."], "comment", ["reply", "note"]),
     ("create_issue", "create an issue",
      [("title", Q, ["flaky test", "memory leak"], ["broken link", "slow query"])],

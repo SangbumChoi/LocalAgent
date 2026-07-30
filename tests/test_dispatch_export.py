@@ -8,6 +8,7 @@ model's final hidden state, matching the PyTorch RouteHead / BoundSelector withi
 import json
 
 import numpy as np
+import pytest
 import torch
 
 from localagent.agent.dense_selector import (
@@ -20,6 +21,7 @@ from localagent.agent.tool_head import _feat
 from localagent.agent.toolset import STANDARD_TOOLS
 from localagent.inference.export.to_dispatch import (
     dispatch_heads_json,
+    parity_dispatch,
     selector_tool_matrix,
 )
 from localagent.model import LocalAgentLM, ModelConfig
@@ -130,3 +132,88 @@ def test_dispatch_json_roundtrips(tmp_path):
     assert back["route_head"]["routes"] == list(ROUTES)
     assert back["dense_selector"]["normalize_query"] is True
     assert len(back["dense_selector"]["tool_names"]) == len(STANDARD_TOOLS)
+
+
+def test_parity_dispatch_uses_checkpoint_bpe_path_override(tmp_path, monkeypatch):
+    pytest.importorskip("tokenizers")
+    tokenizer_path = tmp_path / "tokenizer.json"
+    tokenizer = tk.train_bpe(
+        [
+            "read a file and send a message",
+            "open settings and choose dark mode",
+            "calculate a structured browser action",
+            "<|user|>hello<|assistant|><tool_call>calculator",
+        ],
+        tokenizer_path,
+        vocab_size=320,
+        min_frequency=1,
+    )
+    cfg = ModelConfig(
+        vocab_size=tokenizer.vocab_size,
+        d_model=64,
+        embed_dim=64,
+        n_layers=2,
+        n_loops=1,
+        n_heads=4,
+        n_kv_heads=2,
+        ffn_hidden=128,
+        max_seq_len=128,
+        name="dispatch-bpe",
+    )
+    model = LocalAgentLM(cfg).eval()
+    route_head = RouteHead(cfg.d_model)
+    emb_dim = tool_embeddings(STANDARD_TOOLS[:1], dim=1024).shape[1]
+    selector = DenseToolSelector(cfg.d_model, emb_dim=emb_dim, proj=256)
+    checkpoint = {
+        "cfg": cfg.__dict__,
+        "state_dict": model.state_dict(),
+        "route_head": route_head.state_dict(),
+        "dense_selector": selector.state_dict(),
+        "selector_proj": 256,
+        "examples": {},
+        "tokenizer": {
+            "kind": "bpe",
+            "path": str(tmp_path / "old-location" / "tokenizer.json"),
+        },
+    }
+    heads = dispatch_heads_json(checkpoint)
+
+    original_load = tk.load_tokenizer
+    calls = []
+
+    def recording_load(kind="byte", path=None):
+        calls.append((kind, path))
+        return original_load(kind, path)
+
+    monkeypatch.setattr(tk, "load_tokenizer", recording_load)
+    result = parity_dispatch(
+        checkpoint,
+        cfg,
+        heads,
+        n_prompts=2,
+        tokenizer_path=tokenizer_path,
+    )
+
+    assert calls == [("bpe", tokenizer_path)]
+    assert result["route_agree"] == 1.0
+    assert result["selector_agree"] == 1.0
+
+
+def test_parity_dispatch_legacy_byte_default_and_vocab_validation(tmp_path):
+    checkpoint, cfg, *_ = _make_ck(tmp_path)
+    heads = dispatch_heads_json(checkpoint)
+    result = parity_dispatch(checkpoint, cfg, heads, n_prompts=2)
+    assert result["route_agree"] == 1.0
+    assert result["selector_agree"] == 1.0
+
+    pytest.importorskip("tokenizers")
+    tokenizer_path = tmp_path / "mismatched-tokenizer.json"
+    tk.train_bpe(
+        ["browser actions and structured tool calls"],
+        tokenizer_path,
+        vocab_size=320,
+        min_frequency=1,
+    )
+    checkpoint["tokenizer"] = {"kind": "bpe", "path": str(tokenizer_path)}
+    with pytest.raises(ValueError, match="tokenizer vocabulary.*does not match model config"):
+        parity_dispatch(checkpoint, cfg, heads, n_prompts=1)

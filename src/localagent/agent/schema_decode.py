@@ -141,9 +141,9 @@ def validate(args: dict, params: dict) -> bool:
         t = sch.get("type", "string")
         if "enum" in sch and v not in sch["enum"]:
             return False
-        if t == "integer" and not isinstance(v, int):
+        if t == "integer" and (isinstance(v, bool) or not isinstance(v, int)):
             return False
-        if t == "number" and not isinstance(v, (int, float)):
+        if t == "number" and (isinstance(v, bool) or not isinstance(v, (int, float))):
             return False
         if t == "boolean" and not isinstance(v, bool):
             return False

@@ -125,6 +125,14 @@ def test_conv_decode_cache_matches_full_forward():
     torch.manual_seed(1)
     cfg = _hybrid_tiny()
     model = LocalAgentLM(cfg).eval()
+    # The default 0.02 initialization makes the three-projection conv residual small enough for a
+    # broken cache to hide under a loose logits tolerance. Amplify it deterministically.
+    with torch.no_grad():
+        for block in model.blocks:
+            if block.kind == "conv":
+                block.attn.in_proj.weight.mul_(3)
+                block.attn.conv.weight.mul_(3)
+                block.attn.out_proj.weight.mul_(3)
     idx = torch.randint(0, cfg.vocab_size, (2, 20))
 
     with torch.no_grad():
@@ -134,14 +142,20 @@ def test_conv_decode_cache_matches_full_forward():
         caches = [None] * model.n_cache_slots()
         pre = 8
         step_logits, _, caches = model(idx[:, :pre], pos=0, caches=caches)
+        conv_caches = [
+            cache for kind, cache in zip(cfg.block_types(), caches, strict=True)
+            if kind == "conv"
+        ]
+        assert all(cache is not None for cache in conv_caches)
+        assert all(cache.shape == (idx.shape[0], cfg.d_model, cfg.conv_kernel - 1)
+                   for cache in conv_caches)
         got = [step_logits]
         for t in range(pre, idx.shape[1]):
             sl, _, caches = model(idx[:, t:t + 1], pos=t, caches=caches)
             got.append(sl)
         cached_logits = torch.cat(got, dim=1)
 
-    # tolerance is float32 conv-reordering noise; a wrong cache gives O(1) (not ~1e-3) errors.
-    assert torch.allclose(full_logits, cached_logits, atol=2e-3, rtol=2e-3), (
+    assert torch.allclose(full_logits, cached_logits, atol=1e-5, rtol=1e-5), (
         (full_logits - cached_logits).abs().max().item()
     )
 

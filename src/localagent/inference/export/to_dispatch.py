@@ -28,10 +28,45 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 import torch
 
 from localagent.model import ModelConfig
+
+
+def _checkpoint_tokenizer(
+    checkpoint: dict,
+    cfg: ModelConfig,
+    *,
+    tokenizer_path: str | Path | None = None,
+    checkpoint_path: str | Path | None = None,
+):
+    """Load the checkpoint tokenizer for parity, retaining legacy byte compatibility."""
+    from localagent.model.tokenizer import load_tokenizer
+
+    metadata = checkpoint.get("tokenizer")
+    if metadata is None:
+        metadata = {"kind": "byte"}
+    if not isinstance(metadata, dict):
+        raise ValueError("checkpoint tokenizer metadata must be a mapping")
+
+    kind = str(metadata.get("kind", "byte"))
+    path = tokenizer_path if tokenizer_path is not None else metadata.get("path")
+    if kind == "bpe" and path is not None and tokenizer_path is None and checkpoint_path is not None:
+        recorded = Path(path).expanduser()
+        if not recorded.is_absolute() and not recorded.exists():
+            colocated = Path(checkpoint_path).resolve().parent / recorded
+            if colocated.exists():
+                path = colocated
+
+    tokenizer = load_tokenizer(kind, path)
+    if tokenizer.vocab_size != cfg.vocab_size:
+        raise ValueError(
+            "checkpoint tokenizer vocabulary "
+            f"({tokenizer.vocab_size}) does not match model config ({cfg.vocab_size})"
+        )
+    return tokenizer
 
 
 def _round_nested(x, dp: int = 6):
@@ -116,14 +151,21 @@ def dispatch_heads_json(ck: dict, tools=None, examples: dict | None = None) -> d
     }
 
 
-def export_dispatch(checkpoint: str, out_path: str, tools=None, examples: dict | None = None,
-                    check: bool = True) -> dict:
+def export_dispatch(
+    checkpoint: str,
+    out_path: str,
+    tools=None,
+    examples: dict | None = None,
+    check: bool = True,
+    tokenizer_path: str | Path | None = None,
+) -> dict:
     """Write ``out_path`` (a ``dispatch_heads.json``) with the route head + dense selector tower.
 
     Returns the artifact path + size. With ``check=True`` runs the in-process parity check
     (``parity_dispatch``) on a handful of real prompts and prints route/selector agreement.
+    ``tokenizer_path`` overrides a moved BPE tokenizer path recorded in the checkpoint.
     """
-    ck = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    ck = torch.load(checkpoint, map_location="cpu", weights_only=True)
     heads = dispatch_heads_json(ck, tools=tools, examples=examples)
     with open(out_path, "w") as f:
         json.dump(heads, f)
@@ -135,7 +177,13 @@ def export_dispatch(checkpoint: str, out_path: str, tools=None, examples: dict |
         cfg_d = ck["cfg"] if isinstance(ck["cfg"], dict) else ck["cfg"].__dict__
         cfg = ModelConfig(
             **{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__})
-        res = parity_dispatch(ck, cfg, heads)
+        res = parity_dispatch(
+            ck,
+            cfg,
+            heads,
+            tokenizer_path=tokenizer_path,
+            checkpoint_path=checkpoint,
+        )
         stats.update(res)
         print(f"route argmax agreement: {res['route_agree']*100:.1f}%  "
               f"max|Δlogits|={res['route_maxdiff']:.2e}")
@@ -144,7 +192,15 @@ def export_dispatch(checkpoint: str, out_path: str, tools=None, examples: dict |
     return stats
 
 
-def parity_dispatch(ck: dict, cfg: ModelConfig, heads: dict, n_prompts: int = 12) -> dict:
+def parity_dispatch(
+    ck: dict,
+    cfg: ModelConfig,
+    heads: dict,
+    n_prompts: int = 12,
+    *,
+    tokenizer_path: str | Path | None = None,
+    checkpoint_path: str | Path | None = None,
+) -> dict:
     """Compare the exported (numpy-style) route head + dense selector against the PyTorch
     ``RouteHead`` / ``BoundSelector`` on a batch of real prompt features.
 
@@ -160,11 +216,15 @@ def parity_dispatch(ck: dict, cfg: ModelConfig, heads: dict, n_prompts: int = 12
     from localagent.data.paraphrase import paraphrase_samples
     from localagent.eval.freeform import FREEFORM_EVAL
     from localagent.model import LocalAgentLM
-    from localagent.model import tokenizer as tk
 
     model = LocalAgentLM(cfg).eval()
     model.load_state_dict(ck["state_dict"])
-    tok = tk.load_tokenizer("byte")   # ultra-tiny/tiny tiers are byte-level (vocab 256)
+    tok = _checkpoint_tokenizer(
+        ck,
+        cfg,
+        tokenizer_path=tokenizer_path,
+        checkpoint_path=checkpoint_path,
+    )
 
     prompts = [q for q, _ in FREEFORM_EVAL[:n_prompts]]
     if len(prompts) < n_prompts:

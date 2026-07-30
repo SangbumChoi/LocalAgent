@@ -35,6 +35,8 @@ def test_required_unfillable_returns_none():
 def test_validate_rejects_bad_types_and_enums():
     assert validate({"temperature": 72, "unit": "f"}, THERMO.parameters)
     assert not validate({"temperature": "hot", "unit": "f"}, THERMO.parameters)
+    assert not validate({"temperature": True, "unit": "f"}, THERMO.parameters)
+    assert not validate({"amount": False, "to": "EUR"}, CONVERT.parameters)
     assert not validate({"temperature": 72, "unit": "kelvin"}, THERMO.parameters)
     assert not validate({"unit": "f"}, THERMO.parameters)          # missing required
 

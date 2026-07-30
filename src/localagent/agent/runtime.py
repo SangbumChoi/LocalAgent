@@ -10,8 +10,50 @@ Every finished turn can be handed to the conversation store, which feeds the dat
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from localagent.agent.memory import Memory
 from localagent.agent.tools import ToolRegistry
+
+
+def _checkpoint_tokenizer(
+    checkpoint: dict,
+    vocab_size: int,
+    *,
+    tokenizer_path: str | Path | None = None,
+    checkpoint_path: str | Path | None = None,
+):
+    """Load and validate the tokenizer recorded in a training checkpoint.
+
+    Dispatch checkpoints made before tokenizer metadata was introduced are byte-level, so a
+    missing ``tokenizer`` entry intentionally keeps that behavior. ``tokenizer_path`` overrides a
+    recorded BPE path when artifacts have been moved. For relative recorded paths, also try a path
+    next to the checkpoint after preserving the historical current-working-directory lookup.
+    """
+    from localagent.model.tokenizer import load_tokenizer
+
+    metadata = checkpoint.get("tokenizer")
+    if metadata is None:
+        metadata = {"kind": "byte"}
+    if not isinstance(metadata, dict):
+        raise ValueError("checkpoint tokenizer metadata must be a mapping")
+
+    kind = str(metadata.get("kind", "byte"))
+    path = tokenizer_path if tokenizer_path is not None else metadata.get("path")
+    if kind == "bpe" and path is not None and tokenizer_path is None and checkpoint_path is not None:
+        recorded = Path(path).expanduser()
+        if not recorded.is_absolute() and not recorded.exists():
+            colocated = Path(checkpoint_path).resolve().parent / recorded
+            if colocated.exists():
+                path = colocated
+
+    tokenizer = load_tokenizer(kind, path)
+    if tokenizer.vocab_size != vocab_size:
+        raise ValueError(
+            "checkpoint tokenizer vocabulary "
+            f"({tokenizer.vocab_size}) does not match model config ({vocab_size})"
+        )
+    return tokenizer
 
 
 class Agent:
@@ -39,9 +81,21 @@ class Agent:
             self.retriever = ToolRetriever(list(self.catalog.values()))
 
     @classmethod
-    def from_checkpoint(cls, ckpt_path: str, tools: ToolRegistry, **kw):
+    def from_checkpoint(
+        cls,
+        ckpt_path: str | Path,
+        tools: ToolRegistry,
+        *,
+        tokenizer_path: str | Path | None = None,
+        **kw,
+    ):
         """Load model + pointer head + dense selector + route head from a dispatch checkpoint
-        (saved by train_dispatch_long / train_scenarios) and wire the generable dispatch path."""
+        (saved by train_dispatch_long / train_scenarios) and wire the generable dispatch path.
+
+        ``tokenizer_path`` overrides a BPE path stored in the checkpoint, which is useful when the
+        checkpoint and tokenizer bundle have moved. Legacy checkpoints without tokenizer metadata
+        remain byte-tokenized.
+        """
         import torch
 
         from localagent.agent.dense_selector import (
@@ -50,13 +104,18 @@ class Agent:
         from localagent.agent.pointer_head import PointerHead
         from localagent.agent.routes import RouteHead
         from localagent.model import LocalAgentLM, ModelConfig
-        from localagent.model.tokenizer import load_tokenizer
 
         ck = torch.load(ckpt_path, map_location="cpu")
         cfg = ModelConfig(**ck["cfg"])
         model = LocalAgentLM(cfg)
         model.load_state_dict(ck["state_dict"])
         model.eval()
+        tokenizer = _checkpoint_tokenizer(
+            ck,
+            cfg.vocab_size,
+            tokenizer_path=tokenizer_path,
+            checkpoint_path=ckpt_path,
+        )
         specs = tools.specs()
         examples = ck.get("examples", {})
         ptr = None
@@ -74,7 +133,7 @@ class Agent:
             route_head = RouteHead(cfg.d_model)
             route_head.load_state_dict(ck["route_head"])
             route_head.eval()
-        return cls(tools, model=model, tokenizer=load_tokenizer(), catalog=specs,
+        return cls(tools, model=model, tokenizer=tokenizer, catalog=specs,
                    ptr_head=ptr, route_head=route_head, selector=selector, **kw)
 
     def _select_specs(self, msg: str):

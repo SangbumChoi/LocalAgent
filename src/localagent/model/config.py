@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 import yaml
 
-PARAM_BUDGET = 100_000_000  # hard ceiling — configs must stay under this
+PARAM_BUDGET = 100_000_000  # exclusive hard ceiling — configs must stay below this
 
 
 @dataclass
@@ -29,8 +29,8 @@ class ModelConfig:
     vocab_size: int = 32000
     d_model: int = 384
     embed_dim: int | None = None  # None -> = d_model (no factorization)
-    n_layers: int = 12            # number of blocks that hold parameters
-    n_loops: int = 1              # depth-recurrence: run the stack this many times (shared weights)
+    n_layers: int = 12  # number of blocks that hold parameters
+    n_loops: int = 1  # depth-recurrence: run the stack this many times (shared weights)
     n_heads: int = 6
     n_kv_heads: int = 2
     ffn_hidden: int = 1024
@@ -41,9 +41,9 @@ class ModelConfig:
     dropout: float = 0.0
     # --- Hybrid backbone levers (LFM2/Nemotron-H + Qwen3 stability) ---
     # Defaults preserve the existing all-attention, QK-Norm-off model EXACTLY.
-    qk_norm: bool = False                  # RMSNorm on Q/K per-head before RoPE (Qwen3/Kimi)
-    conv_kernel: int = 3                   # depthwise causal short-conv kernel (LFM2 LIV)
-    layer_types: list[str] | None = None   # per-layer block kind: "attn"|"conv"; None => all "attn"
+    qk_norm: bool = False  # RMSNorm on Q/K per-head before RoPE (Qwen3-style)
+    conv_kernel: int = 3  # depthwise causal short-conv kernel (LFM2 LIV)
+    layer_types: list[str] | None = None  # per-layer block kind: "attn"|"conv"; None => all "attn"
 
     def __post_init__(self) -> None:
         if self.embed_dim is None:
@@ -79,7 +79,7 @@ class ModelConfig:
         return self.n_layers * self.n_loops
 
     @classmethod
-    def from_yaml(cls, path: str) -> "ModelConfig":
+    def from_yaml(cls, path: str) -> ModelConfig:
         with open(path) as f:
             raw = yaml.safe_load(f)
         fields = {k: v for k, v in raw.items() if k in cls.__dataclass_fields__}
@@ -88,7 +88,7 @@ class ModelConfig:
     def estimate_params(self) -> int:
         """Closed-form parameter estimate; used for the budget assertion and reporting."""
         d, h, kv, hd, k = self.d_model, self.n_heads, self.n_kv_heads, self.head_dim, self.embed_dim
-        embed_table = self.vocab_size * k        # vocab × embed_dim (tied/shared)
+        embed_table = self.vocab_size * k  # vocab × embed_dim (tied/shared)
         in_proj = k * d if self.factorized else 0
         out_proj = d * k if self.factorized else 0
         head = 0 if self.tie_embeddings else self.vocab_size * k
@@ -98,9 +98,9 @@ class ModelConfig:
         def attn_mixer() -> int:
             qk = 2 * hd if self.qk_norm else 0  # RMSNorm(head_dim) gains on Q and K (shared/head)
             return (
-                d * (h * hd)           # q proj
-                + 2 * d * (kv * hd)    # k, v proj (GQA → smaller)
-                + (h * hd) * d         # out proj
+                d * (h * hd)  # q proj
+                + 2 * d * (kv * hd)  # k, v proj (GQA → smaller)
+                + (h * hd) * d  # out proj
                 + qk
             )
 
@@ -118,7 +118,34 @@ class ModelConfig:
 
     def assert_within_budget(self) -> None:
         n = self.estimate_params()
-        if n > PARAM_BUDGET:
+        if n >= PARAM_BUDGET:
             raise ValueError(
-                f"Model '{self.name}' is ~{n/1e6:.1f}M params, over the {PARAM_BUDGET/1e6:.0f}M budget."
+                f"Model '{self.name}' is ~{n / 1e6:.1f}M params; "
+                f"the budget requires fewer than {PARAM_BUDGET / 1e6:.0f}M."
             )
+
+    def estimate_cache_bytes(self, context_len: int, dtype_bytes: int = 2) -> int:
+        """Inference-state footprint for a batch of one at a given context length.
+
+        Attention layers store K and V for every context token. Short-conv layers only retain
+        ``kernel-1`` states. The estimate includes every recurrent loop pass.
+        """
+
+        if not 0 <= context_len <= self.max_seq_len:
+            raise ValueError(f"context_len must be in [0, {self.max_seq_len}]")
+        if dtype_bytes < 1:
+            raise ValueError("dtype_bytes must be positive")
+        per_loop = 0
+        for kind in self.block_types():
+            if kind == "attn":
+                per_loop += 2 * self.n_kv_heads * self.head_dim * context_len * dtype_bytes
+            else:
+                per_loop += self.d_model * max(0, self.conv_kernel - 1) * dtype_bytes
+        return per_loop * self.n_loops
+
+    def estimate_weight_bytes(self, bits: int = 16) -> int:
+        """Packed weight footprint (runtime overhead and alignment excluded)."""
+
+        if bits <= 0:
+            raise ValueError("bits must be positive")
+        return (self.estimate_params() * bits + 7) // 8

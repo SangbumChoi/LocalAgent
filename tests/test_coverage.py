@@ -13,8 +13,15 @@ import json
 
 from localagent.agent.schema_decode import extract_pools
 from localagent.data.agent_synth import (
-    ENTITIES_EVAL, ENTITIES_TRAIN, EVENTS_EVAL, EVENTS_TRAIN, INVENTIONS_EVAL,
-    INVENTIONS_TRAIN, PLACES_EVAL, PLACES_TRAIN, Generator,
+    ENTITIES_EVAL,
+    ENTITIES_TRAIN,
+    EVENTS_EVAL,
+    EVENTS_TRAIN,
+    INVENTIONS_EVAL,
+    INVENTIONS_TRAIN,
+    PLACES_EVAL,
+    PLACES_TRAIN,
+    Generator,
 )
 
 # copyable string args ground by exact substring; these instead ground via schema extractors
@@ -39,9 +46,21 @@ def test_implicit_factual_questions_map_to_web_search_grounded():
         # the prompt must NOT be an explicit imperative search command
         assert not s.prompt.lower().startswith(("search ", "look up ", "find information"))
         low = s.prompt.lower()
-        if low.startswith(("how tall", "how high", "how far", "how old", "how long",
-                           "how deep", "how heavy", "how big", "how wide", "do you know how",
-                           "i wonder how")):
+        if low.startswith(
+            (
+                "how tall",
+                "how high",
+                "how far",
+                "how old",
+                "how long",
+                "how deep",
+                "how heavy",
+                "how big",
+                "how wide",
+                "do you know how",
+                "i wonder how",
+            )
+        ):
             seen_shapes["measure"] = True
         elif "capital of" in low or "population of" in low or "area of" in low:
             seen_shapes["attr"] = True
@@ -94,8 +113,7 @@ def test_zero_grounding_misses_across_new_coverage():
         g = Generator(5, 2, split)
         misses = total = 0
         for x in g.generate(4000):
-            calls = x.calls or [{"name": x.ref_name,
-                                 "arguments": json.loads(x.ref_args or "{}")}]
+            calls = x.calls or [{"name": x.ref_name, "arguments": json.loads(x.ref_args or "{}")}]
             for c in calls:
                 for arg, val in c["arguments"].items():
                     if not isinstance(val, str) or arg in EXTRACTOR_ARGS:
@@ -108,10 +126,32 @@ def test_zero_grounding_misses_across_new_coverage():
 
 
 def test_new_entity_pools_train_eval_disjoint():
-    for tr, ev in [(ENTITIES_TRAIN, ENTITIES_EVAL), (PLACES_TRAIN, PLACES_EVAL),
-                   (INVENTIONS_TRAIN, INVENTIONS_EVAL), (EVENTS_TRAIN, EVENTS_EVAL)]:
+    for tr, ev in [
+        (ENTITIES_TRAIN, ENTITIES_EVAL),
+        (PLACES_TRAIN, PLACES_EVAL),
+        (INVENTIONS_TRAIN, INVENTIONS_EVAL),
+        (EVENTS_TRAIN, EVENTS_EVAL),
+    ]:
         assert tr and ev
         assert set(tr).isdisjoint(set(ev))
+
+
+def test_agent_synth_single_turn_prompts_are_disjoint_across_splits():
+    train = Generator(level=5, seed=101, split="train")
+    evaluation = Generator(level=5, seed=202, split="eval")
+    train_prompts: set[str] = set()
+    eval_prompts: set[str] = set()
+    train_makers = train.makers()
+    eval_makers = evaluation.makers()
+    assert [maker.__name__ for maker in train_makers] == [maker.__name__ for maker in eval_makers]
+
+    for train_maker, eval_maker in zip(train_makers, eval_makers, strict=True):
+        train_prompts.update(train_maker().prompt for _ in range(128))
+        eval_prompts.update(eval_maker().prompt for _ in range(128))
+
+    assert train_prompts
+    assert eval_prompts
+    assert train_prompts.isdisjoint(eval_prompts)
 
 
 def test_eval_split_implicit_questions_use_eval_pools_only():

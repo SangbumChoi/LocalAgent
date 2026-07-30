@@ -18,7 +18,7 @@ import os
 
 import torch
 
-from localagent.model import LocalAgentLM, ModelConfig
+from localagent.model import ModelConfig
 
 _CARD = """---
 license: mit
@@ -88,7 +88,7 @@ retrieval, parallel-call decode).
 
 def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: str | None = None,
               private: bool = True, push: bool = False) -> str:
-    ck = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    ck = torch.load(checkpoint, map_location="cpu", weights_only=True)
     cfg_d = ck["cfg"] if isinstance(ck["cfg"], dict) else ck["cfg"].__dict__
     cfg = ModelConfig(**{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__})
     os.makedirs(out_dir, exist_ok=True)
@@ -109,7 +109,6 @@ def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: 
     if heads:
         torch.save(heads, os.path.join(out_dir, "agent_heads.bin"))
 
-    n = sum(v.numel() for k, v in sd.items() if "lm_head" not in k)  # tied-aware-ish estimate
     card = _CARD.format(
         name=cfg.name, params=cfg.estimate_params() / 1e6, vocab=cfg.vocab_size,
         d_model=cfg.d_model, n_layers=cfg.n_layers, n_heads=cfg.n_heads, n_kv_heads=cfg.n_kv_heads,
