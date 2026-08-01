@@ -43,6 +43,14 @@ can be supplied as `--native-receipt BENCHMARK_ID=PATH`; the receipt contract re
 environment execution, official split verification, task count, and success rate.  The gate is
 therefore an auditable workshop decision, not a claim that the current model has passed.
 
+The actual SFT checkpoint has also been exercised through the local deployment path with
+[`scripts/deploy_smoke.py`](../scripts/deploy_smoke.py).  The pinned
+[`m24 receipt`](paper/results/raw/m24-local-deployment-smoke-v1.json) records 10 realistic prompts
+covering browser, computer, calculator, text, and email intent.  It selected the expected tool on
+4/10 prompts (browser 1/3, computer 1/4, productivity 1/1); the text prompt incorrectly emitted a
+tool.  The handlers only echo calls, so this is a useful regression smoke and a concrete failure
+sample, not browser/OS/email capability evidence.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed
