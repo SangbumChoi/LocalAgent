@@ -188,6 +188,18 @@ local result aggregator: it requires every expected task for every run before re
 pass@1/pass@k/pass^k, mean turns, latency, and token use. No result has been produced here because
 Docker/MCP services are not installed; the implementation is a protocol bridge, not a score.
 
+The public [Apple ToolSandbox](https://github.com/apple/ToolSandbox) is the next stateful
+productivity gate. Its scenarios model implicit tool dependencies, user simulation, messaging,
+canonicalization, distraction tools, and insufficient-information abstention; the upstream CLI
+writes one JSON result record per scenario with milestone similarity, minefield similarity,
+turn count, exceptions, and a milestone-to-turn mapping. The dependency-free
+[`src/localagent/eval/toolsandbox.py`](../src/localagent/eval/toolsandbox.py) bridge consumes that
+official `result_summary.json` shape, hashes the source, mirrors the upstream category rule for
+distraction augmentations, and fails closed unless the expected scenario list is present.
+[`scripts/aggregate_toolsandbox.py`](../scripts/aggregate_toolsandbox.py) writes a receipt without
+executing tools or importing the ToolSandbox package. This is a local result-summary aggregation
+bridge; a live ToolSandbox run and any score remain pending.
+
 The catalog also binds the newer realistic environments that should be part of the workshop-grade
 evaluation matrix:
 
