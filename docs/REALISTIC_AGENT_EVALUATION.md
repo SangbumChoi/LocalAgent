@@ -48,6 +48,22 @@ In the in-app browser, an explicit WebGPU session loaded the verified 10.5M bund
 versioned receipt is [`m11-webgpu-mind2web-bpe-child.json`](paper/results/raw/m11-webgpu-mind2web-bpe-child.json);
 no hardware throughput claim is made because timing was not collected in this run.
 
+### Offline normalized mobile action protocol
+
+[`src/localagent/eval/mobile.py`](../src/localagent/eval/mobile.py) now provides the common
+prediction contract for AndroidControl and AITW rows after normalization. It extracts the
+expected `mobile_*` calls from `localagent_v1`, accepts either `{name, arguments}` or
+`{tool, args}` predictions, and reports tool accuracy, exact action accuracy, trajectory exactness,
+optional coordinate proximity, and optional evaluator-provided target-box grounding. It validates
+finite coordinates and malformed streams before scoring. This is an offline action diagnostic; it
+does not simulate Android state or substitute for AndroidWorld's emulator reward. The emulator
+runner should reuse this per-step contract while publishing device reward separately.
+
+The scorer was replayed against the bounded normalized public training slices: 16 AndroidControl
+records and 10 AITW records (130 tool calls total). Ground-truth replay is exact for both sources;
+the sanity receipt is [`m22-mobile-action-score-replay-v1.json`](paper/results/raw/m22-mobile-action-score-replay-v1.json).
+This validates the interchange and scorer only, not model quality.
+
 ## What can be trained
 
 Only the following public demonstrations are currently training candidates:
