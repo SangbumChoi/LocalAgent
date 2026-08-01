@@ -11,6 +11,10 @@
 > checklist answers deliberately expose the unfinished reproducibility and release work.
 > Anonymous artifact packaging remains open.
 
+The central thesis and reviewer claim ladder are maintained in
+[`WORKSHOP_INSIGHT.md`](WORKSHOP_INSIGHT.md): feature-materialization parity is a deployment
+interface, and a fast parity-correct graph is not evidence of a useful agent.
+
 ## Abstract
 
 Browser language models are commonly described by decoded tokens per second, although an agent

@@ -18,6 +18,13 @@ The submission should test this narrower, falsifiable thesis:
 > should be selected from a measured hybrid-versus-all-attention Pareto comparison. Backbone,
 > action-head, total deployed-parameter, and bundle-byte counts must be reported separately.
 
+The strongest currently supported insight sharpens that thesis:
+
+> The hidden-state extraction point is part of the deployed model. A fixed-length WebGPU graph can
+> be numerically parity-correct and still lose all tool capability when padding is inserted before
+> the assistant decision marker; preserving the marker state restores the offline policy. The
+> feature contract, not token rate alone, must therefore be frozen and evaluated.
+
 Current evidence does not establish that hypothesis. The internally prespecified
 pre-assistant-padding
 fixed-512 structured arm is fast but collapses to abstention and fails the capability gate; the
@@ -34,9 +41,10 @@ This is a better four-page workshop contribution than â€œa miniature Kimi/Grokâ€
 
 1. It defines and implements an agent-specific latency metric.
 2. It couples latency to exact action quality so a fast invalid model cannot win.
-3. It compares a browser-oriented structured policy with an autoregressive tool-call baseline.
-4. It tests, rather than assumes, whether a hybrid sequence mixer helps WebGPU.
-5. It fits the workshop's architecture, training, agent, on-device, and evaluation themes.
+3. It identifies feature-materialization parity as a deployment-critical model interface.
+4. It compares a browser-oriented structured policy with an autoregressive tool-call baseline.
+5. It tests, rather than assumes, whether a hybrid sequence mixer helps WebGPU.
+6. It fits the workshop's architecture, training, agent, on-device, and evaluation themes.
 
 The current official CFP offers either a four-page extended abstract plus references or an
 optional eight-page full paper plus references, using the NeurIPS workshop template. Submit a

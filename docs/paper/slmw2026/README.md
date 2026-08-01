@@ -3,6 +3,11 @@
 This directory contains the double-blind four-page extended-abstract source. It is intentionally
 separate from `../SLMW2026_DRAFT.md`, which is the long-form evidence ledger.
 
+The submission thesis and claim boundaries are summarized in
+[`../WORKSHOP_INSIGHT.md`](../WORKSHOP_INSIGHT.md). It treats feature-materialization parity as
+the central negative deployment finding; the evidence ledger remains authoritative for every
+pending result.
+
 ## Template provenance
 
 - Official source:

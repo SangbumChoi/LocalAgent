@@ -31,14 +31,17 @@ before a deadline.  We implement a concurrency-one WebGPU benchmark and a one-fo
 policy with route, tool-selection, and grounded-argument heads.  A matched 10.5M-parameter hybrid
 backbone improves held-out bits per byte over all attention in three approximately
 one-token-per-parameter training seeds (mean difference \(0.07295\), hybrid favored in 3/3), while
-an exact trained checkpoint sustains 116--138 median decoded tokens/s on one Apple M5.  This does
-not establish an agent.  A 13.0M-active-parameter structured policy reaches 25\,ms median TTFA but
-produces 0/19 required tool calls and 0/8 executable DOM successes under a fixed-512-token stress
-condition.  We trace the collapse to a train--serve feature-materialization mismatch rather than
-ONNX or fp16 drift.  The negative result shows why latency, capability, and feature-contract
-parity must be joined on the same artifact.  We release the measurement contract and a staged,
-compute-bounded training protocol; the 34M five-token-per-parameter screen and fresh external
-capability evaluation remain explicitly unfinished.
+an exact trained checkpoint sustains 116--138 median decoded tokens/s on one Apple M5.  Our main
+deployment finding is that the hidden-state extraction point is part of the model interface: a
+13.0M-parameter structured policy reaches 25\,ms median TTFA but produces 0/19 required tool calls
+and 0/8 executable DOM successes when fixed-length padding is inserted before the assistant
+marker.  The same checkpoint routes 17/20 cases and selects 17/19 tools in the natural-marker
+offline audit; moving the padding after the marker restores those counts at both 128 and 512
+tokens.  Native PyTorch, fp32 ONNX, fp16 ONNX, and serialized heads agree on 20/20 normalized
+actions, ruling out export/precision drift as the observed cause.  The result is a negative
+deployment-methodology finding: latency, capability, and feature-contract parity must be joined on
+the same artifact.  The 34M screen, matched autoregressive controls, fresh capability set, and
+anonymous reproduction package remain explicitly unfinished.
 \end{abstract}
 
 \section{Why complete actions, not token rate?}
@@ -64,8 +67,13 @@ contributions are:
   \item a matched all-attention versus periodic-attention backbone experiment and a one-forward
         structured dispatch path; and
   \item a preserved negative deployment result showing that a fast forward pass can still yield
-        no useful action when the training and serving feature contracts differ.
+        no useful action when the training and serving feature contracts differ, even when the
+        exported graph is numerically parity-correct.
 \end{enumerate}
+
+We treat the tokenizer, assistant-marker position, padding direction, decision index, pointer
+span, grounding code, and validator as one \emph{feature contract}.  This contract is a model
+interface, not a page-level implementation detail.
 
 For an autoregressive (AR) action requiring \(D\) decode steps,
 \begin{equation}
@@ -224,12 +232,13 @@ only means that abstention was valid.
 The stress harness had inserted real, unmasked BPE spaces \emph{before} the assistant marker and
 then selected the final hidden state.  SFT heads were trained at the natural marker position.
 Offline natural prompts recover 17/20 routes and 17/19 tool selections, whereas pre-marker filler
-routes every case to text.  A preserved full-stack check compares native PyTorch, fp32 ONNX, fp16
-ONNX, exported heads, browser-identical grounding, and final normalization at the corrected
-natural position: route, tool, arguments, and final action agree on 20/20 cases, including 11/11
-pointer spans.  Thus export and reduced precision are not the observed cause.  The corrected
-fixed-compute runner appends filler after the marker, dispatches from the natural index, and
-bounds pointer scans to the natural span, but its browser reruns await an external pre-run
+routes every case to text.  Appending the same filler after the marker restores 17/20 routes and
+17/19 tool selections at both 128 and 512 tokens.  A preserved full-stack check compares native
+PyTorch, fp32 ONNX, fp16 ONNX, exported heads, browser-identical grounding, and final normalization
+at the corrected natural position: route, tool, arguments, and final action agree on 20/20 cases,
+including 11/11 pointer spans.  Thus export and reduced precision are not the observed cause.  The
+corrected fixed-compute runner appends filler after the marker, dispatches from the natural index,
+and bounds pointer scans to the natural span, but its browser reruns await an external pre-run
 timestamp.  Because these cases informed diagnosis, those reruns will measure deployment parity,
 not untouched capability.
 
@@ -238,9 +247,10 @@ not untouched capability.
 The pilot establishes three separable facts: a periodic-attention hybrid improves a tiny
 language-model proxy; a trained 10.5M checkpoint can exceed 100 median tokens/s on one browser
 device; and a 25\,ms structured forward can still fail every required tool action.  Joining the
-first two while assuming the third would have produced a false ``real-time agent'' claim.
-Feature position, padding semantics, tokenizer bytes, graph outputs, and grounding rules must be
-versioned as one deployment contract.
+first two while assuming the third would have produced a false ``real-time agent'' claim.  The
+stronger systems lesson is that feature position, padding semantics, tokenizer bytes, graph
+outputs, and grounding rules are one deployment contract.  A checkpoint without that contract is
+not a reproducible agent artifact.
 
 This remains work in progress.  The quality experiment is approximately one token per parameter,
 the browser evidence uses one M5/Chrome configuration, and the current suites contain only 20 and
