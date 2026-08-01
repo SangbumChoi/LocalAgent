@@ -151,6 +151,63 @@ process.stdout.write(JSON.stringify({ padded }));
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_retrieval_selector_url_branch_uses_sidecar_and_preserves_mobile_guard_precedence():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "?selector=retrieval" } };
+const { dispatchSelect, retrievalEmbedding } = require(process.argv[1]);
+const query = "Use the browser to email Dana the quarterly report. instruction: send an email";
+const sidecar = {
+  route_head: {
+    weight: [[0], [0], [0], [0], [0]], bias: [0, 0, 0, 0, 0],
+    routes: ["text", "browser", "computer_use", "python", "filesystem"], stop_index: 0,
+  },
+  dense_selector: {
+    q_proj_weight: [[1]], q_proj_bias: [0], proj: 1,
+    tool_matrix: [[1], [0], [0]],
+    tool_names: ["browser_navigate", "email_send", "mobile_click"],
+    normalize_query: true,
+  },
+  retrieval_selector: {
+    algorithm: "char_ngram_crc32_v1", dim: 256,
+    tool_matrix: [Array.from(retrievalEmbedding("browser navigate", 256)),
+      Array.from(retrievalEmbedding("send an email", 256)),
+      Array.from(retrievalEmbedding("tap the phone screen", 256))],
+    tool_names: ["browser_navigate", "email_send", "mobile_click"],
+    tool_routes: ["browser", "email", "computer_use"], normalize_query: true,
+    compact_instruction_marker: " instruction:",
+  },
+};
+const hidden = { data: new Float32Array([1]), dims: [1, 1, 1] };
+const selected = dispatchSelect(hidden, 1, query, sidecar);
+const guarded = dispatchSelect(
+  hidden, 1, "On the Android phone screen, tap Compose at x=120 y=220.", sidecar
+);
+process.stdout.write(JSON.stringify({ selected, guarded }));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(result.stdout)
+    assert payload["selected"] == {
+        "name": "email_send",
+        "route": "email",
+        "conf": pytest.approx(1.0),
+        "isStop": False,
+        "selection_policy": "retrieval_selector",
+    }
+    assert payload["guarded"] == {
+        "name": "mobile_click",
+        "route": "computer_use",
+        "conf": 1,
+        "isStop": False,
+        "selection_policy": "mobile_lexical_guard",
+    }
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
 def test_browser_ar_policy_contract_keeps_raw_and_trie_decoding_distinct():
     script = """
 global.window = { __localAgentSkipInit: true, location: { search: "" } };

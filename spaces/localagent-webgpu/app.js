@@ -1617,9 +1617,9 @@ function argmax(v) { let bi = 0; for (let i = 1; i < v.length; i++) if (v[i] > v
 function greedyToken(logits) { return argmax(logits); }
 function softmaxAt(v, i) { let m = -Infinity; for (const x of v) m = Math.max(m, x); let z = 0; for (const x of v) z += Math.exp(x - m); return Math.exp(v[i] - m) / z; }
 
-function mobileLexicalSelect(query) {
+function mobileLexicalSelect(query, dispatch = DISPATCH) {
   if (!MOBILE_LEXICAL_GUARD) return null;
-  const names = new Set(DISPATCH?.dense_selector?.tool_names || []);
+  const names = new Set(dispatch?.dense_selector?.tool_names || []);
   if (!names.has("mobile_click") || typeof query !== "string") return null;
   const low = query.toLowerCase();
   // Require an explicitly mobile/handset cue. Generic browser prompts often mention a screen,
@@ -1682,8 +1682,7 @@ function retrievalEmbedding(text, dim) {
   return vector;
 }
 
-function retrievalSelect(query) {
-  const R = DISPATCH?.retrieval_selector;
+function retrievalSelectFromSidecar(query, R) {
   if (!R?.tool_matrix?.length || !Array.isArray(R.tool_names)) return null;
   const compact = compactDispatchQuery(query, R.compact_instruction_marker);
   const q = retrievalEmbedding(compact, Number(R.dim));
@@ -1707,21 +1706,31 @@ function retrievalSelect(query) {
   };
 }
 
-function dispatchSelect(hiddenTensor, T, query = "") {
-  const mobile = mobileLexicalSelect(query);
+function retrievalSelect(query) {
+  return retrievalSelectFromSidecar(query, DISPATCH?.retrieval_selector);
+}
+
+function dispatchSelect(
+  hiddenTensor,
+  T,
+  query = "",
+  dispatch = DISPATCH,
+  requestedSelector = REQUESTED_SELECTOR,
+) {
+  const mobile = mobileLexicalSelect(query, dispatch);
   if (mobile) return mobile;
-  if (REQUESTED_SELECTOR === "retrieval") {
-    const retrieved = retrievalSelect(query);
+  if (requestedSelector === "retrieval") {
+    const retrieved = retrievalSelectFromSidecar(query, dispatch?.retrieval_selector);
     if (retrieved) return retrieved;
   }
   const last = lastHidden(hiddenTensor, T);
   // 1. route head (5-way modality gate); the `text` route (stop_index) = abstain / direct answer.
-  const R = DISPATCH.route_head;
+  const R = dispatch.route_head;
   const rl = linrow(R.weight, R.bias, last);
   const ri = argmax(rl);
   if (ri === R.stop_index) return { isStop: true, route: R.routes[ri], conf: softmaxAt(rl, ri), selection_policy: "dense_selector" };
   // 2. dense selector: q = normalize(q_proj(last)); score_j = q · tool_matrix[j]; argmax.
-  const S = DISPATCH.dense_selector;
+  const S = dispatch.dense_selector;
   const q = linrow(S.q_proj_weight, S.q_proj_bias, last);
   if (S.normalize_query) { let n = 0; for (const x of q) n += x * x; n = Math.sqrt(n) || 1; for (let i = 0; i < q.length; i++) q[i] /= n; }
   let bi = 0, bs = -Infinity;
@@ -2547,6 +2556,7 @@ if (typeof module !== "undefined" && module.exports) {
     cachedSessionOptions,
     canonicalActionJson,
     createCachedAutoregressiveRunner,
+    dispatchSelect,
     greedyToken,
     groundedActionCandidates,
     materializeCachedLogits,
@@ -2563,6 +2573,8 @@ if (typeof module !== "undefined" && module.exports) {
     groundingPools,
     manifestArtifactFor,
     modelArtifactEvidence,
+    retrievalEmbedding,
+    retrievalSelectFromSidecar,
     sha256Bytes,
     selectTokenFromLogits,
     validateActionForMeta,
