@@ -51,6 +51,13 @@ covering browser, computer, calculator, text, and email intent.  It selected the
 tool.  The handlers only echo calls, so this is a useful regression smoke and a concrete failure
 sample, not browser/OS/email capability evidence.
 
+The HF-format exporter was corrected before any publication attempt.  A local export of the same
+checkpoint now includes the recorded 16K BPE tokenizer, checkpoint/tokenizer hashes, safetensors,
+and `tool_head`, `ptr_head`, `route_head`, `dense_selector`, and `selector_proj`.  The
+[`m26 receipt`](paper/results/raw/m26-hf-local-export-v2.json) binds all five file hashes and marks
+`published: false`: this environment is not authenticated to Hugging Face, so no public model URL
+is claimed.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed

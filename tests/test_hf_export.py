@@ -1,4 +1,6 @@
 import json
+import hashlib
+from pathlib import Path
 
 import torch
 
@@ -25,3 +27,37 @@ def test_hf_bundle_builds_and_roundtrips(tmp_path):
     m2.load_state_dict(load_file(f"{out}/model.safetensors"))
     x = torch.randint(0, 256, (1, 8))
     assert torch.allclose(m(x)[0], m2(x)[0], atol=1e-5)
+
+
+def test_hf_bpe_bundle_is_self_contained_and_exports_dispatch_heads(tmp_path):
+    cfg = ModelConfig(vocab_size=256, d_model=64, embed_dim=32, n_layers=2, n_loops=1,
+                      n_heads=4, n_kv_heads=2, ffn_hidden=128, max_seq_len=64, name="test-bpe")
+    tokenizer_path = tmp_path / "tokenizer.json"
+    tokenizer_path.write_text("{\"mock\": true}\n", encoding="utf-8")
+    checkpoint = tmp_path / "bpe.pt"
+    torch.save(
+        {
+            "cfg": cfg.__dict__,
+            "state_dict": LocalAgentLM(cfg).state_dict(),
+            "tokenizer": {
+                "kind": "bpe",
+                "path": str(tokenizer_path),
+                "sha256": hashlib.sha256(tokenizer_path.read_bytes()).hexdigest(),
+            },
+            "tool_head": {"weight": torch.ones(1)},
+            "ptr_head": {"weight": torch.ones(1)},
+            "route_head": {"weight": torch.ones(1)},
+            "dense_selector": {"weight": torch.ones(1)},
+            "selector_proj": 1,
+        },
+        checkpoint,
+    )
+
+    out = export_hf(str(checkpoint), str(tmp_path / "hf-bpe"), push=False)
+    config = json.loads(Path(out, "config.json").read_text(encoding="utf-8"))
+    assert config["tokenizer"]["kind"] == "bpe"
+    assert config["tokenizer"]["filename"] == "tokenizer.json"
+    assert Path(out, "tokenizer.json").read_bytes() == tokenizer_path.read_bytes()
+    assert "byte-level" not in Path(out, "README.md").read_text(encoding="utf-8")
+    heads = torch.load(Path(out, "agent_heads.bin"), map_location="cpu", weights_only=True)
+    assert set(heads) == {"tool_head", "ptr_head", "route_head", "dense_selector", "selector_proj"}
