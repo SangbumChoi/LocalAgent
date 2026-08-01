@@ -1609,13 +1609,45 @@ function argmax(v) { let bi = 0; for (let i = 1; i < v.length; i++) if (v[i] > v
 function greedyToken(logits) { return argmax(logits); }
 function softmaxAt(v, i) { let m = -Infinity; for (const x of v) m = Math.max(m, x); let z = 0; for (const x of v) z += Math.exp(x - m); return Math.exp(v[i] - m) / z; }
 
-function dispatchSelect(hiddenTensor, T) {
+function mobileLexicalSelect(query) {
+  const names = new Set(DISPATCH?.dense_selector?.tool_names || []);
+  if (!names.has("mobile_click") || typeof query !== "string") return null;
+  const low = query.toLowerCase();
+  // Require an explicitly mobile/handset cue. Generic browser prompts often mention a screen,
+  // window, app, click, or scroll too; those must continue through the learned standard pool.
+  const mobileCue = /\b(?:mobile|android|phone|touch|tap|swipe)\b/.test(low);
+  if (!mobileCue) return null;
+  const choose = (name) => names.has(name) ? {
+    name,
+    route: "computer_use",
+    conf: 1,
+    isStop: false,
+    selection_policy: "mobile_lexical_guard",
+  } : null;
+  if (/\b(?:navigate|go|return|press)\b[\s\S]*\bhome\b/.test(low)) return choose("mobile_navigate_home");
+  if (/\b(?:navigate|go|return|press)\b[\s\S]*\bback\b/.test(low)) return choose("mobile_navigate_back");
+  if (/\b(?:press|hit|send)\b[\s\S]*\benter\b/.test(low)) return choose("mobile_press_enter");
+  if (/\b(?:type|input|fill|enter)\b/.test(low)) return choose("mobile_input_text");
+  if (/\b(?:long[ -]?press|hold)\b/.test(low)) return choose("mobile_long_press");
+  if (/\bswipe\b/.test(low)) return choose("mobile_swipe");
+  if (/\bscroll\b/.test(low)) return choose("mobile_scroll");
+  if (/\b(?:open|launch|start|bring up)\b/.test(low) && !/https?:\/\//.test(low)) {
+    return choose("mobile_open_app");
+  }
+  if (/\b(?:tap|click|touch|select)\b/.test(low)) return choose("mobile_click");
+  if (/\b(?:wait|sleep)\b/.test(low)) return choose("mobile_wait");
+  return null;
+}
+
+function dispatchSelect(hiddenTensor, T, query = "") {
+  const mobile = mobileLexicalSelect(query);
+  if (mobile) return mobile;
   const last = lastHidden(hiddenTensor, T);
   // 1. route head (5-way modality gate); the `text` route (stop_index) = abstain / direct answer.
   const R = DISPATCH.route_head;
   const rl = linrow(R.weight, R.bias, last);
   const ri = argmax(rl);
-  if (ri === R.stop_index) return { isStop: true, route: R.routes[ri], conf: softmaxAt(rl, ri) };
+  if (ri === R.stop_index) return { isStop: true, route: R.routes[ri], conf: softmaxAt(rl, ri), selection_policy: "dense_selector" };
   // 2. dense selector: q = normalize(q_proj(last)); score_j = q · tool_matrix[j]; argmax.
   const S = DISPATCH.dense_selector;
   const q = linrow(S.q_proj_weight, S.q_proj_bias, last);
@@ -1625,7 +1657,7 @@ function dispatchSelect(hiddenTensor, T) {
     const Tj = S.tool_matrix[j]; let a = 0; for (let i = 0; i < S.proj; i++) a += Tj[i] * q[i];
     if (a > bs) { bs = a; bi = j; }
   }
-  return { name: S.tool_names[bi], route: R.routes[ri], conf: (bs + 1) / 2, isStop: false };
+  return { name: S.tool_names[bi], route: R.routes[ri], conf: (bs + 1) / 2, isStop: false, selection_policy: "dense_selector" };
 }
 
 // ---- argument grounding: learned pointer head + schema-typed extraction -------
@@ -2214,7 +2246,7 @@ async function structuredAction(query, options = {}) {
   const t1 = performance.now();
   const out = await forward(ids);
   const t2 = performance.now();
-  const sel = dispatchSelect(out.hidden, prompt.decisionInputTokens);
+  const sel = dispatchSelect(out.hidden, prompt.decisionInputTokens, query);
   const result = sel.isStop
     ? { abstain: true, route: sel.route, conf: sel.conf }
     : {
@@ -2228,6 +2260,7 @@ async function structuredAction(query, options = {}) {
           prompt.decisionInputTokens
         ),
         conf: sel.conf,
+        selection_policy: sel.selection_policy,
       };
   const t3 = performance.now();
   const validation = validateActionForMeta(result);
@@ -2292,7 +2325,7 @@ async function planRollout(query, maxSteps = 4) {
     const s1 = performance.now();
     const out = await forward(ids);
     const s2 = performance.now();
-    const sel = dispatchSelect(out.hidden, ids.length);
+    const sel = dispatchSelect(out.hidden, ids.length, query);
     if (sel.isStop) {
       const s3 = performance.now();
       stepTimings.push({
@@ -2309,7 +2342,8 @@ async function planRollout(query, maxSteps = 4) {
     const groundingText = [query, ...steps.map((step) => step.response || "")].join(" ");
     const args = groundArgs(sel.name, groundingText, ids, out.hidden, ids.length);
     const s3 = performance.now();
-    steps.push({ tool: sel.name, route: sel.route, args, conf: sel.conf, response: simResponse(sel.name, args) });
+    steps.push({ tool: sel.name, route: sel.route, args, conf: sel.conf, selection_policy: sel.selection_policy,
+      response: simResponse(sel.name, args) });
     stepTimings.push({
       step: i,
       input_tokens: ids.length,
@@ -2466,4 +2500,12 @@ if (typeof module !== "undefined" && module.exports) {
     verifyModelBytesAgainstManifest,
     verifyPinnedArtifactBytes,
   };
+}
+
+// Optional integration hook for local stateful mobile/MCP harnesses. The normal demo UI remains
+// unchanged; consumers must await the ready promise and use the returned schema-validated action.
+if (typeof window !== "undefined") {
+  window.__localAgentReady = LOCALAGENT_READY;
+  window.__localAgentCallPolicyOnce = callPolicyOnce;
+  window.__localAgentStructuredAction = structuredAction;
 }

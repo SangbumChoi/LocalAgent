@@ -169,7 +169,10 @@ def normalize_mobile_row(
         messages.append(
             {
                 "role": "user",
-                "content": f"Step {index + 1}: {instruction}\nCurrent observation: {observation}",
+                # Keep the actionable instruction at the right edge of the context. The model
+                # applies left truncation at its fixed WebGPU window, while accessibility/screen
+                # projections can be much longer than one window.
+                "content": f"Current observation: {observation}\nStep {index + 1} instruction: {instruction}",
             }
         )
         messages.append(

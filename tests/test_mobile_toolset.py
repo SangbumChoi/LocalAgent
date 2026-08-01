@@ -1,0 +1,44 @@
+from localagent.agent.mobile_toolset import mobile_tools
+from localagent.agent.routes import route_of
+
+
+def test_mobile_toolset_is_additive_and_schema_complete():
+    tools = mobile_tools()
+    assert len(tools) == 10
+    assert all(tool.name.startswith("mobile_") for tool in tools)
+    assert {tool.name for tool in tools} == {
+        "mobile_click",
+        "mobile_long_press",
+        "mobile_scroll",
+        "mobile_swipe",
+        "mobile_open_app",
+        "mobile_input_text",
+        "mobile_navigate_home",
+        "mobile_navigate_back",
+        "mobile_press_enter",
+        "mobile_wait",
+    }
+    for tool in tools:
+        schema = tool.parameters
+        assert schema["type"] == "object"
+        assert set(schema) >= {"properties", "required"}
+        assert route_of(tool.name) == "computer_use"
+
+    click = next(tool for tool in tools if tool.name == "mobile_click")
+    assert click.parameters["required"] == ["x", "y"]
+    scroll = next(tool for tool in tools if tool.name == "mobile_scroll")
+    assert scroll.parameters["properties"]["direction"]["enum"] == [
+        "up",
+        "down",
+        "left",
+        "right",
+    ]
+    enter = next(tool for tool in tools if tool.name == "mobile_press_enter")
+    assert enter.parameters["properties"]["key"]["enum"] == ["ENTER"]
+
+
+def test_mobile_toolset_returns_detached_specs():
+    first = mobile_tools()
+    second = mobile_tools()
+    first[0].parameters["properties"]["x"]["type"] = "integer"
+    assert second[0].parameters["properties"]["x"]["type"] == "number"

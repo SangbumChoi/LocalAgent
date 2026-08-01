@@ -124,6 +124,12 @@ A second bounded train source now exercises the larger [AITW release](https://gi
   enriched Conversation rows (canonical JSONL SHA-256
   `31bdd0320ddcd75345aca73fd7ca81c05d11b6831091da94faca57b841df5ce6`).
 
+The v2 projection used for the corrected continuation keeps each step instruction after the
+observation: AndroidControl normalized JSONL SHA-256
+`705bf99465b5feb2b24f03e5c81cc2c1560ac8f28200eb83ed8c921626c995fa` (16 rows) and AITW normalized
+JSONL SHA-256 `1f0a08fac5684f21d62a10855fc05171b4d7ba699f8aae51f062d01f7b52031` (10 rows). The
+source manifests remain bound to the same official train-only episode selections.
+
 An 8-step continuation over the 26-row AndroidControl+AITW mixture reduced mean normalized-row
 loss from `8.6239` to `7.9730` (assistant-token accuracy `2.02%`, exact trajectory accuracy `0%`).
 The resulting 10.5M WebGPU bundle passed the same hard ONNX/PyTorch parity gate (fp32 max drift
@@ -161,6 +167,34 @@ runtime capability failure, not a model-quality score.  The fp32 export is there
 compatibility fallback for WebGPU devices without shader-f16 support.  Neither receipt is evidence
 that the model can yet control a real Android emulator, browser account, email system, Notion
 workspace, or MCP server; those evaluations remain required before publication.
+
+### Text-first mobile/productivity closed-loop pilot (custom 60-tool bundle)
+
+The corrected mobile projection keeps the action instruction at the end of each observation, so a
+left-truncated WebGPU context cannot discard the command after a long accessibility-tree dump. A
+separate additive dispatch bundle was exported from the 10.5M-parameter mobile-dispatch child:
+
+- Parent checkpoint: `sft-realistic-mobile-mixture-pilot.pt`, SHA-256
+  `268cd21d8f6a49e4e63c001ef73a26c67820d33407e5bb611a03382966700d1f`.
+- Child checkpoint: `sft-realistic-mobile-dispatch-pilot-sft200-v2.pt`, SHA-256
+  `3606aa01952de1f006c039fef9f64f6184cc611ba320452674a71bbfc8ac137f`.
+- Exported pool: 60 schemas (the stable standard 50 plus 10 `mobile_*` schemas), with fp32
+  `model.onnx`/`action_model.onnx` parity max drift `9.86e-06`/`6.59e-06`.
+- Bundle manifest SHA-256 `e6d56e433f7f6f9bcc712db241a21cf0cfbc1a3a36c388d2415182cfc721e427`;
+  model and action graph SHA-256 values are pinned in the raw receipt.
+- Local browser receipt: [`m7-webgpu-mobile-productivity-pilot.json`](paper/results/raw/m7-webgpu-mobile-productivity-pilot.json),
+  SHA-256 `7887eaebd7512c360c4a99e9292e41634bce7f9f0e4899700a4ed7253015c507`.
+
+The receipt runs nine deterministic steps against an in-memory Android/Gmail-style state plus
+local Notion and email records. It uses explicit WebGPU on Chrome SwiftShader (software WebGPU),
+text-only observations, no screenshots, no trusted OS input, and no external accounts. All nine
+outputs were independently schema-valid. Mobile actions were 7/7 exact and closed-loop, but the
+learned dense selector chose the wrong standard tool for both productivity tasks (0/2 exact), so
+the aggregate is 7/9 (77.8%) and must not be presented as a real-device or real-account score.
+The seven mobile successes use the explicitly reported `mobile_lexical_guard`; they are a runtime
+contract check, not evidence that the dense selector has solved mobile dispatch. The held-out
+selector result remains 40% top-1 on ten mobile rows, and the next acceptance gate is a no-guard
+mobile ablation plus emulator/real-environment evaluation.
 
 For comparison, an earlier AndroidControl-only baseline continued the WebGPU-tier parent
 (`webgpu-10m-hybrid`, 10,524,544 parameters) for eight CPU

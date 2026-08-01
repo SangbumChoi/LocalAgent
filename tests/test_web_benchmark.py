@@ -145,7 +145,7 @@ process.stdout.write(JSON.stringify({ padded }));
     assert json.loads(result.stdout)["padded"] == [10, 11, 99, 32, 32, 32, 32, 32]
     app = WEB_APP.read_text()
     assert '"trailing_compute"' in app
-    assert "dispatchSelect(out.hidden, prompt.decisionInputTokens)" in app
+    assert "dispatchSelect(out.hidden, prompt.decisionInputTokens, query)" in app
     assert "prompt.decisionInputTokens" in app
     assert "decision_feature_index: prompt.decisionFeatureIndex" in app
 

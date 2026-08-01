@@ -44,6 +44,17 @@ mixture's held-row assistant-token accuracy was 2.02% with 0% exact trajectories
 movements establish lineage and compatibility only; they do not justify claiming learned mobile
 control or selecting this checkpoint without a held-out ablation.
 
+The corrected v2 continuation (200 SFT updates after moving the action instruction to the right
+edge of the projected observation) was also measured from the same 26-row parent. It preserved all
+51 tensor shapes, config, and tokenizer identity; action heads remained frozen. Relative movement
+was `0.01404` for attention/mixer, `0.01650` for FFN, `0.03290` for the embedding, and `0.000853`
+for normalization. Mean normalized-row loss fell from `7.9735` to `3.3477`, with assistant-token
+accuracy `75.93%`, but exact assistant sequences remained `0%`. The dispatch child then achieved
+held route accuracy `1.0` and held mobile selector top-1 `0.4` (10 held turns; train top-1 `0.5385`).
+These are useful transfer diagnostics, not a publishable mobile policy: the browser receipt's 7/7
+mobile actions are from the explicit lexical guard, while the learned selector still fails the
+no-guard acceptance criterion.
+
 ## Adoption protocol
 
 1. **Compatibility gate:** require identical model config fields and tokenizer SHA-256.  Refuse

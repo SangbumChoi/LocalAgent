@@ -162,6 +162,7 @@ def _meta_json(
     model_file: str | None = None,
     action_model_file: str | None = None,
     model_parameters: int | None = None,
+    tools=None,
 ) -> dict:
     """Tokenization, model, and toolset contract consumed by the JavaScript runtime."""
     from localagent.agent.tool_head import CLASSES
@@ -188,10 +189,11 @@ def _meta_json(
             "ids": tokenizer.encode(tk.TOOL_RESPONSE_CLOSE),
         },
     }
-    tools = []
-    for t in STANDARD_TOOLS:
+    tool_specs = STANDARD_TOOLS if tools is None else list(tools)
+    tool_rows = []
+    for t in tool_specs:
         props = t.parameters.get("properties", {})
-        tools.append(
+        tool_rows.append(
             {
                 "name": t.name,
                 "description": t.description,
@@ -207,7 +209,7 @@ def _meta_json(
         "eos_id": tokenizer.eos_id,
         "encoding": "utf-8-bytes" if is_byte else "bytelevel-bpe",
         "markers": markers,
-        "tools": tools,
+        "tools": tool_rows,
         "tool_classes": list(CLASSES),
     }
     if tokenizer_file is not None:
@@ -579,6 +581,7 @@ def export_web(
     check: bool = True,
     action_only: bool = False,
     tokenizer_path: str | None = None,
+    tools=None,
 ) -> dict:
     """Emit a browser-ready onnxruntime-web bundle (WASM + WebGPU) into ``out_dir``:
 
@@ -688,6 +691,7 @@ def export_web(
         model_file=model_file,
         action_model_file=action_model_file,
         model_parameters=model.num_params(),
+        tools=tools,
     )
     heads_path = os.path.join(out_dir, "heads.json")
     meta_path = os.path.join(out_dir, "meta.json")
@@ -714,7 +718,7 @@ def export_web(
     if ck.get("route_head") and ck.get("dense_selector"):
         from localagent.inference.export.to_dispatch import dispatch_heads_json
 
-        dispatch = dispatch_heads_json(ck)
+        dispatch = dispatch_heads_json(ck, tools=tools)
         dispatch_path = os.path.join(out_dir, "dispatch_heads.json")
         with open(dispatch_path, "w") as f:
             json.dump(dispatch, f)
