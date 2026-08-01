@@ -148,6 +148,11 @@ State types are text (133), URL (71), and video (33); the profile retains neithe
 state assets. MCPMark's own runner supports repeated runs and pass@k/pass^k aggregation, so it is
 the next appropriate stability gate once the local MCP/browser dependencies are installed.
 
+[`src/localagent/eval/mcpmark.py`](../src/localagent/eval/mcpmark.py) now provides a fail-closed
+local result aggregator: it requires every expected task for every run before reporting
+pass@1/pass@k/pass^k, mean turns, latency, and token use. No result has been produced here because
+Docker/MCP services are not installed; the implementation is a protocol bridge, not a score.
+
 The catalog also binds the newer realistic environments that should be part of the workshop-grade
 evaluation matrix:
 
