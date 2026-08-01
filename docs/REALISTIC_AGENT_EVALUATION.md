@@ -117,6 +117,19 @@ parses only literal `pyautogui`/`computer` calls, and requires a textual observa
 actions remain `agentnet_*` tools for offline scoring; they are intentionally not relabeled as the
 text-grounded WebGPU `click` or `type_text` tools. The one-sample integration receipt is
 [`m17-agentnet-offline-adapter-sample-v1.json`](paper/results/raw/m17-agentnet-offline-adapter-sample-v1.json).
+[`src/localagent/eval/agentnet.py`](../src/localagent/eval/agentnet.py) now supplies a dependency-free
+AgentNetBench-compatible proxy for coordinate, text, keyboard, scroll, termination, and action-count
+scoring. A ground-truth replay of the official sample scores `1.0` across 12 actions, which is only
+a scorer sanity check; the pinned receipt is
+[`m18-agentnet-scoring-proxy-sample-v1.json`](paper/results/raw/m18-agentnet-scoring-proxy-sample-v1.json).
+
+A pinned metadata-only snapshot of the public Hugging Face export is also profiled in
+[`m19-agentnet-metadata-profile-v1.json`](paper/results/raw/m19-agentnet-metadata-profile-v1.json):
+22,532 unique task rows across Windows (12,364), macOS/Darwin (5,168), and Ubuntu (5,000), with
+2–131 steps and 13 recorded low-level action types. The source JSONL is 18,840,344 bytes with
+SHA-256 `9bb101e8373cd8cd1316f29d53c938b378f96aae1f09776a32bcc27454a0184d`; no screenshots or
+trajectory payloads were consumed. This is an inventory receipt, not training data or an
+AgentNetBench score.
 
 The catalog also binds the newer realistic environments that should be part of the workshop-grade
 evaluation matrix:
