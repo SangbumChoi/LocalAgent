@@ -64,6 +64,25 @@ records and 10 AITW records (130 tool calls total). Ground-truth replay is exact
 the sanity receipt is [`m22-mobile-action-score-replay-v1.json`](paper/results/raw/m22-mobile-action-score-replay-v1.json).
 This validates the interchange and scorer only, not model quality.
 
+### AndroidWorld emulator-result bridge
+
+The official [AndroidWorld checkpointer](https://github.com/google-research/android_world/blob/main/android_world/checkpointer.py)
+writes one `task_template_instance_id.pkl.gz` file per completed task instance under a timestamped
+`run_...` directory. The upstream episode record contains the goal, task template, instance ID,
+binary `is_successful` reward, episode length, runtime, exception information, and the full
+step-level episode payload. [`src/localagent/eval/androidworld.py`](../src/localagent/eval/androidworld.py)
+consumes that contract without importing AndroidWorld or starting `adb`: it hashes every result
+file, rejects symlinks and malformed/duplicate instances, and reports per-task and overall
+success rates. Supplying the exact expected task list and `n_task_combinations` is required for
+`completeness.verified`; otherwise the receipt is intentionally marked `incomplete`.
+
+Because upstream uses Python pickle, the parser's default loader accepts builtin-only fixtures.
+Loading a full trusted emulator checkpoint requires the explicit
+`--allow-unsafe-pickle` acknowledgement in [`scripts/aggregate_androidworld.py`](../scripts/aggregate_androidworld.py).
+This is a local result-protocol bridge, not a live runner or an official AndroidWorld leaderboard
+score. No AndroidWorld device result is published yet: the current environment lacks the
+upstream emulator/`adb` prerequisites.
+
 ## What can be trained
 
 Only the following public demonstrations are currently training candidates:
