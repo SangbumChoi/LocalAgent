@@ -353,6 +353,30 @@ selector: the external mobile held-out neural selector is 6/10 (60%) after balan
 augmentation.  Workshop acceptance still requires a stronger no-guard neural result, an official
 runtime benchmark, and hardware-WebGPU performance measurements.
 
+### v10 no-guard dense WebGPU continuation
+
+The next continuation starts from the v9r retrieval-sidecar child and keeps the same 10.5M
+parameter BPE model, tokenizer, and 62-tool catalog.  Its 3,000-step report covers 114 normalized
+rows (86 repeated synthetic mobile rows plus bounded AndroidControl/AITW rows) and holds out two
+mobile episodes and four productivity rows.  Route accuracy is `100%`; the held-out mobile dense
+selector is `6/10` (`60%`) and the held-out productivity selector is `3/4` (`75%`).  A weight audit
+found 51 shared tensors, no model or tokenizer mismatch, zero backbone movement, and an action-head
+relative delta L2 of `0.5294`.  This establishes compatible pretrained-weight reuse and head
+movement, not a no-transfer improvement claim.
+
+The fp32/fp16 ONNX graphs and serialized dispatch heads pass the export parity gate (fp32 logits
+drift `8.58e-06`, fp32 hidden drift `6.14e-06`, fp16 argmax agreement `1.0`).  The explicit in-app
+browser WebGPU run with `mobile_guard=0&selector=dense` reports `4/9` exact tools, `4/9` exact
+arguments/actions, `6/9` schema-valid actions, and `4/9` closed-loop successes: mobile `2/7`,
+productivity `2/2`.  Timing was not collected.  The full identity and summary hash are in the
+[`m12-v10 receipt`](paper/results/raw/m12-webgpu-mobile-productivity-v10.json).
+
+This result is a clearer no-guard reproduction than the retrieval ablation, not a higher-accuracy
+result: the learned dense selector remains the limiting component.  It is still synthetic,
+text-first, single-concurrency state evaluation with no screenshot grounding, trusted OS input,
+real accounts, official environment runner, or hardware throughput measurement.  The retrieval
+sidecar's earlier `9/9` result must remain reported separately from this learned policy.
+
 For comparison, an earlier AndroidControl-only baseline continued the WebGPU-tier parent
 (`webgpu-10m-hybrid`, 10,524,544 parameters) for eight CPU
 SFT updates at `1e-5` and `max_seq_len=2048`.  On the same normalized rows, mean assistant loss
