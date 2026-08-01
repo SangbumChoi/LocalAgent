@@ -76,6 +76,17 @@ config/tokenizer identity, zero backbone movement, and action-head aggregate rel
 The v9r retrieval sidecar is deliberately excluded from these neural weight claims because it has
 no trainable parameters.
 
+The first bounded public browser continuation is recorded in
+[`mind2web-public-train-sample-v1.json`](paper/results/raw/mind2web-public-train-sample-v1.json).
+Sixteen updates on 10 normalized Mind2Web training trajectories moved the transferred backbone by
+relative ΔL2 `0.00162` (attention/mixer), `0.00189` (FFN), `0.00260` (embedding), and `0.000062`
+(normalization); action heads remained unchanged.  Config and tokenizer identity matched across
+all 51 shared tensors.  Mean loss fell `2.2790` → `1.7595` and assistant-token accuracy rose
+`63.97%` → `74.29%`, but exact trajectories stayed `0/10`.  The evidence supports reusing the
+verified BPE parent with a lower-rate backbone continuation for browser adaptation; it does not
+support publishing the child as a Mind2Web result or claiming that these movement magnitudes are
+universally optimal.
+
 ## Adoption protocol
 
 1. **Compatibility gate:** require identical model config fields and tokenizer SHA-256.  Refuse

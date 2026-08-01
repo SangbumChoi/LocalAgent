@@ -23,6 +23,22 @@ environment/evaluation rows as blocked by their pending integration status (for 
 until those external runners are installed and pinned; this is a readiness gate, not a benchmark
 score.
 
+## Bounded public Mind2Web training continuation
+
+The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed
+at revision `17ece8eb89862368edc0cc806acee6fca5163474` without placing raw data in Git.  Of the
+first eight streamed records, five passed the adapter's fail-closed positive-grounding rule; they
+normalized to 10 deterministic Conversation rows, 116 grounded tool calls, and the
+`web_click`/`web_type`/`web_select` capability set.  The complete byte/hash/training receipt is
+[`mind2web-public-train-sample-v1.json`](paper/results/raw/mind2web-public-train-sample-v1.json).
+
+Sixteen BPE-tokenizer SFT updates from the corrected 10.5M mobile parent reduced mean loss from
+`2.2790` to `1.7595` and raised assistant-token accuracy from `63.97%` to `74.29%`; exact
+assistant trajectories remained `0/10`.  The transfer audit found 51 shared tensors, equal model
+configuration and tokenizer identity, no shape additions/removals, and frozen action heads.  This
+is legitimate public-data adaptation evidence, not a native Mind2Web score: the protected test
+archive and browser environment were not executed.
+
 ## What can be trained
 
 Only the following public demonstrations are currently training candidates:
