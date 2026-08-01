@@ -23,6 +23,26 @@ environment/evaluation rows as blocked by their pending integration status (for 
 until those external runners are installed and pinned; this is a readiness gate, not a benchmark
 score.
 
+### Workshop/publication gate
+
+The catalog preflight is necessary but not sufficient for a workshop claim.  The stricter
+[`scripts/workshop_gate.py`](../scripts/workshop_gate.py) requires explicit native receipts for
+AndroidWorld, BrowserGym/MiniWoB, OSWorld, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym;
+it also requires a hardware-WebGPU capability/latency receipt, both transfer and no-transfer
+weight reports, and a public model/demo manifest.  It never treats a protocol bridge, a synthetic
+state loop, SwiftShader, or a local checkpoint path as a pass:
+
+```bash
+PYTHONPATH=src python scripts/workshop_gate.py --strict
+```
+
+The command currently exits non-zero with ten blocking requirements.  That is intentional: the
+four train adapters and the tracked offline receipts are useful progress, but they do not prove
+native OS/emulator/MCP control or public deployment.  Once a native runner produces a receipt, it
+can be supplied as `--native-receipt BENCHMARK_ID=PATH`; the receipt contract requires explicit
+environment execution, official split verification, task count, and success rate.  The gate is
+therefore an auditable workshop decision, not a claim that the current model has passed.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed

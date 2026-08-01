@@ -1,0 +1,360 @@
+"""Fail-closed workshop/publication readiness checks for realistic-agent evidence.
+
+The realistic-agent catalog and the individual result bridges deliberately allow local protocol
+receipts without pretending that they are native benchmark runs.  This module is the final join:
+it requires explicit native-environment receipts, a real WebGPU capability/performance receipt, a
+transfer-vs-no-transfer ablation, and a public artifact manifest before reporting ``ready``.
+
+An absent receipt is a blocked requirement, never an implicit pass.  The gate is intentionally
+independent of any benchmark package and does not execute an emulator, browser, VM, MCP server, or
+Hugging Face upload.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any
+
+from localagent.eval.realistic_preflight import preflight_catalog
+
+SCHEMA_VERSION = 1
+KIND = "localagent_workshop_publication_gate"
+
+# These are the smallest set of native gates that covers the user's requested deployment surface:
+# mobile UI, browser/desktop control, stateful tools, and realistic email/productivity workflows.
+REQUIRED_NATIVE_BENCHMARKS: tuple[str, ...] = (
+    "androidworld",
+    "browsergym_miniwob",
+    "osworld",
+    "agentnet",
+    "toolsandbox",
+    "mcpmark",
+    "enterpriseopsgym",
+)
+
+_SHA256_HEX = frozenset("0123456789abcdef")
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _read_json(path: Path) -> tuple[dict[str, Any] | None, str | None]:
+    if not path.is_file() or path.is_symlink():
+        return None, "missing_or_non_regular_file"
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None, "invalid_json"
+    if not isinstance(value, Mapping):
+        return None, "json_root_must_be_object"
+    return dict(value), None
+
+
+def _check(
+    requirement: str,
+    *,
+    status: str,
+    evidence: Sequence[str] = (),
+    blockers: Sequence[str] = (),
+) -> dict[str, Any]:
+    return {
+        "requirement": requirement,
+        "status": status,
+        "evidence": sorted(set(str(item) for item in evidence)),
+        "blockers": sorted(set(str(item) for item in blockers)),
+    }
+
+
+def _native_receipt_check(
+    benchmark_id: str,
+    path: Path | None,
+    *,
+    repo_root: Path,
+) -> dict[str, Any]:
+    requirement = f"native:{benchmark_id}"
+    if path is None:
+        return _check(requirement, status="blocked", blockers=["receipt_not_supplied"])
+    resolved = path if path.is_absolute() else repo_root / path
+    payload, error = _read_json(resolved)
+    if payload is None:
+        return _check(
+            requirement,
+            status="blocked",
+            evidence=[str(resolved)],
+            blockers=[error or "receipt_unreadable"],
+        )
+    required = {
+        "benchmark_id",
+        "environment_executed",
+        "official_split_verified",
+        "task_count",
+        "success_rate",
+    }
+    missing = sorted(required - set(payload))
+    if missing:
+        return _check(
+            requirement,
+            status="blocked",
+            evidence=[str(resolved), _sha256(resolved)],
+            blockers=[f"missing_field:{field}" for field in missing],
+        )
+    blockers: list[str] = []
+    if payload.get("benchmark_id") != benchmark_id:
+        blockers.append("benchmark_id_mismatch")
+    if payload.get("environment_executed") is not True:
+        blockers.append("environment_not_executed")
+    if payload.get("official_split_verified") is not True:
+        blockers.append("official_split_not_verified")
+    task_count = payload.get("task_count")
+    if isinstance(task_count, bool) or not isinstance(task_count, int) or task_count < 1:
+        blockers.append("task_count_not_positive")
+    success_rate = payload.get("success_rate")
+    if (
+        isinstance(success_rate, bool)
+        or not isinstance(success_rate, (int, float))
+        or not 0.0 <= float(success_rate) <= 1.0
+    ):
+        blockers.append("success_rate_not_in_0_1")
+    return _check(
+        requirement,
+        status="pass" if not blockers else "blocked",
+        evidence=[str(resolved), _sha256(resolved)],
+        blockers=blockers,
+    )
+
+
+def _webgpu_check(path: Path | None, *, repo_root: Path) -> dict[str, Any]:
+    requirement = "webgpu:native_capability_and_latency"
+    if path is None:
+        return _check(requirement, status="blocked", blockers=["receipt_not_supplied"])
+    resolved = path if path.is_absolute() else repo_root / path
+    payload, error = _read_json(resolved)
+    if payload is None:
+        return _check(
+            requirement,
+            status="blocked",
+            evidence=[str(resolved)],
+            blockers=[error or "receipt_unreadable"],
+        )
+    blockers: list[str] = []
+    if payload.get("backend") != "webgpu":
+        blockers.append("backend_not_explicit_webgpu")
+    if payload.get("environment_executed") is not True:
+        blockers.append("environment_not_executed")
+    if payload.get("hardware_adapter") in (None, "", "software", "swiftshader"):
+        blockers.append("hardware_adapter_not_verified")
+    capability = payload.get("capability")
+    if not isinstance(capability, Mapping):
+        blockers.append("missing_capability_metrics")
+    else:
+        for field in ("evaluated_cases", "exact_actions", "closed_loop_success"):
+            value = capability.get(field)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                blockers.append(f"invalid_capability:{field}")
+    performance = payload.get("performance")
+    if not isinstance(performance, Mapping):
+        blockers.append("missing_performance_metrics")
+    else:
+        if not isinstance(performance.get("tokens_per_second_p50"), (int, float)):
+            blockers.append("missing_performance:tokens_per_second_p50")
+        if not isinstance(performance.get("peak_memory_mb"), (int, float)):
+            blockers.append("missing_performance:peak_memory_mb")
+    return _check(
+        requirement,
+        status="pass" if not blockers else "blocked",
+        evidence=[str(resolved), _sha256(resolved)],
+        blockers=blockers,
+    )
+
+
+def _weight_check(paths: Sequence[Path], *, repo_root: Path) -> dict[str, Any]:
+    requirement = "weights:transfer_and_no_transfer_ablation"
+    if len(paths) < 2:
+        return _check(requirement, status="blocked", blockers=["two_reports_required"])
+    reports: list[tuple[Path, dict[str, Any]]] = []
+    blockers: list[str] = []
+    for path in paths:
+        resolved = path if path.is_absolute() else repo_root / path
+        payload, error = _read_json(resolved)
+        if payload is None:
+            blockers.append(f"unreadable:{resolved}:{error}")
+            continue
+        reports.append((resolved, payload))
+    for resolved, payload in reports:
+        compatibility = payload.get("compatibility")
+        if not isinstance(compatibility, Mapping):
+            blockers.append(f"missing_compatibility:{resolved}")
+            continue
+        if compatibility.get("config_mismatches") not in ({}, None):
+            blockers.append(f"config_mismatch:{resolved}")
+        if compatibility.get("shape_mismatches") not in ({}, None):
+            blockers.append(f"shape_mismatch:{resolved}")
+        if compatibility.get("tokenizer_sha256_equal") is not True:
+            blockers.append(f"tokenizer_mismatch:{resolved}")
+        if not isinstance(payload.get("ablation"), str) and not isinstance(
+            payload.get("probe_init"), str
+        ):
+            blockers.append(f"missing_ablation_label:{resolved}")
+        if not isinstance(payload.get("held_out"), Mapping) and not isinstance(
+            payload.get("heldout"), Mapping
+        ):
+            blockers.append(f"missing_held_out_metrics:{resolved}")
+    return _check(
+        requirement,
+        status="pass" if not blockers and len(reports) >= 2 else "blocked",
+        evidence=[f"{path}:{_sha256(path)}" for path, _ in reports],
+        blockers=blockers,
+    )
+
+
+def _public_artifact_check(path: Path | None, *, repo_root: Path) -> dict[str, Any]:
+    requirement = "artifacts:public_model_demo_manifest"
+    if path is None:
+        return _check(requirement, status="blocked", blockers=["manifest_not_supplied"])
+    resolved = path if path.is_absolute() else repo_root / path
+    payload, error = _read_json(resolved)
+    if payload is None:
+        return _check(
+            requirement,
+            status="blocked",
+            evidence=[str(resolved)],
+            blockers=[error or "manifest_unreadable"],
+        )
+    required = {"public", "model_url", "demo_url", "artifact_sha256"}
+    blockers = [f"missing_field:{field}" for field in sorted(required - set(payload))]
+    if payload.get("public") is not True:
+        blockers.append("public_flag_not_true")
+    digest = payload.get("artifact_sha256")
+    if (
+        not isinstance(digest, str)
+        or len(digest) != 64
+        or any(character not in _SHA256_HEX for character in digest)
+    ):
+        blockers.append("artifact_sha256_invalid")
+    for field in ("model_url", "demo_url"):
+        if not isinstance(payload.get(field), str) or not payload[field].startswith(("https://", "http://")):
+            blockers.append(f"{field}_invalid")
+    return _check(
+        requirement,
+        status="pass" if not blockers else "blocked",
+        evidence=[str(resolved), _sha256(resolved)],
+        blockers=blockers,
+    )
+
+
+def build_workshop_gate(
+    catalog_path: str | Path = "configs/data/realistic-agent-eval.catalog.yaml",
+    *,
+    repo_root: str | Path = ".",
+    native_receipts: Mapping[str, str | Path] | None = None,
+    webgpu_receipt: str | Path | None = None,
+    weight_reports: Sequence[str | Path] = (),
+    public_artifact_manifest: str | Path | None = None,
+) -> dict[str, Any]:
+    """Build a JSON-compatible, fail-closed workshop readiness report."""
+
+    root = Path(repo_root).resolve()
+    catalog_source = Path(catalog_path)
+    if not catalog_source.is_absolute():
+        catalog_source = root / catalog_source
+    catalog = preflight_catalog(catalog_source)
+    checks: list[dict[str, Any]] = []
+    required_families = {"mobile", "browser", "computer", "tool_api"}
+    observed_families = {
+        row["family"] for row in catalog["rows"] if isinstance(row.get("family"), str)
+    }
+    missing_families = sorted(required_families - observed_families)
+    checks.append(
+        _check(
+            "catalog:realistic_family_coverage",
+            status="pass" if not missing_families else "blocked",
+            evidence=[str(catalog_path), catalog["catalog_sha256"]],
+            blockers=[f"missing_family:{family}" for family in missing_families],
+        )
+    )
+    checks.append(
+        _check(
+            "catalog:no_pending_train_adapter",
+            status="pass" if catalog["counts"]["runnable"] >= catalog["counts"]["train_rows"] else "blocked",
+            evidence=[str(catalog_path)],
+            blockers=[
+                f"train_row_blocked:{row['id']}"
+                for row in catalog["rows"]
+                if row["train_policy"] == "train" and not row["runnable"]
+            ],
+        )
+    )
+    receipts = dict(native_receipts or {})
+    for benchmark_id in REQUIRED_NATIVE_BENCHMARKS:
+        checks.append(
+            _native_receipt_check(
+                benchmark_id,
+                Path(receipts[benchmark_id]) if benchmark_id in receipts else None,
+                repo_root=root,
+            )
+        )
+    checks.append(
+        _webgpu_check(
+            Path(webgpu_receipt) if webgpu_receipt is not None else None,
+            repo_root=root,
+        )
+    )
+    checks.append(
+        _weight_check(
+            [Path(path) for path in weight_reports],
+            repo_root=root,
+        )
+    )
+    checks.append(
+        _public_artifact_check(
+            Path(public_artifact_manifest)
+            if public_artifact_manifest is not None
+            else None,
+            repo_root=root,
+        )
+    )
+    blocking = [
+        {
+            "requirement": check["requirement"],
+            "blockers": check["blockers"],
+        }
+        for check in checks
+        if check["status"] != "pass"
+    ]
+    return {
+        "kind": KIND,
+        "schema_version": SCHEMA_VERSION,
+        "ready": not blocking,
+        "catalog": {
+            "path": str(Path(catalog_path)),
+            "sha256": catalog["catalog_sha256"],
+            "entries": catalog["catalog_entries"],
+            "runnable_ids": catalog["runnable_ids"],
+            "blocked_ids": catalog["blocked_ids"],
+        },
+        "checks": checks,
+        "blocking_requirements": blocking,
+        "claim_boundary": (
+            "ready is false unless native benchmark receipts, native WebGPU performance and "
+            "capability evidence, transfer ablations, and public model/demo artifacts are all "
+            "explicitly supplied; protocol bridges and synthetic receipts do not satisfy these checks"
+        ),
+    }
+
+
+def write_workshop_gate(report: Mapping[str, Any], path: str | Path) -> None:
+    """Write a stable workshop gate report without silently overwriting an existing file."""
+
+    output = Path(path)
+    if output.exists() or output.is_symlink():
+        raise FileExistsError(f"refusing to overwrite workshop gate output: {output}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
