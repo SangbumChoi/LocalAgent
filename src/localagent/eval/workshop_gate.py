@@ -177,7 +177,7 @@ def _webgpu_check(path: Path | None, *, repo_root: Path) -> dict[str, Any]:
 
 def _weight_check(paths: Sequence[Path], *, repo_root: Path) -> dict[str, Any]:
     requirement = "weights:transfer_and_no_transfer_ablation"
-    if len(paths) < 2:
+    if not paths:
         return _check(requirement, status="blocked", blockers=["two_reports_required"])
     reports: list[tuple[Path, dict[str, Any]]] = []
     blockers: list[str] = []
@@ -188,6 +188,40 @@ def _weight_check(paths: Sequence[Path], *, repo_root: Path) -> dict[str, Any]:
             blockers.append(f"unreadable:{resolved}:{error}")
             continue
         reports.append((resolved, payload))
+    # A canonical combined receipt may carry both parent-head and random/no-transfer arms.  This
+    # avoids making reviewers reconstruct an ablation from several opaque files while retaining
+    # the same compatibility checks as the per-transition analyzer.
+    if len(reports) == 1:
+        resolved, payload = reports[0]
+        compatibility = payload.get("compatibility")
+        held_out = payload.get("held_out")
+        ablation = payload.get("ablation")
+        if not isinstance(compatibility, Mapping):
+            blockers.append(f"missing_compatibility:{resolved}")
+        else:
+            if compatibility.get("config_mismatches") not in ({}, None):
+                blockers.append(f"config_mismatch:{resolved}")
+            if compatibility.get("shape_mismatches") not in ({}, None):
+                blockers.append(f"shape_mismatch:{resolved}")
+            if compatibility.get("tokenizer_sha256_equal") is not True:
+                blockers.append(f"tokenizer_mismatch:{resolved}")
+        if not isinstance(ablation, Mapping):
+            blockers.append(f"missing_combined_ablation:{resolved}")
+        if not isinstance(held_out, Mapping) or not {"parent_heads", "random"}.issubset(held_out):
+            blockers.append(f"combined_ablation_arms_missing:{resolved}")
+        else:
+            for arm in ("parent_heads", "random"):
+                if not isinstance(held_out[arm], Mapping):
+                    blockers.append(f"invalid_ablation_arm:{arm}:{resolved}")
+        return _check(
+            requirement,
+            status="pass" if not blockers else "blocked",
+            evidence=[f"{path}:{_sha256(path)}" for path, _ in reports],
+            blockers=blockers,
+        )
+
+    if len(reports) < 2:
+        blockers.append("two_reports_required")
     for resolved, payload in reports:
         compatibility = payload.get("compatibility")
         if not isinstance(compatibility, Mapping):

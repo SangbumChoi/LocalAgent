@@ -65,6 +65,16 @@ def test_weight_gate_requires_two_compatible_labeled_reports(tmp_path: Path) -> 
     assert check["status"] == "pass"
 
 
+def test_weight_gate_accepts_combined_parent_vs_random_receipt() -> None:
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        weight_reports=["docs/paper/results/raw/m25-weight-transfer-ablation-v1.json"],
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "weights:transfer_and_no_transfer_ablation")
+    assert check["status"] == "pass"
+
+
 def test_write_gate_refuses_overwrite(tmp_path: Path) -> None:
     report = build_workshop_gate(CATALOG, repo_root=ROOT)
     output = tmp_path / "gate.json"
