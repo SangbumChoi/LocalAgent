@@ -48,7 +48,13 @@ def _load_rows(path: Path) -> list[Conversation]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data", type=Path, required=True, help="normalized Conversation JSONL")
+    parser.add_argument(
+        "--data",
+        type=Path,
+        action="append",
+        required=True,
+        help="normalized Conversation JSONL; repeat to train on a verified mixture",
+    )
     parser.add_argument("--init", type=Path, required=True, help="parent SFT checkpoint")
     parser.add_argument("--output", type=Path, required=True, help="child checkpoint path")
     parser.add_argument("--report", type=Path, required=True, help="JSON metrics report")
@@ -61,8 +67,11 @@ def main() -> None:
     if args.steps < 1 or args.batch_size < 1:
         raise ValueError("steps and batch-size must be positive")
 
-    rows = _load_rows(args.data)
-    data_bytes, data_sha = _sha256(args.data)
+    rows = [row for path in args.data for row in _load_rows(path)]
+    data_identities = [
+        {"path": str(path), "bytes": _sha256(path)[0], "sha256": _sha256(path)[1]}
+        for path in args.data
+    ]
     parent_bytes, parent_sha = _sha256(args.init)
     parent = torch.load(args.init, map_location="cpu")
     cfg = ModelConfig(**parent["cfg"])
@@ -106,15 +115,14 @@ def main() -> None:
     child.update(
         {
             "state_dict": model.state_dict(),
-            "stage": "sft_androidcontrol_pilot",
+            "stage": "sft_realistic_mobile_pilot",
             "step": int(parent.get("step", 0)) + args.steps,
             "parent_checkpoint_sha256": parent_sha,
             "parent_checkpoint_bytes": parent_bytes,
             "steps": args.steps,
             "data": {
-                "normalized_conversations": str(args.data),
-                "bytes": data_bytes,
-                "sha256": data_sha,
+                "normalized_conversations": [str(path) for path in args.data],
+                "identities": data_identities,
                 "rows": len(rows),
                 "source": "google/androidcontrol",
                 "text_first": True,
@@ -136,7 +144,7 @@ def main() -> None:
         "kind": "localagent_androidcontrol_pilot_training_report",
         "parent": {"path": str(args.init), "bytes": parent_bytes, "sha256": parent_sha},
         "child": {"path": str(args.output), **dict(zip(("bytes", "sha256"), _sha256(args.output)))},
-        "data": {"path": str(args.data), "bytes": data_bytes, "sha256": data_sha},
+        "data": {"identities": data_identities},
         "rows": len(rows),
         "steps": args.steps,
         "before": before,

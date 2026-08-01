@@ -23,6 +23,7 @@ _ACTION_NAMES = {
     "input_text": "mobile_input_text",
     "navigate_home": "mobile_navigate_home",
     "navigate_back": "mobile_navigate_back",
+    "press_enter": "mobile_press_enter",
     "wait": "mobile_wait",
 }
 _ACTION_PROPERTIES: dict[str, dict[str, dict[str, str]]] = {
@@ -39,6 +40,7 @@ _ACTION_PROPERTIES: dict[str, dict[str, dict[str, str]]] = {
     "mobile_input_text": {"text": {"type": "string"}},
     "mobile_navigate_home": {},
     "mobile_navigate_back": {},
+    "mobile_press_enter": {"key": {"type": "string"}},
     "mobile_wait": {"seconds": {"type": "number"}},
 }
 _ACTION_REQUIRED: dict[str, set[str]] = {

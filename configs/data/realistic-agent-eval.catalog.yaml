@@ -32,8 +32,8 @@ entries:
     domains: [mobile_ui, messaging, productivity, settings, search]
     train_policy: train
     integration:
-      status: decoder_pending_intermediate_bridge_ready
-      target_adapter: localagent_v1_via_normalize_realistic_agent_jsonl
+      status: supported_text_first_pilot
+      target_adapter: localagent.data.androidcontrol_via_localagent_v1
       source_split_policy: official_split_file_required
     webgpu_projection:
       status: feasible_text_first
@@ -70,8 +70,8 @@ entries:
     domains: [mobile_ui, gesture_control, multi_step_tasks]
     train_policy: train
     integration:
-      status: decoder_pending_intermediate_bridge_ready
-      target_adapter: localagent_v1_via_normalize_realistic_agent_jsonl
+      status: supported_text_first_pilot
+      target_adapter: localagent.data.aitw_via_localagent_v1
       source_split_policy: official_task_app_platform_split_required
     webgpu_projection:
       status: feasible_text_first

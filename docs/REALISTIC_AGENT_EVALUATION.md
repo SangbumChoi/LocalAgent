@@ -111,11 +111,63 @@ One bounded acquisition has now been exercised end to end without placing source
   `dce5c7738fc3702f16ad5dabddbcafa8f67edad2fe1ad50d937df4dc7456e7f7`.  The decoder projects
   the official accessibility protobuf to bounded text and rejects screenshot-only records.
 
-The WebGPU-tier parent (`webgpu-10m-hybrid`, 10,524,544 parameters) was continued for eight CPU
+A second bounded train source now exercises the larger [AITW release](https://github.com/google-research/google-research/tree/master/android_in_the_wild):
+
+- Official object: `gresearch/android-in-the-wild/general/general-00001-of-00321`, generation
+  `1686095863743117`, 3,249,449 bytes, upstream MD5 `o86d8TEjui+XzNjKrxywxA==`.
+- Official `standard.json` split binding is SHA-256
+  `324ca94dbbb0778cee7fd1f2bd8dcba20cce592fbef6aec41ee475ed47ae7681`; all five complete
+  episodes in this shard are in the official `train` list.
+- The AITW adapter reconstructs step-level TFRecords into complete episodes, converts normalized
+  dual-point gestures to pixel-space click/swipe actions, preserves type/home/back/enter actions,
+  and projects UI annotation text/bounds without copying screenshots.  Five episodes became 10
+  enriched Conversation rows (canonical JSONL SHA-256
+  `31bdd0320ddcd75345aca73fd7ca81c05d11b6831091da94faca57b841df5ce6`).
+
+An 8-step continuation over the 26-row AndroidControl+AITW mixture reduced mean normalized-row
+loss from `8.6239` to `7.9730` (assistant-token accuracy `2.02%`, exact trajectory accuracy `0%`).
+The resulting 10.5M WebGPU bundle passed the same hard ONNX/PyTorch parity gate (fp32 max drift
+`7.15e-06`, fp16 max drift `4.83e-03`).  This expands training coverage, but remains a bridge
+measurement rather than evidence of environment success.
+
+### Browser runtime receipt (local compatibility smoke)
+
+The exported fp32 bundle was then exercised in the existing browser harness with an explicit
+single-provider WebGPU session.  This is a provider/dispatch receipt, not a benchmark score for
+AndroidWorld, WebArena, OSWorld, MCPMark, email, or Notion: the suite has eight one-step local DOM
+fixtures, text-only observations, semantic targets, no screenshots, no physical cursor, and no
+external navigation.
+
+- Bundle: `sft_realistic_mobile_pilot`, 10,524,544 parameters; checkpoint SHA-256
+  `268cd21d8f6a49e4e63c001ef73a26c67820d33407e5bb611a03382966700d1f`; bundle-manifest SHA-256
+  `57cedfe061174fddf44cdae1d280bf1da9baef286f82655fdf17a78f5cbf139c`.
+- Requested provider: `webgpu` with one ORT Web session; the observed adapter was Chrome
+  SwiftShader (`google`), so this run demonstrates software WebGPU compatibility rather than a
+  hardware-GPU throughput claim.  The model artifact was fetched, size-checked, and SHA-256
+  verified in-browser before session creation.
+- Result: 8/8 independent action schemas valid; exact action 6/8 (75%); final DOM/state
+  transition 6/8 (75%); closed-loop success 6/8 (75%).  Click, double-click, type, scroll, drag,
+  and cursor-move cases passed; the single key-press and local-navigation cases failed.
+- Timing: harness TTFA p50 `157.6 ms`, closed-loop p50 `165.6 ms`, tool dispatch p50 `0.35 ms`.
+  The slowest drag/scroll cases make the p90 closed-loop latency `4.28 s`; only 3/8 cases both
+  completed and succeeded within a 250 ms deadline.  Treat p50 and deadline attainment separately.
+- Receipt JSON: `/private/tmp/realistic_webgpu_browser_result.json`, SHA-256
+  `7b3872cd6e153b340b2fe9bc0a47d4b339635264c7ae7f57f0b2aeb21ffb6c26`.
+
+The same eight-fixture control run under WASM (fp16 bundle) completed at roughly `33.3 ms` p50
+with the same 75% exact/final-DOM/end-to-end rate.  Explicit WebGPU with that fp16 artifact did
+not create a usable session because the selected device rejected `f16` gather kernels; this is a
+runtime capability failure, not a model-quality score.  The fp32 export is therefore the current
+compatibility fallback for WebGPU devices without shader-f16 support.  Neither receipt is evidence
+that the model can yet control a real Android emulator, browser account, email system, Notion
+workspace, or MCP server; those evaluations remain required before publication.
+
+For comparison, an earlier AndroidControl-only baseline continued the WebGPU-tier parent
+(`webgpu-10m-hybrid`, 10,524,544 parameters) for eight CPU
 SFT updates at `1e-5` and `max_seq_len=2048`.  On the same normalized rows, mean assistant loss
   changed from `8.6985` to `7.9501`; assistant-token accuracy was `2.33%` and exact trajectory
   accuracy was `0%`.  These are language-model bridge metrics, not emulator task success.  The
-  child checkpoint SHA-256 is
+  baseline child checkpoint SHA-256 is
   `9ea68807ac758c564200a5649f9196ecde3bccb8a66edae04eec8c6c14813eae`; its ONNX bundle manifest
   SHA-256 is `13e5549d69ab9286ab41e2c75901ee67412327487997f4740dd6c31f7f726940`.  The bundle passed
   the hard PyTorch parity gate for fp32 and fp16 logits/hidden graphs (fp32 maximum absolute drift

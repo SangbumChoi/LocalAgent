@@ -23,6 +23,7 @@ The report was run on the local checkpoints that already carry stage lineage:
 | pretrain → midtrain | 40 | identical / identical | embedding relative ΔL2 = **0.0615** |
 | midtrain → SFT | 40 (+ 11 new action-head tensors) | identical / identical | embedding relative ΔL2 = **0.4054** |
 | SFT → AndroidControl pilot | 40 (+ 11 retained action-head tensors) | identical / identical | embedding relative ΔL2 = **0.00140** |
+| SFT → AndroidControl+AITW mixture pilot | 51 (40 backbone + 11 retained heads) | identical / identical | embedding relative ΔL2 = **0.00136** |
 
 For pretrain → midtrain, the relative ΔL2 values were 0.0266 for attention/mixer, 0.0337 for
 FFN, and 0.0041 for normalization.  For midtrain → SFT they were 0.0346, 0.0431, and 0.0095.
@@ -35,6 +36,13 @@ retained unchanged (relative ΔL2 = 0), while attention/mixer, FFN, embedding, a
 movement were 0.00099, 0.00116, 0.00140, and 0.000035 respectively.  This is consistent with a
 small learning-rate continuation and is not evidence that mobile actions were learned; the pilot
 had no exact trajectory matches and no emulator reward.
+
+The 26-row AndroidControl+AITW mixture shows the same transfer pattern: action heads remained
+unchanged, while attention/mixer, FFN, embedding, and normalization moved by 0.00094, 0.00110,
+0.00136, and 0.000035 respectively (51 shared tensors; identical config and tokenizer).  The
+mixture's held-row assistant-token accuracy was 2.02% with 0% exact trajectories, so these small
+movements establish lineage and compatibility only; they do not justify claiming learned mobile
+control or selecting this checkpoint without a held-out ablation.
 
 ## Adoption protocol
 

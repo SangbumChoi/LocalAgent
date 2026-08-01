@@ -105,9 +105,10 @@ def _packed_varints(payload: bytes) -> list[int]:
     return values
 
 
-def _feature_values(feature: bytes) -> tuple[list[bytes], list[int]]:
+def _feature_values(feature: bytes) -> tuple[list[bytes], list[int], list[float]]:
     byte_values: list[bytes] = []
     int_values: list[int] = []
+    float_values: list[float] = []
     for field, wire_type, value in _fields(feature):
         if wire_type != 2 or not isinstance(value, bytes):
             continue
@@ -125,11 +126,21 @@ def _feature_values(feature: bytes) -> tuple[list[bytes], list[int]]:
                     int_values.append(nested_value)
                 elif nested_wire == 2 and isinstance(nested_value, bytes):
                     int_values.extend(_packed_varints(nested_value))
-    return byte_values, int_values
+        elif field == 2:  # FloatList.value, packed or unpacked float32.
+            for nested_field, nested_wire, nested_value in _fields(value):
+                if nested_field != 1 or not isinstance(nested_value, bytes):
+                    continue
+                if nested_wire == 5 and len(nested_value) == 4:
+                    float_values.append(struct.unpack("<f", nested_value)[0])
+                elif nested_wire == 2 and len(nested_value) % 4 == 0:
+                    float_values.extend(
+                        struct.unpack("<" + "f" * (len(nested_value) // 4), nested_value)
+                    )
+    return byte_values, int_values, float_values
 
 
-def _example_features(payload: bytes) -> dict[str, tuple[list[bytes], list[int]]]:
-    result: dict[str, tuple[list[bytes], list[int]]] = {}
+def _example_features(payload: bytes) -> dict[str, tuple[list[bytes], list[int], list[float]]]:
+    result: dict[str, tuple[list[bytes], list[int], list[float]]] = {}
     for field, wire_type, value in _fields(payload):
         if field != 1 or wire_type != 2 or not isinstance(value, bytes):
             continue
@@ -148,19 +159,31 @@ def _example_features(payload: bytes) -> dict[str, tuple[list[bytes], list[int]]
     return result
 
 
-def _first_bytes(features: Mapping[str, tuple[list[bytes], list[int]]], key: str) -> bytes:
-    values = features.get(key, ([], []))[0]
+def _first_bytes(
+    features: Mapping[str, tuple[list[bytes], list[int], list[float]]], key: str
+) -> bytes:
+    values = features.get(key, ([], [], []))[0]
     if not values:
         raise ValueError(f"AndroidControl example is missing bytes feature {key!r}")
     return values[0]
 
 
-def _bytes_list(features: Mapping[str, tuple[list[bytes], list[int]]], key: str) -> list[bytes]:
-    return list(features.get(key, ([], []))[0])
+def _bytes_list(
+    features: Mapping[str, tuple[list[bytes], list[int], list[float]]], key: str
+) -> list[bytes]:
+    return list(features.get(key, ([], [], []))[0])
 
 
-def _int_list(features: Mapping[str, tuple[list[bytes], list[int]]], key: str) -> list[int]:
-    return list(features.get(key, ([], []))[1])
+def _int_list(
+    features: Mapping[str, tuple[list[bytes], list[int], list[float]]], key: str
+) -> list[int]:
+    return list(features.get(key, ([], [], []))[1])
+
+
+def _float_list(
+    features: Mapping[str, tuple[list[bytes], list[int], list[float]]], key: str
+) -> list[float]:
+    return list(features.get(key, ([], [], []))[2])
 
 
 def _decode_json_bytes(value: bytes, *, label: str) -> Any:
