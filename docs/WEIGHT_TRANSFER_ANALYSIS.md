@@ -76,6 +76,17 @@ config/tokenizer identity, zero backbone movement, and action-head aggregate rel
 The v9r retrieval sidecar is deliberately excluded from these neural weight claims because it has
 no trainable parameters.
 
+The v14 state-conditioned continuation provides the next controlled probe comparison.  It starts
+from the v11 parent with the same 10.5M BPE model and freezes all 40 backbone tensors while adding
+23 disjoint state/browser examples to the route and dense-selector probe pool.  The shared-backbone
+relative ΔL2 is `0.0`; route-head and dense-selector relative ΔL2 are `0.2548` and `0.2580`.  Train
+selector accuracy rises to `89.66%`, while held-out mobile/productivity selector accuracy remains
+`60%`/`75%`.  The guarded WebGPU stateful gate reaches `4/13` exact actions and `3/13` closed-loop
+steps, with complete-trajectory pass@1 still `0/3`.  This is evidence for cheap probe transfer and
+its current limit, not evidence that the frozen representation is sufficient for browser-agent
+control.  The full v14 artifact and first-failure receipt is
+[`m16-webgpu-mobile-productivity-trajectories-v14.json`](paper/results/raw/m16-webgpu-mobile-productivity-trajectories-v14.json).
+
 The first bounded public browser continuation is recorded in
 [`mind2web-public-train-sample-v1.json`](paper/results/raw/mind2web-public-train-sample-v1.json).
 Sixteen updates on 10 normalized Mind2Web training trajectories moved the transferred backbone by

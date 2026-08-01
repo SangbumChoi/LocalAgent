@@ -16,6 +16,7 @@ forbidden_train_ids:
   - mind2web_eval
   - webarena
   - osworld
+  - agentnet
   - appworld
   - tau_bench
   - toolsandbox

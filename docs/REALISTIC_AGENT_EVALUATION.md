@@ -7,9 +7,9 @@ desktop workflows, and stateful API/MCP tools.  The source-linked inventory is
 It is deliberately a catalog, not a downloader: every acquired byte must be recorded in a local
 provenance manifest with an upstream revision, byte count, and SHA-256.
 
-The current catalog contains 35 source-linked rows (four train-eligible and 31 evaluation or
+The current catalog contains 36 source-linked rows (four train-eligible and 32 evaluation or
 restricted) and has a canonical SHA-256 fingerprint recorded by the preflight command below.
-The current fingerprint is `960c7063aff7885ce3e2ad970d4a2274c819838f79e7757ea5a6b6495c3174ac`.
+The current fingerprint is `5357b1d73d4bd14f0a96b6e19fe48bd7cfdce08509e332583923a63ff77253cb`.
 
 Run the read-only readiness report before acquiring or evaluating anything:
 
@@ -77,6 +77,11 @@ The following are important reality checks, not extra SFT rows:
 - [OSWorld](https://github.com/xlang-ai/osworld) and [OSWorld-Human](https://github.com/xlang-ai/OSWorld-Human):
   desktop multi-application workflows and human trajectories; use a VM runner and do not claim an
   official leaderboard score from a local run.
+- [AgentNet / OpenCUA](https://github.com/xlang-ai/OpenCUA): 22.6K human-annotated computer-use
+  tasks across Windows, macOS, and Ubuntu, with an offline AgentNetBench trajectory evaluator.
+  Its action-reduction and state-action matching protocol is especially relevant to a compact
+  state-conditioned WebGPU policy; keep screenshots, task labels, and official OS/app holdouts out
+  of training until the dataset terms and split hashes are verified.
 - [AppWorld](https://github.com/StonyBrookNLP/appworld): protected task/app/API-specific bundles;
   never unpack those into plaintext training data.
 - [tau-bench](https://github.com/sierra-research/tau-bench) / tau3-bench: interactive user-agent-tool
@@ -150,7 +155,7 @@ task prompts, verifier code, and gold state can directly inflate the score.
 | --- | --- | --- | --- |
 | Mobile single-step and long-horizon control | AndroidWorld, MobileGym, MobileWorld, GUIOdyssey, MobileAgentBench, PhoneWorld | grounded action validity, milestone reward, episode success, app/device generalization | accessibility-tree text plus goal; no screenshot grounding yet |
 | Browser navigation and visual grounding | BrowserGym/MiniWoB++, WebArena, WorkArena, WebLINX, VisualWebArena | element accuracy, operation F1, DOM/state transitions, task success | cleaned DOM/A11y text; visual suites are modality ablations |
-| Desktop/computer use | OSWorld/OSWorld-V2, MemGUI-Bench, WorldGUI, macOSWorld, ASSISTGUI | VM task success, long-horizon recovery, latency, safety | compact desktop state only; VM runners are pending |
+| Desktop/computer use | AgentNet/AgentNetBench, OSWorld/OSWorld-V2, MemGUI-Bench, WorldGUI, macOSWorld, ASSISTGUI | VM task success, offline action/trajectory accuracy, long-horizon recovery, latency, safety | compact desktop state only; VM runners are pending |
 | Stateful tools and productivity | Toolathlon-GYM, MCPMark, EnterpriseOpsGym, AgentBench FC, AppWorld, tau-bench | exact calls, schema validity, state delta, pass^k, abstention | local email/Notion mocks and retrieval sidecar; no external accounts |
 
 This map is intentionally asymmetric: a text-first 10.5M model can produce a credible structured
@@ -386,6 +391,39 @@ diagnostic's SHA-256 is `a12f7c4328cc21f429056ab94ca2ee575af7b67f7db39032db83646
 It shows that adding state-conditioned rows did not yet produce robust sequential control;
 it is not an AndroidWorld, AITW, BrowserGym, OSWorld, AppWorld, MCPMark, EnterpriseOps-Gym,
 real-email/Notion, screenshot-grounding, or hardware-throughput score.
+
+### Corrected stateful trajectory gate and weight audit (v14)
+
+The v14 continuation adds 23 balanced state-conditioned rows, including browser open/click/type/
+Enter variants, and preserves the v11 parent-head initialization.  A code audit found three
+deployment/harness issues that are now fixed: lexical mobile selection was reading the goal instead
+of only the next action, state JSON polluted quoted argument candidates, and the trajectory scorer
+compared runtime metadata to the expected `{tool,args}` object.  The independent validator now
+projects runtime responses to `{tool,args}` and keeps the state-transition check separate.
+
+The weight audit is consistent with probe transfer: all 40 shared backbone tensors are unchanged
+(relative L2 `0.0`), while the route and dense-selector probes move by relative L2 `0.2548` and
+`0.2580`.  The v14 train selector is `89.66%`; held-out mobile and productivity selector scores
+remain `60%` and `75%`, so the added rows have not improved the external holdouts.
+
+The corrected in-app WebGPU run reports:
+
+| Condition | Schema-valid | Exact `{tool,args}` | Closed-loop | Complete pass@1 |
+| --- | ---: | ---: | ---: | ---: |
+| Guarded dense | 12/13 | 4/13 | 3/13 | 0/3 |
+| No-guard dense | 11/13 | 1/13 | 1/13 | 0/3 |
+| No-guard retrieval sidecar | 8/13 | 2/13 | 1/13 | 0/3 |
+
+The guarded condition improves because the lexical selector is now scoped to the requested action,
+and the corrected grounder recovers app names such as `Gmail` and `Notion` instead of state keys
+such as `app`.  The learned dense selector still confuses browser open/click and later mobile
+actions; the retrieval sidecar is an ablation, not neural accuracy.  The hash-bound v14 checkpoint,
+bundle, provider condition, first failures, and weight audit are in the [`m16 receipt`](paper/results/raw/m16-webgpu-mobile-productivity-trajectories-v14.json),
+SHA-256 `9ad33d0d5d1613cb7c4f024792412dd61d4a6b165c3039163cd1e83902976dc8`.
+
+This is stronger local evidence than the earlier M15 receipt, but it remains a negative workshop
+gate: no official Android emulator, AgentNetBench, BrowserGym/OSWorld VM, MCP server, screenshot
+grounding, real account, or hardware-throughput run has been completed.
 
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 

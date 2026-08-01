@@ -186,3 +186,6 @@ into the next prompt and checks the shipped `meta.json` schema, exact arguments,
 state transitions, and complete-trajectory pass@1. The suite is a deployment diagnostic only:
 it contacts no external service, does not send email or edit Notion, has no screenshot grounding or
 trusted OS input, and must not be reported as AndroidWorld, BrowserGym, OSWorld, or MCP success.
+The corrected v14 receipt records the current result: guarded dense dispatch reaches `4/13` exact
+actions and `3/13` closed-loop transitions; no-guard dense reaches `1/13`. Complete-trajectory
+pass@1 remains `0/3`, so this page is a failure gate rather than a publish-ready agent claim.

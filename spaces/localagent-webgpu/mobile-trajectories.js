@@ -166,6 +166,13 @@ function trajectoryExact(left, right) {
   return trajectoryCanonical(left) === trajectoryCanonical(right);
 }
 
+function trajectoryActionExact(action, expected) {
+  return trajectoryExact(
+    { tool: action?.tool || null, args: action?.args || null },
+    expected,
+  );
+}
+
 function trajectoryInitialState() {
   return {
     app: "home",
@@ -214,7 +221,9 @@ function trajectorySchema(action) {
 }
 
 function trajectoryApply(state, action, step) {
-  if (!trajectoryExact(action, step.expected)) return { state, transitioned: false, error: "wrong_action" };
+  if (!trajectoryActionExact(action, step.expected)) {
+    return { state, transitioned: false, error: "wrong_action" };
+  }
   if (step.guard && !step.guard(state)) return { state, transitioned: false, error: "precondition_failed" };
   return { state: step.apply(state), transitioned: true, error: null };
 }
@@ -291,10 +300,10 @@ async function runMobileTrajectoryPilot() {
         model_error: modelError,
         schema_valid: schema.valid,
         schema_error: schema.error,
-        exact_action: trajectoryExact(action, step.expected),
+        exact_action: trajectoryActionExact(action, step.expected),
         state_transition: applied.transitioned,
         transition_error: applied.error,
-        closed_loop_success: schema.valid && trajectoryExact(action, step.expected) && applied.transitioned,
+        closed_loop_success: schema.valid && trajectoryActionExact(action, step.expected) && applied.transitioned,
         latency_ms: performance.now() - stepStarted,
         state_before: before,
         state_after: state,
@@ -328,6 +337,7 @@ if (typeof module !== "undefined" && module.exports) {
     MOBILE_TRAJECTORY_SUITE_ID,
     trajectoryCanonical,
     trajectoryExact,
+    trajectoryActionExact,
     trajectoryInitialState,
     trajectoryPrompt,
     trajectorySummary,

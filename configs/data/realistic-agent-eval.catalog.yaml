@@ -370,6 +370,43 @@ entries:
       rule: no task instruction or gold state enters model training; leaderboard claims require maintainer protocol
     notes: High-fidelity computer-use evaluation; WebGPU model can be tested only through a text/accessibility bridge.
 
+  - id: agentnet
+    family: computer
+    name: AgentNet (OpenCUA)
+    source_url: https://huggingface.co/datasets/xlangai/AgentNet
+    paper_url: https://arxiv.org/abs/2508.09123
+    code_url: https://github.com/xlang-ai/OpenCUA
+    access_status: public_download
+    license:
+      name: repository_MIT_dataset_terms_require_review
+      url: https://github.com/xlang-ai/OpenCUA/blob/main/LICENSE
+      evidence: https://github.com/xlang-ai/OpenCUA
+    scale:
+      kind: dataset
+      tasks: 22600
+      operating_systems: 3
+      applications_and_websites: 200
+    observation:
+      modalities: [screenshot, accessibility_tree, desktop_state, action_history]
+      formats: [PNG, JSON, PyAutoGUI]
+    action:
+      modalities: [computer_action, reduced_trajectory]
+      formats: [click, type, hotkey, scroll, drag, shell, JSON]
+    domains: [browser, office, file_management, multi_app_workflows]
+    train_policy: eval_only
+    integration:
+      status: offline_trajectory_adapter_pending
+      target_adapter: agentnetbench_trajectory_v1
+      source_split_policy: official_os_and_app_holdouts
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: compact_accessibility_tree_plus_recent_action
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_agentnet_and_agentnetbench_splits
+      rule: keep trajectories and task labels evaluation-only until dataset terms and split hashes are verified
+    notes: OpenCUA reports human-annotated trajectories across Windows, macOS, and Ubuntu; its action-reduction and state-action matching protocol is the closest public offline analogue to this text-first state loop.
+
   - id: appworld
     family: tool_api
     name: AppWorld

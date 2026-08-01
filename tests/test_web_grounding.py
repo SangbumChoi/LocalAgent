@@ -104,3 +104,34 @@ process.stdout.write(JSON.stringify(groundFromSchema("Please move somehow.", sch
         text=True,
     )
     assert json.loads(result.stdout) is None
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_stateful_grounding_ignores_goal_and_observation_quotes():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { groundFromSchema, compactDispatchQuery } = require(process.argv[1]);
+const prompt = 'Goal: compose and fill an email. Current state JSON: {"app":"home"}. ' +
+  'Next required action: Open the Gmail app on the Android phone. Return exactly one structured action';
+const app = groundFromSchema(prompt, {
+  properties: {app_name: {type: "string", format: "quoted"}}, required: ["app_name"]
+});
+const urlPrompt = 'Goal: search mail. Current state JSON: {"page":null}. ' +
+  'Next required action: Open https://example.local/mail in the browser.';
+const url = groundFromSchema(urlPrompt, {
+  properties: {url: {type: "string", format: "url"}}, required: ["url"]
+});
+const compact = compactDispatchQuery(urlPrompt);
+process.stdout.write(JSON.stringify({app, url, compact}));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {
+        "app": {"app_name": "Gmail"},
+        "url": {"url": "https://example.local/mail"},
+        "compact": "Open https://example.local/mail in the browser.",
+    }

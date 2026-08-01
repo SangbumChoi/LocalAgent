@@ -1621,7 +1621,11 @@ function mobileLexicalSelect(query, dispatch = DISPATCH) {
   if (!MOBILE_LEXICAL_GUARD) return null;
   const names = new Set(dispatch?.dense_selector?.tool_names || []);
   if (!names.has("mobile_click") || typeof query !== "string") return null;
-  const low = query.toLowerCase();
+  // Stateful prompts include a goal and serialized state before the actionable instruction.
+  // Only inspect the requested next action; otherwise words such as "fill" in a Gmail goal can
+  // override the actual open-app action and turn a valid dense prediction into a wrong tool.
+  const actionMatch = query.match(/(?:next required action|instruction)\s*:\s*([\s\S]*)$/i);
+  const low = (actionMatch ? actionMatch[1] : query).toLowerCase();
   // Require an explicitly mobile/handset cue. Generic browser prompts often mention a screen,
   // window, app, click, or scroll too; those must continue through the learned standard pool.
   const mobileCue = /\b(?:mobile|android|phone|touch|tap|swipe)\b/.test(low);
@@ -1651,8 +1655,17 @@ function mobileLexicalSelect(query, dispatch = DISPATCH) {
 function compactDispatchQuery(query, marker = " instruction:") {
   if (typeof query !== "string") return "";
   const lower = query.toLowerCase();
-  const index = lower.lastIndexOf(marker.toLowerCase());
-  return index >= 0 ? query.slice(index + marker.length).trim() : query;
+  const markers = [marker, " next required action:"];
+  let index = -1;
+  let selected = marker;
+  for (const candidate of markers) {
+    const candidateIndex = lower.lastIndexOf(candidate.toLowerCase());
+    if (candidateIndex > index) {
+      index = candidateIndex;
+      selected = candidate;
+    }
+  }
+  return index >= 0 ? query.slice(index + selected.length).trim() : query;
 }
 
 function crc32Utf8(text) {
@@ -1774,7 +1787,7 @@ const PATH_HINTS = new Set([
 const URL_HINTS = new Set(["url", "link", "website", "site", "href", "address", "endpoint"]);
 const ENTITY_HINTS = new Set([
   "name", "recipient", "person", "city", "location", "user", "author", "artist", "assignee",
-  "owner", "contact", "to", "sender",
+  "owner", "contact", "to", "sender", "app", "app_name",
 ]);
 const QUOTED_HINTS = new Set([
   "message", "subject", "title", "content", "body", "text", "note", "summary", "caption",
@@ -1782,20 +1795,25 @@ const QUOTED_HINTS = new Set([
 ]);
 
 function groundingPools(prompt) {
-  const body = prompt.trim().split(/\s+/).slice(1).join(" ");
-  const arithmetic = prompt.match(/\d+\s*[-+*/]\s*\d+(?:\s*[-+*/]\s*\d+)*/);
+  // Stateful prompts carry a goal and JSON observation before the actionable instruction.  Those
+  // JSON keys/values are not argument candidates (for example, `"app"` must not become an
+  // app_name).  Keep the legacy whole-prompt behavior for ordinary single-turn requests.
+  const actionMatch = prompt.match(/(?:next required action|instruction)\s*:\s*([\s\S]*)$/i);
+  const source = actionMatch ? actionMatch[1] : prompt;
+  const body = source.trim().split(/\s+/).slice(1).join(" ");
+  const arithmetic = source.match(/\d+\s*[-+*/]\s*\d+(?:\s*[-+*/]\s*\d+)*/);
   return {
-    quoted: Array.from(prompt.matchAll(/'([^']+)'|"([^"]+)"/g), (m) => m[1] || m[2]),
+    quoted: Array.from(source.matchAll(/'([^']+)'|"([^"]+)"/g), (m) => m[1] || m[2]),
     path: Array.from(
-      prompt.matchAll(/[A-Za-z0-9_.\-/]+\/[A-Za-z0-9_.\-/]*|[A-Za-z0-9_.\-/]+\.[A-Za-z0-9]{1,5}\b/g),
+      source.matchAll(/[A-Za-z0-9_.\-/]+\/[A-Za-z0-9_.\-/]*|[A-Za-z0-9_.\-/]+\.[A-Za-z0-9]{1,5}\b/g),
       (m) => m[0].replace(/\.$/, "")
     ),
     url: Array.from(
-      prompt.matchAll(/(?:https?:\/\/)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:\/[\w./-]*)?/g),
+      source.matchAll(/(?:https?:\/\/)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:\/[\w./-]*)?/g),
       (m) => m[0].replace(/\.$/, "")
     ),
     caps: Array.from(body.matchAll(/(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+)*/g), (m) => m[0]),
-    number: Array.from(prompt.matchAll(/-?\d+(?:\.\d+)?/g), (m) => m[0]),
+    number: Array.from(source.matchAll(/-?\d+(?:\.\d+)?/g), (m) => m[0]),
     arithmetic: arithmetic ? [arithmetic[0].replace(/\s+/g, "")] : [],
   };
 }
@@ -1812,17 +1830,19 @@ function stripGrounding(value) {
 }
 
 function freeTextGrounding(prompt) {
-  const low = prompt.toLowerCase();
+  const actionMatch = prompt.match(/(?:next required action|instruction)\s*:\s*([\s\S]*)$/i);
+  const source = actionMatch ? actionMatch[1].trim() : prompt;
+  const low = source.toLowerCase();
   const tails = [];
   for (const prep of ["for", "about", "to", "in", "on", "of", "with", "from"]) {
     const index = low.indexOf(` ${prep} `);
     if (index >= 0) {
-      const tail = stripGrounding(prompt.slice(index + prep.length + 2));
+      const tail = stripGrounding(source.slice(index + prep.length + 2));
       if (tail) tails.push(tail);
     }
   }
   if (tails.length) return tails.sort((a, b) => b.length - a.length)[0];
-  const words = prompt.trim().split(/\s+/);
+  const words = source.split(/\s+/);
   return words.length > 1 ? stripGrounding(words.slice(1).join(" ")) : null;
 }
 
@@ -1835,6 +1855,16 @@ function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
   const type = schema.type || "string";
   const format = schema.format;
   const tail = () => required ? freeTextGrounding(prompt) : null;
+  const statefulPrompt = /(?:next required action|instruction)\s*:/i.test(prompt);
+
+  if (name === "app_name") {
+    const appMatch = prompt.match(
+      /\b(?:open|launch|start|bring up)\s+(?:the\s+)?([A-Za-z][\w.-]*(?:\s+[A-Za-z][\w.-]*)*?)\s+(?:app|application)\b/i
+    );
+    if (appMatch) return appMatch[1].trim();
+    const shortAppMatch = prompt.match(/\b(?:open|launch|start)\s+(?:the\s+)?([A-Z][\w.-]*)\b/);
+    if (shortAppMatch) return shortAppMatch[1];
+  }
 
   if (schema.enum) {
     return schema.enum.find((value) => cuePresent(prompt, String(value))) ?? null;
@@ -1861,7 +1891,17 @@ function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
   // candidate.  This keeps a pointer head trained on an older schema from stitching together
   // adjacent title/content phrases in new email/Notion contracts; the schema extractor can then
   // consume the deterministic quoted pool in field order.
-  if (copied && (!QUOTED_HINTS.has(name) || pools.quoted.includes(copied))) return copied;
+  // App names are often unquoted in accessibility-style instructions.  The pointer head can
+  // otherwise copy the generic word "app"; prefer the deterministic capitalized entity pool.
+  const copiedIsCandidate = pools.quoted.includes(copied) || pools.path.includes(copied) ||
+    pools.url.includes(copied);
+  if (
+    copied && name !== "app_name" &&
+    (!statefulPrompt || copiedIsCandidate) &&
+    (!QUOTED_HINTS.has(name) || pools.quoted.includes(copied))
+  ) {
+    return copied;
+  }
   if (format === "quoted") return popGrounding(pools.quoted) || tail();
   if (format === "path") return popGrounding(pools.path);
   if (format === "url") return popGrounding(pools.url);
@@ -2555,6 +2595,7 @@ if (typeof module !== "undefined" && module.exports) {
     cachedOutputLocations,
     cachedSessionOptions,
     canonicalActionJson,
+    compactDispatchQuery,
     createCachedAutoregressiveRunner,
     dispatchSelect,
     greedyToken,
@@ -2572,6 +2613,7 @@ if (typeof module !== "undefined" && module.exports) {
     groundedArgsValid,
     groundingPools,
     manifestArtifactFor,
+    mobileLexicalSelect,
     modelArtifactEvidence,
     retrievalEmbedding,
     retrievalSelectFromSidecar,

@@ -60,6 +60,23 @@ process.stdout.write(JSON.stringify({prompt, state: suite.trajectoryInitialState
     assert payload["state"]["email"]["sent"] is False
 
 
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required")
+def test_mobile_trajectory_exact_action_ignores_runtime_metadata() -> None:
+    script = """
+const suite = require(process.argv[1]);
+const action = {tool: "open_url", args: {url: "https://example.local/mail"}, route: "web_search", conf: 0.9};
+const expected = {tool: "open_url", args: {url: "https://example.local/mail"}};
+process.stdout.write(JSON.stringify({exact: suite.trajectoryActionExact(action, expected)}));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, "./spaces/localagent-webgpu/mobile-trajectories.js"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout)["exact"] is True
+
+
 def test_mobile_trajectory_page_loads_bundle_tool_schemas() -> None:
     html = Path("spaces/localagent-webgpu/mobile-trajectories.html").read_text()
     assert 'fetch("meta.json")' in html

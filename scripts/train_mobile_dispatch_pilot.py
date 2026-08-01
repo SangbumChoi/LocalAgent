@@ -386,6 +386,70 @@ def _state_conditioned_trajectory_samples() -> list[Sample]:
             {"key": "Enter"},
         ),
     ]
+    # Balance the small browser slice so the 62-tool candidate pool does not turn every
+    # state-conditioned web action into a frequent mobile distractor.
+    rows.extend([
+        (
+            'Goal: inspect the inbox. Current state JSON: {"page":null}. '
+            "Next required action: Navigate to https://example.local/inbox.",
+            "open_url", {"url": "https://example.local/inbox"},
+        ),
+        (
+            'Goal: review the calendar. Current state JSON: {"page":null}. '
+            "Next required action: Open https://example.local/calendar in the browser.",
+            "open_url", {"url": "https://example.local/calendar"},
+        ),
+        (
+            'Goal: inspect a report. Current state JSON: {"page":null}. '
+            "Next required action: Visit https://example.local/reports/weekly.",
+            "open_url", {"url": "https://example.local/reports/weekly"},
+        ),
+        (
+            'Goal: find an invoice. Current state JSON: {"page":"inbox","focused":null}. '
+            "Next required action: Click the 'Search mail' field.",
+            "click", {"target": "the Search mail field"},
+        ),
+        (
+            'Goal: open a report. Current state JSON: {"page":"reports","focused":null}. '
+            "Next required action: Click the first report result.",
+            "click", {"target": "the first report result"},
+        ),
+        (
+            'Goal: refresh a page. Current state JSON: {"page":"dashboard","focused":null}. '
+            "Next required action: Click the Refresh control.",
+            "click", {"target": "the Refresh control"},
+        ),
+        (
+            'Goal: search invoices. Current state JSON: {"focused":"search"}. '
+            "Next required action: Type 'invoice 2026' into the search field.",
+            "type_text", {"text": "invoice 2026"},
+        ),
+        (
+            'Goal: filter the report. Current state JSON: {"focused":"filter"}. '
+            "Next required action: Type 'overdue' into the focused filter.",
+            "type_text", {"text": "overdue"},
+        ),
+        (
+            'Goal: search contacts. Current state JSON: {"focused":"search"}. '
+            "Next required action: Enter 'alice' in the focused search box.",
+            "type_text", {"text": "alice"},
+        ),
+        (
+            'Goal: submit the invoice search. Current state JSON: {"query":"invoice 2026"}. '
+            "Next required action: Press Enter to submit the search.",
+            "key_press", {"key": "Enter"},
+        ),
+        (
+            'Goal: confirm a dialog. Current state JSON: {"dialog":"confirm"}. '
+            "Next required action: Press Enter to confirm.",
+            "key_press", {"key": "Enter"},
+        ),
+        (
+            'Goal: search contacts. Current state JSON: {"query":"alice"}. '
+            "Next required action: Press Enter and load the results.",
+            "key_press", {"key": "Enter"},
+        ),
+    ])
     return [
         Sample(
             "realistic_trajectory_synthetic",
@@ -584,7 +648,7 @@ def main() -> None:
     synthetic_mobile = _synthetic_mobile_samples()
     trajectory = _state_conditioned_trajectory_samples()
     retrieval_examples: dict[str, list[str]] = {}
-    for sample in synthetic_mobile:
+    for sample in synthetic_mobile + trajectory + productivity:
         retrieval_examples.setdefault(sample.ref_name, []).append(sample.prompt)
     route, selector, examples = _train_probe(
         model,
