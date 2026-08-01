@@ -200,6 +200,17 @@ distraction augmentations, and fails closed unless the expected scenario list is
 executing tools or importing the ToolSandbox package. This is a local result-summary aggregation
 bridge; a live ToolSandbox run and any score remain pending.
 
+The official [BrowserGym environment](https://github.com/ServiceNow/BrowserGym/blob/main/browsergym/core/src/browsergym/core/env.py)
+uses the Gymnasium episode contract: each browser action is passed to `step(action)` and returns
+observation, reward, terminated, truncated, and info, with task-specific validation supplying the
+reward. [`src/localagent/eval/browsergym.py`](../src/localagent/eval/browsergym.py) defines the
+portable JSONL projection of that contract (`task_id`, `seed`, ordered action/reward steps, and
+terminal flags), hashes the log, checks exact task/seed coverage, and reports per-task reward,
+success, step count, and action errors. [`scripts/aggregate_browsergym.py`](../scripts/aggregate_browsergym.py)
+consumes the projection without Playwright or a browser. It is a local BrowserGym/WebArena/
+WorkArena/MiniWoB protocol bridge; no live browser score is claimed until the pinned runtime is
+installed and the runner produces a complete receipt.
+
 The catalog also binds the newer realistic environments that should be part of the workshop-grade
 evaluation matrix:
 
