@@ -1,0 +1,153 @@
+#!/usr/bin/env python
+"""Run a bounded text-first SFT continuation on normalized AndroidControl rows.
+
+This is intentionally a small, reproducible bridge experiment: the official AndroidControl
+TFRecords are decoded offline, accessibility trees are projected to text, and the resulting
+Conversation JSONL is used as multi-turn LM supervision.  It does not claim Android task success
+because no emulator is launched here; the report records loss/accuracy on the normalized rows.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+
+import torch
+
+from localagent.data.schema import Conversation
+from localagent.model import LocalAgentLM, ModelConfig
+from localagent.model.tokenizer import load_tokenizer
+from localagent.train.sft import _evaluate_conversations, sft
+
+
+def _sha256(path: Path) -> tuple[int, str]:
+    digest = hashlib.sha256()
+    size = 0
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            size += len(chunk)
+            digest.update(chunk)
+    return size, digest.hexdigest()
+
+
+def _load_rows(path: Path) -> list[Conversation]:
+    rows: list[Conversation] = []
+    with path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if line.strip():
+                try:
+                    rows.append(Conversation.from_json(line))
+                except Exception as error:  # pragma: no cover - diagnostic context
+                    raise ValueError(f"invalid Conversation at {path}:{line_number}") from error
+    if not rows:
+        raise ValueError(f"no conversations found in {path}")
+    return rows
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data", type=Path, required=True, help="normalized Conversation JSONL")
+    parser.add_argument("--init", type=Path, required=True, help="parent SFT checkpoint")
+    parser.add_argument("--output", type=Path, required=True, help="child checkpoint path")
+    parser.add_argument("--report", type=Path, required=True, help="JSON metrics report")
+    parser.add_argument("--steps", type=int, default=8)
+    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--lr", type=float, default=1.0e-5)
+    parser.add_argument("--max-seq-len", type=int, default=2048)
+    parser.add_argument("--device", default="cpu")
+    args = parser.parse_args()
+    if args.steps < 1 or args.batch_size < 1:
+        raise ValueError("steps and batch-size must be positive")
+
+    rows = _load_rows(args.data)
+    data_bytes, data_sha = _sha256(args.data)
+    parent_bytes, parent_sha = _sha256(args.init)
+    parent = torch.load(args.init, map_location="cpu")
+    cfg = ModelConfig(**parent["cfg"])
+    model = LocalAgentLM(cfg)
+    model.load_state_dict(parent["state_dict"])
+    tok = load_tokenizer()
+
+    before = _evaluate_conversations(
+        model,
+        rows,
+        tok,
+        max_seq_len=args.max_seq_len,
+        batch_size=args.batch_size,
+        device=args.device,
+    )
+    loss_history, _, _, training = sft(
+        model,
+        [],
+        tok,
+        conversations=rows,
+        steps=args.steps,
+        batch_size=args.batch_size,
+        lr=args.lr,
+        warmup=max(1, min(4, args.steps // 2)),
+        device=args.device,
+        max_seq_len=args.max_seq_len,
+        seed=2027,
+        log=print,
+        return_metrics=True,
+    )
+    after = _evaluate_conversations(
+        model,
+        rows,
+        tok,
+        max_seq_len=args.max_seq_len,
+        batch_size=args.batch_size,
+        device=args.device,
+    )
+
+    child = dict(parent)
+    child.update(
+        {
+            "state_dict": model.state_dict(),
+            "stage": "sft_androidcontrol_pilot",
+            "step": int(parent.get("step", 0)) + args.steps,
+            "parent_checkpoint_sha256": parent_sha,
+            "parent_checkpoint_bytes": parent_bytes,
+            "steps": args.steps,
+            "data": {
+                "normalized_conversations": str(args.data),
+                "bytes": data_bytes,
+                "sha256": data_sha,
+                "rows": len(rows),
+                "source": "google/androidcontrol",
+                "text_first": True,
+            },
+            "androidcontrol_training": {
+                "max_seq_len": args.max_seq_len,
+                "batch_size": args.batch_size,
+                "lr": args.lr,
+                "before": before,
+                "after": after,
+                "loss_history": loss_history,
+                "token_accounting": training,
+            },
+        }
+    )
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(child, args.output)
+    report = {
+        "kind": "localagent_androidcontrol_pilot_training_report",
+        "parent": {"path": str(args.init), "bytes": parent_bytes, "sha256": parent_sha},
+        "child": {"path": str(args.output), **dict(zip(("bytes", "sha256"), _sha256(args.output)))},
+        "data": {"path": str(args.data), "bytes": data_bytes, "sha256": data_sha},
+        "rows": len(rows),
+        "steps": args.steps,
+        "before": before,
+        "after": after,
+        "loss_history": loss_history,
+        "training": training,
+    }
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
