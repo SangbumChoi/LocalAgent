@@ -11,6 +11,18 @@ The current catalog contains 35 source-linked rows (four train-eligible and 31 e
 restricted) and has canonical SHA-256 fingerprint
 `8c00e9c2bf3a556aebc0562f98b0d0964fd64a1908dd3376f1e6b04f92fd224f`.
 
+Run the read-only readiness report before acquiring or evaluating anything:
+
+```bash
+PYTHONPATH=src python scripts/realistic_agent_preflight.py
+```
+
+The report currently identifies the four local text-first adapters as runnable and all 31
+environment/evaluation rows as blocked by their pending integration status (for example, no
+`adb`, Docker, VM, or upstream BrowserGym checkout).  `--strict` intentionally exits non-zero
+until those external runners are installed and pinned; this is a readiness gate, not a benchmark
+score.
+
 ## What can be trained
 
 Only the following public demonstrations are currently training candidates:
