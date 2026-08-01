@@ -92,7 +92,10 @@ The following are important reality checks, not extra SFT rows:
   enterprise tasks across eight domains, including 104 email tasks and 512 tools.  The official card
   describes containerized execution with SQL state verifiers and the dataset API reports Apache-2.0;
   tasks/verifiers stay evaluation-only to prevent benchmark memorization.  The pinned HF revision is
-  `c8e538eae8a6205294f0a86675fefdc1fac408f6`.
+  `c8e538eae8a6205294f0a86675fefdc1fac408f6`.  The card-level inventory (104 email tasks) is not
+  the same as a downloadable config row count: the bounded oracle and `plus_15_tools` email
+  configs used below expose 67 matching task IDs, so the receipt reports 67 and retains the
+  104 figure only as inventory context.
 - [MCP-Persona](https://github.com/wwh0411/MCP-Persona): 173 personalized tool-calling tasks that
   include Notion and email MCP servers.  Its repository terms must be checked before redistribution;
   keep the simulated account state and checkpoint labels evaluation-only.
@@ -354,6 +357,33 @@ The retrieval sidecar is a deployment fallback, not a substitute for improving t
 selector: the external mobile held-out neural selector is 6/10 (60%) after balanced synthetic
 augmentation.  Workshop acceptance still requires a stronger no-guard neural result, an official
 runtime benchmark, and hardware-WebGPU performance measurements.
+
+### EnterpriseOps-Gym public email retrieval diagnostic (v10)
+
+To probe realistic enterprise tool breadth without contaminating training or claiming an execution
+score, the frozen v10 dense selector was evaluated on the 67 email task IDs exposed in both the
+public `oracle` and `plus_15_tools` configs at HF revision
+`c8e538eae8a6205294f0a86675fefdc1fac408f6`.  The adapter consumes only task/domain/system/user
+text and selected tool names.  It drops `verifiers` and `gym_servers_config`, deduplicates repeated
+candidate names in memory, generates name-only descriptions, and never executes MCP servers or
+state transitions.  The two raw JSON payloads remain outside Git; their sizes and SHA-256 hashes
+are bound in the [`m14 receipt`](paper/results/raw/m14-enterpriseopsgym-email-retrieval-v10.json),
+whose tracked SHA-256 is `b4fc14edc5e87f6bec14db52b21f90eee0ab8beb34ab4e6f215444c68429d669`.
+
+| Metric | Result |
+| --- | ---: |
+| Records | 67 email tasks |
+| Oracle tools (mean) | 5.69 |
+| Candidate tools (mean) | 20.00 |
+| Retrieval hit@1 | 26.87% (18/67) |
+| Retrieval hit@3 | 56.72% (38/67) |
+| Retrieval hit@5 | 79.10% (53/67) |
+
+The dominant false positives were generic `update_label` (21), `get_user_profile` (12), and
+`send_message` (5), showing that the current dense selector is biased toward frequent tool names
+when descriptions contain no schemas or examples.  This is useful failure evidence for the next
+training pass—schema-conditioned descriptions, calibrated abstention, and stateful local MCP
+execution—but it is explicitly not an EnterpriseOps task-success, verifier, or leaderboard score.
 
 ### v10 no-guard dense WebGPU continuation
 
