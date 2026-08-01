@@ -131,6 +131,15 @@ SHA-256 `9bb101e8373cd8cd1316f29d53c938b378f96aae1f09776a32bcc27454a0184d`; no s
 trajectory payloads were consumed. This is an inventory receipt, not training data or an
 AgentNetBench score.
 
+The same boundary is now applied to a pinned [Toolathlon-GYM](https://github.com/eigent-ai/toolathlon_gym)
+checkout. The configuration-only profile in
+[`m20-toolathlon-gym-config-profile-v1.json`](paper/results/raw/m20-toolathlon-gym-config-profile-v1.json)
+covers all 503 finalpool tasks and 25 MCP servers without opening task prompts, workspaces,
+preprocessors, evaluators, or ground-truth outputs. It records 258 email tasks, 118 Notion tasks,
+63 Playwright/browser tasks, 162 calendar tasks, and 419 filesystem tasks; the most common
+multi-server pair is `emails+filesystem` (193 tasks). This gives the WebGPU tool bridge a concrete
+long-horizon productivity gate while keeping the benchmark evaluation-only.
+
 The catalog also binds the newer realistic environments that should be part of the workshop-grade
 evaluation matrix:
 
