@@ -39,6 +39,15 @@ configuration and tokenizer identity, no shape additions/removals, and frozen ac
 is legitimate public-data adaptation evidence, not a native Mind2Web score: the protected test
 archive and browser environment were not executed.
 
+The adapted child was then exported through the browser bundle path.  The fp32/fp16 logits and
+hidden graphs plus the distinct hidden-only action graph passed the hard parity gate; fp32 logits
+drift was `6.91e-06`, fp32 hidden drift `5.66e-06`, and fp16 logits argmax agreement was `1.0`.
+In the in-app browser, an explicit WebGPU session loaded the verified 10.5M bundle and the local
+9-step mobile/email/Notion state suite produced schema validity `6/9` and closed-loop success
+`4/9` (mobile `2/7`, productivity `2/2`).  The WASM control had the same quality result.  The
+versioned receipt is [`m11-webgpu-mind2web-bpe-child.json`](paper/results/raw/m11-webgpu-mind2web-bpe-child.json);
+no hardware throughput claim is made because timing was not collected in this run.
+
 ## What can be trained
 
 Only the following public demonstrations are currently training candidates:
