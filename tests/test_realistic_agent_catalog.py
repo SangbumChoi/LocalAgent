@@ -1,11 +1,13 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from localagent.data.realistic_catalog import load_catalog, train_entries, validate_catalog
 
 
 CATALOG = Path(__file__).parents[1] / "configs/data/realistic-agent-eval.catalog.yaml"
+TRAINING_PLAN = Path(__file__).parents[1] / "configs/data/realistic-agent-training.example.yaml"
 
 
 def test_realistic_catalog_is_pinned_and_split_safe() -> None:
@@ -31,6 +33,14 @@ def test_realistic_catalog_is_pinned_and_split_safe() -> None:
         "osworld_v2",
         "toolathlon_gym",
         "phoneworld",
+        "gui_odyssey",
+        "mobile_agent_bench",
+        "agentbench_fc",
+        "visualwebarena",
+        "omni_act",
+        "worldgui",
+        "macosworld",
+        "assistgui",
     } <= eval_ids
 
 
@@ -56,3 +66,13 @@ def test_catalog_rejects_duplicate_ids() -> None:
     duplicate["entries"][1] = dict(duplicate["entries"][0])
     with pytest.raises(ValueError, match="duplicate catalog id"):
         validate_catalog(duplicate)
+
+
+def test_training_plan_partitions_every_catalog_row() -> None:
+    catalog, _ = load_catalog(CATALOG)
+    plan = yaml.safe_load(TRAINING_PLAN.read_text(encoding="utf-8"))
+    catalog_ids = {row["id"] for row in catalog["entries"]}
+    train_ids = {row["id"] for row in catalog["entries"] if row["train_policy"] == "train"}
+    assert set(plan["allowed_train_ids"]) == train_ids
+    assert set(plan["forbidden_train_ids"]) == catalog_ids - train_ids
+    assert not set(plan["allowed_train_ids"]) & set(plan["forbidden_train_ids"])

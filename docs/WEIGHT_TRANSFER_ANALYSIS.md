@@ -40,9 +40,11 @@ had no exact trajectory matches and no emulator reward.
 The 26-row AndroidControl+AITW mixture shows the same transfer pattern: action heads remained
 unchanged, while attention/mixer, FFN, embedding, and normalization moved by 0.00094, 0.00110,
 0.00136, and 0.000035 respectively (51 shared tensors; identical config and tokenizer).  The
-mixture's held-row assistant-token accuracy was 2.02% with 0% exact trajectories, so these small
-movements establish lineage and compatibility only; they do not justify claiming learned mobile
-control or selecting this checkpoint without a held-out ablation.
+first mixture receipt was later invalidated because its pilot loaded a byte tokenizer against the
+BPE parent; its 2.02% assistant-token accuracy and 0% exact trajectories are retained only as a
+diagnostic.  The corrected BPE run (8 updates, same 26 rows) reports `25.68%` → `31.69%`
+assistant-token accuracy and `5.4868` → `4.7944` mean loss, with exact trajectories still `0/26`.
+These are compatibility and language-model bridge measurements, not mobile-control evidence.
 
 The corrected v2 continuation (200 SFT updates after moving the action instruction to the right
 edge of the projected observation) was also measured from the same 26-row parent. It preserved all

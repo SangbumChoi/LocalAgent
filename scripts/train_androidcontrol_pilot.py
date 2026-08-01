@@ -46,6 +46,27 @@ def _load_rows(path: Path) -> list[Conversation]:
     return rows
 
 
+def _checkpoint_tokenizer(parent: dict):
+    """Load the tokenizer recorded by the parent checkpoint, never defaulting silently to bytes."""
+
+    metadata = parent.get("tokenizer") or {"kind": "byte"}
+    if not isinstance(metadata, dict):
+        raise ValueError("checkpoint tokenizer metadata must be a mapping")
+    kind = str(metadata.get("kind", "byte"))
+    path = metadata.get("path")
+    if kind == "bpe" and path is None:
+        raise ValueError("BPE checkpoint is missing tokenizer.path")
+    tokenizer = load_tokenizer(kind, path)
+    cfg = parent.get("cfg")
+    vocab_size = cfg.get("vocab_size") if isinstance(cfg, dict) else getattr(cfg, "vocab_size", None)
+    if vocab_size is not None and tokenizer.vocab_size != vocab_size:
+        raise ValueError(
+            "checkpoint tokenizer vocabulary "
+            f"({tokenizer.vocab_size}) does not match model config ({vocab_size})"
+        )
+    return tokenizer
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -77,7 +98,7 @@ def main() -> None:
     cfg = ModelConfig(**parent["cfg"])
     model = LocalAgentLM(cfg)
     model.load_state_dict(parent["state_dict"])
-    tok = load_tokenizer()
+    tok = _checkpoint_tokenizer(parent)
 
     before = _evaluate_conversations(
         model,

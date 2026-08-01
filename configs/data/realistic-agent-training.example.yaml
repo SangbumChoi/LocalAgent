@@ -25,6 +25,22 @@ forbidden_train_ids:
   - mcp_persona
   - tua_bench
   - osworld_human
+  - mobilegym
+  - mobileworld
+  - memgui_bench
+  - workarena
+  - weblinx
+  - osworld_v2
+  - toolathlon_gym
+  - phoneworld
+  - gui_odyssey
+  - mobile_agent_bench
+  - agentbench_fc
+  - visualwebarena
+  - omni_act
+  - worldgui
+  - macosworld
+  - assistgui
 normalization:
   interchange: localagent.data.schema.Conversation
   text_first_observation: accessibility_tree_or_cleaned_dom_plus_goal
@@ -48,3 +64,11 @@ evaluation_holdouts:
     - enterpriseopsgym
     - mcp_persona
     - tua_bench
+    - gui_odyssey
+    - mobile_agent_bench
+    - agentbench_fc
+    - visualwebarena
+    - omni_act
+    - worldgui
+    - macosworld
+    - assistgui

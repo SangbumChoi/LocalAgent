@@ -978,3 +978,293 @@ entries:
       split: official_runtime
       rule: recovered app traces, generated tasks, and verifiers remain evaluator-only pending license review
     notes: Scales mock phone-use environments from real GUI traces and supports reproducible task generation and verification.
+
+  - id: gui_odyssey
+    family: mobile
+    name: GUIOdyssey
+    source_url: https://github.com/OpenGVLab/GUI-Odyssey
+    paper_url: https://arxiv.org/abs/2406.08451
+    code_url: https://github.com/OpenGVLab/GUI-Odyssey
+    data_access_url: https://huggingface.co/datasets/hflqf88888/GUIOdyssey
+    access_status: terms_review
+    license:
+      name: terms_review_required
+      evidence: https://github.com/OpenGVLab/GUI-Odyssey
+    scale:
+      kind: dataset
+      episodes: 8834
+      devices: 6
+      apps: 212
+      app_combinations: 1400
+    observation:
+      modalities: [text, screenshot, accessibility_tree, device_state]
+      formats: [JSON, PNG]
+    action:
+      modalities: [mobile_action]
+      formats: [tap, swipe, type, keyevent, JSON]
+    domains: [mobile_ui, cross_app_navigation, multi_step_workflows]
+    train_policy: eval_only
+    integration:
+      status: dataset_adapter_pending
+      target_adapter: gui_odyssey_episode_v1
+      source_split_policy: official_app_device_task_splits
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: compact_accessibility_tree_plus_goal
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_app_device_task_splits
+      rule: the latest public snapshot and its app/device/task split files remain evaluation-only until dataset terms are verified
+    notes: Cross-app mobile trajectories; the official repository points to the latest 2025-07-31 Hugging Face snapshot.
+
+  - id: mobile_agent_bench
+    family: mobile
+    name: MobileAgentBench
+    source_url: https://github.com/MobileAgentBench/mobile-agent-bench
+    paper_url: https://mobileagentbench.github.io/
+    code_url: https://github.com/MobileAgentBench/mobile-agent-bench
+    data_access_url: https://mobileagentbench.github.io/
+    access_status: terms_review
+    license:
+      name: terms_review_required
+      url: https://creativecommons.org/licenses/by-sa/4.0/
+      evidence: https://mobileagentbench.github.io/
+    scale:
+      kind: benchmark
+      tasks: 100
+      apps: 10
+    observation:
+      modalities: [text, screenshot, accessibility_tree, emulator_state]
+      formats: [JSON, PNG, APK, live_emulator]
+    action:
+      modalities: [mobile_action]
+      formats: [tap, swipe, type, keyevent, JSON]
+    domains: [mobile_ui, productivity, multi_step_workflows]
+    train_policy: eval_only
+    integration:
+      status: Android_runner_pending
+      target_adapter: mobile_agent_bench_episode_v1
+      source_split_policy: official_difficulty_and_app_holdout
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: compact_accessibility_tree_plus_goal
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_task_and_app_holdout
+      rule: task definitions, APK state, and completion checks remain evaluator-only
+    notes: Small, reproducible Android-emulator benchmark with 100 tasks over open-source apps; useful before larger dynamic mobile suites.
+
+  - id: agentbench_fc
+    family: computer
+    name: AgentBench Function Calling
+    source_url: https://github.com/THUDM/AgentBench
+    paper_url: https://arxiv.org/abs/2308.03688
+    code_url: https://github.com/THUDM/AgentBench
+    access_status: public_runtime
+    license:
+      name: Apache-2.0
+      url: https://www.apache.org/licenses/LICENSE-2.0
+      evidence: https://github.com/THUDM/AgentBench
+    scale:
+      kind: benchmark
+      environments: 5
+      splits: 2
+    observation:
+      modalities: [text, tool_schema, terminal_state, world_state]
+      formats: [JSON, Python_API, Docker]
+    action:
+      modalities: [tool_call, terminal_command, multi_turn_dialogue]
+      formats: [JSON, Python, shell]
+    domains: [computer_use, browser_navigation, databases, knowledge_graphs, web_shopping]
+    train_policy: eval_only
+    integration:
+      status: Docker_runner_pending
+      target_adapter: agentbench_fc_episode_v1
+      source_split_policy: official_dev_test_splits
+    webgpu_projection:
+      status: text_tool_bridge
+      recommended_observation: compact_tool_schema_plus_state_delta
+      screenshot_policy: none
+    contamination:
+      split: official_dev_test
+      rule: container task prompts, environment state, and test labels remain outside training
+    notes: The current repository contains the containerized function-calling release; the original benchmark spans eight interactive environments.
+
+  - id: visualwebarena
+    family: browser
+    name: VisualWebArena
+    source_url: https://github.com/web-arena-x/visualwebarena
+    paper_url: https://arxiv.org/abs/2401.13649
+    code_url: https://github.com/web-arena-x/visualwebarena
+    access_status: public_runtime
+    license:
+      name: MIT
+      url: https://opensource.org/license/mit
+      evidence: https://github.com/web-arena-x/visualwebarena
+    scale:
+      kind: benchmark
+      tasks: 910
+      human_trajectory_tasks: 233
+    observation:
+      modalities: [text, DOM, screenshot, accessibility_tree, browser_state]
+      formats: [HTML, JSON, PNG, Playwright]
+    action:
+      modalities: [browser_action]
+      formats: [click, type, scroll, URL, JSON]
+    domains: [visual_web_navigation, shopping, forums, maps, knowledge_work]
+    train_policy: eval_only
+    integration:
+      status: environment_runner_pending
+      target_adapter: visualwebarena_episode_v1
+      source_split_policy: self_hosted_test_tasks
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: accessibility_tree_plus_url_and_goal
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_test
+      rule: website instances, task configs, trajectories, and success labels remain evaluation-only
+    notes: Visual extension of WebArena; a text-first LocalAgent run is a modality ablation, not an official multimodal score.
+
+  - id: omni_act
+    family: computer
+    name: OmniACT
+    source_url: https://huggingface.co/datasets/Writer/omniact
+    paper_url: https://arxiv.org/abs/2402.17553
+    code_url: https://huggingface.co/datasets/Writer/omniact
+    access_status: public_download
+    license:
+      name: MIT
+      url: https://opensource.org/license/mit
+      evidence: https://huggingface.co/datasets/Writer/omniact
+    scale:
+      kind: dataset
+      train: 6788
+      validation: 991
+      test: 2020
+    observation:
+      modalities: [text, screenshot, bounding_box]
+      formats: [JSON, PNG, PyAutoGUI]
+    action:
+      modalities: [computer_action, executable_script]
+      formats: [PyAutoGUI, JSON]
+    domains: [desktop_gui, browser, office, file_management]
+    train_policy: eval_only
+    integration:
+      status: native_metrics_pending
+      target_adapter: omniact_episode_v1
+      source_split_policy: official_train_validation_test
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: compact_screen_description_plus_goal
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_test
+      rule: image/box inputs and executable test scripts are kept out of the text-first training mix
+    notes: Public MIT dataset with text instructions and PyAutoGUI scripts; the current model cannot claim screenshot grounding without a vision encoder.
+
+  - id: worldgui
+    family: computer
+    name: WorldGUI
+    source_url: https://showlab.github.io/WorldGUI/
+    paper_url: https://arxiv.org/abs/2502.08047
+    code_url: https://github.com/showlab/WorldGUI
+    access_status: public_runtime
+    license:
+      name: terms_review_required
+      evidence: https://showlab.github.io/WorldGUI/
+    scale:
+      kind: benchmark
+      tasks: 315
+      applications: 10
+    observation:
+      modalities: [text, screenshot, video, desktop_state]
+      formats: [JSON, PNG, MP4, VM]
+    action:
+      modalities: [computer_action, pre_action_sequence]
+      formats: [click, type, hotkey, scroll, drag, JSON]
+    domains: [desktop_gui, office, coding, PDF, multi_app_workflows]
+    train_policy: eval_only
+    integration:
+      status: VM_runner_pending
+      target_adapter: worldgui_episode_v1
+      source_split_policy: dynamic_initial_state_holdout
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: compact_desktop_state_plus_goal
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_dynamic_initial_states
+      rule: pre-actions, task files, and state-dependent verifiers remain evaluator-only
+    notes: Dynamic initial states make this a stronger planning test than static initial/final-state GUI suites.
+
+  - id: macosworld
+    family: computer
+    name: macOSWorld
+    source_url: https://github.com/showlab/macosworld
+    paper_url: https://arxiv.org/abs/2506.04135
+    code_url: https://github.com/showlab/macosworld
+    access_status: public_runtime
+    license:
+      name: terms_review_required
+      evidence: https://github.com/showlab/macosworld
+    scale:
+      kind: benchmark
+      tasks: 202
+      applications: 30
+      languages: 5
+    observation:
+      modalities: [text, screenshot, desktop_state]
+      formats: [JSON, PNG, macOS_VM]
+    action:
+      modalities: [computer_action]
+      formats: [click, type, hotkey, scroll, drag, shell]
+    domains: [macos_gui, browser, office, media, safety]
+    train_policy: eval_only
+    integration:
+      status: macos_runner_pending
+      target_adapter: macosworld_episode_v1
+      source_split_policy: official_task_and_language_holdout
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: compact_accessibility_tree_plus_goal
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_task_and_language_holdout
+      rule: multilingual task instructions, VM snapshots, and safety labels remain evaluation-only
+    notes: Native macOS benchmark with multilingual tasks and a dedicated safety subset; especially relevant to this Apple/WebGPU development environment.
+
+  - id: assistgui
+    family: computer
+    name: ASSISTGUI
+    source_url: https://github.com/showlab/assistgui
+    paper_url: https://arxiv.org/abs/2312.13108
+    code_url: https://github.com/showlab/assistgui
+    access_status: terms_review
+    license:
+      name: terms_review_required
+      evidence: https://github.com/showlab/assistgui
+    scale:
+      kind: benchmark
+      tasks: 100
+      applications: 9
+    observation:
+      modalities: [text, screenshot, desktop_state]
+      formats: [JSON, PNG, project_files]
+    action:
+      modalities: [computer_action]
+      formats: [click, type, hotkey, scroll, drag]
+    domains: [windows_gui, office, productivity]
+    train_policy: eval_only
+    integration:
+      status: Windows_runner_pending
+      target_adapter: assistgui_episode_v1
+      source_split_policy: official_task_holdout
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: compact_desktop_state_plus_goal
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_test
+      rule: project files, task instructions, and completion states remain outside training
+    notes: Nine Windows productivity applications with 100 task workflows; useful for measuring computer-use transfer across operating systems.

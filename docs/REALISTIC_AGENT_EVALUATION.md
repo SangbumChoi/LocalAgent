@@ -7,6 +7,10 @@ desktop workflows, and stateful API/MCP tools.  The source-linked inventory is
 It is deliberately a catalog, not a downloader: every acquired byte must be recorded in a local
 provenance manifest with an upstream revision, byte count, and SHA-256.
 
+The current catalog contains 35 source-linked rows (four train-eligible and 31 evaluation or
+restricted) and has canonical SHA-256 fingerprint
+`8c00e9c2bf3a556aebc0562f98b0d0964fd64a1908dd3376f1e6b04f92fd224f`.
+
 ## What can be trained
 
 Only the following public demonstrations are currently training candidates:
@@ -77,10 +81,39 @@ evaluation matrix:
   checkpoints.
 - [Toolathlon-GYM](https://github.com/eigent-ai/toolathlon_gym): 503 tasks over 25 local MCP servers,
   including reproducible email and Notion-style workflows without live external accounts.
+- [GUIOdyssey](https://github.com/OpenGVLab/GUI-Odyssey): 8,834 cross-app mobile episodes over
+  212 apps and six devices; the latest public snapshot provides explicit app/device/task splits.
+- [MobileAgentBench](https://github.com/MobileAgentBench/mobile-agent-bench): 100 Android tasks
+  over 10 open-source apps, designed as a small reproducible emulator gate before larger suites.
+- [AgentBench Function Calling](https://github.com/THUDM/AgentBench): the current containerized
+  release covers five interactive environments; the original benchmark spans eight environments.
+- [VisualWebArena](https://github.com/web-arena-x/visualwebarena): 910 visually grounded WebArena
+  tasks plus released human trajectories; a text-only run is explicitly a modality ablation.
+- [OmniACT](https://huggingface.co/datasets/Writer/omniact): 9,799 desktop/web instruction-image
+  pairs with PyAutoGUI scripts; it is a vision benchmark, not a text-first score.
+- [WorldGUI](https://showlab.github.io/WorldGUI/): 315 dynamic desktop tasks over 10 applications
+  with varied initial states and pre-action sequences.
+- [macOSWorld](https://github.com/showlab/macosworld): 202 multilingual tasks over 30 macOS
+  applications, including a safety subset.
+- [ASSISTGUI](https://github.com/showlab/assistgui): 100 Windows productivity tasks over nine
+  applications with project-file state.
 
 The existing BFCL, WebLINX, and protected Mind2Web/browser captures in `data/private/` remain
 evaluation-only under the same rule.  A public license does not make a benchmark safe to train on:
 task prompts, verifier code, and gold state can directly inflate the score.
+
+### Capability-to-benchmark map
+
+| Capability | Representative public evaluations | What must be measured | Current WebGPU bridge |
+| --- | --- | --- | --- |
+| Mobile single-step and long-horizon control | AndroidWorld, MobileGym, MobileWorld, GUIOdyssey, MobileAgentBench, PhoneWorld | grounded action validity, milestone reward, episode success, app/device generalization | accessibility-tree text plus goal; no screenshot grounding yet |
+| Browser navigation and visual grounding | BrowserGym/MiniWoB++, WebArena, WorkArena, WebLINX, VisualWebArena | element accuracy, operation F1, DOM/state transitions, task success | cleaned DOM/A11y text; visual suites are modality ablations |
+| Desktop/computer use | OSWorld/OSWorld-V2, MemGUI-Bench, WorldGUI, macOSWorld, ASSISTGUI | VM task success, long-horizon recovery, latency, safety | compact desktop state only; VM runners are pending |
+| Stateful tools and productivity | Toolathlon-GYM, MCPMark, EnterpriseOpsGym, AgentBench FC, AppWorld, tau-bench | exact calls, schema validity, state delta, pass^k, abstention | local email/Notion mocks and retrieval sidecar; no external accounts |
+
+This map is intentionally asymmetric: a text-first 10.5M model can produce a credible structured
+tool/DOM bridge, but it cannot claim screenshot-level grounding or native OS control.  Those are
+separate acceptance gates, not hidden quality assumptions.
 
 ## Pipeline for a WebGPU model
 
@@ -151,11 +184,18 @@ observation: AndroidControl normalized JSONL SHA-256
 JSONL SHA-256 `1f0a08fac5684f21d62a10855fc05171b4d7ba699f8aae51f062d01f7b52031` (10 rows). The
 source manifests remain bound to the same official train-only episode selections.
 
-An 8-step continuation over the 26-row AndroidControl+AITW mixture reduced mean normalized-row
-loss from `8.6239` to `7.9730` (assistant-token accuracy `2.02%`, exact trajectory accuracy `0%`).
-The resulting 10.5M WebGPU bundle passed the same hard ONNX/PyTorch parity gate (fp32 max drift
-`7.15e-06`, fp16 max drift `4.83e-03`).  This expands training coverage, but remains a bridge
-measurement rather than evidence of environment success.
+An earlier 8-step continuation over the 26-row AndroidControl+AITW mixture reported mean
+normalized-row loss `8.6239` → `7.9730`, but it loaded the default byte tokenizer against the
+16K-BPE parent checkpoint.  That receipt is retained only as a historical invalidation example;
+its token accuracy and checkpoint must not be used for model-selection claims.
+
+The corrected BPE-lineage continuation uses the tokenizer recorded in the parent checkpoint and
+the same train-only rows.  It reduced mean loss `5.4868` → `4.7944` and assistant-token accuracy
+rose `25.68%` → `31.69%`; exact trajectory accuracy remained `0/26`.  The child checkpoint is
+kept outside Git (`cc12da27808d251df46d1beb649622e896cb32233dc2b6317deb917dec93c08a`) and is a
+language-model bridge measurement only, not evidence of emulator success.  The tokenizer
+compatibility gate is now covered by `tests/test_train_androidcontrol_pilot.py` and the pilot
+refuses a missing or vocabulary-mismatched BPE artifact.
 
 ### Browser runtime receipt (local compatibility smoke)
 
