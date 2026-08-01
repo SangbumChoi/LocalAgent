@@ -53,6 +53,34 @@ hf upload danelcsb/localagent-webgpu spaces/localagent-webgpu/ . --repo-type spa
 `hf upload` puts the ONNX graphs on LFS automatically. The demo is then live at
 `https://huggingface.co/spaces/danelcsb/localagent-webgpu`.
 
+## 3a. Verify before uploading (fail closed)
+
+The source tree deliberately omits generated ONNX/model artifacts. Verify the export and the
+static app before copying anything into the Space:
+
+```bash
+PYTHONPATH=src python scripts/verify_demo_deploy.py \
+  --demo-dir spaces/localagent-webgpu \
+  --bundle-dir build/web
+```
+
+The command checks the exporter manifest, every byte count and SHA-256, the hard PyTorch parity
+gate, the action-graph contract, and the app's manifest loader. It returns non-zero when the clean
+Space is missing the generated bundle (the expected result until the sync step). To stage a local
+deployable copy, use the explicit sync operation and then verify the target itself:
+
+```bash
+PYTHONPATH=src python scripts/verify_demo_deploy.py \
+  --demo-dir spaces/localagent-webgpu \
+  --bundle-dir build/web --sync
+PYTHONPATH=src python scripts/verify_demo_deploy.py \
+  --demo-dir spaces/localagent-webgpu
+```
+
+Do not hand-create `bundle-manifest.json` or upload a partial bundle. A verified local export is
+still not native WebGPU capability evidence; the workshop gate separately requires a hardware
+adapter receipt, native benchmark receipts, transfer/no-transfer ablations, and public URLs.
+
 ## Notes
 - The bundle files are git-ignored deploy artifacts — they are NOT in this source tree; step 1
   regenerates them deterministically from the checkpoint.
