@@ -106,10 +106,51 @@ MOBILE_TOOLS = [
 ]
 
 
+# Optional productivity contracts for the realistic pilot. The legacy ``send_email`` and
+# ``notion_write`` tools intentionally remain unchanged for standard-bundle compatibility; these
+# additive schemas expose the fields a real browser/MCP integration needs.
+PRODUCTIVITY_TOOLS = [
+    ToolSpec(
+        name="email_send",
+        description="Send an email with recipient, subject, and body.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "to": {"type": "string", "format": "quoted"},
+                "subject": {"type": "string", "format": "quoted"},
+                "body": {"type": "string", "format": "quoted"},
+            },
+            "required": ["to", "subject", "body"],
+        },
+    ),
+    ToolSpec(
+        name="notion_create_page",
+        description="Create a Notion page with a title and body content.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "format": "quoted"},
+                "content": {"type": "string", "format": "quoted"},
+            },
+            "required": ["title", "content"],
+        },
+    ),
+]
+
+
 def mobile_tools() -> list[ToolSpec]:
     """Return a detached copy so callers can safely append or reorder tool pools."""
 
     return [
         ToolSpec(tool.name, tool.description, deepcopy(tool.parameters))
         for tool in MOBILE_TOOLS
+    ]
+
+
+def realistic_productivity_tools() -> list[ToolSpec]:
+    """Return detached full-field email/Notion contracts for the realistic pilot."""
+
+    return [
+        ToolSpec(tool.name, tool.description, deepcopy(tool.parameters))
+        for tool in PRODUCTIVITY_TOOLS
     ]

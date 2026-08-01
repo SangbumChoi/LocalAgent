@@ -21,6 +21,17 @@ def test_realistic_catalog_is_pinned_and_split_safe() -> None:
     }
     assert all(row["train_policy"] == "train" for row in train)
     assert all(row["train_policy"] != "train" for row in catalog["entries"] if row not in train)
+    eval_ids = {row["id"] for row in catalog["entries"] if row["train_policy"] != "train"}
+    assert {
+        "mobilegym",
+        "mobileworld",
+        "memgui_bench",
+        "workarena",
+        "weblinx",
+        "osworld_v2",
+        "toolathlon_gym",
+        "phoneworld",
+    } <= eval_ids
 
 
 def test_train_rows_require_public_download_and_verified_license() -> None:

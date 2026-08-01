@@ -49,11 +49,22 @@ edge of the projected observation) was also measured from the same 26-row parent
 51 tensor shapes, config, and tokenizer identity; action heads remained frozen. Relative movement
 was `0.01404` for attention/mixer, `0.01650` for FFN, `0.03290` for the embedding, and `0.000853`
 for normalization. Mean normalized-row loss fell from `7.9735` to `3.3477`, with assistant-token
-accuracy `75.93%`, but exact assistant sequences remained `0%`. The dispatch child then achieved
-held route accuracy `1.0` and held mobile selector top-1 `0.4` (10 held turns; train top-1 `0.5385`).
-These are useful transfer diagnostics, not a publishable mobile policy: the browser receipt's 7/7
-mobile actions are from the explicit lexical guard, while the learned selector still fails the
-no-guard acceptance criterion.
+accuracy `75.93%`, but exact assistant sequences remained `0%`.
+
+The old dispatch pilot's held route `1.0` / mobile selector `0.4` report is superseded: that run
+loaded the default byte tokenizer against the BPE checkpoint.  The corrected v6 run loads the
+checkpoint-recorded BPE tokenizer and reaches productivity train selector `1.0`, productivity
+held selector `0.75`, and productivity held route accuracy `1.0`; broader mobile held selector is
+still `0.4`.  The v6 browser receipt still uses the explicit mobile lexical guard for seven mobile
+rows, so the learned no-guard mobile policy remains unproven.
+
+The v6 transfer audit confirms exact compatibility: 51 shared tensors, no config mismatch, equal
+tokenizer SHA-256, and no shape additions/removals.  The training probe intentionally froze the
+backbone, so attention/mixer, FFN, embedding, and normalization movement is `0.0`; the action-head
+group moved by aggregate relative ΔL2 `1.7017` (mostly the dense selector at `1.9213`).  This is
+the expected head-only adaptation pattern, not evidence that the pretrained representation is
+optimal.  The next controlled experiment must compare this head-only child with a low-rate
+backbone-unfrozen continuation and a no-transfer initialization under the same held-out prompts.
 
 ## Adoption protocol
 

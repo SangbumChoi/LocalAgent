@@ -57,6 +57,27 @@ The following are important reality checks, not extra SFT rows:
   including document editing, email management, and live-web information seeking.  It is CC-BY-NC
   and explicitly a benchmark, so it is not a training corpus.
 
+The catalog also binds the newer realistic environments that should be part of the workshop-grade
+evaluation matrix:
+
+- [MobileGym](https://github.com/Purewhiter/mobilegym): 28 simulated mobile apps and 416 reusable
+  task templates with deterministic judges.  The code is Apache-2.0, while the released task/data
+  terms are CC-BY-NC-4.0, so it is evaluation-only here.
+- [MobileWorld](https://github.com/Tongyi-MAI/MobileWorld): 201 long-horizon tasks across 20 mobile
+  apps, including agent-user interaction and MCP-augmented workflows.
+- [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench): 128 GUI tasks (with a 40-task quick
+  subset) that test interaction memory across browser, office, and file workflows.
+- [WorkArena](https://github.com/ServiceNow/WorkArena): enterprise ServiceNow browser tasks,
+  integrated through [BrowserGym](https://github.com/ServiceNow/BrowserGym); upstream task terms
+  require review before redistribution.
+- [WebLINX](https://github.com/mcgill-nlp/weblinx): roughly 100k grounded browser interactions
+  across 2,300 demonstrations with dialogue context.  The official dataset terms remain binding.
+- [OSWorld-V2](https://github.com/xlang-ai/OSWorld-V2): the dated 2026-06-24 release of the
+  long-horizon desktop benchmark; gated task files/assets remain outside training and public
+  checkpoints.
+- [Toolathlon-GYM](https://github.com/eigent-ai/toolathlon_gym): 503 tasks over 25 local MCP servers,
+  including reproducible email and Notion-style workflows without live external accounts.
+
 The existing BFCL, WebLINX, and protected Mind2Web/browser captures in `data/private/` remain
 evaluation-only under the same rule.  A public license does not make a benchmark safe to train on:
 task prompts, verifier code, and gold state can directly inflate the score.
@@ -195,6 +216,40 @@ The seven mobile successes use the explicitly reported `mobile_lexical_guard`; t
 contract check, not evidence that the dense selector has solved mobile dispatch. The held-out
 selector result remains 40% top-1 on ten mobile rows, and the next acceptance gate is a no-guard
 mobile ablation plus emulator/real-environment evaluation.
+
+That 40% held-selector number is now historical only.  The pilot script had accidentally loaded the
+default byte tokenizer while fine-tuning a 16K BPE checkpoint, so its selector metric was not a
+valid learned-policy comparison.  The corrected BPE-tokenizer run below is the authoritative
+dispatch measurement.
+
+### Corrected BPE-tokenizer productivity dispatch and WebGPU receipt
+
+The corrected continuation starts from the same 10.5M-parameter SFT parent but loads the tokenizer
+recorded in the checkpoint (`data/tokenizer-webgpu-proxy-16k.json`) instead of the byte-level
+default.  This removes the Python/browser feature mismatch that invalidated the earlier selector
+diagnostic.
+
+- Child checkpoint: `sft-realistic-mobile-dispatch-productivity-v6.pt`, SHA-256
+  `be4f1216c88bfc6b12554e5d6324aa581e20409d6b213a3e47eaf5a3cc9f1583`.
+- Training report: 3,000 steps; productivity train selector `12/12` (100%), productivity held
+  selector `3/4` (75%), route accuracy `100%` on both splits.  The broader mobile held selector
+  remains `4/10` (40%), so no-guard mobile control is not yet publication-ready.
+- Export: 62 schemas, 10,524,544 parameters, fp32 ONNX parity max drift `8.58e-06` for logits and
+  `6.14e-06` for hidden states.  Bundle-manifest SHA-256
+  `5b711ff9768db66ef7a4d855bcb339244dc88ec1e6f6b5bf6eb5180b62f5644d`.
+- Browser receipt: [`m9-webgpu-mobile-productivity-pilot-v6.json`](paper/results/raw/m9-webgpu-mobile-productivity-pilot-v6.json),
+  SHA-256 `8fee312a92e897591c82f2327b6aa04693d412baa15ad14f03d234001bd1ad6c`.  On Chrome SwiftShader
+  software WebGPU, the nine-step local state suite achieved schema validity `9/9`, exact tool
+  selection `9/9`, exact arguments/action `8/9`, state transitions `8/9`, and closed-loop success
+  `8/9`.  The seven mobile rows still use the explicit lexical guard; the dense selector passed
+  the email row and missed the Notion title/content arguments.  Closed-loop latency ranged from
+  `121 ms` to `7.44 s` with a `148 ms` median, so this is compatibility evidence rather than a
+  100–300 tokens/s hardware-WebGPU claim.
+
+The corrected receipt is therefore a reproducible local WebGPU gate, not evidence of AndroidWorld,
+OSWorld-V2, WorkArena, WebLINX, MCPMark, Toolathlon-GYM, real email, or real Notion access.  Those
+environment runners and official task splits remain required before a workshop or public model
+claim.
 
 For comparison, an earlier AndroidControl-only baseline continued the WebGPU-tier parent
 (`webgpu-10m-hybrid`, 10,524,544 parameters) for eight CPU

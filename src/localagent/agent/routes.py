@@ -52,6 +52,7 @@ _TOOL_ROUTE: dict[str, str] = {
     "send_email": "app_action", "calendar_event": "app_action", "slack_send": "app_action",
     "jira_issue": "app_action", "notion_write": "app_action", "set_reminder": "app_action",
     "set_timer": "app_action", "play_music": "app_action",
+    "email_send": "app_action", "notion_create_page": "app_action",
     # --- text: direct answer (no tool) ---------------------------------------------------------
     "text": "text",
 }

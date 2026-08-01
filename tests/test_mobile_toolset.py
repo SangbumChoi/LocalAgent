@@ -1,4 +1,4 @@
-from localagent.agent.mobile_toolset import mobile_tools
+from localagent.agent.mobile_toolset import mobile_tools, realistic_productivity_tools
 from localagent.agent.routes import route_of
 
 
@@ -42,3 +42,13 @@ def test_mobile_toolset_returns_detached_specs():
     second = mobile_tools()
     first[0].parameters["properties"]["x"]["type"] = "integer"
     assert second[0].parameters["properties"]["x"]["type"] == "number"
+
+
+def test_realistic_productivity_tools_have_full_field_contracts():
+    tools = realistic_productivity_tools()
+    assert [tool.name for tool in tools] == ["email_send", "notion_create_page"]
+    assert all(route_of(tool.name) == "app_action" for tool in tools)
+    email = tools[0].parameters
+    assert email["required"] == ["to", "subject", "body"]
+    notion = tools[1].parameters
+    assert notion["required"] == ["title", "content"]

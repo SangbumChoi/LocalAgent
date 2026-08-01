@@ -18,7 +18,7 @@ import torch
 import torch.nn.functional as F
 
 from localagent.agent.dense_selector import BoundSelector, DenseToolSelector, tool_embeddings
-from localagent.agent.mobile_toolset import mobile_tools
+from localagent.agent.mobile_toolset import mobile_tools, realistic_productivity_tools
 from localagent.agent.routes import ROUTE_INDEX, ROUTES, RouteHead, route_of
 from localagent.agent.toolset import STANDARD_TOOLS
 from localagent.data.agent_synth import Generator, Sample
@@ -98,10 +98,100 @@ def _mobile_samples(rows: list[Conversation]) -> list[tuple[Sample, str]]:
     return samples
 
 
+def _productivity_samples() -> list[Sample]:
+    """Return deterministic full-field email/Notion prompts with a disjoint held-out tail."""
+
+    rows = [
+        ("Create a Notion page titled 'Sprint plan' with content 'Ship the browser pilot'.",
+         "notion_create_page", {"title": "Sprint plan", "content": "Ship the browser pilot"}),
+        ("Add a Notion page called 'Reading list' containing 'Review the agent papers'.",
+         "notion_create_page", {"title": "Reading list", "content": "Review the agent papers"}),
+        ("Save a Notion page titled 'Release notes' with content 'WebGPU fallback is documented'.",
+         "notion_create_page", {"title": "Release notes", "content": "WebGPU fallback is documented"}),
+        ("Create a Notion note named 'Meeting prep' containing 'Ask about emulator access'.",
+         "notion_create_page", {"title": "Meeting prep", "content": "Ask about emulator access"}),
+        ("Send an email to 'bob@example.com' with subject 'Build status' and body 'The tests pass'.",
+         "email_send", {"to": "bob@example.com", "subject": "Build status", "body": "The tests pass"}),
+        ("Email 'carol@example.com' about 'Dataset review' saying 'Please check the split'.",
+         "email_send", {"to": "carol@example.com", "subject": "Dataset review", "body": "Please check the split"}),
+        ("Compose a message to 'david@example.com' titled 'Receipt' with text 'The export is ready'.",
+         "email_send", {"to": "david@example.com", "subject": "Receipt", "body": "The export is ready"}),
+        ("Send 'eve@example.com' an email with subject 'WebGPU' and body 'The bundle is local'.",
+         "email_send", {"to": "eve@example.com", "subject": "WebGPU", "body": "The bundle is local"}),
+        ("Write a Notion page titled 'Training plan' with content 'Run the held-out evaluation'.",
+         "notion_create_page", {"title": "Training plan", "content": "Run the held-out evaluation"}),
+        ("Create a Notion page called 'Mobile notes' containing 'Keep the screen text compact'.",
+         "notion_create_page", {"title": "Mobile notes", "content": "Keep the screen text compact"}),
+        ("Email 'frank@example.com' with subject 'Pilot' and body 'The mobile loop passed'.",
+         "email_send", {"to": "frank@example.com", "subject": "Pilot", "body": "The mobile loop passed"}),
+        ("Send a message to 'grace@example.com' titled 'Next step' saying 'Run the real emulator'.",
+         "email_send", {"to": "grace@example.com", "subject": "Next step", "body": "Run the real emulator"}),
+        # Held-out rows: values and phrasings do not occur in the training prefix.
+        ("Make a Notion page titled 'Workshop checklist' whose content is 'Verify every receipt'.",
+         "notion_create_page", {"title": "Workshop checklist", "content": "Verify every receipt"}),
+        ("Add a Notion page named 'Ablations' with the text 'Compare no-guard dispatch'.",
+         "notion_create_page", {"title": "Ablations", "content": "Compare no-guard dispatch"}),
+        ("Send an email to 'heidi@example.com' with subject 'Acceptance' and body 'Please review the gate'.",
+         "email_send", {"to": "heidi@example.com", "subject": "Acceptance", "body": "Please review the gate"}),
+        ("Write to 'ivan@example.com' with the subject 'Mobile result' and message 'Selector accuracy is pending'.",
+         "email_send", {"to": "ivan@example.com", "subject": "Mobile result", "body": "Selector accuracy is pending"}),
+    ]
+    samples = []
+    for prompt, name, arguments in rows:
+        encoded_args = json.dumps(arguments, sort_keys=True, separators=(",", ":"))
+        samples.append(
+            Sample(
+                "realistic_productivity",
+                "app_action",
+                prompt,
+                "tool",
+                json.dumps({"arguments": arguments, "name": name}, sort_keys=True, separators=(",", ":")),
+                name,
+                encoded_args,
+            )
+        )
+    return samples
+
+
+def _compact_mobile_samples(mobile: list[tuple[Sample, str]]) -> list[Sample]:
+    """Add instruction-only views without changing the held-out raw screen observations."""
+
+    compact: list[Sample] = []
+    for sample, _episode in mobile:
+        marker = " instruction:"
+        prompt = sample.prompt.split(marker, 1)[-1].strip() if marker in sample.prompt else sample.prompt
+        if prompt == sample.prompt:
+            continue
+        compact.append(
+            Sample(
+                sample.category,
+                sample.group,
+                prompt,
+                sample.kind,
+                sample.target,
+                sample.ref_name,
+                sample.ref_args,
+                sample.calls,
+            )
+        )
+    return compact
+
+
 def _feature(model: LocalAgentLM, tok, prompt: str, device: str) -> torch.Tensor:
     from localagent.agent.tool_head import _feat
 
     return _feat(model, tok, prompt, device)
+
+
+def _checkpoint_tokenizer(parent: dict):
+    """Load the tokenizer recorded by the checkpoint, never silently falling back to bytes."""
+
+    metadata = parent.get("tokenizer") or {"kind": "byte"}
+    kind = str(metadata.get("kind", "byte")) if isinstance(metadata, dict) else "byte"
+    path = metadata.get("path") if isinstance(metadata, dict) else None
+    if kind == "bpe" and path is None:
+        raise ValueError("BPE checkpoint is missing tokenizer.path")
+    return load_tokenizer(kind, path)
 
 
 def _train_probe(
@@ -110,6 +200,7 @@ def _train_probe(
     parent: dict,
     tools,
     mobile: list[tuple[Sample, str]],
+    productivity: list[Sample],
     *,
     steps: int,
     device: str,
@@ -120,14 +211,21 @@ def _train_probe(
     standard = Generator(level=3, seed=seed, split="train").generate_balanced(3)
     standard += paraphrase_samples(2, seed=seed, split="train")
     mobile_samples = [sample for sample, _ in mobile]
-    pool = standard + mobile_samples
+    compact_mobile = _compact_mobile_samples(mobile)
+    # Keep the broad standard catalog, but repeat the two deployment-critical productivity tools
+    # enough that they are not drowned out by 50 legacy tools and 100+ mobile turns.
+    productivity_augmented = productivity * 4
+    pool = standard + mobile_samples + compact_mobile + productivity_augmented
     examples: dict[str, list[str]] = {
         name: list(values) for name, values in (parent.get("examples") or {}).items()
     }
     for sample in mobile_samples:
         examples.setdefault(sample.ref_name, []).append(sample.prompt)
-    route_rows = [(sample, "computer_use" if sample.ref_name.startswith("mobile_") else route_of(sample.ref_name))
-                  for sample in pool]
+    for sample in compact_mobile:
+        examples.setdefault(sample.ref_name, []).append(sample.prompt)
+    for sample in productivity_augmented:
+        examples.setdefault(sample.ref_name, []).append(sample.prompt)
+    route_rows = [(sample, route_of(sample.ref_name)) for sample in pool]
     with torch.no_grad():
         route_features = torch.stack([_feature(model, tok, sample.prompt, device) for sample, _ in route_rows])
     route_labels = torch.tensor([ROUTE_INDEX[label] for _, label in route_rows], device=device)
@@ -186,7 +284,7 @@ def _score(
     route_ok = selector_ok = 0
     for sample, _ in rows:
         feature = _feature(model, tok, sample.prompt, device)
-        route_ok += ROUTES[int(route(feature).argmax(-1))] == "computer_use"
+        route_ok += ROUTES[int(route(feature).argmax(-1))] == route_of(sample.ref_name)
         selector_ok += selector.rank(feature)[0] == sample.ref_name
     total = len(rows)
     return {
@@ -212,20 +310,46 @@ def main() -> None:
     cfg = ModelConfig(**parent["cfg"])
     model = LocalAgentLM(cfg).to(args.device).eval()
     model.load_state_dict(parent["state_dict"])
-    tok = load_tokenizer()
+    tok = _checkpoint_tokenizer(parent)
     rows = _load_rows(args.data)
     mobile = _mobile_samples(rows)
     episode_ids = sorted({episode for _, episode in mobile})
     holdout_ids = set(episode_ids[-max(1, len(episode_ids) // 5) :])
     train_mobile = [item for item in mobile if item[1] not in holdout_ids]
     held_mobile = [item for item in mobile if item[1] in holdout_ids]
-    tools = list(STANDARD_TOOLS) + mobile_tools()
+    tools = list(STANDARD_TOOLS) + mobile_tools() + realistic_productivity_tools()
+    productivity = _productivity_samples()
+    productivity_train = productivity[:-4]
+    productivity_holdout = productivity[-4:]
     route, selector, examples = _train_probe(
-        model, tok, parent, tools, train_mobile, steps=args.steps, device=args.device, seed=2027
+        model,
+        tok,
+        parent,
+        tools,
+        train_mobile,
+        productivity_train,
+        steps=args.steps,
+        device=args.device,
+        seed=2027,
     )
     bound = BoundSelector(selector, tools, device=args.device, examples=examples)
-    train_metrics = _score(model, tok, route, bound, train_mobile, args.device)
+    train_metrics = _score(
+        model,
+        tok,
+        route,
+        bound,
+        train_mobile + [(sample, "productivity-train") for sample in productivity_train],
+        args.device,
+    )
     held_metrics = _score(model, tok, route, bound, held_mobile, args.device)
+    held_productivity_metrics = _score(
+        model,
+        tok,
+        route,
+        bound,
+        [(sample, "productivity-held") for sample in productivity_holdout],
+        args.device,
+    )
 
     child = dict(parent)
     child.update(
@@ -244,6 +368,15 @@ def main() -> None:
                 "steps": args.steps,
                 "train": train_metrics,
                 "held_out": held_metrics,
+                "productivity_train": _score(
+                    model,
+                    tok,
+                    route,
+                    bound,
+                    [(sample, "productivity-train") for sample in productivity_train],
+                    args.device,
+                ),
+                "productivity_held_out": held_productivity_metrics,
             },
         }
     )

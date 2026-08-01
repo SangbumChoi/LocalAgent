@@ -56,9 +56,9 @@ const MOBILE_TASKS = Object.freeze([
   {
     id: "write_notion",
     family: "productivity",
-    prompt: "Create a Notion note titled 'Mobile pilot' with content 'WebGPU state loop passed'.",
+    prompt: "Create a Notion page titled 'Mobile pilot' with content 'WebGPU state loop passed'.",
     expected: {
-      tool: "notion_write",
+      tool: "notion_create_page",
       args: { title: "Mobile pilot", content: "WebGPU state loop passed" },
     },
     transition: (state) => ({
@@ -71,7 +71,7 @@ const MOBILE_TASKS = Object.freeze([
     family: "productivity",
     prompt: "Send an email to 'alice@example.com' with subject 'Mobile pilot' and body 'The WebGPU state loop passed'.",
     expected: {
-      tool: "send_email",
+      tool: "email_send",
       args: {
         to: "alice@example.com",
         subject: "Mobile pilot",
