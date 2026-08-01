@@ -554,19 +554,22 @@ entries:
   - id: enterpriseopsgym
     family: tool_api
     name: EnterpriseOpsGym
-    source_url: https://huggingface.co/datasets/EnterpriseAgents/EnterpriseOpsGym
-    paper_url: https://huggingface.co/datasets/EnterpriseAgents/EnterpriseOpsGym
-    code_url: https://huggingface.co/datasets/EnterpriseAgents/EnterpriseOpsGym
+    source_url: https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym
+    paper_url: https://arxiv.org/abs/2603.13594
+    code_url: https://github.com/ServiceNow/EnterpriseOps-Gym
     access_status: public_download
     license:
-      name: MIT
-      url: https://opensource.org/license/mit
-      evidence: https://huggingface.co/datasets/EnterpriseAgents/EnterpriseOpsGym
+      name: Apache-2.0
+      url: https://www.apache.org/licenses/LICENSE-2.0
+      evidence: https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym
     scale:
       kind: benchmark
-      tasks: 649
+      tasks: 1115
       domains: 8
-      email_tasks: 67
+      email_tasks: 104
+      tools: 512
+      modes: 4
+      public_rows: 2560
     observation:
       modalities: [text, tool_schema, enterprise_state]
       formats: [JSON, MCP, SQL_verifier]
@@ -585,8 +588,8 @@ entries:
       screenshot_policy: none
     contamination:
       split: benchmark
-      rule: despite a public MIT dataset card, keep benchmark tasks and SQL verifiers out of model training
-    notes: Text-only enterprise workflows give a realistic email/tool evaluation without live user credentials.
+      rule: despite a public Apache-2.0 task card, keep benchmark tasks and SQL verifiers out of model training
+    notes: Official ServiceNow-AI release (HF revision c8e538eae8a6205294f0a86675fefdc1fac408f6); text-only enterprise workflows give a realistic email/tool evaluation without live user credentials. The task card is public, but benchmark tasks and verifiers remain evaluation-only.
 
   - id: mcp_persona
     family: tool_api

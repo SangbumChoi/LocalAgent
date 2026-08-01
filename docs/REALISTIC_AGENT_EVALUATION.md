@@ -8,8 +8,8 @@ It is deliberately a catalog, not a downloader: every acquired byte must be reco
 provenance manifest with an upstream revision, byte count, and SHA-256.
 
 The current catalog contains 35 source-linked rows (four train-eligible and 31 evaluation or
-restricted) and has canonical SHA-256 fingerprint
-`8c00e9c2bf3a556aebc0562f98b0d0964fd64a1908dd3376f1e6b04f92fd224f`.
+restricted) and has a canonical SHA-256 fingerprint recorded by the preflight command below.
+The current fingerprint is `960c7063aff7885ce3e2ad970d4a2274c819838f79e7757ea5a6b6495c3174ac`.
 
 Run the read-only readiness report before acquiring or evaluating anything:
 
@@ -88,9 +88,11 @@ The following are important reality checks, not extra SFT rows:
   checked before any redistribution, so it remains evaluation-only.
 - [MCPMark Verified](https://github.com/eval-sys/mcpmark): pinned Notion, GitHub, filesystem, Postgres,
   and Playwright environments with deterministic verifiers.
-- [EnterpriseOpsGym](https://huggingface.co/datasets/EnterpriseAgents/EnterpriseOpsGym): 649 public
-  enterprise tasks, including 67 email tasks.  The dataset card says MIT, but the benchmark tasks and
-  SQL verifiers remain held out to prevent benchmark memorization.
+- [EnterpriseOps-Gym](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym): 1,115 public
+  enterprise tasks across eight domains, including 104 email tasks and 512 tools.  The official card
+  describes containerized execution with SQL state verifiers and the dataset API reports Apache-2.0;
+  tasks/verifiers stay evaluation-only to prevent benchmark memorization.  The pinned HF revision is
+  `c8e538eae8a6205294f0a86675fefdc1fac408f6`.
 - [MCP-Persona](https://github.com/wwh0411/MCP-Persona): 173 personalized tool-calling tasks that
   include Notion and email MCP servers.  Its repository terms must be checked before redistribution;
   keep the simulated account state and checkpoint labels evaluation-only.
@@ -376,6 +378,17 @@ result: the learned dense selector remains the limiting component.  It is still 
 text-first, single-concurrency state evaluation with no screenshot grounding, trusted OS input,
 real accounts, official environment runner, or hardware throughput measurement.  The retrieval
 sidecar's earlier `9/9` result must remain reported separately from this learned policy.
+
+### Pretrained-head transfer control
+
+The dispatch runner now exposes an explicit `--probe-init` switch so transfer is tested rather
+than assumed.  A matched 3,000-step replay from the v9r parent compared the inherited route and
+dense-selector heads with seeded-random probe initialization; the backbone, tokenizer, data bytes,
+holdout IDs, optimizer settings, and seed were held constant.  Parent-head reuse raised training
+selector accuracy from `75.86%` to `86.21%` and kept action-head movement smaller (`0.4426` vs
+`1.0753` relative delta L2), but held-out selector accuracy was identical: mobile `6/10` and
+productivity `3/4` for both arms.  The result supports lineage and optimization stability, not a
+quality gain.  The complete hash-bound control is [`m13 transfer ablation`](paper/results/raw/m13-mobile-dispatch-transfer-ablation.json).
 
 For comparison, an earlier AndroidControl-only baseline continued the WebGPU-tier parent
 (`webgpu-10m-hybrid`, 10,524,544 parameters) for eight CPU

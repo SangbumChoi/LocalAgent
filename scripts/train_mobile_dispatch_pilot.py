@@ -338,7 +338,10 @@ def _train_probe(
     steps: int,
     device: str,
     seed: int,
+    probe_init: str,
 ) -> tuple[RouteHead, DenseToolSelector, dict[str, list[str]]]:
+    if probe_init not in {"parent_heads", "random"}:
+        raise ValueError("probe_init must be 'parent_heads' or 'random'")
     random.seed(seed)
     torch.manual_seed(seed)
     standard = Generator(level=3, seed=seed, split="train").generate_balanced(3)
@@ -385,7 +388,7 @@ def _train_probe(
         route_features = torch.stack([_feature(model, tok, sample.prompt, device) for sample, _ in route_rows])
     route_labels = torch.tensor([ROUTE_INDEX[label] for _, label in route_rows], device=device)
     route = RouteHead(model.cfg.d_model).to(device)
-    if parent.get("route_head"):
+    if probe_init == "parent_heads" and parent.get("route_head"):
         route.load_state_dict(parent["route_head"])
     route_opt = torch.optim.AdamW(route.parameters(), lr=5e-3)
 
@@ -402,7 +405,7 @@ def _train_probe(
         emb_dim=embs.shape[1],
         proj=int(parent.get("selector_proj", 256)),
     ).to(device)
-    if parent.get("dense_selector"):
+    if probe_init == "parent_heads" and parent.get("dense_selector"):
         selector.load_state_dict(parent["dense_selector"])
     selector_opt = torch.optim.AdamW(selector.parameters(), lr=5e-3)
     rng = random.Random(seed)
@@ -457,6 +460,12 @@ def main() -> None:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--steps", type=int, default=120)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--probe-init",
+        choices=("parent_heads", "random"),
+        default="parent_heads",
+        help="initialize route/selector probes from the parent checkpoint or a seeded reset",
+    )
     args = parser.parse_args()
     if args.steps < 1:
         raise ValueError("steps must be positive")
@@ -491,6 +500,7 @@ def main() -> None:
         steps=args.steps,
         device=args.device,
         seed=2027,
+        probe_init=args.probe_init,
     )
     bound = BoundSelector(selector, tools, device=args.device, examples=examples)
     train_metrics = _score(
@@ -527,6 +537,7 @@ def main() -> None:
                 "episodes": episode_ids,
                 "held_out_episodes": sorted(holdout_ids),
                 "steps": args.steps,
+                "probe_initialization": args.probe_init,
                 "synthetic_mobile_rows": len(synthetic_mobile),
                 "synthetic_mobile_repeats": 4,
                 "train": train_metrics,

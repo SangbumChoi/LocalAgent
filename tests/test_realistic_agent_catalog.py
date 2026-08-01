@@ -43,6 +43,22 @@ def test_realistic_catalog_is_pinned_and_split_safe() -> None:
         "assistgui",
     } <= eval_ids
 
+    enterprise = next(row for row in catalog["entries"] if row["id"] == "enterpriseopsgym")
+    assert enterprise["source_url"] == (
+        "https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym"
+    )
+    assert enterprise["code_url"] == "https://github.com/ServiceNow/EnterpriseOps-Gym"
+    assert enterprise["scale"] == {
+        "kind": "benchmark",
+        "tasks": 1115,
+        "domains": 8,
+        "email_tasks": 104,
+        "tools": 512,
+        "modes": 4,
+        "public_rows": 2560,
+    }
+    assert enterprise["license"]["name"] == "Apache-2.0"
+
 
 def test_train_rows_require_public_download_and_verified_license() -> None:
     catalog, _ = load_catalog(CATALOG)
