@@ -246,6 +246,7 @@ async function runMobileTaskPilot() {
     model_ready_ms: MOBILE_TASK_MODEL_READY_MS,
     run_ms: performance.now() - startedRun,
     backend: await window.__localAgentReady.then((value) => value.backend),
+    mobile_guard_enabled: window.__localAgentMobileLexicalGuardEnabled ?? null,
     tool_pool_size: window.META_FOR_MOBILE_TASKS?.length || null,
     summary: mobileTaskSummary(records),
     records,

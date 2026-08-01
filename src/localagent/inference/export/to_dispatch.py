@@ -103,6 +103,30 @@ def selector_tool_matrix(ck: dict, tools, examples: dict | None = None) -> torch
     return T
 
 
+def retrieval_tool_matrix(tools, examples: dict | None = None, dim: int = 256) -> torch.Tensor:
+    """Build a compact, runtime-friendly char-ngram retrieval matrix.
+
+    The dense selector remains the learned primary policy.  This second matrix is an explicit
+    zero-training fallback for browser/mobile deployments: it lets the WebGPU demo compare a
+    reproducible retrieval policy without a hand-written action guard, while adding only
+    ``len(tools) * dim`` floats to the dispatch sidecar.
+    """
+    import numpy as np
+
+    from localagent.agent.retriever import embed
+
+    rows = []
+    for tool in tools:
+        vector = embed(f"{tool.name.replace('_', ' ')} {tool.description}", dim)
+        tool_examples = (examples or {}).get(tool.name)
+        if tool_examples:
+            vector = vector + np.mean([embed(query, dim) for query in tool_examples], axis=0)
+            norm = np.linalg.norm(vector)
+            vector = vector / norm if norm > 0 else vector
+        rows.append(vector)
+    return torch.tensor(np.stack(rows), dtype=torch.float32)
+
+
 def dispatch_heads_json(ck: dict, tools=None, examples: dict | None = None) -> dict:
     """Serialize route_head + dense_selector (query tower + precomputed tool matrix) as plain JSON.
 
@@ -110,7 +134,7 @@ def dispatch_heads_json(ck: dict, tools=None, examples: dict | None = None) -> d
     pass a different list to ship the device a different *fixed* tool pool — the matrix is rebuilt
     for whatever pool is bound, which is the whole point of the generable selector.
     """
-    from localagent.agent.routes import ROUTES
+    from localagent.agent.routes import ROUTES, route_of
     from localagent.agent.toolset import STANDARD_TOOLS
 
     if tools is None:
@@ -126,6 +150,11 @@ def dispatch_heads_json(ck: dict, tools=None, examples: dict | None = None) -> d
     q_b = sd["q_proj.bias"].cpu().tolist()         # (proj,)
     proj = sd["q_proj.weight"].shape[0]
     T = selector_tool_matrix(ck, tools, examples)  # (n_tools, proj)
+    retrieval_dim = 256
+    retrieval_examples = ck.get("retrieval_examples")
+    if retrieval_examples is None:
+        retrieval_examples = examples if examples is not None else ck.get("examples")
+    retrieval_matrix = retrieval_tool_matrix(tools, retrieval_examples, dim=retrieval_dim)
 
     return {
         "route_head": {
@@ -147,6 +176,15 @@ def dispatch_heads_json(ck: dict, tools=None, examples: dict | None = None) -> d
             # normalize the query (q) before the dot; tool_matrix rows are pre-normalized so the
             # device does NOT renormalize them. score_j = q · T[j]; pick argmax_j.
             "normalize_query": True,
+        },
+        "retrieval_selector": {
+            "algorithm": "char_ngram_crc32_v1",
+            "dim": retrieval_dim,
+            "tool_matrix": _round_nested(retrieval_matrix.tolist()),
+            "tool_names": [t.name for t in tools],
+            "tool_routes": [route_of(t.name) for t in tools],
+            "normalize_query": True,
+            "compact_instruction_marker": " instruction:",
         },
     }
 

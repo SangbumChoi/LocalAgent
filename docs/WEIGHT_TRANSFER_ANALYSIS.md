@@ -66,6 +66,14 @@ the expected head-only adaptation pattern, not evidence that the pretrained repr
 optimal.  The next controlled experiment must compare this head-only child with a low-rate
 backbone-unfrozen continuation and a no-transfer initialization under the same held-out prompts.
 
+The v9 selector continuation adds 86 instruction-only mobile paraphrases (repeated four times for
+the probe) and removes inherited full accessibility dumps from the mobile tool centroids.  It
+raises the external mobile held selector from 4/10 to 6/10 while preserving 100% route accuracy;
+productivity held selector remains 3/4.  Its transfer audit still finds 51 shared tensors, equal
+config/tokenizer identity, zero backbone movement, and action-head aggregate relative ΔL2 `1.6521`.
+The v9r retrieval sidecar is deliberately excluded from these neural weight claims because it has
+no trainable parameters.
+
 ## Adoption protocol
 
 1. **Compatibility gate:** require identical model config fields and tokenizer SHA-256.  Refuse

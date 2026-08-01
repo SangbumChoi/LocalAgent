@@ -22,6 +22,7 @@ from localagent.agent.toolset import STANDARD_TOOLS
 from localagent.inference.export.to_dispatch import (
     dispatch_heads_json,
     parity_dispatch,
+    retrieval_tool_matrix,
     selector_tool_matrix,
 )
 from localagent.model import LocalAgentLM, ModelConfig
@@ -123,6 +124,17 @@ def test_selector_tool_matrix_matches_bound_embs(tmp_path):
     assert torch.allclose(T, ref, atol=1e-5)
 
 
+def test_retrieval_tool_matrix_matches_runtime_retriever():
+    """The compact exported retrieval sidecar must match the Python runtime index exactly."""
+    from localagent.agent.retriever import ToolRetriever
+
+    examples = {STANDARD_TOOLS[0].name: ["the weather in Paris"]}
+    exported = retrieval_tool_matrix(STANDARD_TOOLS, examples, dim=256).numpy()
+    runtime = ToolRetriever(STANDARD_TOOLS, examples=examples, dim=256).M
+    assert exported.shape == runtime.shape == (len(STANDARD_TOOLS), 256)
+    assert np.allclose(exported, runtime, atol=1e-6)
+
+
 def test_dispatch_json_roundtrips(tmp_path):
     ck, *_ = _make_ck(tmp_path)
     heads = dispatch_heads_json(ck)
@@ -132,6 +144,12 @@ def test_dispatch_json_roundtrips(tmp_path):
     assert back["route_head"]["routes"] == list(ROUTES)
     assert back["dense_selector"]["normalize_query"] is True
     assert len(back["dense_selector"]["tool_names"]) == len(STANDARD_TOOLS)
+    retrieval = back["retrieval_selector"]
+    assert retrieval["algorithm"] == "char_ngram_crc32_v1"
+    assert retrieval["dim"] == 256
+    assert len(retrieval["tool_matrix"]) == len(STANDARD_TOOLS)
+    assert len(retrieval["tool_matrix"][0]) == retrieval["dim"]
+    assert retrieval["tool_routes"]
 
 
 def test_parity_dispatch_uses_checkpoint_bpe_path_override(tmp_path, monkeypatch):

@@ -33,7 +33,8 @@
         Scope: deterministic in-memory Android/email/Notion state, one action per step, one
         concurrency, exact tool-and-argument scoring, independent schema validation, and closed
         loop state assertions. Mobile selections made by the optional lexical guard are reported
-        separately from the learned dense selector.
+        separately from the learned dense selector; use <code>mobile_guard=0</code> for a no-guard
+        run, or add <code>selector=retrieval</code> to measure the explicit retrieval ablation.
       </p>
       <div class="row browser-task-controls">
         <span id="mobile-task-progress" class="timing">Waiting for the model bundle…</span>

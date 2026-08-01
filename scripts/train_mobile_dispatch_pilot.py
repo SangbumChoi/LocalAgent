@@ -177,6 +177,138 @@ def _compact_mobile_samples(mobile: list[tuple[Sample, str]]) -> list[Sample]:
     return compact
 
 
+def _synthetic_mobile_samples() -> list[Sample]:
+    """Return balanced, instruction-only mobile dispatch paraphrases.
+
+    Real AndroidControl/AITW rows are valuable for screen grounding but are strongly imbalanced
+    toward taps.  These rows deliberately contain no screenshots, task IDs, or held-out app names;
+    they teach the selector the action vocabulary while keeping the real environment rows as the
+    evidence source for evaluation.
+    """
+
+    rows = {
+        "mobile_open_app": [
+            "On the Android phone, launch the Mail app.",
+            "Open the Gmail app on the Android phone.",
+            "Launch Calendar on the mobile device.",
+            "Start the Maps application on the phone.",
+            "Bring up the Camera app on Android.",
+            "Open the music app on the handset.",
+            "Launch the shopping application on the phone.",
+            "Start the browser app on the mobile screen.",
+            "Open Settings on the Android device.",
+        ],
+        "mobile_click": [
+            "Tap Compose at x=80 y=180 on the Android screen.",
+            "Tap the Compose button at x=120 y=220 on the phone.",
+            "Click the Search icon at x=42 y=90 on the mobile screen.",
+            "Touch the Settings tile on the Android device.",
+            "Select the first result on the phone screen.",
+            "Tap the blue action button on the handset.",
+            "Click the menu item shown on the mobile display.",
+            "Touch the checkbox at x=300 y=500.",
+            "Tap the notification card on Android.",
+        ],
+        "mobile_long_press": [
+            "Long-press the photo at x=160 y=340 on the phone.",
+            "Hold the conversation row on the mobile screen.",
+            "Press and hold the app icon on Android.",
+            "Long press the selected message on the handset.",
+            "Hold the list item at x=240 y=600.",
+            "Keep your finger down on the phone's document row.",
+            "Long-press the calendar event on the mobile device.",
+            "Hold the video thumbnail on the Android screen.",
+        ],
+        "mobile_scroll": [
+            "On Android, scroll down to older notifications.",
+            "Scroll down on the phone to see older items.",
+            "Swipe the mobile list upward to reveal more content.",
+            "Scroll up on the Android screen.",
+            "Move down through the handset's page.",
+            "Scroll the phone view toward the bottom.",
+            "Scroll upward through the mobile results.",
+            "Move the Android page down to the next section.",
+            "Scroll back toward the top of the phone screen.",
+        ],
+        "mobile_swipe": [
+            "On mobile, swipe from x=90 y=640 to x=90 y=280.",
+            "Swipe from x=100 y=700 to x=100 y=300 on the phone.",
+            "Drag a finger from the bottom toward the top of the mobile display.",
+            "Swipe left across the Android screen.",
+            "Swipe right from x=80 y=400 to x=500 y=400.",
+            "Make an upward swipe on the handset.",
+            "Move the phone screen with a downward swipe.",
+            "Swipe across the mobile carousel from left to right.",
+            "Perform a diagonal swipe on Android.",
+        ],
+        "mobile_input_text": [
+            "On the phone, type 'contact@example.org' into the focused address field.",
+            "Type 'hello@example.com' into the focused phone field.",
+            "Enter 'conference notes' in the mobile text box.",
+            "Input 'WebGPU pilot' on the Android keyboard.",
+            "Fill the focused handset field with 'search term'.",
+            "Type the code 'A7B9' into the phone input.",
+            "Enter a message reading 'see you soon' on mobile.",
+            "Write '42' in the active Android field.",
+            "Input the requested text into the focused phone control.",
+        ],
+        "mobile_navigate_home": [
+            "Go to the home screen on the Android phone.",
+            "Return to the mobile device home screen.",
+            "Press Home on the handset.",
+            "Navigate to the phone's home screen.",
+            "Leave the current app and return home on Android.",
+            "Use the Home action on the mobile device.",
+            "Back out to the Android launcher home.",
+            "Show the phone home screen.",
+        ],
+        "mobile_navigate_back": [
+            "On the Android phone, go back from the current window.",
+            "Go back to the previous page on the phone.",
+            "Navigate back on the Android device.",
+            "Return to the prior mobile screen.",
+            "Press Back on the handset.",
+            "Back out of the current phone window.",
+            "Use the Android back action.",
+            "Return to the previous view on mobile.",
+            "Leave this screen using Back.",
+        ],
+        "mobile_press_enter": [
+            "Press Enter on the Android keyboard.",
+            "Submit the focused mobile field with the Enter key.",
+            "Hit Return on the phone.",
+            "Use the handset's ENTER action.",
+            "Confirm the text input with Enter on mobile.",
+            "Press the enter key on Android.",
+            "Send the focused form with Return on the phone.",
+            "Activate the mobile keyboard's Enter button.",
+        ],
+        "mobile_wait": [
+            "Wait for the phone screen to finish loading.",
+            "Pause until the Android app responds.",
+            "Wait on the mobile device.",
+            "Sleep briefly for the handset UI to settle.",
+            "Wait for the next phone state.",
+            "Pause while the mobile page loads.",
+            "Allow the Android screen to update before continuing.",
+            "Wait a moment on the phone.",
+        ],
+    }
+    return [
+        Sample(
+            "realistic_mobile_synthetic",
+            "mobile",
+            prompt,
+            "tool",
+            json.dumps({"arguments": {}, "name": name}, sort_keys=True, separators=(",", ":")),
+            name,
+            "{}",
+        )
+        for name, prompts in rows.items()
+        for prompt in prompts
+    ]
+
+
 def _feature(model: LocalAgentLM, tok, prompt: str, device: str) -> torch.Tensor:
     from localagent.agent.tool_head import _feat
 
@@ -201,6 +333,7 @@ def _train_probe(
     tools,
     mobile: list[tuple[Sample, str]],
     productivity: list[Sample],
+    synthetic_mobile: list[Sample],
     *,
     steps: int,
     device: str,
@@ -215,13 +348,35 @@ def _train_probe(
     # Keep the broad standard catalog, but repeat the two deployment-critical productivity tools
     # enough that they are not drowned out by 50 legacy tools and 100+ mobile turns.
     productivity_augmented = productivity * 4
-    pool = standard + mobile_samples + compact_mobile + productivity_augmented
-    examples: dict[str, list[str]] = {
-        name: list(values) for name, values in (parent.get("examples") or {}).items()
-    }
-    for sample in mobile_samples:
-        examples.setdefault(sample.ref_name, []).append(sample.prompt)
+    synthetic_mobile_augmented = synthetic_mobile * 4
+    pool = (
+        standard
+        + mobile_samples
+        + compact_mobile
+        + synthetic_mobile_augmented
+        + productivity_augmented
+    )
+    examples: dict[str, list[str]] = {}
+    for name, values in (parent.get("examples") or {}).items():
+        # Older dispatch children stored full accessibility dumps in the example centroid.  Keep
+        # standard examples, but compact any inherited mobile rows before they reach either the
+        # dense tool tower or the exported retrieval matrix.
+        if name.startswith("mobile_"):
+            compact_values = [
+                value.rsplit(" instruction:", 1)[-1].strip()
+                for value in values
+                if " instruction:" in value
+            ]
+            if compact_values:
+                examples[name] = compact_values
+        else:
+            examples[name] = list(values)
+    # Keep long screen dumps in the training pool, but use only compact action text for the
+    # tool-tower centroid.  Otherwise thousands of accessibility tokens drown out "open", "back",
+    # and "wait" in the fixed character n-gram embedding.
     for sample in compact_mobile:
+        examples.setdefault(sample.ref_name, []).append(sample.prompt)
+    for sample in synthetic_mobile:
         examples.setdefault(sample.ref_name, []).append(sample.prompt)
     for sample in productivity_augmented:
         examples.setdefault(sample.ref_name, []).append(sample.prompt)
@@ -321,6 +476,10 @@ def main() -> None:
     productivity = _productivity_samples()
     productivity_train = productivity[:-4]
     productivity_holdout = productivity[-4:]
+    synthetic_mobile = _synthetic_mobile_samples()
+    retrieval_examples: dict[str, list[str]] = {}
+    for sample in synthetic_mobile:
+        retrieval_examples.setdefault(sample.ref_name, []).append(sample.prompt)
     route, selector, examples = _train_probe(
         model,
         tok,
@@ -328,6 +487,7 @@ def main() -> None:
         tools,
         train_mobile,
         productivity_train,
+        synthetic_mobile,
         steps=args.steps,
         device=args.device,
         seed=2027,
@@ -360,12 +520,15 @@ def main() -> None:
             "dense_selector": selector.state_dict(),
             "selector_proj": int(parent.get("selector_proj", 256)),
             "examples": examples,
+            "retrieval_examples": retrieval_examples,
             "dispatch_tool_pool": [tool.name for tool in tools],
             "mobile_dispatch_training": {
                 "rows": len(mobile),
                 "episodes": episode_ids,
                 "held_out_episodes": sorted(holdout_ids),
                 "steps": args.steps,
+                "synthetic_mobile_rows": len(synthetic_mobile),
+                "synthetic_mobile_repeats": 4,
                 "train": train_metrics,
                 "held_out": held_metrics,
                 "productivity_train": _score(

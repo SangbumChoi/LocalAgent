@@ -8,11 +8,13 @@
  *   dispatch_heads.json  { route_head:{weight:[5][d],bias:[5],routes:[5],stop_index},
  *                          dense_selector:{q_proj_weight:[p][d],q_proj_bias:[p],proj:p,
  *                                          tool_matrix:[N][p],tool_names:[N],normalize_query} }
+ *                          retrieval_selector:{dim,tool_matrix:[N][dim],tool_names,tool_routes} }
  *   heads.json           { pointer_head:{arg_idx,arg_emb,start_W,end_W}, ... }   (args copy)
  *   meta.json            { model_file, action_model_file, d_model, markers, tools } (50 tools)
  *
  * Selection is NOT a fixed-N classifier: the dense selector scores every tool by its description
- * embedding, so adding/removing a tool is adding/removing a tool_matrix row.
+ * embedding, so adding/removing a tool is adding/removing a tool_matrix row.  An explicit
+ * retrieval_selector ablation is available with ?selector=retrieval; it is reported separately.
  */
 
 const ACTION_POLICIES = Object.freeze({
@@ -48,6 +50,12 @@ const BENCHMARK_GRADE = window.__localAgentBenchmarkGrade === true ||
   Number.isFinite(window.__localAgentBrowserTasksStart);
 const REQUESTED_BACKEND = window.__localAgentRequestedBackend ||
   new URLSearchParams(window.location.search).get("backend") || "auto";
+const MOBILE_LEXICAL_GUARD = (() => {
+  const value = new URLSearchParams(window.location.search).get("mobile_guard");
+  return value !== "0" && value !== "false" && value !== "off";
+})();
+window.__localAgentMobileLexicalGuardEnabled = MOBILE_LEXICAL_GUARD;
+const REQUESTED_SELECTOR = new URLSearchParams(window.location.search).get("selector") || "dense";
 
 function sessionOptions(provider) {
   if (provider !== "webgpu" && provider !== "wasm") {
@@ -1610,6 +1618,7 @@ function greedyToken(logits) { return argmax(logits); }
 function softmaxAt(v, i) { let m = -Infinity; for (const x of v) m = Math.max(m, x); let z = 0; for (const x of v) z += Math.exp(x - m); return Math.exp(v[i] - m) / z; }
 
 function mobileLexicalSelect(query) {
+  if (!MOBILE_LEXICAL_GUARD) return null;
   const names = new Set(DISPATCH?.dense_selector?.tool_names || []);
   if (!names.has("mobile_click") || typeof query !== "string") return null;
   const low = query.toLowerCase();
@@ -1639,9 +1648,72 @@ function mobileLexicalSelect(query) {
   return null;
 }
 
+function compactDispatchQuery(query, marker = " instruction:") {
+  if (typeof query !== "string") return "";
+  const lower = query.toLowerCase();
+  const index = lower.lastIndexOf(marker.toLowerCase());
+  return index >= 0 ? query.slice(index + marker.length).trim() : query;
+}
+
+function crc32Utf8(text) {
+  const bytes = new TextEncoder().encode(text);
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) {
+      crc = (crc >>> 1) ^ (0xedb88320 * (crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function retrievalEmbedding(text, dim) {
+  const normalized = ` ${String(text).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
+  const vector = new Float32Array(dim);
+  for (const n of [3, 4, 5]) {
+    for (let index = 0; index + n <= normalized.length; index++) {
+      vector[crc32Utf8(normalized.slice(index, index + n)) % dim] += 1;
+    }
+  }
+  let norm = 0;
+  for (const value of vector) norm += value * value;
+  norm = Math.sqrt(norm);
+  if (norm > 0) for (let index = 0; index < vector.length; index++) vector[index] /= norm;
+  return vector;
+}
+
+function retrievalSelect(query) {
+  const R = DISPATCH?.retrieval_selector;
+  if (!R?.tool_matrix?.length || !Array.isArray(R.tool_names)) return null;
+  const compact = compactDispatchQuery(query, R.compact_instruction_marker);
+  const q = retrievalEmbedding(compact, Number(R.dim));
+  let best = 0;
+  let bestScore = -Infinity;
+  for (let row = 0; row < R.tool_matrix.length; row++) {
+    const values = R.tool_matrix[row];
+    let score = 0;
+    for (let index = 0; index < q.length; index++) score += q[index] * values[index];
+    if (score > bestScore) {
+      best = row;
+      bestScore = score;
+    }
+  }
+  return {
+    name: R.tool_names[best],
+    route: R.tool_routes?.[best] || "text",
+    conf: Math.max(0, Math.min(1, (bestScore + 1) / 2)),
+    isStop: false,
+    selection_policy: "retrieval_selector",
+  };
+}
+
 function dispatchSelect(hiddenTensor, T, query = "") {
   const mobile = mobileLexicalSelect(query);
   if (mobile) return mobile;
+  if (REQUESTED_SELECTOR === "retrieval") {
+    const retrieved = retrievalSelect(query);
+    if (retrieved) return retrieved;
+  }
   const last = lastHidden(hiddenTensor, T);
   // 1. route head (5-way modality gate); the `text` route (stop_index) = abstain / direct answer.
   const R = DISPATCH.route_head;
@@ -1776,7 +1848,11 @@ function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
   }
 
   const copied = pointerValue && pointerValue.trim();
-  if (copied) return copied;
+  // A pointer span is only trusted for quoted fields when it exactly reproduces one quoted
+  // candidate.  This keeps a pointer head trained on an older schema from stitching together
+  // adjacent title/content phrases in new email/Notion contracts; the schema extractor can then
+  // consume the deterministic quoted pool in field order.
+  if (copied && (!QUOTED_HINTS.has(name) || pools.quoted.includes(copied))) return copied;
   if (format === "quoted") return popGrounding(pools.quoted) || tail();
   if (format === "path") return popGrounding(pools.path);
   if (format === "url") return popGrounding(pools.url);

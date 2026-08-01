@@ -251,6 +251,31 @@ OSWorld-V2, WorkArena, WebLINX, MCPMark, Toolathlon-GYM, real email, or real Not
 environment runners and official task splits remain required before a workshop or public model
 claim.
 
+### Retrieval sidecar ablation (v9r)
+
+The v9r bundle adds an explicit 256-dimensional CRC32 character n-gram retrieval sidecar.  It is
+not trained weights and is reported separately from the dense neural selector; its purpose is to
+provide an auditable open-tool fallback for small WebGPU catalogs without reintroducing the
+mobile lexical guard.  The sidecar uses clean synthetic action examples rather than inherited
+accessibility dumps, and compacts a trailing `instruction:` field when present.
+
+- Checkpoint: `sft-realistic-mobile-dispatch-productivity-v9r.pt`, SHA-256
+  `523946f03fd8439e0c085ad9cbcab3bc43bcf3d28ef9385d9c42666a6f9eb0ec`.
+- Bundle manifest SHA-256 `0785de8e1f84efb0ca68082bbb56e5b366ccf5212679f249091ed05cfc106af5`;
+  dispatch sidecar SHA-256 `da09acd9df9e7073555543c99f83c579a52c3f4de4f20f67310877c0e26bdbba`.
+- Receipt: [`m10-webgpu-mobile-productivity-v9r.json`](paper/results/raw/m10-webgpu-mobile-productivity-v9r.json),
+  SHA-256 `9b69b0ff5e8b20f3756de4ece767883a1aa42a1820312e04400b5fca49973f3c`.
+- With `mobile_guard=0&selector=retrieval`, Chrome SwiftShader WebGPU achieved 9/9 exact tools,
+  9/9 exact arguments, 9/9 state transitions, and 9/9 closed-loop success across seven mobile
+  actions plus email and Notion.  The same receipt's learned `dense_selector` no-guard ablation
+  achieved 4/9 overall (2/7 mobile, 2/2 productivity).  This separation prevents a retrieval
+  baseline from being misreported as neural tool-selection accuracy.
+
+The retrieval sidecar is a deployment fallback, not a substitute for improving the learned
+selector: the external mobile held-out neural selector is 6/10 (60%) after balanced synthetic
+augmentation.  Workshop acceptance still requires a stronger no-guard neural result, an official
+runtime benchmark, and hardware-WebGPU performance measurements.
+
 For comparison, an earlier AndroidControl-only baseline continued the WebGPU-tier parent
 (`webgpu-10m-hybrid`, 10,524,544 parameters) for eight CPU
 SFT updates at `1e-5` and `max_seq_len=2048`.  On the same normalized rows, mean assistant loss
