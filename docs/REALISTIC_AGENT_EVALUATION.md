@@ -140,6 +140,14 @@ preprocessors, evaluators, or ground-truth outputs. It records 258 email tasks, 
 multi-server pair is `emails+filesystem` (193 tasks). This gives the WebGPU tool bridge a concrete
 long-horizon productivity gate while keeping the benchmark evaluation-only.
 
+The pinned [MCPMark](https://github.com/eval-sys/mcpmark) metadata profile is recorded in
+[`m21-mcpmark-metadata-profile-v1.json`](paper/results/raw/m21-mcpmark-metadata-profile-v1.json).
+The checkout contains 239 metadata rows: 169 `standard` L3 tasks and 70 `easy` L1 smoke tasks,
+covering 38 Notion, 35 browser/Playwright, 40 filesystem, 33 GitHub, and 93 database tasks.
+State types are text (133), URL (71), and video (33); the profile retains neither descriptions nor
+state assets. MCPMark's own runner supports repeated runs and pass@k/pass^k aggregation, so it is
+the next appropriate stability gate once the local MCP/browser dependencies are installed.
+
 The catalog also binds the newer realistic environments that should be part of the workshop-grade
 evaluation matrix:
 
