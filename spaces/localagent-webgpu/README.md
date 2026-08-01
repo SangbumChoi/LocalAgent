@@ -177,3 +177,12 @@ single-step, text-only, same-page microbenchmark. Its events are synthetic and u
 cursor action does not move the physical pointer, and navigation stays inside a disposable local
 iframe. It does **not** measure visual grounding, multi-step completion, trusted OS input, external
 site navigation, or browser-wide automation.
+
+## Stateful mobile and productivity trajectory gate
+
+`mobile-trajectories.html` runs the v11 text-first policy against three local workflows (Gmail
+compose/send, Notion capture, and a mail-page search/open flow). It feeds the current state JSON
+into the next prompt and checks the shipped `meta.json` schema, exact arguments, preconditions,
+state transitions, and complete-trajectory pass@1. The suite is a deployment diagnostic only:
+it contacts no external service, does not send email or edit Notion, has no screenshot grounding or
+trusted OS input, and must not be reported as AndroidWorld, BrowserGym, OSWorld, or MCP success.

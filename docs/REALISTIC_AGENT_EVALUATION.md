@@ -358,6 +358,35 @@ selector: the external mobile held-out neural selector is 6/10 (60%) after balan
 augmentation.  Workshop acceptance still requires a stronger no-guard neural result, an official
 runtime benchmark, and hardware-WebGPU performance measurements.
 
+### Stateful mobile/productivity trajectory gate (v11)
+
+The next continuation adds 11 state-conditioned examples to the v10 parent-head probe while
+keeping the 10.5M-parameter backbone frozen.  The local browser harness feeds the resulting state
+JSON back into each next prompt and independently checks the bundle's `meta.json` schemas, exact
+tool/argument equality, a preconditioned state transition, and complete-trajectory pass@1.  The
+suite has three workflows and 13 ordered steps: Gmail compose/send (6), Notion capture (2), and a
+local mail-page search/open flow (5).  It is deliberately text-first and uses no screenshots,
+real accounts, MCP servers, or trusted OS input.
+
+- Child checkpoint: `sft-realistic-mobile-dispatch-productivity-v11.pt`, SHA-256
+  `4cccca1139699776c555876bb282783276f6e84b1a5e7e949dd83d5a2e8140ed`.
+- The child keeps the v10 held-out selector results: mobile `6/10` (60%), productivity `3/4`
+  (75%), and route accuracy `100%` on both; train selector is `86.21%` after 3,000 steps.
+- The exported 62-tool bundle passes fp32/fp16 parity (fp32 logits drift `8.58e-06`; fp16
+  logits argmax agreement `1.0`) and was requested through the in-app browser's WebGPU provider.
+- The stateful run is a negative result: schema validity `13/13`, exact actions `0/13`, state
+  transitions `0/13`, closed-loop success `0/13`, and complete-trajectory pass@1 `0/3`.  The first
+  Gmail action emitted `mobile_input_text({text: "app"})`; the Notion and browser workflows both
+  started with `mobile_open_app({app_name: "app"})`, so the validator failed closed before applying
+  any state transition.
+
+The complete identity, parity, browser condition, and first-failure records are in the
+[`m15 receipt`](paper/results/raw/m15-webgpu-mobile-productivity-trajectories-v11.json).  This
+diagnostic's SHA-256 is `a12f7c4328cc21f429056ab94ca2ee575af7b67f7db39032db83646860ce315b`.
+It shows that adding state-conditioned rows did not yet produce robust sequential control;
+it is not an AndroidWorld, AITW, BrowserGym, OSWorld, AppWorld, MCPMark, EnterpriseOps-Gym,
+real-email/Notion, screenshot-grounding, or hardware-throughput score.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution

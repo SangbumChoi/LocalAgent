@@ -309,6 +309,97 @@ def _synthetic_mobile_samples() -> list[Sample]:
     ]
 
 
+def _state_conditioned_trajectory_samples() -> list[Sample]:
+    """Return disjoint state-conditioned trajectory prompts for dispatch adaptation.
+
+    These examples teach the selector to ignore serialized observation fields and attend to the
+    requested next action.  Values, app names, and phrasing are intentionally different from the
+    browser trajectory holdout in ``spaces/localagent-webgpu/mobile-trajectories.js``.
+    """
+
+    rows = [
+        (
+            'Goal: Open Calendar. Current state JSON: {"app":"home","screen":"home"}. '
+            "Next required action: Launch Calendar on the Android phone.",
+            "mobile_open_app",
+            {"app_name": "Calendar"},
+        ),
+        (
+            'Goal: open a message. Current state JSON: {"app":"Mail","screen":"inbox"}. '
+            "Next required action: Tap the first message at x=64 y=148.",
+            "mobile_click",
+            {"x": 64, "y": 148},
+        ),
+        (
+            'Goal: fill a form. Current state JSON: {"screen":"compose","focus":"to"}. '
+            "Next required action: Type 'team@example.org' into the recipient field.",
+            "mobile_input_text",
+            {"text": "team@example.org"},
+        ),
+        (
+            'Goal: browse older items. Current state JSON: {"screen":"inbox","scroll":0}. '
+            "Next required action: Scroll down on the Android screen.",
+            "mobile_scroll",
+            {"direction": "down"},
+        ),
+        (
+            'Goal: return home. Current state JSON: {"app":"Maps","screen":"details"}. '
+            "Next required action: Go to the Android home screen.",
+            "mobile_navigate_home",
+            {},
+        ),
+        (
+            'Goal: send a status update. Current state JSON: {"app":"Mail","screen":"compose",'
+            '"email":{"to":"team@example.org","subject":"Status","body":"Ready"}}. '
+            "Next required action: Send the message.",
+            "email_send",
+            {"to": "team@example.org", "subject": "Status", "body": "Ready"},
+        ),
+        (
+            'Goal: capture a note. Current state JSON: {"app":"Notes","screen":"home"}. '
+            "Next required action: Create a Notion page titled 'Launch log' with content 'QA passed'.",
+            "notion_create_page",
+            {"title": "Launch log", "content": "QA passed"},
+        ),
+        (
+            'Goal: inspect the dashboard. Current state JSON: {"page":null}. '
+            "Next required action: Open https://example.local/dashboard in the browser.",
+            "open_url",
+            {"url": "https://example.local/dashboard"},
+        ),
+        (
+            'Goal: inspect the dashboard. Current state JSON: {"page":"dashboard","focused":null}. '
+            "Next required action: Click the Refresh button.",
+            "click",
+            {"target": "the Refresh button"},
+        ),
+        (
+            'Goal: search the dashboard. Current state JSON: {"focused":"search"}. '
+            "Next required action: Type 'build 42' into the focused search field.",
+            "type_text",
+            {"text": "build 42"},
+        ),
+        (
+            'Goal: submit the dashboard search. Current state JSON: {"query":"build 42"}. '
+            "Next required action: Press Enter.",
+            "key_press",
+            {"key": "Enter"},
+        ),
+    ]
+    return [
+        Sample(
+            "realistic_trajectory_synthetic",
+            "trajectory",
+            prompt,
+            "tool",
+            json.dumps({"arguments": arguments, "name": name}, sort_keys=True, separators=(",", ":")),
+            name,
+            json.dumps(arguments, sort_keys=True, separators=(",", ":")),
+        )
+        for prompt, name, arguments in rows
+    ]
+
+
 def _feature(model: LocalAgentLM, tok, prompt: str, device: str) -> torch.Tensor:
     from localagent.agent.tool_head import _feat
 
@@ -334,6 +425,7 @@ def _train_probe(
     mobile: list[tuple[Sample, str]],
     productivity: list[Sample],
     synthetic_mobile: list[Sample],
+    trajectory: list[Sample],
     *,
     steps: int,
     device: str,
@@ -352,11 +444,13 @@ def _train_probe(
     # enough that they are not drowned out by 50 legacy tools and 100+ mobile turns.
     productivity_augmented = productivity * 4
     synthetic_mobile_augmented = synthetic_mobile * 4
+    trajectory_augmented = trajectory * 4
     pool = (
         standard
         + mobile_samples
         + compact_mobile
         + synthetic_mobile_augmented
+        + trajectory_augmented
         + productivity_augmented
     )
     examples: dict[str, list[str]] = {}
@@ -380,6 +474,8 @@ def _train_probe(
     for sample in compact_mobile:
         examples.setdefault(sample.ref_name, []).append(sample.prompt)
     for sample in synthetic_mobile:
+        examples.setdefault(sample.ref_name, []).append(sample.prompt)
+    for sample in trajectory:
         examples.setdefault(sample.ref_name, []).append(sample.prompt)
     for sample in productivity_augmented:
         examples.setdefault(sample.ref_name, []).append(sample.prompt)
@@ -486,6 +582,7 @@ def main() -> None:
     productivity_train = productivity[:-4]
     productivity_holdout = productivity[-4:]
     synthetic_mobile = _synthetic_mobile_samples()
+    trajectory = _state_conditioned_trajectory_samples()
     retrieval_examples: dict[str, list[str]] = {}
     for sample in synthetic_mobile:
         retrieval_examples.setdefault(sample.ref_name, []).append(sample.prompt)
@@ -497,6 +594,7 @@ def main() -> None:
         train_mobile,
         productivity_train,
         synthetic_mobile,
+        trajectory,
         steps=args.steps,
         device=args.device,
         seed=2027,
@@ -540,6 +638,7 @@ def main() -> None:
                 "probe_initialization": args.probe_init,
                 "synthetic_mobile_rows": len(synthetic_mobile),
                 "synthetic_mobile_repeats": 4,
+                "state_conditioned_trajectory_rows": len(trajectory),
                 "train": train_metrics,
                 "held_out": held_metrics,
                 "productivity_train": _score(
