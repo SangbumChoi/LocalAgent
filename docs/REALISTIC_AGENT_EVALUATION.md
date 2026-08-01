@@ -211,6 +211,29 @@ consumes the projection without Playwright or a browser. It is a local BrowserGy
 WorkArena/MiniWoB protocol bridge; no live browser score is claimed until the pinned runtime is
 installed and the runner produces a complete receipt.
 
+### tau2-bench interactive tool-result bridge
+
+The public [tau2-bench](https://github.com/sierra-research/tau2-bench) runner evaluates a
+half-duplex user simulator and agent against stateful airline, retail, telecom, and
+banking-knowledge tool environments. Its official [task-schema/evaluation guide](https://github.com/sierra-research/tau2-bench/blob/main/docs/evaluation.md)
+is important for interpretation: the default reward is an outcome product (database state plus
+required communication), while `evaluation_criteria.actions` is usually one reference
+trajectory, not a required script. The official [leaderboard guide](https://github.com/sierra-research/tau2-bench/blob/main/docs/leaderboard-submission.md)
+requires the complete base split, consistent configuration, and at least four trials for a
+publication-quality Pass^k submission.
+
+[`src/localagent/eval/tau2.py`](../src/localagent/eval/tau2.py) consumes the upstream
+`Results` JSON contract in both supported storage forms: one monolithic `simulations[]` file,
+or `results.json` plus individual `simulations/*.json` files. It validates task/trial IDs,
+reward, termination, duration, and metadata; hashes every source file; excludes
+`infrastructure_error` runs as the upstream metrics do; and computes the upstream combinatorial
+Pass^k estimator per task (not a misleading all-trials product). The
+[`scripts/aggregate_tau2.py`](../scripts/aggregate_tau2.py) CLI accepts expected cases in the
+stable `domain/task_id@trial` form and marks a receipt incomplete until exact coverage and the
+requested trial count are present. This is a dependency-free result bridge: it does not invoke
+tau2, user simulation, or any email/retail tool, and no tau2 score has been produced in this
+environment.
+
 The catalog also binds the newer realistic environments that should be part of the workshop-grade
 evaluation matrix:
 
