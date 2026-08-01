@@ -151,7 +151,7 @@ external navigation.
 - Timing: harness TTFA p50 `157.6 ms`, closed-loop p50 `165.6 ms`, tool dispatch p50 `0.35 ms`.
   The slowest drag/scroll cases make the p90 closed-loop latency `4.28 s`; only 3/8 cases both
   completed and succeeded within a 250 ms deadline.  Treat p50 and deadline attainment separately.
-- Receipt JSON: `/private/tmp/realistic_webgpu_browser_result.json`, SHA-256
+- Versioned receipt JSON: [`m6-webgpu-realistic-mobile-mixture-browser-result.json`](paper/results/raw/m6-webgpu-realistic-mobile-mixture-browser-result.json), SHA-256
   `7b3872cd6e153b340b2fe9bc0a47d4b339635264c7ae7f57f0b2aeb21ffb6c26`.
 
 The same eight-fixture control run under WASM (fp16 bundle) completed at roughly `33.3 ms` p50
