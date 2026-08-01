@@ -136,6 +136,8 @@ def _ground_truth_action(raw: object, *, index: int) -> tuple[str, Any, Mapping[
             value = params.get("keys", [])
         elif action_type in {"scroll", "hscroll"}:
             value = params.get("amount", params.get("pixels", params.get("direction")))
+        elif action_type == "wait":
+            value = params.get("seconds", params.get("duration", 0))
         else:
             value = params.get("status")
     else:

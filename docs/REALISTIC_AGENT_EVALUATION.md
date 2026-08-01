@@ -17,7 +17,7 @@ Run the read-only readiness report before acquiring or evaluating anything:
 PYTHONPATH=src python scripts/realistic_agent_preflight.py
 ```
 
-The report currently identifies the four local text-first adapters as runnable and all 31
+The report currently identifies the four local text-first adapters as runnable and all 32
 environment/evaluation rows as blocked by their pending integration status (for example, no
 `adb`, Docker, VM, or upstream BrowserGym checkout).  `--strict` intentionally exits non-zero
 until those external runners are installed and pinned; this is a readiness gate, not a benchmark
@@ -210,6 +210,25 @@ success, step count, and action errors. [`scripts/aggregate_browsergym.py`](../s
 consumes the projection without Playwright or a browser. It is a local BrowserGym/WebArena/
 WorkArena/MiniWoB protocol bridge; no live browser score is claimed until the pinned runtime is
 installed and the runner produces a complete receipt.
+
+### AgentNet/OpenCUA desktop-action result bridge
+
+The public [AgentNet dataset](https://huggingface.co/datasets/xlangai/AgentNet) contains
+human-annotated desktop computer-use trajectories across Windows, macOS, and Ubuntu. The
+[OpenCUA repository](https://github.com/xlang-ai/OpenCUA) publishes AgentNetBench as an offline
+low-level action evaluator. Its coordinate, text, keyboard, scroll, and termination signals are
+useful for a WebGPU policy, but the source trajectories are screenshot-grounded; a text-only
+checkpoint must not convert them into training rows without an accessibility/vision bridge.
+
+The existing [`src/localagent/eval/agentnet.py`](../src/localagent/eval/agentnet.py) mirrors the
+per-trajectory action protocol without opening screenshots. The new
+[`src/localagent/eval/agentnet_results.py`](../src/localagent/eval/agentnet_results.py) joins a
+ground-truth JSONL export with a prediction JSONL stream, rejects duplicate or mismatched task
+IDs, hashes both inputs, and reports mean action score, exact trajectory rate, action-count
+penalties, action-type scores, and platform breakdowns. The
+[`scripts/aggregate_agentnet.py`](../scripts/aggregate_agentnet.py) CLI requires an explicit
+expected-ID list for a complete receipt. This remains an offline AgentNetBench-compatible proxy,
+not a native AgentNetBench leaderboard score or an OS/VM run.
 
 ### tau2-bench interactive tool-result bridge
 
