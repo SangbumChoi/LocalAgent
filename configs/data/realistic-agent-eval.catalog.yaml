@@ -395,8 +395,8 @@ entries:
     domains: [browser, office, file_management, multi_app_workflows]
     train_policy: eval_only
     integration:
-      status: offline_trajectory_adapter_pending
-      target_adapter: agentnetbench_trajectory_v1
+      status: offline_trajectory_adapter_ready
+      target_adapter: agentnet_v1
       source_split_policy: official_os_and_app_holdouts
     webgpu_projection:
       status: bridge_only

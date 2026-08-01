@@ -20,6 +20,11 @@ Three adapters are supported:
     A small, explicit JSONL interchange used by audited adapters and offline tests.  It supports
     action traces plus abstention/irrelevance negatives and declares split-sensitive slot values.
 
+``agentnet_v1``
+    Evaluation-only normalization for the public OpenCUA AgentNet desktop trajectories.  It
+    preserves low-level coordinate actions as ``agentnet_*`` tools and requires a textual
+    observation; it does not claim screenshot-to-WebGPU grounding.
+
 Known benchmark/test sources are never accepted as training input.  Exact prompt-denylist
 artifacts can additionally be pinned in the build config, so a public TRAIN snapshot cannot
 silently absorb a frozen evaluation prompt.
@@ -45,6 +50,7 @@ from typing import Any, BinaryIO, Literal, TextIO
 
 import yaml
 
+from localagent.data.agentnet import AGENTNET_REVISION, normalize_agentnet_record
 from localagent.data.conversation_artifact import (
     FileIdentity,
     canonical_json_bytes,
@@ -64,12 +70,13 @@ XLAM_DATASET = "Salesforce/xlam-function-calling-60k"
 XLAM_REVISION = "26d14ebfe18b1f7b524bd39b404b50af5dc97866"
 MIND2WEB_DATASET = "osunlp/Mind2Web"
 MIND2WEB_REVISION = "17ece8eb89862368edc0cc806acee6fca5163474"
+AGENTNET_DATASET = "xlangai/AgentNet"
 
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _MAX_CONFIG_BYTES = 4 * 1024 * 1024
 _DEFAULT_MAX_SOURCE_BYTES = 2 * 1024 * 1024 * 1024
 _MAX_JSONL_ROW_BYTES = 16 * 1024 * 1024
-_ADAPTERS = frozenset({"xlam_v1", "mind2web_v1", "localagent_v1"})
+_ADAPTERS = frozenset({"xlam_v1", "mind2web_v1", "localagent_v1", "agentnet_v1"})
 _BEHAVIORS = frozenset({"action", "abstention", "irrelevance"})
 _SPLITS = frozenset({"train", "eval"})
 
@@ -305,7 +312,7 @@ def _source_from_config(raw: object, *, index: int, base: Path) -> PublicSourceS
 
 
 def _enforce_known_source_policy(source: PublicSourceSnapshot) -> None:
-    """Fail closed around the two supported public TRAIN sources and known eval families."""
+    """Fail closed around supported public TRAIN sources and known eval-only families."""
 
     dataset_key = source.dataset.casefold()
     if dataset_key == XLAM_DATASET.casefold():
@@ -329,6 +336,16 @@ def _enforce_known_source_policy(source: PublicSourceSnapshot) -> None:
         ):
             raise ValueError(
                 f"{MIND2WEB_DATASET} must use pinned data/train/train_*.json only"
+            )
+    if dataset_key == AGENTNET_DATASET.casefold():
+        if (
+            source.adapter != "agentnet_v1"
+            or source.split != "eval"
+            or source.revision != AGENTNET_REVISION
+            or source.license.casefold() != "mit"
+        ):
+            raise ValueError(
+                f"{AGENTNET_DATASET} is evaluation-only and must use the pinned AgentNet revision"
             )
     if "weblinx" in dataset_key and source.split == "train":
         raise ValueError("WebLINX is eval-only/non-default because its data license is noncommercial")
@@ -459,6 +476,20 @@ def _iter_json_array(handle: TextIO, *, label: str) -> Iterator[tuple[int, Any]]
         row_number += 1
         yield row_number, value
         state = "comma_or_end"
+
+
+def _iter_jsonl(handle: TextIO, *, label: str) -> Iterator[tuple[int, Any]]:
+    """Yield strict JSON objects from a UTF-8 JSONL source."""
+
+    for source_line, line in enumerate(handle, start=1):
+        if not line.strip():
+            continue
+        if len(line.encode("utf-8")) > _MAX_JSONL_ROW_BYTES:
+            raise ValueError(f"{label} line {source_line} exceeds row byte cap")
+        yield source_line, _strict_json_loads(
+            line,
+            label=f"{label} line {source_line}",
+        )
 
 
 def _unique_pairs(pairs: list[tuple[str, Any]], *, label: str) -> dict[str, Any]:
@@ -1158,6 +1189,22 @@ def _iter_source_records(
                     label=f"source {source.source_id!r} line {source_line}",
                 )
                 yield _localagent_record(raw, source_line=source_line)
+                emitted += 1
+                if source.max_records is not None and emitted >= source.max_records:
+                    return
+            return
+        if source.adapter == "agentnet_v1":
+            emitted = 0
+            for source_line, raw in _iter_jsonl(
+                handle,
+                label=f"source {source.source_id!r}",
+            ):
+                normalized = normalize_agentnet_record(
+                    raw,
+                    source_revision=source.revision,
+                    split=source.split,
+                )
+                yield _localagent_record(normalized, source_line=source_line)
                 emitted += 1
                 if source.max_records is not None and emitted >= source.max_records:
                     return

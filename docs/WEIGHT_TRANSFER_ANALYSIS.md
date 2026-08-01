@@ -87,6 +87,12 @@ its current limit, not evidence that the frozen representation is sufficient for
 control.  The full v14 artifact and first-failure receipt is
 [`m16-webgpu-mobile-productivity-trajectories-v14.json`](paper/results/raw/m16-webgpu-mobile-productivity-trajectories-v14.json).
 
+The AgentNet/OpenCUA adapter is deliberately outside this weight-transfer series.  Its 12-action
+official sample is parsed into evaluation-only coordinate tools, so it changes no checkpoint
+weights and cannot be counted as a training gain.  A screenshot/accessibility grounding bridge
+and the official AgentNetBench prediction protocol are required before a WebGPU model can be
+compared on that benchmark.
+
 The first bounded public browser continuation is recorded in
 [`mind2web-public-train-sample-v1.json`](paper/results/raw/mind2web-public-train-sample-v1.json).
 Sixteen updates on 10 normalized Mind2Web training trajectories moved the transferred backbone by

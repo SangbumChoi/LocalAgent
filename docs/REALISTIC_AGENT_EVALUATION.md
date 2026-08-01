@@ -9,7 +9,7 @@ provenance manifest with an upstream revision, byte count, and SHA-256.
 
 The current catalog contains 36 source-linked rows (four train-eligible and 32 evaluation or
 restricted) and has a canonical SHA-256 fingerprint recorded by the preflight command below.
-The current fingerprint is `5357b1d73d4bd14f0a96b6e19fe48bd7cfdce08509e332583923a63ff77253cb`.
+The current fingerprint is `aa7e7b90d9b8158d7bd1c76430a6ffb6bbb0ad3ceef1aaac14046684cfc93f30`.
 
 Run the read-only readiness report before acquiring or evaluating anything:
 
@@ -82,6 +82,7 @@ The following are important reality checks, not extra SFT rows:
   Its action-reduction and state-action matching protocol is especially relevant to a compact
   state-conditioned WebGPU policy; keep screenshots, task labels, and official OS/app holdouts out
   of training until the dataset terms and split hashes are verified.
+
 - [AppWorld](https://github.com/StonyBrookNLP/appworld): protected task/app/API-specific bundles;
   never unpack those into plaintext training data.
 - [tau-bench](https://github.com/sierra-research/tau-bench) / tau3-bench: interactive user-agent-tool
@@ -107,6 +108,15 @@ The following are important reality checks, not extra SFT rows:
 - [TUA-Bench](https://github.com/facebookresearch/TUA-Bench): 120 execution-based terminal tasks,
   including document editing, email management, and live-web information seeking.  It is CC-BY-NC
   and explicitly a benchmark, so it is not a training corpus.
+
+The repository now has a fail-closed `agentnet_v1` adapter in
+[`src/localagent/data/agentnet.py`](../src/localagent/data/agentnet.py) and a bounded normalizer in
+[`scripts/normalize_agentnet.py`](../scripts/normalize_agentnet.py). It accepts both the official
+`steps`/`ground_truth_actions` sample shape and the Hugging Face `traj`/`value.code` JSONL shape,
+parses only literal `pyautogui`/`computer` calls, and requires a textual observation. Coordinate
+actions remain `agentnet_*` tools for offline scoring; they are intentionally not relabeled as the
+text-grounded WebGPU `click` or `type_text` tools. The one-sample integration receipt is
+[`m17-agentnet-offline-adapter-sample-v1.json`](paper/results/raw/m17-agentnet-offline-adapter-sample-v1.json).
 
 The catalog also binds the newer realistic environments that should be part of the workshop-grade
 evaluation matrix:
@@ -155,7 +165,7 @@ task prompts, verifier code, and gold state can directly inflate the score.
 | --- | --- | --- | --- |
 | Mobile single-step and long-horizon control | AndroidWorld, MobileGym, MobileWorld, GUIOdyssey, MobileAgentBench, PhoneWorld | grounded action validity, milestone reward, episode success, app/device generalization | accessibility-tree text plus goal; no screenshot grounding yet |
 | Browser navigation and visual grounding | BrowserGym/MiniWoB++, WebArena, WorkArena, WebLINX, VisualWebArena | element accuracy, operation F1, DOM/state transitions, task success | cleaned DOM/A11y text; visual suites are modality ablations |
-| Desktop/computer use | AgentNet/AgentNetBench, OSWorld/OSWorld-V2, MemGUI-Bench, WorldGUI, macOSWorld, ASSISTGUI | VM task success, offline action/trajectory accuracy, long-horizon recovery, latency, safety | compact desktop state only; VM runners are pending |
+| Desktop/computer use | AgentNet/AgentNetBench, OSWorld/OSWorld-V2, MemGUI-Bench, WorldGUI, macOSWorld, ASSISTGUI | VM task success, offline action/trajectory accuracy, long-horizon recovery, latency, safety | AgentNet offline parser is ready; coordinate-to-vision bridge and VM runners are pending |
 | Stateful tools and productivity | Toolathlon-GYM, MCPMark, EnterpriseOpsGym, AgentBench FC, AppWorld, tau-bench | exact calls, schema validity, state delta, pass^k, abstention | local email/Notion mocks and retrieval sidecar; no external accounts |
 
 This map is intentionally asymmetric: a text-first 10.5M model can produce a credible structured
