@@ -982,6 +982,14 @@ families are 0%.  The [m116 receipt](paper/results/raw/m116-mcpmark-routing-tran
 this explicitly as a description-level routing proxy: no MCP server, state transition, verifier,
 official leaderboard score, or training artifact is claimed.
 
+### MCPMark trajectory-log provenance (m117)
+
+The public MIT-licensed [MCPMark trajectory-log dataset](https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log)
+provides real multi-turn tool traces.  The [m117 receipt](paper/results/raw/m117-mcpmark-trajectory-metadata-v1.json)
+profiles one hash-pinned filesystem trace with 45 events and 21 paired calls across five tools.
+Only metadata is retained: raw prompts, arguments, assistant text, and tool outputs are excluded,
+so this is acquisition evidence rather than an evaluation score or training artifact.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

@@ -164,6 +164,15 @@ WebGPU deployment: browser primitives are learned, while service-specific tool n
 multi-step state planning are not.  MCPMark's actual MCP servers and verifiers were not started,
 so the receipt is a task-description proxy rather than task success.
 
+The [`m117 trajectory provenance receipt`](paper/results/raw/m117-mcpmark-trajectory-metadata-v1.json)
+confirms that the public [MCPMark trajectory-log dataset](https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log)
+contains multi-turn, tool-result-grounded traces under an MIT license.  A bounded filesystem trace
+has 45 events, 21 paired calls, and five concrete tools (`list_directory`, `read_text_file`,
+`read_multiple_files`, `move_file`, and `list_allowed_directories`).  Because the trace includes
+large third-party document outputs, this pass deliberately stores only provenance and counts; it
+does not silently turn public logs into training data.  A content/license audit and argument/schema
+normalizer are required before any SFT or distillation use.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
