@@ -72,6 +72,25 @@ zero grounded actions, and achieved 0/240 success.  It is explicitly not an offi
 BrowserGym score and does not support visual, WebArena, mobile-emulator, desktop-VM, or real-account
 email/Notion claims.
 
+### Browser-context contract adaptation (m30)
+
+The native probe exposed a concrete distribution mismatch before any browser reward could be
+learned: the SFT checkpoint was trained mostly on short action prompts, while the runner supplied a
+goal followed by a live accessibility tree.  The tracked
+[`train_browser_context_adapter.py`](../scripts/train_browser_context_adapter.py) addresses only
+that interface contract.  It filters single-turn synthetic computer-use rows, adds deterministic
+quoted element names and an abstention instruction, then performs 300 low-rate backbone updates and
+1,000 route/selector probe updates.  It never reads BrowserGym goals, screenshots, task plans, or
+labels.
+
+On ten held-out projected rows (one each for click, double-click, drag, key press, move, open-app,
+screenshot, scroll, type, and wait), route accuracy moved from `40%` to `100%`, tool accuracy from
+`30%` to `100%`, and exact argument accuracy from `20%` to `60%`.  The complete hash-bound receipt is
+[`m30`](paper/results/raw/m30-browser-context-adapter-v1.json).  This is evidence that the
+observation-contract adapter is learnable, not a native BrowserGym result; the remaining argument
+errors and the 240-episode m29 abstention result still block any browser-agent claim.  The native
+runner now emits quoted accessibility names so a future run evaluates the same contract.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed

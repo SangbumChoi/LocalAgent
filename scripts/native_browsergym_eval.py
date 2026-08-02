@@ -98,7 +98,7 @@ def _compact_context(observation: dict[str, Any]) -> str:
     ]
     for element in elements:
         name = element["name"] or "<unnamed>"
-        lines.append(f"[{element['bid']}] {element['role']}: {name}")
+        lines.append(f"[{element['bid']}] {element['role']}: \"{name}\"")
     if len(lines) == 1:
         lines.append("<none>")
     focused = observation.get("focused_element_bid")
