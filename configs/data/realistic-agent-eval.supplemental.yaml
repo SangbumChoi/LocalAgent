@@ -179,3 +179,32 @@ entries:
     webgpu_projection: tool-schema routing and GUI-vs-MCP ablations without native side effects
     metric: task_success, tool_invocation_rate, GUI_action_success, and decision_quality
     notes: This directly tests the hybrid interface the WebGPU agent targets; tool invocation must be reported separately from GUI completion.
+
+  - id: webbench
+    family: browser
+    name: WebBench
+    source_url: https://github.com/Halluminate/WebBench
+    project_url: https://webbench.ai/
+    license: MIT
+    source_revision: pin-before-use
+    scale: 2454_tasks_across_452_live_websites
+    modalities: [goal, live_web, browser_action, read_write_effect]
+    split_policy: evaluation_only; live-site tasks and credentials must never enter training or public model bundles
+    runtime: live_web_or_release_matched_browser_infrastructure
+    webgpu_projection: DOM/accessibility action protocol only; no live-site side effects from the small model
+    metric: task_success_by_read_create_update_delete_and_file_manipulation_categories
+    notes: The public README describes authentication, form filling, downloads, and destructive WRITE tasks; use a resettable or vendor-approved environment and record the exact release before scoring.
+
+  - id: bu_bench_v1
+    family: browser
+    name: Browser Use BU Bench V1
+    source_url: https://github.com/browser-use/benchmark
+    license: mixed_source_terms; MIT_for_WebBench_Mind2Web2_BrowseComp; GAIA_policy_restricted
+    source_revision: pin-before-use
+    scale: 100_hand_selected_browser_tasks_across_5_sources
+    modalities: [goal, live_web, browser_action, judge_or_ground_truth]
+    split_policy: evaluation_only; encrypted_task_file must remain out of training and plaintext publication
+    runtime: browser-use_provider_or_local_headful_headless_browser
+    webgpu_projection: tool routing and DOM/action safety canary only; no task decryption or live account access
+    metric: verified_task_success_and_category_breakdown
+    notes: The upstream repository keeps BU_Bench_V1 encrypted to reduce contamination and warns that decrypted task text and traces must not be published or used as model-training data.

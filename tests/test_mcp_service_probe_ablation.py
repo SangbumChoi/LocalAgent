@@ -4,7 +4,11 @@ import hashlib
 import json
 from pathlib import Path
 
-from scripts.train_mcp_service_probe_ablation import MCPMARK_REVISION, _receipt_sha256
+from scripts.train_mcp_service_probe_ablation import (
+    MCPMARK_REVISION,
+    _combined_mcpmark_metrics,
+    _receipt_sha256,
+)
 
 
 def test_ablation_binds_published_transfer_receipt() -> None:
@@ -33,10 +37,17 @@ def test_mind2web_mcp_probe_records_a_matched_cross_domain_negative() -> None:
         (root / "m93-mind2web-mcp-service-contract-v1.json").read_text(encoding="utf-8")
     )
     random = json.loads(
-        (root / "m93-mind2web-mcp-service-random-v1.json").read_text(encoding="utf-8")
+        (root / "m94-mind2web-mcp-service-random-matched-v1.json").read_text(encoding="utf-8")
     )
     assert transfer["weight_delta"]["backbone"] == 0.0
     assert transfer["parent"]["sha256"] == random["parent"]["sha256"]
+    assert random["transfer_reference"]["receipt"].endswith(
+        "m93-mind2web-mcp-service-contract-v1.json"
+    )
+    transfer_metrics = _combined_mcpmark_metrics(transfer)
+    assert transfer_metrics["route_accuracy"] == random["transfer_reference"][
+        "combined_route_accuracy"
+    ]
 
     def combined(receipt: dict) -> tuple[float, float, float]:
         rows = [receipt["mcpmark"][name]["overall"] for name in ("standard", "easy")]

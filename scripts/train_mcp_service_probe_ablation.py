@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 """Run a matched random-backbone control for the synthetic MCP service-contract probe.
 
-The transfer arm is the published ``m38`` probe: it freezes a pretrained LocalAgent backbone and
-re-trains only route/selector heads on generated Notion, browser, filesystem, GitHub, and database
-contracts.  This control keeps the same rows, tokenizer, architecture, and optimization budget but
-starts the backbone from a fresh deterministic seed.  MCPMark descriptions are used only for the
-separate routing proxy; no task text, state fixture, verifier, or MCP server enters training.
+The default transfer arm is the published ``m38`` probe: it freezes a pretrained LocalAgent
+backbone and re-trains only route/selector heads on generated Notion, browser, filesystem, GitHub,
+and database contracts.  Use ``--transfer-report`` to bind a different matched transfer receipt.
+This control keeps the same rows, tokenizer, architecture, and optimization budget but starts the
+backbone from a fresh deterministic seed.  MCPMark descriptions are used only for the separate
+routing proxy; no task text, state fixture, verifier, or MCP server enters training.
 """
 
 from __future__ import annotations
@@ -55,12 +56,32 @@ def _receipt_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _combined_mcpmark_metrics(receipt: Mapping[str, Any]) -> dict[str, float]:
+    suites = receipt.get("mcpmark")
+    if not isinstance(suites, Mapping):
+        raise ValueError("transfer receipt must contain mcpmark suite metrics")
+    overall = [suites[name]["overall"] for name in ("standard", "easy")]
+    rows = sum(int(item["rows"]) for item in overall)
+    if rows <= 0:
+        raise ValueError("transfer receipt must contain positive MCPMark rows")
+    return {
+        metric: sum(float(item[metric]) * int(item["rows"]) for item in overall) / rows
+        for metric in ("route_accuracy", "selector_top1", "selector_top3")
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--init", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--mcpmark", type=Path)
+    parser.add_argument(
+        "--transfer-report",
+        type=Path,
+        default=Path(TRANSFER_RECEIPT),
+        help="receipt for the matched pretrained transfer arm",
+    )
     parser.add_argument("--steps", type=int, default=800)
     parser.add_argument("--head-steps", type=int, default=800)
     parser.add_argument("--seed", type=int, default=2028)
@@ -132,12 +153,9 @@ def main() -> int:
         "head_metrics": metrics,
         "mcpmark": {},
         "transfer_reference": {
-            "receipt": TRANSFER_RECEIPT,
-            "receipt_sha256": _receipt_sha256(Path(TRANSFER_RECEIPT)),
+            "receipt": str(args.transfer_report),
+            "receipt_sha256": _receipt_sha256(args.transfer_report),
             "backbone_initialization": "pretrained_frozen",
-            "combined_route_accuracy": 0.4686192468619247,
-            "combined_selector_top1": 0.3723849372384937,
-            "combined_selector_top3": 0.698744769874477,
         },
         "claim_boundary": (
             "Matched random-backbone control for a synthetic service/tool-contract probe; MCPMark "
@@ -146,6 +164,14 @@ def main() -> int:
         ),
     }
     if args.mcpmark is not None:
+        transfer_receipt = json.loads(args.transfer_report.read_text(encoding="utf-8"))
+        transfer_metrics = _combined_mcpmark_metrics(transfer_receipt)
+        report["transfer_reference"].update(
+            {
+                f"combined_{metric}": value
+                for metric, value in transfer_metrics.items()
+            }
+        )
         for suite in ("standard", "easy"):
             report["mcpmark"][suite] = evaluate_mcpmark_router(
                 args.mcpmark, args.output, suite=suite, device="cpu"
@@ -160,9 +186,8 @@ def main() -> int:
             for metric in ("route_accuracy", "selector_top1", "selector_top3")
         }
         transfer_metrics = {
-            "route_accuracy": report["transfer_reference"]["combined_route_accuracy"],
-            "selector_top1": report["transfer_reference"]["combined_selector_top1"],
-            "selector_top3": report["transfer_reference"]["combined_selector_top3"],
+            metric: report["transfer_reference"][f"combined_{metric}"]
+            for metric in ("route_accuracy", "selector_top1", "selector_top3")
         }
         report["comparison"] = {
             "rows": total_rows,

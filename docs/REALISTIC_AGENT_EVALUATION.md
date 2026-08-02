@@ -12,10 +12,18 @@ restricted) and has a canonical SHA-256 fingerprint recorded by the preflight co
 The fingerprint is generated from the canonical catalog by the preflight command below.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
-It adds eight high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
-trajectories, EnterpriseOps-Gym, MCPMark, ToolSandbox, AndroidWorld, and BrowserGym—with explicit
-license, split, runtime, and WebGPU-projection policies. These entries are catalog-only until an
-exact revision and acquisition receipt are frozen; they do not silently become training data.
+It adds fourteen high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
+trajectories, EnterpriseOps-Gym, MCPMark, ToolSandbox, AndroidWorld, BrowserGym, WebBench, and
+BU Bench V1, plus their mobile and desktop companion rows—with explicit license, split, runtime,
+and WebGPU-projection policies. These entries are catalog-only until an exact revision and
+acquisition receipt are frozen; they do not silently become training data.
+
+The browser audit now includes [WebBench](https://github.com/Halluminate/WebBench), which covers
+realistic live-site READ/CREATE/UPDATE/DELETE/file workflows, and [BU Bench V1](https://github.com/browser-use/benchmark),
+which combines 100 encrypted tasks from WebBench, Mind2Web 2, BrowseComp, GAIA, and custom
+challenges. Both remain evaluation-only here: live credentials and encrypted/decrypted task text
+are excluded from SFT, model bundles, and public task artifacts. The WebGPU projection is limited
+to DOM/action safety and routing diagnostics, not a live-browser or leaderboard claim.
 
 Run the read-only readiness report before acquiring or evaluating anything:
 
@@ -785,7 +793,7 @@ The transfer receipt records zero backbone movement; the dense selector and rout
 `92.49` and `4.82` relative units, so this is a head-only diagnostic rather than a learned MCP
 representation.  It is deliberately negative evidence against adopting the Mind2Web backbone as
 a universal MCP router.  The receipts are [`m93 transfer`](paper/results/raw/m93-mind2web-mcp-service-contract-v1.json)
-and [`m93 random control`](paper/results/raw/m93-mind2web-mcp-service-random-v1.json); MCP servers,
+and [`m94 matched random control`](paper/results/raw/m94-mind2web-mcp-service-random-matched-v1.json); MCP servers,
 state fixtures, verifiers, and official MCPMark scoring were not executed.
 
 ### MCPMark current-checkpoint routing proxy (m60)

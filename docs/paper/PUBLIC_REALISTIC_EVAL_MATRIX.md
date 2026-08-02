@@ -1,6 +1,6 @@
 # Public realistic-agent evaluation matrix
 
-Status: source discovery and split policy frozen on 2026-08-02. This is the reference map for
+Status: source discovery and split policy refreshed on 2026-08-03. This is the reference map for
 the WebGPU agent; it is not a claim that every suite has been executed. The machine-readable
 source of truth is [`realistic-agent-public-eval-matrix.v1.json`](../../configs/data/realistic-agent-public-eval-matrix.v1.json).
 The source-method and native-vs-projection protocol is summarized in the
@@ -40,6 +40,8 @@ hash, tokenizer hash, runtime versions, task IDs, seeds, and complete action/ter
 | Browser | [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) | Grounded CLICK/TYPE/SELECT web trajectories | Train official train only; test protected | Cleaned DOM + candidate grounding | Public-train continuations measured |
 | Browser | [WebLINX](https://huggingface.co/datasets/McGill-NLP/WebLINX) | Multi-turn browser dialogue and element grounding | Restricted; legal/privacy review | Text/action-history projection | Metadata/privacy audit |
 | Browser | [WebArena](https://github.com/web-arena-x/webarena) / [VisualWebArena](https://github.com/web-arena-x/visualwebarena) | Multi-site web state and visual navigation | Eval-only runtime | DOM-only diagnostic; visual score pending | Not started |
+| Browser | [WebBench](https://github.com/Halluminate/WebBench) | 2,454 realistic READ/CREATE/UPDATE/DELETE/file workflows across 452 live websites | Eval-only; live tasks and credentials stay outside training | DOM/accessibility action protocol only | Cataloged; release/runtime pin pending |
+| Browser | [BU Bench V1](https://github.com/browser-use/benchmark) | 100 encrypted browser tasks spanning WebBench, Mind2Web 2, BrowseComp, GAIA, and custom tasks | Eval-only; encrypted task text never enters SFT | Tool routing/DOM safety canary only | Cataloged; task decryption/runtime intentionally not run |
 | Computer | [AgentNet / OpenCUA](https://huggingface.co/datasets/xlangai/AgentNet) | Cross-OS screenshot/action trajectories | Train official train parents only | Text action vocabulary; no visual claim | Bounded continuation and ablation measured |
 | Computer | [Computer Agent Arena](https://github.com/xlang-ai/computer-agent-arena) | Human preference and long-horizon desktop trajectories | Eval-only; deduplication required | Instruction/action-family diagnostic | Metadata + text-only probe |
 | Computer | [OSWorld](https://github.com/xlang-ai/OSWorld) | Real desktop VM task execution | Runtime-only | Protocol replay only | VM pending |
