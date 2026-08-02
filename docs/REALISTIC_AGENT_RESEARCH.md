@@ -185,6 +185,16 @@ evidence that redacted multi-turn traces are ingestible and that the current tin
 stateful action planning.  It is not an official MCPMark score, native MCP execution, or a reason to
 publish a universal adapter.
 
+The [`m119 dynamic-selector receipt`](paper/results/raw/m119-mcpmark-dynamic-selector-transfer-v1.json)
+then separates representation transfer from teacher-forced language loss.  A 22-tool global schema
+catalog is built from the same redacted rows, and a frozen-feature dense selector is trained only on
+the 51 filesystem/Notion assistant decisions.  On the 19-call held-out Playwright trajectory, the
+warm WebGPU body reaches top-10 routing of 84.21% while the matched random-body control reaches 0%;
+both top-1 scores are 0%.  The warm arm therefore carries useful broad retrieval signal into the
+unseen browser catalog, but cannot make the exact first choice.  This supports retaining the
+pretrained body for candidate retrieval and adding service/action adapters; it does not justify
+claiming native MCP success or a universal tool policy.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

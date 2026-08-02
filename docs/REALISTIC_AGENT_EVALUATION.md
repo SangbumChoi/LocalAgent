@@ -1009,6 +1009,26 @@ probe on the unseen Playwright row predicts `browser_type`/`browser_click` inste
 official MCPMark result, native browser/MCP execution, verifier success, or evidence that the tiny
 sample is sufficient for deployment.
 
+### MCPMark dynamic selector transfer (m119)
+
+The [m119 receipt](paper/results/raw/m119-mcpmark-dynamic-selector-transfer-v1.json) trains a
+22-tool two-tower selector on the 51 assistant decisions in the redacted filesystem and Notion
+rows, then evaluates the 19 tool decisions in the held-out Playwright row.  The global catalog is
+constructed from the public row schemas, while tool outputs and assistant free text remain fixed
+redaction markers.  The backbone is frozen during selector training, and a deterministic random
+backbone with the same configuration, tokenizer, seeds, and optimizer is the control.
+
+| Arm | Train top-1 | Held-out Playwright top-1 | Held-out top-3 | Held-out top-5 | Held-out top-10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Warm WebGPU body | 95.83% | 0% | 0% | 10.53% | 84.21% |
+| Random body | 97.92% | 0% | 0% | 0% | 0% |
+
+This is a useful retrieval-side transfer result: the pretrained body ranks many unseen browser
+tools in its top ten, but exact top-1 selection and argument grounding still fail.  The evaluator
+does not start MCP services, launch Playwright, run a verifier, or report an official MCPMark score;
+the global catalog includes held-out tool schemas, so this must not be read as vocabulary discovery
+or native browser competence.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
