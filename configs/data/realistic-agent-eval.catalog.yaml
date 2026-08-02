@@ -12,6 +12,7 @@ entries:
     paper_url: https://arxiv.org/abs/2406.03679
     code_url: https://github.com/google-research/google-research/tree/master/android_control
     data_access_url: https://console.cloud.google.com/storage/browser/gresearch/android_control
+    data_access_mirror_url: https://huggingface.co/datasets/OfficerChul/Android-Control-84k
     access_status: public_download
     license:
       name: Apache-2.0
@@ -42,7 +43,7 @@ entries:
     contamination:
       split: official_generalization_splits
       rule: train only on the official training partition; keep app/task holdouts hash-bound
-    notes: Public human demonstrations with high- and low-level instructions; raw TFRecords require an audited converter.
+    notes: Public human demonstrations with high- and low-level instructions; raw TFRecords require an audited converter. The Apache-2.0 JSON mirror is an alternate action-format export and is accepted only with an explicit screenshot-omitted provenance manifest.
 
   - id: android_in_the_wild
     family: mobile

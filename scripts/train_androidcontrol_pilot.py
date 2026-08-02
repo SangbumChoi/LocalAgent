@@ -76,6 +76,13 @@ def main() -> None:
         required=True,
         help="normalized Conversation JSONL; repeat to train on a verified mixture",
     )
+    parser.add_argument(
+        "--eval-data",
+        type=Path,
+        action="append",
+        default=[],
+        help="held-out normalized Conversation JSONL; never used for optimization",
+    )
     parser.add_argument("--init", type=Path, required=True, help="parent SFT checkpoint")
     parser.add_argument("--output", type=Path, required=True, help="child checkpoint path")
     parser.add_argument("--report", type=Path, required=True, help="JSON metrics report")
@@ -89,10 +96,19 @@ def main() -> None:
         raise ValueError("steps and batch-size must be positive")
 
     rows = [row for path in args.data for row in _load_rows(path)]
+    eval_rows = [row for path in args.eval_data for row in _load_rows(path)]
+    if not rows:
+        raise ValueError("no training rows found")
     data_identities = [
         {"path": str(path), "bytes": _sha256(path)[0], "sha256": _sha256(path)[1]}
         for path in args.data
     ]
+    eval_identities = [
+        {"path": str(path), "bytes": _sha256(path)[0], "sha256": _sha256(path)[1]}
+        for path in args.eval_data
+    ]
+    visual_omitted_rows = sum(bool(row.meta.get("visual_input_omitted")) for row in rows)
+    eval_visual_omitted_rows = sum(bool(row.meta.get("visual_input_omitted")) for row in eval_rows)
     parent_bytes, parent_sha = _sha256(args.init)
     parent = torch.load(args.init, map_location="cpu")
     cfg = ModelConfig(**parent["cfg"])
@@ -107,6 +123,18 @@ def main() -> None:
         max_seq_len=args.max_seq_len,
         batch_size=args.batch_size,
         device=args.device,
+    )
+    before_eval = (
+        _evaluate_conversations(
+            model,
+            eval_rows,
+            tok,
+            max_seq_len=args.max_seq_len,
+            batch_size=args.batch_size,
+            device=args.device,
+        )
+        if eval_rows
+        else None
     )
     loss_history, _, _, training = sft(
         model,
@@ -131,6 +159,18 @@ def main() -> None:
         batch_size=args.batch_size,
         device=args.device,
     )
+    after_eval = (
+        _evaluate_conversations(
+            model,
+            eval_rows,
+            tok,
+            max_seq_len=args.max_seq_len,
+            batch_size=args.batch_size,
+            device=args.device,
+        )
+        if eval_rows
+        else None
+    )
 
     child = dict(parent)
     child.update(
@@ -144,9 +184,13 @@ def main() -> None:
             "data": {
                 "normalized_conversations": [str(path) for path in args.data],
                 "identities": data_identities,
+                "eval_conversations": [str(path) for path in args.eval_data],
+                "eval_identities": eval_identities,
                 "rows": len(rows),
+                "eval_rows": len(eval_rows),
                 "source": "google/androidcontrol",
-                "text_first": True,
+                "visual_input_omitted_rows": visual_omitted_rows,
+                "eval_visual_input_omitted_rows": eval_visual_omitted_rows,
             },
             "androidcontrol_training": {
                 "max_seq_len": args.max_seq_len,
@@ -154,6 +198,8 @@ def main() -> None:
                 "lr": args.lr,
                 "before": before,
                 "after": after,
+                "before_eval": before_eval,
+                "after_eval": after_eval,
                 "loss_history": loss_history,
                 "token_accounting": training,
             },
@@ -165,11 +211,19 @@ def main() -> None:
         "kind": "localagent_androidcontrol_pilot_training_report",
         "parent": {"path": str(args.init), "bytes": parent_bytes, "sha256": parent_sha},
         "child": {"path": str(args.output), **dict(zip(("bytes", "sha256"), _sha256(args.output)))},
-        "data": {"identities": data_identities},
+        "data": {
+            "identities": data_identities,
+            "eval_identities": eval_identities,
+            "visual_input_omitted_rows": visual_omitted_rows,
+            "eval_visual_input_omitted_rows": eval_visual_omitted_rows,
+        },
         "rows": len(rows),
+        "eval_rows": len(eval_rows),
         "steps": args.steps,
         "before": before,
         "after": after,
+        "before_eval": before_eval,
+        "after_eval": after_eval,
         "loss_history": loss_history,
         "training": training,
     }

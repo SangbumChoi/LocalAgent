@@ -25,7 +25,7 @@ from localagent.data.agent_synth import Generator, Sample
 from localagent.data.paraphrase import paraphrase_samples
 from localagent.data.schema import Conversation, Role
 from localagent.model import LocalAgentLM, ModelConfig
-from localagent.model.tokenizer import load_tokenizer
+from localagent.model.tokenizer import ASSISTANT, USER, load_tokenizer
 
 
 def _sha256(path: Path) -> tuple[int, str]:
@@ -64,7 +64,13 @@ def _mobile_samples(rows: list[Conversation]) -> list[tuple[Sample, str]]:
     for row in rows:
         quality = row.meta.get("quality", {})
         episode_value = quality.get("source_episode_id") if isinstance(quality, dict) else None
-        episode = str(episode_value if episode_value is not None else row.meta.get("parent_record_id", "unknown"))
+        if episode_value is None:
+            episode_value = row.meta.get("parent_record_id")
+        if episode_value is None:
+            # The JSON mirror is one screenshot/action per row rather than an episode.  Keep each
+            # source row independent so a train/eval file boundary cannot collapse to "unknown".
+            episode_value = row.meta.get("source_row_index", "unknown")
+        episode = str(episode_value)
         messages = row.messages
         for index, message in enumerate(messages):
             if message.role != Role.assistant or not message.tool_calls:
@@ -470,6 +476,36 @@ def _feature(model: LocalAgentLM, tok, prompt: str, device: str) -> torch.Tensor
     return _feat(model, tok, prompt, device)
 
 
+@torch.no_grad()
+def _features(
+    model: LocalAgentLM,
+    tok,
+    prompts: list[str],
+    device: str,
+    *,
+    batch_size: int = 64,
+) -> torch.Tensor:
+    """Extract final prompt features in batches; the old scalar loop made large public slices unusable."""
+
+    if not prompts:
+        raise ValueError("cannot extract features for an empty prompt list")
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive")
+    output: list[torch.Tensor] = []
+    for start in range(0, len(prompts), batch_size):
+        batch = prompts[start : start + batch_size]
+        encoded = [tok.encode(f"{USER}{prompt}{ASSISTANT}")[-model.cfg.max_seq_len :] for prompt in batch]
+        width = max(len(row) for row in encoded)
+        inputs = torch.full((len(encoded), width), tok.pad_id, dtype=torch.long, device=device)
+        lengths = []
+        for index, row in enumerate(encoded):
+            inputs[index, : len(row)] = torch.tensor(row, dtype=torch.long, device=device)
+            lengths.append(len(row) - 1)
+        _, hidden = model(inputs, return_hidden=True)
+        output.append(torch.stack([hidden[index, position] for index, position in enumerate(lengths)]))
+    return torch.cat(output, dim=0)
+
+
 def _checkpoint_tokenizer(parent: dict):
     """Load the tokenizer recorded by the checkpoint, never silently falling back to bytes."""
 
@@ -544,8 +580,7 @@ def _train_probe(
     for sample in productivity_augmented:
         examples.setdefault(sample.ref_name, []).append(sample.prompt)
     route_rows = [(sample, route_of(sample.ref_name)) for sample in pool]
-    with torch.no_grad():
-        route_features = torch.stack([_feature(model, tok, sample.prompt, device) for sample, _ in route_rows])
+    route_features = _features(model, tok, [sample.prompt for sample, _ in route_rows], device)
     route_labels = torch.tensor([ROUTE_INDEX[label] for _, label in route_rows], device=device)
     route = RouteHead(model.cfg.d_model).to(device)
     if probe_init == "parent_heads" and parent.get("route_head"):
@@ -554,10 +589,9 @@ def _train_probe(
 
     name_to_index = {tool.name: index for index, tool in enumerate(tools)}
     selector_rows = [(sample, name_to_index[sample.ref_name]) for sample in pool if sample.ref_name in name_to_index]
-    with torch.no_grad():
-        selector_features = torch.stack(
-            [_feature(model, tok, sample.prompt, device) for sample, _ in selector_rows]
-        )
+    selector_features = _features(
+        model, tok, [sample.prompt for sample, _ in selector_rows], device
+    )
     selector_labels = torch.tensor([label for _, label in selector_rows], device=device)
     embs = tool_embeddings(tools, device=device, examples=examples)
     selector = DenseToolSelector(
@@ -600,21 +634,43 @@ def _score(
     device: str,
 ) -> dict[str, float | int]:
     route_ok = selector_ok = 0
-    for sample, _ in rows:
-        feature = _feature(model, tok, sample.prompt, device)
-        route_ok += ROUTES[int(route(feature).argmax(-1))] == route_of(sample.ref_name)
-        selector_ok += selector.rank(feature)[0] == sample.ref_name
+    breakdown: dict[str, dict[str, int]] = {}
+    features = _features(model, tok, [sample.prompt for sample, _ in rows], device)
+    for feature, (sample, _) in zip(features, rows):
+        route_match = ROUTES[int(route(feature).argmax(-1))] == route_of(sample.ref_name)
+        selector_match = selector.rank(feature)[0] == sample.ref_name
+        route_ok += route_match
+        selector_ok += selector_match
+        stats = breakdown.setdefault(sample.ref_name, {"rows": 0, "route_correct": 0, "selector_correct": 0})
+        stats["rows"] += 1
+        stats["route_correct"] += int(route_match)
+        stats["selector_correct"] += int(selector_match)
     total = len(rows)
     return {
         "rows": total,
         "route_accuracy": route_ok / max(1, total),
         "selector_top1": selector_ok / max(1, total),
+        "by_tool": {
+            name: {
+                **stats,
+                "route_accuracy": stats["route_correct"] / max(1, stats["rows"]),
+                "selector_top1": stats["selector_correct"] / max(1, stats["rows"]),
+            }
+            for name, stats in sorted(breakdown.items())
+        },
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, action="append", required=True)
+    parser.add_argument(
+        "--eval-data",
+        type=Path,
+        action="append",
+        default=[],
+        help="optional held-out mobile JSONL; never included in probe optimization",
+    )
     parser.add_argument("--init", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
@@ -636,11 +692,20 @@ def main() -> None:
     model.load_state_dict(parent["state_dict"])
     tok = _checkpoint_tokenizer(parent)
     rows = _load_rows(args.data)
+    eval_rows = _load_rows(args.eval_data) if args.eval_data else []
     mobile = _mobile_samples(rows)
-    episode_ids = sorted({episode for _, episode in mobile})
-    holdout_ids = set(episode_ids[-max(1, len(episode_ids) // 5) :])
-    train_mobile = [item for item in mobile if item[1] not in holdout_ids]
-    held_mobile = [item for item in mobile if item[1] in holdout_ids]
+    if eval_rows:
+        train_mobile = mobile
+        held_mobile = _mobile_samples(eval_rows)
+        episode_ids = sorted({episode for _, episode in mobile})
+        holdout_ids = sorted({episode for _, episode in held_mobile})
+        split_mode = "external_eval_files"
+    else:
+        episode_ids = sorted({episode for _, episode in mobile})
+        holdout_ids = episode_ids[-max(1, len(episode_ids) // 5) :]
+        train_mobile = [item for item in mobile if item[1] not in holdout_ids]
+        held_mobile = [item for item in mobile if item[1] in holdout_ids]
+        split_mode = "deterministic_episode_tail"
     tools = list(STANDARD_TOOLS) + mobile_tools() + realistic_productivity_tools()
     productivity = _productivity_samples()
     productivity_train = productivity[:-4]
@@ -698,6 +763,8 @@ def main() -> None:
                 "rows": len(mobile),
                 "episodes": episode_ids,
                 "held_out_episodes": sorted(holdout_ids),
+                "split_mode": split_mode,
+                "external_eval_rows": len(held_mobile) if eval_rows else 0,
                 "steps": args.steps,
                 "probe_initialization": args.probe_init,
                 "synthetic_mobile_rows": len(synthetic_mobile),
@@ -723,7 +790,16 @@ def main() -> None:
         "kind": "localagent_realistic_mobile_dispatch_training_report",
         "parent": {"path": str(args.init), "sha256": _sha256(args.init)[1]},
         "child": {"path": str(args.output), "sha256": _sha256(args.output)[1]},
-        "data": [{"path": str(path), "bytes": _sha256(path)[0], "sha256": _sha256(path)[1]} for path in args.data],
+        "data": {
+            "train": [
+                {"path": str(path), "bytes": _sha256(path)[0], "sha256": _sha256(path)[1]}
+                for path in args.data
+            ],
+            "eval": [
+                {"path": str(path), "bytes": _sha256(path)[0], "sha256": _sha256(path)[1]}
+                for path in args.eval_data
+            ],
+        },
         "tool_pool": [tool.name for tool in tools],
         "mobile_dispatch_training": child["mobile_dispatch_training"],
     }

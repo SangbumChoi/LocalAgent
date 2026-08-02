@@ -535,6 +535,37 @@ language-model bridge measurement only, not evidence of emulator success.  The t
 compatibility gate is now covered by `tests/test_train_androidcontrol_pilot.py` and the pilot
 refuses a missing or vocabulary-mismatched BPE artifact.
 
+### Public AndroidControl 84K text-action continuation (m35)
+
+The public [OfficerChul/Android-Control-84k](https://huggingface.co/datasets/OfficerChul/Android-Control-84k)
+mirror exposes 82,944 train rows and a deliberately balanced 904-row test set derived from
+Google's Apache-2.0 AndroidControl release.  [`ingest_androidcontrol_json.py`](../scripts/ingest_androidcontrol_json.py)
+converts the LLaMA-Factory JSON shape into the canonical `Conversation` schema and records both
+raw-file and normalized-output hashes.  The train/test files are never mixed.
+
+This first scale-up is intentionally text-action only: the mirror supplies screenshot paths, but
+the current checkpoint has no vision encoder, so the adapter marks every row
+`visual_input_omitted=true` and `grounding_evaluable=false`.  A deterministic stratified 4,096-row
+train slice (all 42 long-press examples and balanced coverage of the other train actions) was
+continued for 32 BPE SFT steps from the 10.52M parent.  On all 904 held-out test rows, teacher-forced
+assistant-token accuracy rose `59.28% → 65.47%` and mean loss fell `2.789 → 2.049`; teacher-forced
+exact assistant sequences stayed `0/904`.
+
+A second 300-step frozen-feature probe kept the adapted backbone fixed and trained only route and
+dense dispatch heads over the 62-tool pool.  Held-out route accuracy was `100%`, while selector
+top-1 was `46.24%` overall: navigate-back/open-app `74.4%`, scroll `66.4%`, wait `51.2%`, input
+text `48.0%`, click `20.0%`, and long-press/home `0%`.  The transfer audit found matching config,
+shapes, and tokenizer (`51` shared tensors); LM continuation moved embedding/attention/FFN norms
+by `0.52%/0.22%/0.28%/0.01%` relative L2, while the frozen-head probe moved only dispatch heads
+(`107.3%` relative L2).  This supports freezing the transferred backbone before dispatch-head
+specialization, but it is not evidence that transfer improves emulator reward.
+
+The complete source, split, training, selector, and weight-audit identities are in the
+[`m35 receipt`](paper/results/raw/m35-androidcontrol-84k-text-action-transfer-v1.json).  Because
+pixels were omitted, m35 must not be reported as AndroidControl visual grounding, AndroidWorld
+success, or WebGPU hardware throughput; a workshop claim still requires a vision-capable adapter
+and a native emulator run on the official evaluation split.
+
 ### Browser runtime receipt (local compatibility smoke)
 
 The exported fp32 bundle was then exercised in the existing browser harness with an explicit
