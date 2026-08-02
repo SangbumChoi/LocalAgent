@@ -1836,6 +1836,33 @@ is `8.58e-6`, fp32 hidden parity `5.30e-6`, and fp16 logits drift `5.85e-3`, wit
 passing.  This proves a locally deployable static bundle, not a hosted Space, hardware-WebGPU
 latency result, or successful email/Notion/mobile task execution.
 
+### MobileGym complete official test evaluation (m133)
+
+The [`m133 receipt`](paper/results/raw/m133-mobilegym-native-text-eval-v1.json) is the first
+complete official MobileGym test execution for the WebGPU checkpoint.  The runner uses the
+hash-pinned `test.txt` whitelist (256 IDs), the pinned simulator revision, the upstream task
+`setup()` lifecycle, the native action handlers, and the upstream state-diff judge.  It records
+only public task IDs, action names, hashes, judge field names, and aggregate outcomes; task
+parameters, DOM text, screenshots, and raw arguments are not retained.
+
+With the m129 warm checkpoint, selector top-1, and a fixed two-step cap, all `256/256` official
+test tasks executed without environment or judge errors.  Success was `13/256` (`5.08%`).  The
+best suite slices were weather `4/9`, clock `3/9`, SMS `1/3`, and Tencent Meeting `1/9`; Notes
+remained `0/5`.  The model emitted `mobile_submit_answer` on 200 tasks and opened an app once,
+which makes the failure mode unambiguous: the simulator and judge are functioning, but the
+current text-first dispatch policy collapses to answer emission instead of state-conditioned UI
+actions.  This is a native MobileGym simulator result over the official split, not a visual
+mobile-agent score, Android emulator result, or screenshot-grounding claim.  The fixed two-step
+cap is disclosed and should be increased in a later long-horizon run before making a leaderboard
+comparison.
+
+The follow-up [`m134 workshop-gate report`](paper/results/raw/m134-workshop-gate-mobilegym-v1.json)
+accepts m133 as a native MobileGym receipt.  With MobileGym added, the strict publication gate
+passes the catalog, BrowserGym/MiniWoB, WebGPU capability, transfer ablation, and public-artifact
+checks, while seven independent native requirements remain absent: AndroidWorld, OSWorld,
+OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym.  The report therefore remains
+`ready: false`; the MobileGym result must not be used to imply completion of those other surfaces.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution

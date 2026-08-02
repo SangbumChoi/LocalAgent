@@ -94,6 +94,23 @@ def test_native_browsergym_adapter_ablation_passes_receipt_contract() -> None:
     assert check["status"] == "pass"
 
 
+def test_native_mobilegym_full_official_text_eval_passes_receipt_contract() -> None:
+    receipt = ROOT / "docs/paper/results/raw/m133-mobilegym-native-text-eval-v1.json"
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    assert payload["environment_executed"] is True
+    assert payload["official_split_verified"] is True
+    assert payload["native_receipt_eligible"] is True
+    assert payload["task_count"] == 256
+    assert payload["success_rate"] == 13 / 256
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        native_receipts={"mobilegym": receipt},
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "native:mobilegym")
+    assert check["status"] == "pass"
+
+
 def test_native_webgpu_capability_receipt_passes_hardware_contract() -> None:
     receipt = ROOT / "docs/paper/results/raw/m39-webgpu-native-capability-v1.json"
     payload = json.loads(receipt.read_text(encoding="utf-8"))
