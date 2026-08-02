@@ -1078,6 +1078,16 @@ reproducibility issue rather than hidden.  No model action, task judge, or offic
 was produced, so the strict gate now requires a separate release-compliant `native:mobilegym`
 receipt.  The same gate also requires `native:osworld_v2` for the dated desktop release.
 
+### MobileGym text-only model probe (m124)
+
+The [`m124 receipt`](paper/results/raw/m124-mobilegym-model-probe-v1.json) is a bounded native
+episode using the current 10.52M checkpoint and one official MobileGym test ID.  It uses the
+documented `mobile_*` action bridge with a compact DOM-text projection and no screenshot input.
+The model produced two `mobile_input_text` actions and the state judge passed `0/1`.  The receipt
+stores only hashes and aggregate judge fields, is marked `native_receipt_eligible: false`, and
+therefore cannot satisfy the publication gate; it is a direct negative result for the current
+text-first mobile adapter.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

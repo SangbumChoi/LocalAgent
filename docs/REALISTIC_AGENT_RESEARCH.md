@@ -68,6 +68,17 @@ records timestamp-only diff paths instead of calling the reset deterministic at 
 The smoke invokes no model, task judge, screenshot scorer, or external account, so it is a native
 runtime preflight rather than a MobileGym-Bench result.
 
+### MobileGym text-only model probe (m124)
+
+The [`m124 probe receipt`](paper/results/raw/m124-mobilegym-model-probe-v1.json) runs the current
+10.52M deployment-repair checkpoint inside the same pinned simulator on one ID from the official
+256-task test split.  The bridge supplies only a bounded DOM-text projection (no screenshot) and
+translates the additive `mobile_*` contract into native MobileGym actions.  The model was invoked
+twice and produced two `mobile_input_text` calls, but the task judge passed `0/1`; output and
+argument values are hash-bound and omitted.  This is useful failure evidence for the current
+text-first boundary, not a MobileGym benchmark receipt: `native_receipt_eligible` is explicitly
+false and the strict gate remains blocked until the full release-compliant runner is supplied.
+
 The new mobile and MCP suites reinforce the same design requirement. iOSWorld's persistent identity
 and cross-app data make memory/state tracking first-class rather than an optional prompt feature;
 MobileSafetyBench makes confirmation, refusal, and prompt-injection handling measurable; and
