@@ -310,12 +310,20 @@ def _best(model, tok, prompt: str, bodies: list[str], device) -> str:
     """Length-normalized log-prob of each body given the prompt, scored in ONE batched forward
     (candidates share the prompt prefix), returning the argmax body."""
     pid = tok.encode(prompt)
+    max_len = getattr(getattr(model, "cfg", None), "max_seq_len", None)
+    if max_len is not None:
+        # A grounded value can itself be longer than the model window (for example, a tool
+        # schema copied from a long page).  Such a candidate cannot be scored safely even after
+        # dropping the prompt; fail closed instead of sending an overlong tensor to RoPE.
+        bodies = [b for b in bodies if len(tok.encode(b)) + 1 <= max_len]
+        if not bodies:
+            return "I cannot complete this request."
     seqs = [pid + tok.encode(b) + [tok.eos_id] for b in bodies]
     maxlen = max(len(s) for s in seqs)
     # Keep within the model's context window: a long multi-turn history + a candidate body can
     # exceed max_seq_len. Trim from the LEFT (drop the oldest *prompt* tokens, shared by every
     # candidate) so bodies stay intact and the scoring offsets below shift consistently.
-    max_len = getattr(getattr(model, "cfg", None), "max_seq_len", maxlen)
+    max_len = max_len or maxlen
     cut = min(max(0, maxlen - 1 - max_len), len(pid) - 1)
     if cut:
         seqs = [s[cut:] for s in seqs]
@@ -364,6 +372,11 @@ def _preselect_tool(model, tok, prompt: str, names: set[str], device) -> str | N
 @torch.no_grad()
 def _ctx_feats(model, tok, ctx: str, device):
     ids = tok.encode(ctx)
+    max_len = getattr(getattr(model, "cfg", None), "max_seq_len", len(ids))
+    if len(ids) > max_len:
+        # Keep the newest observation/tool result.  Candidate grounding still sees the complete
+        # raw prompt, while the model's RoPE/context window receives a valid bounded suffix.
+        ids = ids[-max_len:]
     _, feats = model(torch.tensor([ids], device=device), return_hidden=True)
     return feats[0], ids
 

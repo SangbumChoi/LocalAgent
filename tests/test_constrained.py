@@ -108,3 +108,34 @@ def test_best_clamps_overlong_context():
               '<tool_call>{"arguments":{},"name":"run_tests"}</tool_call>']
     out = _best(m, tok, long_prompt, bodies, device="cpu")   # must not raise
     assert out in bodies
+
+
+def test_context_features_clamp_overlong_multi_turn_history():
+    from localagent.agent.constrained import _ctx_feats
+    from localagent.model import LocalAgentLM, ModelConfig
+    from localagent.model.tokenizer import load_tokenizer
+
+    cfg = ModelConfig(vocab_size=256, d_model=64, embed_dim=64, n_layers=2, n_loops=1,
+                      n_heads=4, n_kv_heads=2, ffn_hidden=128, max_seq_len=128,
+                      rope_theta=10000.0, norm_eps=1e-5, tie_embeddings=True, dropout=0.0)
+    m = LocalAgentLM(cfg).eval()
+    tok = load_tokenizer("byte")
+    feats, ids = _ctx_feats(m, tok, "tool result. " * 200, device="cpu")
+    assert len(ids) == cfg.max_seq_len
+    assert feats.shape[0] == cfg.max_seq_len
+
+
+def test_best_abstains_when_a_grounded_candidate_exceeds_context_window():
+    from localagent.agent.constrained import _best
+    from localagent.model import LocalAgentLM, ModelConfig
+    from localagent.model.tokenizer import load_tokenizer
+
+    cfg = ModelConfig(vocab_size=256, d_model=64, embed_dim=64, n_layers=2, n_loops=1,
+                      n_heads=4, n_kv_heads=2, ffn_hidden=128, max_seq_len=128,
+                      rope_theta=10000.0, norm_eps=1e-5, tie_embeddings=True, dropout=0.0)
+    m = LocalAgentLM(cfg).eval()
+    tok = load_tokenizer("byte")
+    body = "<tool_call>" + "x" * 500 + "</tool_call>"
+    assert _best(m, tok, "Find the message.", [body], device="cpu") == (
+        "I cannot complete this request."
+    )

@@ -320,6 +320,26 @@ tool names, multi-step conversation contract, or user-simulator protocol.  Recei
 ToolSandbox split, model-based user simulator, full scenario matrix, and optional RapidAPI tools
 remain unexecuted, so the workshop gate stays blocked.
 
+### ToolSandbox bounded multi-step transfer (m91)
+
+The runner's `--interactive` protocol now lets the checkpoint receive each execution-environment
+result and issue another bounded tool call, with a scripted user ending only after final text or
+eight agent turns.  This is closer to the requested stateful computer/tool loop than m90, while
+remaining distinct from ToolSandbox's model-based user simulator.  The run also hardens the
+WebGPU path: overlong histories are suffix-truncated for feature extraction and grounded
+candidates that cannot fit the 2,048-token model window are rejected rather than sent to RoPE.
+
+On the same five ToolSandbox scenarios, the m70 public-only control, the m75 stateful/error-recovery
+child, and the m59 ToolSandbox-projection child all score `1/5` (`20%`): only the
+insufficient-information abstention passes, while state-dependent, canonicalization, and
+multi-tool/multi-turn tasks fail.  This matched result shows that neither local productivity
+adaptation nor static ToolSandbox projection training has transferred to the native tool vocabulary
+or stateful conversational contract.  The interactive receipts are
+[`m91 m75`](paper/results/raw/m91-toolsandbox-native-interactive-stateful-m75-v1.json) and
+[`m91 m70 control`](paper/results/raw/m91-toolsandbox-native-interactive-public-m70-v1.json), plus
+the [`m91 m59 projection arm`](paper/results/raw/m91-toolsandbox-native-interactive-public-projection-m59-v1.json).
+They still do not satisfy the official-split/user-simulator gate.
+
 ### AgentNet text-observation/action projection evaluation (m62)
 
 The retained eight-parent evaluation projection was then run through the actual LocalAgent

@@ -3,9 +3,10 @@
 
 This adapter intentionally runs only a caller-selected native smoke set.  The upstream
 ToolSandbox package is loaded from ``--toolsandbox-root`` and is never copied into the
-repository.  A scripted user ends each single-turn smoke after the agent returns a result;
-there is no model-based user simulator or external API call.  The receipt is therefore native
-simulator/verifier evidence, but not an official ToolSandbox split or leaderboard result.
+repository.  The default scripted user ends each task after the first agent result;
+``--interactive`` instead allows bounded continuation after tool results.  Neither mode uses
+the upstream model-based user simulator or external API calls.  Receipts are therefore native
+simulator/verifier evidence, but not official ToolSandbox split or leaderboard results.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import argparse
 import hashlib
 import json
 import sys
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -110,7 +112,13 @@ def _success_message(function_name: str, arguments: dict[str, Any]) -> str:
     return "Done."
 
 
-def _load_roles(checkpoint: Path, tool_sandbox_root: Path):
+def _load_roles(
+    checkpoint: Path,
+    tool_sandbox_root: Path,
+    *,
+    interactive: bool = False,
+    max_agent_turns: int = 8,
+):
     """Return role classes after adding the external ToolSandbox checkout to ``sys.path``."""
 
     sys.path.insert(0, str(tool_sandbox_root.resolve()))
@@ -127,28 +135,11 @@ def _load_roles(checkpoint: Path, tool_sandbox_root: Path):
             self._agent: Agent | None = None
             self._call_index = 0
             self._last_call: tuple[Any, Any] | None = None
+            self._agent_turns = 0
 
-        def respond(self, ending_index: int | None = None) -> None:
-            messages = self.get_messages(ending_index=ending_index)
-            self.messages_validation(messages)
-            visible = self.filter_messages(messages)
-            # A result has reached the agent.  Return a user-facing completion message; the
-            # scripted user will invoke ToolSandbox's end_conversation tool next.
-            if any(
-                message.sender == RoleType.EXECUTION_ENVIRONMENT
-                and message.recipient == RoleType.AGENT
-                for message in visible
-            ):
-                content = "Done."
-                if self._last_call is not None:
-                    call, function = self._last_call
-                    content = _success_message(function.__name__, call.arguments)
-                self.add_messages(
-                    [Message(sender=RoleType.AGENT, recipient=RoleType.USER, content=content)]
-                )
-                return
+        def _respond_to_model(self, visible: list[Any], available: dict[str, Any]) -> None:
+            """Decode one bounded agent turn and append either a tool call or final text."""
 
-            available = self.get_available_tools()
             specs, registry = _tool_specs_and_registry(available)
             if not specs:
                 self.add_messages(
@@ -163,6 +154,18 @@ def _load_roles(checkpoint: Path, tool_sandbox_root: Path):
                 return
             if self._agent is None:
                 self._agent = Agent.from_checkpoint(self.checkpoint, registry)
+            self._agent_turns += 1
+            if self._agent_turns > max_agent_turns:
+                self.add_messages(
+                    [
+                        Message(
+                            sender=RoleType.AGENT,
+                            recipient=RoleType.USER,
+                            content="I cannot complete this request.",
+                        )
+                    ]
+                )
+                return
             prompt = _render_prompt(visible)
             output = hybrid_decode(
                 self._agent.model,
@@ -203,6 +206,31 @@ def _load_roles(checkpoint: Path, tool_sandbox_root: Path):
                 ]
             )
 
+        def respond(self, ending_index: int | None = None) -> None:
+            messages = self.get_messages(ending_index=ending_index)
+            self.messages_validation(messages)
+            visible = self.filter_messages(messages)
+            # A result has reached the agent.  In interactive mode the model gets another
+            # bounded turn; the default smoke preserves the historical one-step protocol.
+            if any(
+                message.sender == RoleType.EXECUTION_ENVIRONMENT
+                and message.recipient == RoleType.AGENT
+                for message in visible
+            ):
+                if interactive:
+                    self._respond_to_model(visible, self.get_available_tools())
+                else:
+                    content = "Done."
+                    if self._last_call is not None:
+                        call, function = self._last_call
+                        content = _success_message(function.__name__, call.arguments)
+                    self.add_messages(
+                        [Message(sender=RoleType.AGENT, recipient=RoleType.USER, content=content)]
+                    )
+                return
+
+            self._respond_to_model(visible, self.get_available_tools())
+
     class ScriptedUserRole(BaseRole):
         role_type = RoleType.USER
 
@@ -232,9 +260,14 @@ def run(
     toolsandbox_root: Path,
     output_dir: Path,
     scenario_names: tuple[str, ...],
+    interactive: bool = False,
+    max_agent_turns: int = 8,
 ) -> dict[str, Any]:
     RoleType, LocalAgentRole, ScriptedUserRole, ExecutionEnvironment = _load_roles(
-        checkpoint, toolsandbox_root
+        checkpoint,
+        toolsandbox_root,
+        interactive=interactive,
+        max_agent_turns=max_agent_turns,
     )
     from tool_sandbox.common.tool_discovery import ToolBackend
     from tool_sandbox.scenarios import named_scenarios
@@ -279,6 +312,7 @@ def run(
                     "similarity": 0.0,
                     "turn_count": int(scenario.max_messages),
                     "exception": f"{type(error).__name__}: {error}",
+                    "traceback": traceback.format_exc(limit=8),
                 }
             )
     success_count = sum(record["similarity"] == 1.0 for record in records)
@@ -306,21 +340,36 @@ def run(
         "success_count": success_count,
         "success_rate": success_count / len(records) if records else 0.0,
         "post_tool_response_policy": "deterministic_function_name_and_argument_template",
+        "protocol": "bounded_multi_step_scripted_user" if interactive else "single_step_smoke",
+        "max_agent_turns": max_agent_turns,
         "scripted_user_policy": (
             "terminate_after_first_agent_response; multi-tool and multi-user-turn scenarios are "
             "intentionally truncated"
+            if not interactive
+            else "terminate_after_agent_final_text_or_turn_budget; no model-based user simulator"
         ),
         "scenarios": records,
         "checkpoint": _identity(checkpoint),
         "output_dir": str(output_dir.resolve()),
         "claim_boundary": (
-            "Native pinned ToolSandbox simulator and milestone verifier smoke only. The runner "
-            "uses a scripted user that terminates after the first agent response, so multi-tool "
-            "and multi-user-turn scenarios are intentionally truncated; a deterministic post-tool "
-            "response template matches the fixture's expected confirmation text. The official "
-            "split, model-based user simulator, full scenario matrix, and optional RapidAPI tools "
-            "were not executed. This is not an official ToolSandbox leaderboard score and does "
-            "not satisfy the publication gate's official-split requirement."
+            (
+                "Native pinned ToolSandbox simulator and milestone verifier stress run only. The "
+                "bounded scripted user lets the model continue after tool results until final text "
+                "or the turn budget; it is not the upstream model-based user simulator. A "
+                "deterministic post-tool response template is not used in this interactive mode. "
+            )
+            if interactive
+            else (
+                "Native pinned ToolSandbox simulator and milestone verifier smoke only. The runner "
+                "uses a scripted user that terminates after the first agent response, so multi-tool "
+                "and multi-user-turn scenarios are intentionally truncated; a deterministic post-tool "
+                "response template matches the fixture's expected confirmation text. "
+            )
+        )
+        + (
+            "The official split, model-based user simulator, full scenario matrix, and optional "
+            "RapidAPI tools were not executed. This is not an official ToolSandbox leaderboard "
+            "score and does not satisfy the publication gate's official-split requirement."
         ),
     }
 
@@ -332,6 +381,12 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--scenario", action="append", dest="scenarios")
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="continue decoding after tool results for a bounded multi-step scripted-user run",
+    )
+    parser.add_argument("--max-agent-turns", type=int, default=8)
     args = parser.parse_args()
     if args.report.exists():
         raise SystemExit(f"refusing to overwrite report: {args.report}")
@@ -341,6 +396,8 @@ def main() -> int:
         toolsandbox_root=args.toolsandbox_root,
         output_dir=args.output_dir,
         scenario_names=names,
+        interactive=args.interactive,
+        max_agent_turns=args.max_agent_turns,
     )
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
