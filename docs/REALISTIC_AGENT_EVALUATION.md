@@ -263,6 +263,25 @@ low-rate backbone continuation plus independently initialized, candidate-conditi
 selector heads, followed by a native closed-loop validation.  m70 remains a bounded public-data
 diagnostic rather than an official benchmark or end-to-end browser/desktop result.
 
+### Public adaptation in the resettable productivity runtime (m71)
+
+The [`m71 comparison receipt`](paper/results/raw/m71-public-adaptation-stateful-runtime-comparison-v1.json)
+is the required closed-loop follow-up to the m69/m70 public projection diagnostics.  The evaluator
+first runs an oracle through the deterministic local email, Notion, browser-search, recovery, and
+abstention tasks, then runs both adapted checkpoints with three bounded retries per step.  A legacy
+WebGPU checkpoint carries a 17-argument pointer vocabulary; the evaluator now migrates those shared
+rows into the current 23-argument stateful vocabulary before decoding, so the comparison is not
+silently invalidated by a tensor-shape mismatch.
+
+The oracle completes `5/5` workflows and accepts `16/16` steps.  Both m69 (inherited heads) and m70
+(random heads) accept `0/16` steps and complete `0/5` workflows, with the same deterministic model
+event hash.  Thus the strong public text-projection selector result (`57.83%` top-1) does not
+transfer to the 62-tool state-conditioned contract.  This is a useful negative result: the next
+training unit must include state-conditioned trajectories, the stateful tool vocabulary, and
+closed-loop/recovery rewards; retraining projected route/selector heads alone is insufficient.
+The runtime is resettable and in-memory only, and this receipt is not an AndroidWorld, BrowserGym,
+OSWorld, MCPMark, ToolSandbox, email, Notion, or native WebGPU benchmark score.
+
 ### AgentNet text-observation/action projection evaluation (m62)
 
 The retained eight-parent evaluation projection was then run through the actual LocalAgent

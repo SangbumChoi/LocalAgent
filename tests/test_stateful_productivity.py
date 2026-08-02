@@ -180,3 +180,36 @@ def test_published_stateful_grpo_receipt_records_real_updates_and_negative_accur
     assert receipt["training"]["rl_accounting"]["realized_optimizer_updates"] == 4
     assert receipt["training"]["exact_match_accuracy_post"] == 0.0
     assert receipt["source"]["native_runtime_executed"] is False
+
+
+def test_published_public_adaptation_runtime_comparison_is_self_hashed_and_fail_closed() -> None:
+    path = Path(__file__).parents[1] / (
+        "docs/paper/results/raw/m71-public-adaptation-stateful-runtime-comparison-v1.json"
+    )
+    receipt = json.loads(path.read_text())
+    expected = receipt.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    assert receipt["source"] == {
+        "external_accounts_used": False,
+        "native_runtime_executed": False,
+        "public_benchmark_text_used": True,
+        "public_datasets": ["xlangai/AgentNet", "osunlp/Mind2Web"],
+        "runtime_kind": "local_resettable_state_machine",
+        "tool_side_effects": "in_memory_only",
+    }
+    assert receipt["oracle"]["task_complete_rate"] == 1.0
+    assert receipt["oracle"]["accepted_steps"] == 16
+    for arm in ("m69", "m70"):
+        assert receipt["arms"][arm]["model"]["task_complete_rate"] == 0.0
+        assert receipt["arms"][arm]["model"]["accepted_steps"] == 0
+    assert receipt["comparison"] == {
+        "accepted_steps_m69": 0,
+        "accepted_steps_m70": 0,
+        "oracle_task_complete_rate": 1.0,
+        "same_model_event_sha256": True,
+        "task_complete_rate_m69": 0.0,
+        "task_complete_rate_m70": 0.0,
+    }

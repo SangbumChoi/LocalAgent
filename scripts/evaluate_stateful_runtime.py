@@ -24,7 +24,6 @@ from typing import Any, Callable
 from localagent.agent.constrained import hybrid_decode
 from localagent.agent.dense_selector import BoundSelector, DenseToolSelector
 from localagent.agent.parser import extract_tool_calls
-from localagent.agent.pointer_head import PointerHead
 from localagent.agent.routes import RouteHead
 from localagent.data.stateful_productivity import (
     StatefulRuntime,
@@ -62,9 +61,10 @@ def _load_heads(checkpoint: dict[str, Any], model, tools, device: str):
         model.cfg.d_model, proj=int(checkpoint.get("selector_proj", 256))
     ).to(device)
     dense.load_state_dict(checkpoint["dense_selector"])
-    ptr_args = checkpoint.get("ptr_args", probe.STATEFUL_PTR_ARGS)
-    pointer = PointerHead(model.cfg.d_model, args=ptr_args).to(device)
-    pointer.load_state_dict(checkpoint["ptr_head"])
+    # Public WebGPU checkpoints before the stateful probe stored the legacy 17-argument pointer
+    # vocabulary without ``ptr_args`` metadata.  Reuse the canonical migration helper so those
+    # tensors load into the current 23-argument stateful vocabulary without a shape mismatch.
+    pointer = probe._warm_pointer(checkpoint, model.cfg.d_model, random_init=False).to(device)
     selector = BoundSelector(
         dense,
         tools,
