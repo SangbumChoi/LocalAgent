@@ -834,6 +834,23 @@ Android, browser, desktop, email, Notion, or MCP score.  The reproducible receip
 [`m100`](paper/results/raw/m100-cross-surface-public-continuation-v1.json), and the runner is
 [`train_cross_surface_continuation.py`](../scripts/train_cross_surface_continuation.py).
 
+### Cross-surface matched random-backbone ablation (m101–m102)
+
+The missing weight-adoption control uses the identical m100 data hashes, parent, BPE tokenizer,
+32-step schedule, batch size, learning rate, and optimizer seed, but replaces the model backbone
+with deterministic random weights.  The [`m101 random receipt`](paper/results/raw/m101-cross-surface-random-continuation-v1.json)
+and [`m102 paired comparison`](paper/results/raw/m102-cross-surface-transfer-ablation-v1.json)
+bind both arms to the same 4,629 train and 1,041 evaluation rows.
+
+After training, the warm-start arm beats random by `+30.76` percentage points aggregate token
+accuracy (`62.58%` vs `31.82%`), with advantages on mobile `+27.09` points (`65.45%` vs `38.36%`),
+desktop `+47.11` (`48.87%` vs `1.76%`), and the four-row browser slice `+60.00` (`67.27%` vs
+`7.27%`).  This is stronger evidence that the pretrained representation is useful than m100
+alone, but it remains a teacher-forced text/accessibility comparison: both arms retain the same
+action heads, no native environment executes, and no real email, Notion, or MCP side effect is
+claimed.  The adoption decision is to reuse the verified BPE parent as initialization while
+keeping surface-specific adapters and requiring native closed-loop evidence before merging them.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

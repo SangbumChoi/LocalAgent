@@ -83,6 +83,13 @@ group and leaving action heads fixed.  The current policy is therefore to reuse 
 for compatibility, keep surface-specific adapters/heads, and require a matched random control
 plus native closed-loop evidence before merging one universal mobile/browser/desktop adapter.
 
+The m101–m102 matched control now confirms that the parent is not merely a convenient starting
+point: it beats a deterministic random backbone on all three held-out surfaces after the same
+low-rate update (`+30.76` aggregate points, with `+27.09` mobile, `+47.11` desktop, and `+60.00`
+browser).  Because the warm arm still loses a little desktop/browser accuracy relative to its own
+pre-update baseline, this validates pretrained initialization but not a single universal adapter;
+native closed-loop and action-head ablations remain the promotion gate.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

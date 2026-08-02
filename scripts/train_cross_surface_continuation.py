@@ -146,6 +146,8 @@ def main() -> int:
     parser.add_argument("--init", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--backbone-init", choices=("parent", "random"), default="parent")
+    parser.add_argument("--random-backbone-seed", type=int, default=2028)
     parser.add_argument("--steps", type=int, default=32)
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1.0e-5)
@@ -174,8 +176,11 @@ def main() -> int:
     parent = torch.load(args.init, map_location="cpu", weights_only=False)
     config = ModelConfig(**parent["cfg"])
     config.assert_within_budget()
+    if args.backbone_init == "random":
+        torch.manual_seed(args.random_backbone_seed)
     model = LocalAgentLM(config)
-    model.load_state_dict(parent["state_dict"])
+    if args.backbone_init == "parent":
+        model.load_state_dict(parent["state_dict"])
     tokenizer = _checkpoint_tokenizer(parent)
 
     before_all = _evaluate_conversations(
@@ -232,6 +237,8 @@ def main() -> int:
                 "learning_rate": args.lr,
                 "max_seq_len": args.max_seq_len,
                 "seed": 2027,
+                "backbone_init": args.backbone_init,
+                "random_backbone_seed": args.random_backbone_seed,
                 "before_eval_by_source": before_by_source,
                 "after_eval_by_source": after_by_source,
             },
@@ -260,6 +267,8 @@ def main() -> int:
             "learning_rate": args.lr,
             "max_seq_len": args.max_seq_len,
             "seed": 2027,
+            "backbone_init": args.backbone_init,
+            "random_backbone_seed": args.random_backbone_seed,
             "device": args.device,
         },
         "before": {"train": before_all, "eval": before_eval, "eval_by_source": before_by_source},

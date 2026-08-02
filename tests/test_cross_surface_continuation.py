@@ -67,3 +67,10 @@ def test_source_profile_binds_public_metadata_and_visual_omission(tmp_path: Path
     assert profile["visual_input_omitted_rows"] == 1
     assert profile["public_reference"]["dataset"] == "google/androidcontrol"
     assert profile["public_reference"]["url"] == "https://example.test/androidcontrol"
+
+
+def test_source_reference_and_backbone_init_flags_are_explicit_in_cli_contract() -> None:
+    assert _parse_labeled_path("desktop=/tmp/agentnet.jsonl")[0] == "desktop"
+    assert _parse_source_reference("desktop=xlangai/AgentNet|https://example.test/agentnet")[1][
+        "dataset"
+    ] == "xlangai/AgentNet"
