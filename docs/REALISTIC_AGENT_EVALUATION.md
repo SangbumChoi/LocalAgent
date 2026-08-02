@@ -1829,6 +1829,13 @@ selector/retrieval examples alongside the numeric heads.  The model card reports
 hash-verified locally, but remains unpublished until Hugging Face authentication and a repository
 namespace are supplied.
 
+The [`m132 receipt`](paper/results/raw/m132-webgpu-m129-deploy-v1.json) stages the same checkpoint
+through the browser exporter and copies the verified bundle beside `spaces/localagent-webgpu`.
+All eight required artifacts are present and hash-match the exporter manifest; fp32 logits parity
+is `8.58e-6`, fp32 hidden parity `5.30e-6`, and fp16 logits drift `5.85e-3`, with all hard gates
+passing.  This proves a locally deployable static bundle, not a hosted Space, hardware-WebGPU
+latency result, or successful email/Notion/mobile task execution.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
