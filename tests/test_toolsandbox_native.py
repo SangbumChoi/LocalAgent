@@ -1,7 +1,21 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
-from scripts.run_toolsandbox_native import _success_message
+from scripts.run_toolsandbox_native import _render_prompt, _success_message
+
+
+def test_toolsandbox_prompt_omits_system_policy_from_generic_slot_grounding() -> None:
+    prompt = _render_prompt(
+        [
+            SimpleNamespace(sender="RoleType.SYSTEM", content="Don't guess values."),
+            SimpleNamespace(sender="RoleType.USER", content="Message Fredrik Thordendal."),
+            SimpleNamespace(sender="RoleType.EXECUTION_ENVIRONMENT", content="[]"),
+        ]
+    )
+    assert "SYSTEM" not in prompt
+    assert "USER: Message Fredrik Thordendal." in prompt
+    assert "TOOL_RESULT: []" in prompt
 
 
 def test_toolsandbox_native_completion_templates_are_argument_grounded() -> None:

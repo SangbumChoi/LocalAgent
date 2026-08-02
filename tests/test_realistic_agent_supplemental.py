@@ -10,10 +10,14 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     assert payload["kind"] == "localagent_realistic_agent_supplemental_catalog"
     entries = payload["entries"]
-    assert len(entries) == 8
+    assert len(entries) == 12
     assert {entry["id"] for entry in entries} == {
         "androidworld",
         "browsergym_miniwob",
+        "iosworld",
+        "mobile_safety_bench",
+        "androidcontrol_curated",
+        "osworld_mcp",
         "computer_agent_arena",
         "cua_lite_agentnet",
         "enterpriseopsgym",
@@ -22,7 +26,9 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         "toolsandbox",
     }
     for entry in entries:
-        assert entry["source_url"].startswith(("https://github.com/", "https://huggingface.co/"))
+        assert entry["source_url"].startswith(
+            ("https://github.com/", "https://huggingface.co/", "https://mobilesafetybench.github.io/")
+        )
         assert entry["split_policy"]
         assert entry["runtime"]
         assert entry["webgpu_projection"]

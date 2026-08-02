@@ -48,3 +48,27 @@ def test_toolsandbox_interactive_receipts_bind_multi_step_protocol_and_fix_bound
         assert receipt["success_count"] == 1
         assert all(row["exception"] is None for row in receipt["scenarios"])
     assert len({receipt["checkpoint"]["sha256"] for receipt in (stateful, control, projection)}) == 3
+
+
+def test_toolsandbox_native_hardening_receipts_bind_matched_partial_progress() -> None:
+    root = Path(__file__).parents[1] / "docs/paper/results/raw"
+    receipts = [
+        json.loads((root / name).read_text())
+        for name in (
+            "m92-toolsandbox-native-interactive-stateful-m75-v1.json",
+            "m92-toolsandbox-native-interactive-public-m70-v1.json",
+            "m92-toolsandbox-native-interactive-public-projection-m59-v1.json",
+        )
+    ]
+    assert len({receipt["runner"]["sha256"] for receipt in receipts}) == 1
+    for receipt in receipts:
+        assert receipt["success_count"] == 1
+        assert receipt["success_rate"] == 0.2
+        assert [row["similarity"] for row in receipt["scenarios"]] == [
+            0.25,
+            1 / 3,
+            1.0,
+            0.0,
+            0.5,
+        ]
+        assert all(row["exception"] is None for row in receipt["scenarios"])

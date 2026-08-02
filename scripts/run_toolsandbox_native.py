@@ -47,14 +47,19 @@ def _identity(path: Path) -> dict[str, Any]:
 
 
 def _render_prompt(messages: list[Any]) -> str:
-    """Render the visible ToolSandbox history into the text-first model contract."""
+    """Render user/tool state into the text-first model contract.
+
+    ToolSandbox system messages contain policy prose (often beginning with ``Don't``).  The
+    constrained decoder deliberately uses generic span heuristics for entity arguments, so
+    including that prose can make the first capitalized span become ``Don`` instead of the
+    user-requested entity.  The policy is enforced by the simulator; the model-facing prompt
+    therefore keeps the user request and execution results, matching the public training render.
+    """
 
     rows: list[str] = []
     for message in messages:
         sender = str(message.sender)
-        if sender.endswith("SYSTEM"):
-            prefix = "SYSTEM"
-        elif sender.endswith("USER"):
+        if sender.endswith("USER"):
             prefix = "USER"
         elif sender.endswith("EXECUTION_ENVIRONMENT"):
             prefix = "TOOL_RESULT"
@@ -135,6 +140,8 @@ def _load_roles(
             self._agent: Agent | None = None
             self._call_index = 0
             self._last_call: tuple[Any, Any] | None = None
+            self._last_output: str | None = None
+            self._blocked_candidates: set[str] = set()
             self._agent_turns = 0
 
         def _respond_to_model(self, visible: list[Any], available: dict[str, Any]) -> None:
@@ -177,6 +184,7 @@ def _load_roles(
                 route_head=self._agent.route_head,
                 ptr_head=self._agent.ptr_head,
                 top_m=1,
+                blocked_candidates=self._blocked_candidates,
             )
             calls = extract_tool_calls(output)
             if not calls or calls[0].name not in available:
@@ -194,6 +202,7 @@ def _load_roles(
             self._call_index += 1
             call_id = f"localagent_call_{self._call_index}"
             self._last_call = (call, available[call.name])
+            self._last_output = output
             self.add_messages(
                 [
                     Message(
@@ -218,6 +227,13 @@ def _load_roles(
                 for message in visible
             ):
                 if interactive:
+                    # Every execution result is actionable feedback.  Prevent the exact grounded
+                    # body from looping while preserving alternative values/tools for the next
+                    # bounded turn.  This also moves the policy forward after a successful lookup
+                    # (for example, contact search -> send message) instead of repeatedly asking
+                    # the same tool for the same state.
+                    if self._last_output:
+                        self._blocked_candidates.add(self._last_output)
                     self._respond_to_model(visible, self.get_available_tools())
                 else:
                     content = "Done."

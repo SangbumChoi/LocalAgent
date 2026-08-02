@@ -56,6 +56,13 @@ def test_boolean_and_message_slots_are_typed_and_grounded():
     )
 
 
+def test_phone_grounding_prefers_explicit_number_over_uuid_digits():
+    from localagent.agent.constrained import _phone
+
+    prompt = "TOOL_RESULT: person_id=9e137f06-916a-5310-8174-cf0b7e9f7054 phone=+12453344098"
+    assert _phone(prompt) == ["+12453344098"]
+
+
 def test_stateful_app_url_and_semantic_targets_prefer_typed_spans():
     from localagent.agent.constrained import _tool_bodies
     from localagent.agent.mobile_toolset import mobile_tools

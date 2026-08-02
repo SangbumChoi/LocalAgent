@@ -72,10 +72,12 @@ def _boolean(prompt: str) -> list[bool]:
 
 def _phone(prompt: str) -> list[str]:
     """Return the first phone-like span without trailing message prose."""
-    match = re.search(r"\+?\d[\d ()-]{6,}\d", prompt)
-    if not match:
-        return []
-    return [re.sub(r"[ ()-]", "", match.group(0))]
+    # Prefer explicit international numbers.  UUIDs and timestamps in tool results also contain
+    # digit/hyphen runs, so an unqualified search can silently copy ``53108174`` from a UUID.
+    matches = re.findall(r"\+\d[\d ()-]{6,}\d", prompt)
+    if not matches:
+        matches = re.findall(r"(?<![A-Za-z0-9])\d{7,}(?![A-Za-z0-9])", prompt)
+    return [re.sub(r"[ ()-]", "", matches[0])] if matches else []
 
 
 def _text_arg(prompt: str, arg: str = "") -> list[str]:
@@ -155,9 +157,15 @@ def _best_string(prompt: str, arg: str = "") -> str:
     """Deterministic string-slot value, arg-aware (the tool head already chose the tool/arg):
     entity args -> first capitalized proper-noun span; free-text args -> longest preposition tail
     (else the imperative tail after the leading verb). Generic English heuristics, not per-tool."""
-    caps = re.findall(r"(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+)*", " ".join(prompt.split()[1:]))
-    low = prompt.lower()
-    tails = [_strip(prompt[i + len(p) + 2:]) for p in PREPS if (i := low.find(f" {p} ")) >= 0]
+    # Role labels are protocol scaffolding, not user content.  Strip them before the generic
+    # capitalized-span heuristic and drop the imperative's first word so ``USER: Send Fredrik``
+    # yields ``Fredrik`` rather than the verb ``Send``.
+    source = _action_tail(prompt)
+    source = re.sub(r"^(?:USER|SYSTEM|TOOL_RESULT)\s*:\s*", "", source, flags=re.I)
+    words = source.split()
+    caps = re.findall(r"(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+)*", " ".join(words[1:]))
+    low = source.lower()
+    tails = [_strip(source[i + len(p) + 2:]) for p in PREPS if (i := low.find(f" {p} ")) >= 0]
     tails = [t for t in tails if t]
     if arg in PHONE_ARGS:
         values = _phone(prompt)
@@ -185,8 +193,7 @@ def _best_string(prompt: str, arg: str = "") -> str:
         return max(tails, key=len)
     if caps:
         return _strip(caps[0])
-    words = prompt.split()  # imperative "Define X." / "Play X." -> drop the leading verb
-    return _strip(" ".join(words[1:])) if len(words) > 1 else _strip(prompt)
+    return _strip(" ".join(words[1:])) if len(words) > 1 else _strip(source)
 
 
 def _arith(prompt: str) -> list[str]:

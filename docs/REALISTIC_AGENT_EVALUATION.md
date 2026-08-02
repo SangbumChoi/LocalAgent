@@ -340,6 +340,25 @@ or stateful conversational contract.  The interactive receipts are
 the [`m91 m59 projection arm`](paper/results/raw/m91-toolsandbox-native-interactive-public-projection-m59-v1.json).
 They still do not satisfy the official-split/user-simulator gate.
 
+### ToolSandbox native adapter hardening (m92)
+
+The next matched rerun fixed two adapter-level grounding defects exposed by the m91 trace: system
+policy prose was removed from the model-facing prompt so generic entity extraction cannot copy
+the word `Don` from `Don't`, and phone extraction now prefers explicit `+...` numbers over UUID
+digits in tool results.  The native loop also records each exact executed body in retry memory so
+an error or successful lookup cannot repeat the identical candidate forever.  These changes are
+runtime/adapter safeguards, not new training data.
+
+The m92 m75, m70, and m59 arms remain `1/5` (`20%`) end-to-end success, but matched milestone
+similarities improve on the stateful and multi-turn cases (m75/m70/m59: `0.25`, `0.3333`, `1.0`,
+`0.0`, `0.5` in the fixed scenario order).  The result is a useful diagnosis—safe retries and
+slot extraction remove avoidable failures, while planning the correct multi-tool sequence remains
+unresolved.  Receipts are [`m92 m75`](paper/results/raw/m92-toolsandbox-native-interactive-stateful-m75-v1.json),
+[`m92 m70 control`](paper/results/raw/m92-toolsandbox-native-interactive-public-m70-v1.json), and
+[`m92 m59 projection`](paper/results/raw/m92-toolsandbox-native-interactive-public-projection-m59-v1.json).
+They are still bounded scripted-user stress runs, not the official split, user simulator, or a
+workshop-ready ToolSandbox score.
+
 ### AgentNet text-observation/action projection evaluation (m62)
 
 The retained eight-parent evaluation projection was then run through the actual LocalAgent

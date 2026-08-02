@@ -118,3 +118,64 @@ entries:
     webgpu_projection: text/accessibility-tree action dispatch with explicit DOM grounding adapter
     metric: episode_success_reward_and_action_error
     notes: Existing native receipts cover the pinned 240-episode MiniWoB plan, not visual WebArena or real accounts.
+
+  - id: iosworld
+    family: mobile
+    name: iOSWorld
+    source_url: https://github.com/ljang0/iOSWorld
+    project_url: https://iosworld.io/
+    paper_url: https://arxiv.org/abs/2606.09764
+    license: Apache-2.0
+    source_revision: pin-before-use
+    scale: 133_tasks_across_26_interconnected_ios_apps
+    modalities: [goal, screenshot, accessibility_xml, persistent_user_state, MCP_tools]
+    split_policy: evaluation_only_until_release_seed_and_task_split_are_frozen
+    runtime: native_ios_simulator_or_aws_runner
+    webgpu_projection: compact state and MCP-schema rehearsal; visual phone control requires an image encoder
+    metric: strict_task_pass_and_rubric_score_by_single_multi_app_and_memory_categories
+    notes: The benchmark is explicitly personalized and cross-app; seeded user data, tasks, rubrics, and tool server must be version-pinned before any claim.
+
+  - id: mobile_safety_bench
+    family: mobile
+    name: MobileSafetyBench
+    source_url: https://mobilesafetybench.github.io/
+    paper_url: https://arxiv.org/abs/2410.17520
+    license: source-license-review-required
+    source_revision: release-required-before-score
+    scale: safety_and_prompt_injection_tasks_on_android_emulators
+    modalities: [goal, screenshot, mobile_action, app_state, safety_policy]
+    split_policy: evaluation_only; safety prompts, emulator snapshots, and attack variants stay out of training
+    runtime: Android_emulator_with_messaging_and_banking_apps
+    webgpu_projection: refusal, confirmation, and side-effect policy probes over synthetic local state
+    metric: harmful-action_rate, safe-completion_rate, and indirect-prompt-injection_robustness
+    notes: This is a safety gate, not a productivity score; it should be run before exposing email, messaging, or settings tools.
+
+  - id: androidcontrol_curated
+    family: mobile
+    name: AndroidControl-Curated
+    source_url: https://github.com/batechworks/AndroidControl_Curated
+    paper_url: https://arxiv.org/abs/2510.18488
+    license: source-license-review-required
+    source_revision: release-required-before-score
+    scale: curated_androidcontrol_tasks_with_benchmark_purification
+    modalities: [instruction, screenshot, accessibility_tree, gesture]
+    split_policy: official_curated_train_test_split_required; never mix benchmark test rows into SFT
+    runtime: Android_emulator_or_device
+    webgpu_projection: accessibility/text action bridge; coordinate grounding requires a visual encoder
+    metric: task_success_and_action_accuracy_on_curated_splits
+    notes: The release is a benchmark-cleaning intervention; compare against original AndroidControl only with matched task identities and seeds.
+
+  - id: osworld_mcp
+    family: computer
+    name: OSWorld-MCP
+    source_url: https://github.com/X-PLUG/OSWorld-MCP
+    paper_url: https://arxiv.org/abs/2510.24563
+    license: release-license-review-required
+    source_revision: release-required-before-score
+    scale: 158_verified_tools_across_7_desktop_applications
+    modalities: [instruction, screenshot, desktop_action, MCP_tool_schema, app_state]
+    split_policy: evaluation_only until the matching environment, tools, and task release are pinned
+    runtime: OSWorld_desktop_environment_with_MCP_tools
+    webgpu_projection: tool-schema routing and GUI-vs-MCP ablations without native side effects
+    metric: task_success, tool_invocation_rate, GUI_action_success, and decision_quality
+    notes: This directly tests the hybrid interface the WebGPU agent targets; tool invocation must be reported separately from GUI completion.
