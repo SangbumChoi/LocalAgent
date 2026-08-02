@@ -27,8 +27,10 @@ KIND = "localagent_workshop_publication_gate"
 # mobile UI, browser/desktop control, stateful tools, and realistic email/productivity workflows.
 REQUIRED_NATIVE_BENCHMARKS: tuple[str, ...] = (
     "androidworld",
+    "mobilegym",
     "browsergym_miniwob",
     "osworld",
+    "osworld_v2",
     "agentnet",
     "toolsandbox",
     "mcpmark",

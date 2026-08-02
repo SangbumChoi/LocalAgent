@@ -13,7 +13,9 @@ def test_default_gate_is_not_ready_and_lists_native_blockers() -> None:
     assert report["ready"] is False
     requirements = {item["requirement"] for item in report["blocking_requirements"]}
     assert "native:androidworld" in requirements
+    assert "native:mobilegym" in requirements
     assert "native:agentnet" in requirements
+    assert "native:osworld_v2" in requirements
     assert "webgpu:native_capability_and_latency" in requirements
     assert "artifacts:public_model_demo_manifest" in requirements
 

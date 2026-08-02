@@ -1068,6 +1068,16 @@ or benchmark content enters the repository, and the profiler reports zero traini
 simulator/native scores.  The next valid experiment is a release-compliant simulator run using
 the test split, not SFT on the benchmark tasks.
 
+### MobileGym native runtime smoke (m123)
+
+The [`m123 receipt`](paper/results/raw/m123-mobilegym-native-runtime-smoke-v1.json) proves that
+the pinned MobileGym frontend builds and serves locally, Chromium can load its 360×800 simulator,
+and the official task registry resolves every train/test ID.  The structured state bridge is
+available, but repeated reset snapshots differ at timestamp fields; this is recorded as a runtime
+reproducibility issue rather than hidden.  No model action, task judge, or official success rate
+was produced, so the strict gate now requires a separate release-compliant `native:mobilegym`
+receipt.  The same gate also requires `native:osworld_v2` for the dated desktop release.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

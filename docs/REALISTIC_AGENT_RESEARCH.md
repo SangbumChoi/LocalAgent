@@ -57,6 +57,17 @@ explicitly.  Family counts and split-file hashes are reproducible through
 evaluation boundary for the WebGPU model, but the CC-BY-NC-4.0 content, simulator state, judges,
 and screenshots remain outside training and no native score is claimed.
 
+### MobileGym native runtime smoke (m123)
+
+The [`m123 runtime receipt`](paper/results/raw/m123-mobilegym-native-runtime-smoke-v1.json)
+boots the pinned MobileGym source in a local Vite server and loads it in headless Chromium.  The
+page returns HTTP 200, exposes the documented `window.__SIM__` bridge with `{os, apps}` state,
+and the upstream registry loads 423 task classes while every official 160-train/256-test ID
+resolves.  Repeated resets preserve state shape and size but are not byte-identical: the receipt
+records timestamp-only diff paths instead of calling the reset deterministic at the raw-byte level.
+The smoke invokes no model, task judge, screenshot scorer, or external account, so it is a native
+runtime preflight rather than a MobileGym-Bench result.
+
 The new mobile and MCP suites reinforce the same design requirement. iOSWorld's persistent identity
 and cross-app data make memory/state tracking first-class rather than an optional prompt feature;
 MobileSafetyBench makes confirmation, refusal, and prompt-injection handling measurable; and
