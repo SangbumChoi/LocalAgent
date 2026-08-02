@@ -904,6 +904,16 @@ binds the bundle to checkpoint `d81771f6…`, the 10,524,544-parameter stage, an
 `83654055…`.  This proves a reproducible local deploy artifact; it does not prove a hardware
 WebGPU adapter, throughput, native task success, or a public Hub/Space upload.
 
+### Current warm-head browser probe (m110)
+
+The clean m109 staging copy was exercised in the Codex in-app Browser with four realistic
+requests: two emails, a Notion page creation, and a search→Notion workflow.  The page reported
+`Model ready` and `webgpu`, and each request returned in 11–43 ms without external side effects;
+however, all four selected `computer_use.click` rather than the expected email, search, or Notion
+tool.  The [`m110 receipt`](paper/results/raw/m110-webgpu-warm-head-browser-probe-v1.json) records
+this as `0/4` exact dispatches and a current-bundle regression.  It is direct browser evidence
+against publication of this checkpoint, not a native WebGPU adapter or benchmark score.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

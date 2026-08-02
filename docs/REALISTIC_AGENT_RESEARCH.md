@@ -115,6 +115,13 @@ heads all pass the exporter parity and clean static-app hash gates.  This is the
 browser session should exercise next; it is not itself a hardware-throughput or public Hub/Space
 publication result.
 
+The follow-up [`m110 browser probe`](paper/results/raw/m110-webgpu-warm-head-browser-probe-v1.json)
+did exercise that bundle in the Codex in-app Browser.  It loaded the WebGPU-labeled path, but the
+warm head selected `computer_use.click` for all four email/Notion/browser prompts (`0/4` exact).
+That failure is more decision-relevant than the artifact hash: it blocks publishing this bundle
+until the route/selector/action-head contract is repaired and rerun with the same prompts and a
+matched control.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
