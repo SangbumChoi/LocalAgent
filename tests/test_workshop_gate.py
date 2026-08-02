@@ -57,6 +57,21 @@ def test_native_browsergym_probe_is_recorded_but_not_official_score() -> None:
     assert check["blockers"] == ["official_split_not_verified"]
 
 
+def test_native_webgpu_capability_receipt_passes_hardware_contract() -> None:
+    receipt = ROOT / "docs/paper/results/raw/m39-webgpu-native-capability-v1.json"
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    assert payload["hardware_adapter"] == "vendor=apple; architecture=metal-3"
+    assert payload["capability"]["closed_loop_success"] == 0
+    assert payload["capability"]["cases"][1]["last_result"]["args"]["url"] == "https://example.com"
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        webgpu_receipt=receipt,
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "webgpu:native_capability_and_latency")
+    assert check["status"] == "pass"
+
+
 def test_weight_gate_requires_two_compatible_labeled_reports(tmp_path: Path) -> None:
     payload = {
         "compatibility": {

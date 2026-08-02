@@ -1945,6 +1945,14 @@ function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
   }
 
   const copied = pointerValue && pointerValue.trim();
+  // Pointer spans can include the serialized user marker and instruction prefix when the
+  // action graph has not learned the exact URL span.  A URL argument must never carry that
+  // protocol text into the browser tool; recover only the URL-shaped substring and keep the
+  // normal schema pool as the fallback for non-URL strings.
+  if (format === "url" && copied) {
+    const copiedUrl = copied.match(/https?:\/\/[^\s'"<>]+/i)?.[0]?.replace(/[.,!?]+$/, "");
+    if (copiedUrl) return copiedUrl;
+  }
   // A pointer span is only trusted for quoted fields when it exactly reproduces one quoted
   // candidate.  This keeps a pointer head trained on an older schema from stitching together
   // adjacent title/content phrases in new email/Notion contracts; the schema extractor can then

@@ -135,3 +135,24 @@ process.stdout.write(JSON.stringify({app, url, compact}));
         "url": {"url": "https://example.local/mail"},
         "compact": "Open https://example.local/mail in the browser.",
     }
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_url_grounding_strips_serialized_user_marker_from_pointer_span():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { groundFromSchema } = require(process.argv[1]);
+const schema = { properties: { url: {type: "string", format: "url"} }, required: ["url"] };
+process.stdout.write(JSON.stringify(groundFromSchema(
+  "Open https://example.com",
+  schema,
+  { url: "<|user|>Open https://example.com" }
+)));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {"url": "https://example.com"}

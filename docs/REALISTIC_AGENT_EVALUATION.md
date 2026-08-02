@@ -194,6 +194,23 @@ The explicit in-app WebGPU adapter was Apple Metal-3 (non-fallback), with p50 ha
 the 4/4 result must not be described as pointer-head-only generalization or official Mind2Web
 browser success.  See [`m34`](paper/results/raw/m34-mind2web-grounded-dom-webgpu-candidate-safety-v1.json).
 
+### Native WebGPU action capability receipt (m39)
+
+The new [`webgpu-capability.html`](../spaces/localagent-webgpu/webgpu-capability.html) harness
+loads the hash-bound 10,524,544-parameter action graph with an exact WebGPU provider request,
+queries `navigator.gpu.requestAdapter()`, and records the exposed Apple Metal-3 adapter identity
+(`vendor=apple; architecture=metal-3`). It ran two realistic local dispatch cases—email and
+browser navigation—with three warmups and 30 measured repetitions per case. Both selected the
+expected tool and schema-valid argument on all 30 repetitions. The action graph's p50
+input-throughput estimate was `1,711.7 tokens/s`, p50 end-to-end dispatch latency was `5.9 ms`, and
+the conservative graph-plus-host-tensor memory estimate was `20.45 MB`.
+
+This is now sufficient for the workshop gate's native WebGPU capability/latency requirement, but
+it is not an external side-effect test: no email account, browser navigation, or Notion account
+was touched, so `closed_loop_success` is explicitly `0`. The memory figure is an allocation
+estimate because WebGPU/ORT exposes no driver VRAM counter. See the full hash-bound
+[`m39 receipt`](paper/results/raw/m39-webgpu-native-capability-v1.json).
+
 ### Offline normalized mobile action protocol
 
 [`src/localagent/eval/mobile.py`](../src/localagent/eval/mobile.py) now provides the common
