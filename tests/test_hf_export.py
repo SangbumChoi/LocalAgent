@@ -49,6 +49,10 @@ def test_hf_bpe_bundle_is_self_contained_and_exports_dispatch_heads(tmp_path):
             "route_head": {"weight": torch.ones(1)},
             "dense_selector": {"weight": torch.ones(1)},
             "selector_proj": 1,
+            "dispatch_tool_pool": ["mobile_click", "mobile_submit_answer"],
+            "ptr_args": ["message"],
+            "examples": {"mobile_click": ["tap the button"]},
+            "retrieval_examples": {"mobile_click": ["tap the button"]},
         },
         checkpoint,
     )
@@ -60,4 +64,17 @@ def test_hf_bpe_bundle_is_self_contained_and_exports_dispatch_heads(tmp_path):
     assert Path(out, "tokenizer.json").read_bytes() == tokenizer_path.read_bytes()
     assert "byte-level" not in Path(out, "README.md").read_text(encoding="utf-8")
     heads = torch.load(Path(out, "agent_heads.bin"), map_location="cpu", weights_only=True)
-    assert set(heads) == {"tool_head", "ptr_head", "route_head", "dense_selector", "selector_proj"}
+    assert set(heads) == {
+        "tool_head",
+        "ptr_head",
+        "route_head",
+        "dense_selector",
+        "selector_proj",
+        "tool_pool",
+        "ptr_args",
+        "examples",
+        "retrieval_examples",
+    }
+    assert config["agent"]["tool_pool"] == ["mobile_click", "mobile_submit_answer"]
+    assert config["agent"]["ptr_args"] == ["message"]
+    assert "2 tools" in Path(out, "README.md").read_text(encoding="utf-8")

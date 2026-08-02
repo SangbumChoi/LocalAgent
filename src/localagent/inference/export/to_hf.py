@@ -50,7 +50,7 @@ Codex coding surface, and computer-use / productivity tools), including parallel
 ## Files
 - `config.json` — `ModelConfig`
 - `model.safetensors` / `pytorch_model.bin` — decoder weights
-- `agent_heads.bin` — trained tool/pointer/route/dispatch heads (optional)
+- `agent_heads.bin` — trained tool/pointer/route/dispatch heads plus dispatch metadata (optional)
 
 ## What it can do (use cases)
 One {tokenizer_label} model that turns a natural-language turn into a grounded tool call — across an
@@ -164,6 +164,21 @@ def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: 
     out_path.mkdir(parents=True, exist_ok=True)
     tokenizer = _tokenizer_bundle(ck, checkpoint_path, out_path)
 
+    dispatch_pool = ck.get("dispatch_tool_pool")
+    dispatch_metadata = {}
+    if isinstance(dispatch_pool, list):
+        dispatch_metadata = {
+            "tool_pool": [str(name) for name in dispatch_pool],
+            "ptr_args": [str(name) for name in ck.get("ptr_args", [])]
+            if isinstance(ck.get("ptr_args", []), list)
+            else [],
+            "examples": ck.get("examples", {}) if isinstance(ck.get("examples", {}), Mapping) else {},
+            "retrieval_examples": (
+                ck.get("retrieval_examples", {})
+                if isinstance(ck.get("retrieval_examples", {}), Mapping)
+                else {}
+            ),
+        }
     config = {
         "model_type": "localagent",
         "architecture": f"LocalAgentLM ({tokenizer['label']} GQA+RoPE+SwiGLU)",
@@ -176,6 +191,8 @@ def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: 
         },
         **cfg_d,
     }
+    if dispatch_metadata:
+        config["agent"] = dispatch_metadata
     (out_path / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
 
     sd = ck["state_dict"]
@@ -191,6 +208,8 @@ def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: 
         for key in ("tool_head", "ptr_head", "route_head", "dense_selector", "selector_proj")
         if key in ck and ck[key] is not None
     }
+    if dispatch_metadata:
+        heads.update(dispatch_metadata)
     if heads:
         torch.save(heads, out_path / "agent_heads.bin")
 
@@ -200,7 +219,8 @@ def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: 
         ffn=cfg.ffn_hidden, factorized=cfg.factorized,
         recur=(" + depth-recurrence" if cfg.n_loops > 1 else ""),
         loops=(f" x{cfg.n_loops} loops" if cfg.n_loops > 1 else ""),
-        ntools=21, repo=repo_id or "<your-repo>", tokenizer_label=tokenizer["label"],
+        ntools=len(dispatch_metadata.get("tool_pool", [])) or 0,
+        repo=repo_id or "<your-repo>", tokenizer_label=tokenizer["label"],
         tokenizer_tag=tokenizer["tag"], tokenizer_file=tokenizer["filename"] or "built-in",
         tokenizer_sha256=tokenizer["sha256"] or "not-applicable")
     (out_path / "README.md").write_text(card, encoding="utf-8")

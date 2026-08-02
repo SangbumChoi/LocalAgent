@@ -1821,6 +1821,14 @@ Hub is not authenticated in this environment, so neither receipt claims a public
 or upload; a user-provided write token and repository namespace are still required.  No external
 email, Notion, browser, MCP, or desktop side effect was executed.
 
+The [`m131 receipt`](paper/results/raw/m131-hf-local-export-m129-mobile-v1.json) repeats the
+export with the m129 mobile state-routing checkpoint and fixes an important deployment contract:
+the HF bundle now carries the complete 63-tool dispatch catalog, 17 pointer argument names, and
+selector/retrieval examples alongside the numeric heads.  The model card reports the actual
+10.52M parameter and 63-tool configuration instead of a stale fixed tool count.  The bundle is
+hash-verified locally, but remains unpublished until Hugging Face authentication and a repository
+namespace are supplied.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
