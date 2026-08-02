@@ -205,6 +205,30 @@ accuracy and mean loss `2.6121`, versus `21.19%` and `8.5930` for the fresh-back
 arms remained at `0/133` sequence exactness. This isolates a strong initialization effect in this
 bounded pilot, while leaving the no-transfer and native-runtime limitations explicit.
 
+### Mixed public desktop + browser continuation and weight audit (m68)
+
+To test the requested deployment mixture rather than another single-source arm, the same 10.5M
+BPE WebGPU parent was continued on two source-record-disjoint public training projections:
+513 Ubuntu AgentNet desktop rows (screenshots removed, textual observations retained) and 20
+grounded Mind2Web browser rows.  The held-out set contains the corresponding eight AgentNet
+parents plus one separate Mind2Web train parent, for 533 training and 137 evaluation rows total.
+The complete input identities and pinned revisions are in the [`m68 receipt`](paper/results/raw/m68-mixed-public-agent-continuation-v1.json).
+
+After 32 SFT updates at `1e-5`, held-out teacher-forced token accuracy improved from `51.67%` to
+`60.05%` and mean loss from `3.5609` to `2.5574`.  The route head diagnostic improved from
+`0.60%` to `14.37%`, but selector exactness remained `0/166` tool rows and sequence exactness
+remained `0/137`.  This identifies the current WebGPU bottleneck precisely: shared language
+adaptation moves, while grounded action/tool selection does not.
+
+The paired [`m68 weight report`](paper/results/raw/m68-mixed-public-agent-weight-transfer-v1.json)
+finds matching configuration and tokenizer across 51 tensors.  Relative movement is `0.490%`
+for embeddings, `0.277%` for attention/mixer, `0.337%` for FFN, and `0.011%` for normalization;
+the route, tool, pointer, and selector heads were unchanged because this was a backbone-only SFT
+continuation.  These figures support reusing the parent with a smaller backbone learning rate,
+but do not prove transfer is better than a matched random control.  The run is not an official
+AgentNetBench or Mind2Web score, and it uses no screenshots, browser/desktop runtime, MCP server,
+emulator, or external account.
+
 ### AgentNet text-observation/action projection evaluation (m62)
 
 The retained eight-parent evaluation projection was then run through the actual LocalAgent

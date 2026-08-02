@@ -36,6 +36,31 @@ def test_published_agentnet_text_projection_receipt_is_explicitly_offline() -> N
     assert receipt["transfer_arms"]["matched_random_backbone"]["first_action_type_rate"] == 0.0
 
 
+def test_published_mixed_public_continuation_receipt_is_hash_bound_and_negative() -> None:
+    path = Path("docs/paper/results/raw/m68-mixed-public-agent-continuation-v1.json")
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    expected = receipt.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    assert {item["dataset"] for item in receipt["source"]["datasets"]} == {
+        "xlangai/AgentNet",
+        "osunlp/Mind2Web",
+    }
+    assert receipt["source"]["public_training_text_used"] is True
+    assert receipt["source"]["native_runtime_executed"] is False
+    training = receipt["training"]
+    assert training["rows"] == {"train": 533, "eval": 137}
+    assert training["after"]["eval"]["assistant_token_accuracy"] == pytest.approx(
+        0.6004706734250543
+    )
+    assert training["heads"]["after"]["selector_top1_accuracy"] == 0.0
+    assert receipt["weight_transfer"]["compatibility"]["tokenizer_sha256_equal"] is True
+    weight_path = Path("docs/paper/results/raw/m68-mixed-public-agent-weight-transfer-v1.json")
+    assert hashlib.sha256(weight_path.read_bytes()).hexdigest() == receipt["weight_transfer"]["report"]["sha256"]
+
+
 def test_text_projection_keeps_parent_records_disjoint(tmp_path: Path) -> None:
     source = tmp_path / "agentnet.jsonl"
     rows = [
