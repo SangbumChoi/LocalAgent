@@ -597,6 +597,23 @@ selection on unseen Notion/browser/database descriptions, while route classifica
 It is not MCPMark task success, pass@k, verifier success, or evidence that live accounts can be
 controlled; the official runner remains a workshop-gate requirement.
 
+### MCPMark current-checkpoint routing proxy (m60)
+
+The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
+ToolSandbox-SFT child.  The [`m60 receipt`](paper/results/raw/m60-mcpmark-current-checkpoint-router-proxy-v1.json)
+binds all 169 standard and 70 easy rows, both checkpoint hashes, and the source manifests.
+
+| Child | Standard route / selector top-1 / top-3 | Easy route / selector top-1 / top-3 |
+| --- | --- | --- |
+| m56 | 17.75% / 3.55% / 13.61% | 12.86% / 2.86% / 12.86% |
+| m59 | 20.71% / 2.37% / 14.79% | 22.86% / 1.43% / 14.29% |
+
+ToolSandbox SFT therefore transfers some service-family routing but does not improve exact MCP
+tool selection on this untouched proxy.  The task descriptions, state fixtures, servers, and
+verifiers remain evaluation-only; this is not MCPMark task success or a leaderboard result.  The
+next meaningful training input must be a permitted schema-conditioned MCP corpus, followed by the
+official stateful server/verifier run.
+
 ### ToolSandbox public scenario metadata profile (m54)
 
 The pinned [Apple ToolSandbox](https://github.com/apple/ToolSandbox) source is now inventory-bound
