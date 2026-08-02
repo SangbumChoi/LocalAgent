@@ -11,11 +11,14 @@ short_description: Sub-100M from-scratch tool-calling agent in the browser
 
 # LocalAgent — tool calling in the browser (WebGPU)
 
-A **28M-parameter, pretrained-from-scratch** byte-level agent that does **grounded tool
+A **sub-100M, pretrained-from-scratch** byte-level agent that does **grounded tool
 calling** and **multi-step planning** — running **entirely in your browser** on
 [onnxruntime-web](https://onnxruntime.ai/docs/tutorials/web/) while requesting its **WebGPU**
 execution provider (WASM is a separately labeled control, and the interactive demo can retry the
 whole session on WASM). No server, no API key; the model is downloaded once and cached.
+
+The staged model size is bound by `meta.json` and `bundle-manifest.json`; the currently verified
+seed-2027 export is 10,524,544 parameters. Do not infer a parameter count from this static text.
 
 Model: [`danelcsb/localagent-tiny-30m-byte`](https://huggingface.co/danelcsb/localagent-tiny-30m-byte).
 Source: [LocalAgent](https://github.com/sangbumchoi/localagent).

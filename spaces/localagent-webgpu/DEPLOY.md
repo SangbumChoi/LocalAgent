@@ -89,7 +89,9 @@ adapter receipt, native benchmark receipts, transfer/no-transfer ablations, and 
   on WASM. Benchmark pages require an explicit provider, the manifest, and the distinct hidden-only
   action graph; they fail rather than falling back or relabeling the full logits graph.
 - Suggested model-card blurb for the model repo README:
-  > 28M-param, byte-level, pretrained-from-scratch tool-calling agent. Generable dispatch:
+  > Sub-100M, byte-level, pretrained-from-scratch tool-calling agent. The exact parameter count
+  > comes from the exported `meta.json`/`bundle-manifest.json`; the checked seed-2027 bundle has
+  > 10,524,544 parameters. Generable dispatch:
   > 5-way route head → dense two-tower selector (scores any tool by its description embedding) →
   > pointer-copy arguments. 50-tool surface; ~57% free-form OOD call-name, ~74% multi-turn next-tool
   > selection. Runs in-browser and requests ONNX Runtime Web's WebGPU provider — see the linked
