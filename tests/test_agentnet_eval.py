@@ -91,3 +91,12 @@ def test_agentnet_scorer_penalizes_extra_actions_but_not_missing_suffix() -> Non
     )
     assert short["total"] == 0.5
     assert long["total"] == 2 / 3
+
+
+def test_agentnet_scorer_accepts_wait_actions() -> None:
+    result = score_agentnet_actions(
+        [{"type": "wait", "params": {"seconds": 1}, "metadata": {}}],
+        [{"name": "agentnet_wait", "arguments": {"seconds": 1}}],
+    )
+    assert result["total"] == 1.0
+    assert result["actions"] == {"wait": 1.0}

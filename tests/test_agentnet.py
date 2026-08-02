@@ -20,6 +20,20 @@ def test_text_projection_maps_supported_actions_and_rejects_termination() -> Non
         {"source": "x=0.100000;y=0.200000", "dest": "x=0.300000;y=0.400000"},
     )
     assert parse_action("computer.terminate(status='success')") is None
+    assert parse_action("computer.wait()") == ("wait", {"seconds": 1})
+
+
+def test_published_agentnet_text_projection_receipt_is_explicitly_offline() -> None:
+    receipt = json.loads(
+        Path("docs/paper/results/raw/m62-agentnet-text-projection-eval-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert receipt["dataset"]["official_split_verified"] is False
+    assert receipt["dataset"]["images_consumed"] is False
+    assert receipt["dataset"]["desktop_runtime_executed"] is False
+    assert receipt["transfer_arms"]["pretrained_sft"]["first_action_type_rate"] == 0.75
+    assert receipt["transfer_arms"]["matched_random_backbone"]["first_action_type_rate"] == 0.0
 
 
 def test_text_projection_keeps_parent_records_disjoint(tmp_path: Path) -> None:

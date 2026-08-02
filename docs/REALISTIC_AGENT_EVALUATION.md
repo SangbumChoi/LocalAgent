@@ -205,6 +205,25 @@ accuracy and mean loss `2.6121`, versus `21.19%` and `8.5930` for the fresh-back
 arms remained at `0/133` sequence exactness. This isolates a strong initialization effect in this
 bounded pilot, while leaving the no-transfer and native-runtime limitations explicit.
 
+### AgentNet text-observation/action projection evaluation (m62)
+
+The retained eight-parent evaluation projection was then run through the actual LocalAgent
+constrained decoder and the repository's AgentNetBench-compatible scorer.  This is a stronger
+checkpoint-in-the-loop test than teacher forcing: each of the 133 retained action rows is decoded
+from its task plus bounded textual observation, grouped back into its parent trajectory, and
+scored for action type, coordinates, text, keyboard, scroll, and sequence alignment.  The
+[`m62 receipt`](paper/results/raw/m62-agentnet-text-projection-eval-v1.json) verifies all eight
+parent IDs and records the exact source/model/projection hashes.
+
+The warm-start SFT child gets `75%` first-action-type agreement, but mean trajectory score is
+approximately zero, exact trajectory success is `0/8`, and coordinate/text/keyboard/scroll
+families receive no useful credit.  The matched random-backbone child gets `0%` first-action-type
+agreement and zero score.  This separates two facts: pretrained initialization transfers a
+coarse action prior, while screenshot-dependent grounding and long-horizon state alignment do
+not transfer to text-only WebGPU inference.  The run is explicitly not official AgentNetBench,
+native desktop, OSWorld, or screenshot-grounding evidence; termination and triple-click source
+actions dropped by the text projection are outside the score.
+
 ### Computer Agent Arena metadata audit (m49)
 
 The public [Computer Agent Arena](https://huggingface.co/datasets/xlangai/computer-agent-arena)

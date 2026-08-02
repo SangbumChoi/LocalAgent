@@ -127,7 +127,9 @@ def parse_action(code: str) -> tuple[str, dict[str, Any]] | None:
         return "key_press", {"key": "+".join(value)}
     if text.startswith("computer.wait"):
         match = re.search(r"computer\.wait\(([-+]?\d+(?:\.\d+)?)", text)
-        return "wait", {"seconds": max(0, int(float(match.group(1))))} if match else ("wait", {"seconds": 1})
+        if match:
+            return "wait", {"seconds": max(0, int(float(match.group(1))))}
+        return "wait", {"seconds": 1}
     return None
 
 

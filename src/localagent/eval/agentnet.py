@@ -129,7 +129,7 @@ def _ground_truth_action(raw: object, *, index: int) -> tuple[str, Any, Mapping[
         raise ValueError(f"ground_truth_actions[{index}].params is malformed")
     if action_type in {"click", "doubleClick", "rightClick", "middleClick", "tripleClick", "moveTo", "dragTo"}:
         value = _action_position(raw, label=f"ground_truth_actions[{index}]")
-    elif action_type in {"write", "press", "hotkey", "scroll", "hscroll", "terminate"}:
+    elif action_type in {"write", "press", "hotkey", "scroll", "hscroll", "wait", "terminate"}:
         if action_type == "write":
             value = params.get("text", params.get("content", ""))
         elif action_type in {"press", "hotkey"}:
@@ -302,6 +302,11 @@ def _score_value(action_type: str, predicted: Any, ground_truth: Mapping[str, An
                 return 0.0
             return min(actual_abs, expected_abs) / max(actual_abs, expected_abs)
         return float(predicted_direction == expected_direction)
+    if action_type == "wait":
+        try:
+            return float(float(predicted) == float(ground_truth.get("params", {}).get("seconds", 0)))
+        except (TypeError, ValueError):
+            return 0.0
     if action_type == "terminate":
         return float(str(predicted).casefold() == str(ground_truth.get("params", {}).get("status")).casefold())
     return 0.0
@@ -319,6 +324,8 @@ def score_agentnet_actions(
             "actions": {},
             "ground_truth_count": len(ground_truth_actions),
             "predicted_count": len(predicted_actions),
+            "action_count_penalty": 1.0,
+            "first_action_type_match": False,
             "claim_scope": "offline AgentNetBench-compatible proxy; not official leaderboard output",
         }
     merged_ground_truth = _merge_ground_truth(ground_truth_actions)
@@ -330,12 +337,15 @@ def score_agentnet_actions(
     # missing suffix but does not receive an additional length penalty.
     penalty = min(1.0, len(truth) / len(predictions)) if len(predictions) > len(truth) else 1.0
     if truth[0][0].casefold() == "terminate":
+        first_match = predictions[0][0].casefold() == "terminate" if predictions else False
         total = penalty * float(predictions[0][0].casefold() == "terminate" and predictions[0][1] == truth[0][1])
         return {
             "total": total,
             "actions": {"terminate": total},
             "ground_truth_count": len(truth),
             "predicted_count": len(predictions),
+            "action_count_penalty": penalty,
+            "first_action_type_match": first_match,
             "claim_scope": "offline AgentNetBench-compatible proxy; not official leaderboard output",
         }
     truth_types = [action[0].casefold() for action in truth]
