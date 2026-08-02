@@ -306,17 +306,21 @@ def run(
         "success_count": success_count,
         "success_rate": success_count / len(records) if records else 0.0,
         "post_tool_response_policy": "deterministic_function_name_and_argument_template",
+        "scripted_user_policy": (
+            "terminate_after_first_agent_response; multi-tool and multi-user-turn scenarios are "
+            "intentionally truncated"
+        ),
         "scenarios": records,
         "checkpoint": _identity(checkpoint),
         "output_dir": str(output_dir.resolve()),
         "claim_boundary": (
-            "Native pinned ToolSandbox simulator and milestone verifier smoke only. The selected "
-            "single-turn scenarios used a scripted user to terminate after the model response, "
-            "and a deterministic post-tool response template to match the fixture's expected "
-            "confirmation text; "
-            "the official split, model-based user simulator, full scenario matrix, and optional "
-            "RapidAPI tools were not executed. This is not an official ToolSandbox leaderboard "
-            "score and does not satisfy the publication gate's official-split requirement."
+            "Native pinned ToolSandbox simulator and milestone verifier smoke only. The runner "
+            "uses a scripted user that terminates after the first agent response, so multi-tool "
+            "and multi-user-turn scenarios are intentionally truncated; a deterministic post-tool "
+            "response template matches the fixture's expected confirmation text. The official "
+            "split, model-based user simulator, full scenario matrix, and optional RapidAPI tools "
+            "were not executed. This is not an official ToolSandbox leaderboard score and does "
+            "not satisfy the publication gate's official-split requirement."
         ),
     }
 

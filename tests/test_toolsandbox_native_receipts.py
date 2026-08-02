@@ -1,0 +1,28 @@
+"""Regression checks for the native ToolSandbox stress-smoke receipts."""
+
+import json
+from pathlib import Path
+
+
+def test_toolsandbox_native_stress_receipts_are_fail_closed_and_matched() -> None:
+    root = Path(__file__).parents[1] / "docs/paper/results/raw"
+    stateful = json.loads((root / "m90-toolsandbox-native-stateful-m75-v1.json").read_text())
+    control = json.loads((root / "m90-toolsandbox-native-public-m70-v1.json").read_text())
+    for receipt in (stateful, control):
+        assert receipt["benchmark_id"] == "toolsandbox"
+        assert receipt["environment_executed"] is True
+        assert receipt["official_split_verified"] is False
+        assert receipt["verifier_executed"] is True
+        assert receipt["task_count"] == 5
+        assert receipt["success_count"] == 1
+        assert receipt["success_rate"] == 0.2
+        assert "multi-tool and multi-user-turn" in receipt["claim_boundary"]
+        assert receipt["scripted_user_policy"].startswith("terminate_after_first_agent_response")
+    assert stateful["checkpoint"]["sha256"] != control["checkpoint"]["sha256"]
+    assert [row["scenario"] for row in stateful["scenarios"]] == [
+        "send_message_with_contact_content_cellular_off",
+        "turn_on_wifi_low_battery_mode",
+        "find_current_city_insufficient_information",
+        "remove_contact_by_phone_ambiguous",
+        "search_message_with_recency_latest_multiple_user_turn",
+    ]

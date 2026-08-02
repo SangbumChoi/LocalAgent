@@ -300,6 +300,26 @@ state-conditioned adaptation and execution-aware decoding—not public action-he
 are the useful adoption path.  The result remains a deterministic in-memory local diagnostic and
 does not satisfy any official native benchmark gate.
 
+### ToolSandbox native stateful-adaptation stress smoke (m90)
+
+The current stateful child was also run inside the pinned Apple ToolSandbox simulator and
+milestone verifier, rather than only through the local productivity state machine.  The five
+selected scenarios cover state dependency, multiple tool calls, canonicalization, insufficient
+information, and a multiple-user-turn task.  The runner executes the real upstream tools and
+verifier, but its scripted user terminates after the first agent response; multi-tool and
+multi-turn scenarios are therefore intentionally truncated.  This makes the result a native
+execution stress signal, not an official ToolSandbox score.
+
+The m70 public-only control and m75 stateful/error-recovery child both complete the
+insufficient-information case but fail the four truncated multi-step cases: `1/5` (`20%`)
+for each arm.  The matched result is useful because it rejects a false adoption claim: adding
+stateful views improved the resettable local runtime, but did not yet transfer to ToolSandbox's
+tool names, multi-step conversation contract, or user-simulator protocol.  Receipts are
+[`m90 m75`](paper/results/raw/m90-toolsandbox-native-stateful-m75-v1.json) and
+[`m90 m70 control`](paper/results/raw/m90-toolsandbox-native-public-m70-v1.json).  The official
+ToolSandbox split, model-based user simulator, full scenario matrix, and optional RapidAPI tools
+remain unexecuted, so the workshop gate stays blocked.
+
 ### AgentNet text-observation/action projection evaluation (m62)
 
 The retained eight-parent evaluation projection was then run through the actual LocalAgent
