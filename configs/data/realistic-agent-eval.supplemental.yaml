@@ -1,0 +1,120 @@
+# Supplemental public-source registry for realistic computer-use and stateful-tool evaluation.
+# The canonical 40-row catalog remains the gate input.  These rows are deliberately separate:
+# they were audited after the catalog freeze and must not silently change train/eval eligibility.
+kind: localagent_realistic_agent_supplemental_catalog
+schema_version: 1
+purpose: public_source_discovery_without_implicit_training_or_benchmark_claims
+default_policy: catalog_only_until_revision_license_and_split_are_frozen
+entries:
+  - id: computer_agent_arena
+    family: computer
+    name: Computer Agent Arena
+    source_url: https://huggingface.co/datasets/xlangai/computer-agent-arena
+    license: CC-BY-4.0
+    source_revision: 897b9f45287c516a44f9e79879b14bc3c1bc5b0a
+    scale: 4641_trajectories_and_about_65000_images
+    modalities: [instruction, pyautogui_code, textual_thought, screenshot]
+    split_policy: evaluation_only_until_task_and_model_identity_deduplication_is_verified
+    runtime: controlled_ubuntu_desktop
+    webgpu_projection: text-only action-vocabulary diagnostic; screenshots require a visual encoder
+    metric: human_evaluation_correctness_plus_action_and_trajectory_diagnostics
+    notes: Main JSONL is about 48 MB; screenshot archive is about 17 GB. Do not train on evaluation battles without a frozen task/model holdout.
+
+  - id: cua_lite_agentnet
+    family: computer
+    name: CUA-Lite AgentNet
+    source_url: https://huggingface.co/datasets/cua-lite/AgentNet
+    license: source_dataset_license_requires_audit
+    source_revision: pin_before_use
+    scale: 4900_train_and_92_validation_desktop_trajectories
+    modalities: [instruction, screenshot, normalized_coordinate_action]
+    split_policy: validation_and_test_are_never_training_inputs
+    runtime: Ubuntu_desktop_trajectories_with_embedded_images
+    webgpu_projection: accessibility/text projection only; no claim of visual grounding
+    metric: action_accuracy_and_trajectory_completion_after_image_capability_is_available
+    notes: The repository reports a roughly 74 GB image store; use metadata-only profiling or a bounded shard before downloading.
+
+  - id: osworld2_trajectory
+    family: computer
+    name: OSWorld 2.0 trajectories
+    source_url: https://huggingface.co/datasets/xlangai/osworld2.0-trajectory
+    license: Apache-2.0_task_card_with_gated_assets
+    source_revision: pin_before_use
+    scale: 108_long_horizon_tasks
+    modalities: [instruction, screenshot, desktop_action, trajectory]
+    split_policy: test_only_and_gated; never train on benchmark trajectories
+    runtime: OSWorld-V2_real_desktop_environment
+    webgpu_projection: text-only replay/protocol audit; native desktop VM required for score
+    metric: execution_success_and_long_horizon_task_completion
+    notes: The public repository contains multi-gigabyte trajectory archives and gated task assets; acquisition must record access status and exact archive hashes.
+
+  - id: enterpriseopsgym
+    family: tool_api
+    name: EnterpriseOps-Gym
+    source_url: https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym
+    code_url: https://github.com/ServiceNow/EnterpriseOps-Gym
+    license: Apache-2.0
+    source_revision: c8e538eae8a6205294f0a86675fefdc1fac408f6
+    scale: 1115_tasks_512_tools_8_enterprise_domains
+    modalities: [system_prompt, user_prompt, tool_set, sql_verifier, mcp_server_state]
+    split_policy: evaluation_only; verifiers and server configuration stay out of training
+    runtime: resettable_containerized_MCP_servers
+    webgpu_projection: name/schema retrieval and local state-machine rehearsal only
+    metric: final_state_SQL_verifier_success_and_long_horizon_tool_use
+    notes: Email, calendar, drive, HR, ITSM, CSM, Teams, and hybrid workflows are stateful; name-only retrieval is not task success.
+
+  - id: mcpmark
+    family: tool_api
+    name: MCPMark
+    source_url: https://github.com/eval-sys/mcpmark
+    license: Apache-2.0
+    source_revision: pin_before_use
+    scale: standard_and_easy_task_suites_across_5_MCP_services
+    modalities: [task_prompt, tool_schema, service_state, verifier]
+    split_policy: evaluation_only; task text and verifiers are not SFT inputs
+    runtime: isolated_Notion_GitHub_Filesystem_Postgres_Playwright_services
+    webgpu_projection: tool routing, schema validation, abstention, and local service-contract probes
+    metric: pass_at_k_pass_power_k_and_verifier_success
+    notes: The benchmark explicitly covers Notion, GitHub, Filesystem, Postgres, and Playwright; credentials and real accounts are never supplied to this project.
+
+  - id: toolsandbox
+    family: tool_api
+    name: Apple ToolSandbox
+    source_url: https://github.com/apple/ToolSandbox
+    license: source_repository_license_requires_audit
+    source_revision: pin_before_use
+    scale: stateful_conversational_scenarios
+    modalities: [multi_turn_dialogue, tool_schema, simulator_state, milestone_verifier]
+    split_policy: evaluation_only; no static scenario labels in SFT
+    runtime: ToolSandbox_simulator_and_user_simulator
+    webgpu_projection: state-dependency and canonicalization rehearsal without external services
+    metric: intermediate_and_final_milestone_success
+    notes: Designed for implicit state dependencies, canonicalization, insufficient information, and multi-turn tool use.
+
+  - id: androidworld
+    family: mobile
+    name: AndroidWorld
+    source_url: https://github.com/google-research/android_world
+    license: Apache-2.0
+    source_revision: pin_before_use
+    scale: 116_tasks_20_apps_with_dynamic_variations
+    modalities: [goal, accessibility_tree, screenshot, emulator_state]
+    split_policy: evaluation_only; task templates and generated goals are runtime inputs
+    runtime: Android_emulator_with_adb
+    webgpu_projection: accessibility-tree text probe only; no visual or emulator reward claim
+    metric: environment_reward_and_task_success
+    notes: The current machine has no adb or Android emulator, so no native receipt is asserted.
+
+  - id: browsergym_miniwob
+    family: browser
+    name: BrowserGym MiniWoB++
+    source_url: https://github.com/ServiceNow/BrowserGym
+    license: MIT_and_Apache-2.0
+    source_revision: BrowserGym_0.14.3_plus_pinned_MiniWoB_revision
+    scale: 125_browser_tasks
+    modalities: [goal, DOM, accessibility_tree, screenshot, browser_state]
+    split_policy: evaluation_only; official task/seed split is hash-bound in native receipts
+    runtime: Playwright_and_Chromium
+    webgpu_projection: text/accessibility-tree action dispatch with explicit DOM grounding adapter
+    metric: episode_success_reward_and_action_error
+    notes: Existing native receipts cover the pinned 240-episode MiniWoB plan, not visual WebArena or real accounts.

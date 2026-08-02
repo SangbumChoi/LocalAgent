@@ -10,6 +10,12 @@ provenance manifest with an upstream revision, byte count, and SHA-256.
 The current catalog contains 40 source-linked rows (four train-eligible and 36 evaluation or
 restricted) and has a canonical SHA-256 fingerprint recorded by the preflight command below.
 The fingerprint is generated from the canonical catalog by the preflight command below.
+The post-freeze public-source audit is kept separately in
+[`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
+It adds eight high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
+trajectories, EnterpriseOps-Gym, MCPMark, ToolSandbox, AndroidWorld, and BrowserGym—with explicit
+license, split, runtime, and WebGPU-projection policies. These entries are catalog-only until an
+exact revision and acquisition receipt are frozen; they do not silently become training data.
 
 Run the read-only readiness report before acquiring or evaluating anything:
 
