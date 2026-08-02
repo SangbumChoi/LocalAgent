@@ -972,6 +972,16 @@ argument exactness is 0%.  The global selector reaches only 0.78% first-tool exa
 weights versus 0% for the matched random control.  The [`m115 receipt`](paper/results/raw/m115-xlam-derived-function-calling-transfer-v1.json)
 therefore supports retrieval/schema diagnostics, not official xLAM, multi-call, or live API success.
 
+### MCPMark service-routing transfer (m116)
+
+The pinned public [MCPMark](https://github.com/eval-sys/mcpmark) checkout contributes 169 standard
+and 70 easy task descriptions spanning Playwright/browser, Notion, filesystem, GitHub, and Postgres
+services.  The m111 warm checkpoint and matched random control both reach 14.79% route/top-1 on
+standard and 14.29% on easy.  Playwright is 100% in both arms, while the other four service
+families are 0%.  The [m116 receipt](paper/results/raw/m116-mcpmark-routing-transfer-v1.json) keeps
+this explicitly as a description-level routing proxy: no MCP server, state transition, verifier,
+official leaderboard score, or training artifact is claimed.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

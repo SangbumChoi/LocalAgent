@@ -154,6 +154,16 @@ three failure modes for the WebGPU model: retrieval can locate a tool, schema-co
 can be valid, and argument copying/multi-call planning still fail.  The original xLAM dataset is
 gated here, so this is derivative evidence rather than an official Salesforce split.
 
+The [`m116 MCPMark routing receipt`](paper/results/raw/m116-mcpmark-routing-transfer-v1.json)
+extends the realistic tool surface to a pinned public MCP benchmark whose tasks cover Playwright,
+Notion, filesystem, GitHub, and Postgres workflows.  Across all 169 standard task descriptions,
+the warm and random checkpoints both route 14.79% correctly; on the 70 easy descriptions both are
+14.29%.  The model recognizes the Playwright family (100% in both suites) but routes 0% of the
+Notion, filesystem, GitHub, and Postgres families.  This is actionable transfer evidence for the
+WebGPU deployment: browser primitives are learned, while service-specific tool naming and
+multi-step state planning are not.  MCPMark's actual MCP servers and verifiers were not started,
+so the receipt is a task-description proxy rather than task success.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
