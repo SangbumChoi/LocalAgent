@@ -301,14 +301,16 @@ The following are important reality checks, not extra SFT rows:
   checked before any redistribution, so it remains evaluation-only.
 - [MCPMark Verified](https://github.com/eval-sys/mcpmark): pinned Notion, GitHub, filesystem, Postgres,
   and Playwright environments with deterministic verifiers.
-- [EnterpriseOps-Gym](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym): 1,115 public
-  enterprise tasks across eight domains, including 104 email tasks and 512 tools.  The official card
-  describes containerized execution with SQL state verifiers and the dataset API reports Apache-2.0;
-  tasks/verifiers stay evaluation-only to prevent benchmark memorization.  The pinned HF revision is
-  `c8e538eae8a6205294f0a86675fefdc1fac408f6`.  The card-level inventory (104 email tasks) is not
-  the same as a downloadable config row count: the bounded oracle and `plus_15_tools` email
-  configs used below expose 67 matching task IDs, so the receipt reports 67 and retains the
-  104 figure only as inventory context.
+- [EnterpriseOps-Gym](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym): the official
+  card inventories 1,115 enterprise tasks across eight domains, including 104 email tasks and 512
+  tools.  The current Hugging Face viewer exposes 649 rows in the `oracle` configuration; the
+  four tool-set modes are a configuration view of the same card-level inventory, not 1,115
+  additional rows.  The official card describes containerized execution with SQL state verifiers
+  and reports Apache-2.0; tasks/verifiers stay evaluation-only to prevent benchmark memorization.
+  The pinned HF revision is `c8e538eae8a6205294f0a86675fefdc1fac408f6`.  The card-level inventory
+  (104 email tasks) is not the same as a downloadable config row count: the bounded oracle and
+  `plus_15_tools` email configs used below expose 67 matching task IDs, so the receipt reports 67
+  and retains the 104 figure only as inventory context.
 - [MCP-Persona](https://github.com/wwh0411/MCP-Persona): 173 personalized tool-calling tasks that
   include Notion and email MCP servers.  Its repository terms must be checked before redistribution;
   keep the simulated account state and checkpoint labels evaluation-only.
@@ -354,6 +356,12 @@ covering 38 Notion, 35 browser/Playwright, 40 filesystem, 33 GitHub, and 93 data
 State types are text (133), URL (71), and video (33); the profile retains neither descriptions nor
 state assets. MCPMark's own runner supports repeated runs and pass@k/pass^k aggregation, so it is
 the next appropriate stability gate once the local MCP/browser dependencies are installed.
+
+The current upstream [tau2-bench](https://github.com/sierra-research/tau2-bench) repository is the
+maintenance line for the original tau-bench paper and now points new work to tau3-bench.  Its
+base split must be used for a complete evaluation, and the leaderboard protocol requires repeated
+trials for Pass^k; a single trajectory replay or a historical tau-bench number is not a current
+deployment score.
 
 [`src/localagent/eval/mcpmark.py`](../src/localagent/eval/mcpmark.py) now provides a fail-closed
 local result aggregator: it requires every expected task for every run before reporting

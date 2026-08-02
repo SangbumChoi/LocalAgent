@@ -56,6 +56,8 @@ def test_realistic_catalog_is_pinned_and_split_safe() -> None:
         "tools": 512,
         "modes": 4,
         "public_rows": 2560,
+        "viewer_oracle_rows": 649,
+        "card_inventory_rows": 1115,
     }
     assert enterprise["license"]["name"] == "Apache-2.0"
 
