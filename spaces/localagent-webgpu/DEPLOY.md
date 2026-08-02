@@ -4,10 +4,13 @@ Everything here is **prepared but not pushed** — publishing to your HF account
 Requires `huggingface_hub` (installed) and a write token. Set `HF_USER` to your own namespace;
 the commands below deliberately do not assume a public account or URL.
 
-The verified deployable checkpoint is `runs/sft-webgpu-proxy-pilot-hybrid-seed2027/latest.pt`
-(10,524,544 parameters; see the local export receipt for its hash). The app (`app.js`) uses the
-structured route head → dense selector → pointer-copy dispatch over the 50-tool surface. A public
-Hub URL is not claimed until the upload completes and is independently verified.
+The currently verified deployment repair is generated from the 10,524,544-parameter m103 warm
+checkpoint by `scripts/train_deployment_dispatch_repair.py`; its public/eval row hashes, matched
+random control, frozen-backbone movement report, export identity, and browser probe are bound in
+[`m111-deployment-dispatch-repair-v1.json`](../../docs/paper/results/raw/m111-deployment-dispatch-repair-v1.json).
+The app (`app.js`) uses the structured route head → dense selector → pointer-copy dispatch over the
+50-tool surface plus named, bounded URL/search/planner safety adapters. A public Hub URL is not
+claimed until the upload completes and is independently verified.
 
 The newer stateful-productivity low-rate child is also exportable and is the artifact bound by
 the `m57` WebGPU and `m58` HF-format receipts. It has the same 10,524,544-parameter

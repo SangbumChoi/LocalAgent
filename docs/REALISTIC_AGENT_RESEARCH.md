@@ -122,6 +122,13 @@ That failure is more decision-relevant than the artifact hash: it blocks publish
 until the route/selector/action-head contract is repaired and rerun with the same prompts and a
 matched control.
 
+That rerun is now bound by the [`m111 deployment repair receipt`](paper/results/raw/m111-deployment-dispatch-repair-v1.json).  It confirms that frozen-backbone route/selector adaptation plus a small
+transparent grounding/planner adapter restores the deployment contract for email, Notion, URL open,
+and the first two search→Notion steps.  The matched random arm is comparable or better on the
+offline mixed selector probe, so the result is a practical deployment repair—not a claim that
+pretrained weights universally improve tool selection.  Native AndroidWorld, OSWorld, AgentNet,
+MCPMark, EnterpriseOps-Gym, and official ToolSandbox evidence remain separate publication gates.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

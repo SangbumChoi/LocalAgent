@@ -914,6 +914,23 @@ tool.  The [`m110 receipt`](paper/results/raw/m110-webgpu-warm-head-browser-prob
 this as `0/4` exact dispatches and a current-bundle regression.  It is direct browser evidence
 against publication of this checkpoint, not a native WebGPU adapter or benchmark score.
 
+### Deployment dispatch repair and browser verification (m111)
+
+The m110 failure was traced to a head-data mismatch: the m103 probe covered AndroidControl,
+AgentNet, and Mind2Web surface rows but had no deployment-specific email/Notion adapter examples.
+The [`m111 trainer`](../scripts/train_deployment_dispatch_repair.py) therefore freezes the 10.52M
+backbone, mixes the same 4,731 public-train decisions with 1,030 deterministic productivity/browser
+adapter rows, and trains matched warm/random route and dense-selector arms.  The warm arm reaches
+5/6 canonical route decisions and 4/6 canonical tool decisions offline; the matched random arm
+reaches 4/6 and 4/6, so this is not evidence of a universal warm-start selector gain.
+
+The repaired bundle passes the same ONNX parity/hash gates and produces 5/5 exact single-step
+browser tool names (email twice, Notion, web search, and URL open) with corrected recipient/content/
+URL grounding.  With planner mode enabled, the bounded local workflow returns exactly
+`web_search → notion_write` in two steps.  URL/search selection and planner normalization are
+explicit safety adapters, not hidden benchmark labels.  The [`m111 receipt`](paper/results/raw/m111-deployment-dispatch-repair-v1.json) keeps those policies separate from learned-head metrics and
+continues to disclaim native adapters, external side effects, and official benchmark success.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

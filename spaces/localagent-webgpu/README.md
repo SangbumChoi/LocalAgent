@@ -38,6 +38,12 @@ Source: [LocalAgent](https://github.com/sangbumchoi/localagent).
 - **Multi-step plans** — the rollout: pick a tool → ground it → feed back a simulated response →
   pick the next, until the route head emits `text`.
 
+The current deployment repair is receipt-bound in
+[`m111-deployment-dispatch-repair-v1.json`](../../docs/paper/results/raw/m111-deployment-dispatch-repair-v1.json).
+It adds named, bounded browser safety policies for explicit URL opening, the first clause of a
+compound search request, and the simulated search→Notion follow-up. These policies are reported
+separately from learned-head accuracy and do not execute external accounts.
+
 ## How it runs (honest version)
 
 The structured path requests a single-provider ONNX Runtime session for the hidden-only

@@ -1732,6 +1732,35 @@ function dispatchSelect(
 ) {
   const mobile = mobileLexicalSelect(query, dispatch);
   if (mobile) return mobile;
+  // Explicit URL navigation is a stable browser contract, not a visual click.  Keep this small
+  // lexical safety adapter ahead of the learned heads so an OOD URL cannot become a side-effecting
+  // GUI click; the receipt records this policy separately from learned selector accuracy.
+  const urlTool = dispatch?.dense_selector?.tool_names?.includes("open_url");
+  if (urlTool && /\b(?:open|go to|navigate to|visit|pull up)\s+https?:\/\//i.test(String(query))) {
+    return {
+      name: "open_url",
+      route: "web_search",
+      conf: 1,
+      isStop: false,
+      selection_policy: "explicit_url_safety_guard",
+    };
+  }
+  // For a compound request, the first explicit web-search clause is the only safe first step when
+  // the planner checkbox is off.  Do not pretend this is multi-step completion; the UI still
+  // returns one action and the receipt must score the follow-up separately.
+  if (
+    dispatch?.dense_selector?.tool_names?.includes("web_search") &&
+    /\b(?:search the web|look up|find information)\b/i.test(String(query)) &&
+    /\b(?:then|after that|and save|and note)\b/i.test(String(query))
+  ) {
+    return {
+      name: "web_search",
+      route: "web_search",
+      conf: 1,
+      isStop: false,
+      selection_policy: "compound_search_first_step_guard",
+    };
+  }
   if (requestedSelector === "retrieval") {
     const retrieved = retrievalSelectFromSidecar(query, dispatch?.retrieval_selector);
     if (retrieved) return retrieved;
@@ -1870,6 +1899,10 @@ function groundingPools(prompt) {
       source.matchAll(/(?:https?:\/\/)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:\/[\w./-]*)?/g),
       (m) => m[0].replace(/\.$/, "")
     ),
+    email: Array.from(
+      source.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g),
+      (m) => m[0]
+    ),
     caps: Array.from(body.matchAll(/(?:[A-Z][a-z]+)(?:\s+[A-Z][a-z]+)*/g), (m) => m[0]),
     number: Array.from(source.matchAll(/-?\d+(?:\.\d+)?/g), (m) => m[0]),
     arithmetic: arithmetic ? [arithmetic[0].replace(/\s+/g, "")] : [],
@@ -1924,6 +1957,26 @@ function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
     if (shortAppMatch) return shortAppMatch[1];
   }
 
+  // Email recipients are not necessarily capitalized entities and often share the sentence with
+  // a subject/body.  Prefer the explicit address, then stop a natural-language recipient before
+  // the next email clause instead of trusting an under-trained pointer span.
+  if (name === "recipient" || name === "to") {
+    if (pools.email.length) return pools.email[0];
+    const recipientMatch = prompt.match(
+      /\b(?:email|send|write|compose|drop|shoot)\s+(?:an?\s+)?(?:email\s+)?(?:to\s+)?(.+?)(?=\s+(?:the|with|about|subject|body|saying)\b|[.!?]|$)/i
+    );
+    if (recipientMatch?.[1]) return stripGrounding(recipientMatch[1]);
+  }
+
+  // Notion/content prompts frequently use an unquoted value after an explicit cue.  Recover that
+  // cue before the generic tail fallback, while still allowing quoted pools and learned pointers.
+  if (name === "content") {
+    const contentMatch = prompt.match(
+      /\b(?:content|note|text|saying)\s+(?:is\s+)?(.+?)(?:[.!?]|$)/i
+    );
+    if (contentMatch?.[1]) return stripGrounding(contentMatch[1]);
+  }
+
   if (schema.enum) {
     return schema.enum.find((value) => cuePresent(prompt, String(value))) ?? null;
   }
@@ -1950,6 +2003,7 @@ function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
   // protocol text into the browser tool; recover only the URL-shaped substring and keep the
   // normal schema pool as the fallback for non-URL strings.
   if (format === "url" && copied) {
+    if (pools.url.length) return pools.url[0];
     const copiedUrl = copied.match(/https?:\/\/[^\s'"<>]+/i)?.[0]?.replace(/[.,!?]+$/, "");
     if (copiedUrl) return copiedUrl;
   }
@@ -2517,11 +2571,23 @@ async function planRollout(query, maxSteps = 4) {
   const t0 = performance.now();
   for (let i = 0; i < maxSteps; i++) {
     const s0 = performance.now();
-    const ids = renderContext(query, steps);
+    let ids = renderContext(query, steps);
     const s1 = performance.now();
+    // Once the first search step has returned, expose the intended follow-up clause to the
+    // selector instead of repeatedly reclassifying the original compound request.  This is a
+    // bounded planner-context adapter; it does not claim that the browser has executed a real
+    // search or written to Notion.
+    let dispatchQuery = query;
+    if (steps.length && steps.at(-1)?.tool === "web_search" && /\b(?:Notion|note|save)\b/i.test(query)) {
+      dispatchQuery = "Save the search result to Notion.";
+    }
+    // The follow-up selector should read the normalized clause, not a long history whose original
+    // imperative can dominate the frozen 10M parameter feature.  This extra forward is bounded to
+    // planner follow-ups and remains a local simulated workflow.
+    if (dispatchQuery !== query) ids = actionPrompt(dispatchQuery, undefined, "trailing_compute").ids;
     const out = await forward(ids);
     const s2 = performance.now();
-    const sel = dispatchSelect(out.hidden, ids.length, query);
+    const sel = dispatchSelect(out.hidden, ids.length, dispatchQuery);
     if (sel.isStop) {
       const s3 = performance.now();
       stepTimings.push({
@@ -2536,7 +2602,11 @@ async function planRollout(query, maxSteps = 4) {
       break;
     }
     const groundingText = [query, ...steps.map((step) => step.response || "")].join(" ");
-    const args = groundArgs(sel.name, groundingText, ids, out.hidden, ids.length);
+    let args = groundArgs(sel.name, groundingText, ids, out.hidden, ids.length);
+    if (sel.name === "notion_write" && steps.at(-1)?.tool === "web_search") {
+      const resultText = String(steps.at(-1)?.response || "").replace(/^result:\s*/i, "").trim();
+      if (resultText) args = { ...(args || {}), content: resultText };
+    }
     const s3 = performance.now();
     steps.push({ tool: sel.name, route: sel.route, args, conf: sel.conf, selection_policy: sel.selection_policy,
       response: simResponse(sel.name, args) });
@@ -2549,6 +2619,15 @@ async function planRollout(query, maxSteps = 4) {
       dispatch_ms: s3 - s2,
       ttfa_ms: s3 - s0,
     });
+    // The public demo's search→Notion workflow has two explicit milestones.  Stop after the
+    // second accepted tool instead of repeatedly replaying the first clause when the tiny model
+    // has no learned STOP state for the simulated response.
+    if (
+      steps.length >= 2 &&
+      steps.at(-2)?.tool === "web_search" &&
+      steps.at(-1)?.tool === "notion_write" &&
+      /\b(?:Notion|note|save)\b/i.test(query)
+    ) break;
   }
   return { steps, stepTimings, ms: performance.now() - t0 };
 }

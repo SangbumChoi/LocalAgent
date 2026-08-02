@@ -156,3 +156,66 @@ process.stdout.write(JSON.stringify(groundFromSchema(
         text=True,
     )
     assert json.loads(result.stdout) == {"url": "https://example.com"}
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_email_and_notion_grounding_prefer_explicit_contract_cues_over_pointer_span():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { groundFromSchema } = require(process.argv[1]);
+const email = groundFromSchema(
+  "Send an email to alice@example.com with subject WebGPU test and body Local bundle verified.",
+  { properties: {recipient: {type: "string"}}, required: ["recipient"] },
+  { recipient: "GPU test and body Local bundle verified" }
+);
+const notion = groundFromSchema(
+  "Create a Notion page titled Launch log with content Verify the browser gate.",
+  { properties: {content: {type: "string"}}, required: ["content"] },
+  { content: "content Verify the browser gate" }
+);
+process.stdout.write(JSON.stringify({email, notion}));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {
+        "email": {"recipient": "alice@example.com"},
+        "notion": {"content": "Verify the browser gate"},
+    }
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_dispatch_safety_guards_are_explicit_and_bounded():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { dispatchSelect } = require(process.argv[1]);
+const dispatch = {dense_selector: {tool_names: ["open_url", "web_search", "click"]}};
+const url = dispatchSelect(null, 0, "Open https://example.com", dispatch);
+const compound = dispatchSelect(null, 0, "Search the web for AI news, then save it to Notion.", dispatch);
+process.stdout.write(JSON.stringify({url, compound}));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {
+        "url": {
+            "name": "open_url",
+            "route": "web_search",
+            "conf": 1,
+            "isStop": False,
+            "selection_policy": "explicit_url_safety_guard",
+        },
+        "compound": {
+            "name": "web_search",
+            "route": "web_search",
+            "conf": 1,
+            "isStop": False,
+            "selection_policy": "compound_search_first_step_guard",
+        },
+    }
