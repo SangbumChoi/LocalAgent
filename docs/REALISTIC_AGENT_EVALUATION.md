@@ -1172,6 +1172,29 @@ the untouched pinned MCPMark descriptions, the same child remains at `20.71%` st
 matching m60's m59 arm.  This negative transfer is important: local schemas improve candidate
 coverage, but do not solve cross-service Notion/filesystem/Postgres schema retrieval.
 
+### ToolSandbox checkpoint-in-loop text decoder evaluation (m63)
+
+The selector-only probe was insufficient to answer whether the deployed WebGPU dispatch path can
+produce a usable call.  The [`m63 receipt`](paper/results/raw/m63-toolsandbox-text-decoder-eval-v1.json)
+now runs the checkpoint-backed constrained decoder on all 20 held-out rows.  Each row supplies its
+retained public candidate list and static JSON schemas; the evaluator runs route, character
+retrieval, pointer grounding, parsing, and recursive schema validation, then compares the call to
+the AST-extracted target.
+
+With the schema-child checkpoint, restricting retrieval to the row's candidate list gives `100%`
+route coverage, `60%` tool exactness, `30%` exact tool-and-argument matches, and `100%` schema
+validity.  Canonicalization is `64.29%` tool exact / `35.71%` argument exact; state-dependency rows
+fall to `25%` / `25%`.  Exposing the checkpoint's inherited global selector instead of the row
+candidate contract collapses to `10%` tool exactness and `10%` schema validity.  The matched
+no-schema child ties the row-retrieval arm exactly, so schema extraction is not yet evidence that
+the pretrained representation was adopted; it is an interface and safety contract only.
+
+This is a stronger decoder-in-the-loop diagnostic than m59/m61 teacher forcing, but it remains a
+static text projection: no ToolSandbox simulator, user simulator, milestone verifier, MCP service,
+official split, native browser, or external side effect ran.  The practical deployment decision is
+to require task-scoped candidate retrieval and schema validation before dispatch, while treating
+stateful execution and exact argument grounding as unresolved training targets.
+
 ### Local WebGPU and Hugging Face export receipts (m57–m58)
 
 The same m56 child was exported to a clean static-demo bundle and an independent Hugging Face

@@ -3,6 +3,8 @@
 Status: source discovery and split policy frozen on 2026-08-02. This is the reference map for
 the WebGPU agent; it is not a claim that every suite has been executed. The machine-readable
 source of truth is [`realistic-agent-public-eval-matrix.v1.json`](../../configs/data/realistic-agent-public-eval-matrix.v1.json).
+The source-method and native-vs-projection protocol is summarized in the
+[`realistic-agent research memo`](../REALISTIC_AGENT_RESEARCH.md).
 
 ## How to read the matrix
 
