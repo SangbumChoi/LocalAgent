@@ -525,7 +525,8 @@ preprocessors, evaluators, or ground-truth outputs. It records 258 email tasks, 
 multi-server pair is `emails+filesystem` (193 tasks). This gives the WebGPU tool bridge a concrete
 long-horizon productivity gate while keeping the benchmark evaluation-only.
 
-The pinned [MCPMark](https://github.com/eval-sys/mcpmark) metadata profile is recorded in
+The pinned [MCPMark](https://github.com/eval-sys/mcpmark) metadata profile at commit
+`cd45b7f57923b9b3985467f5139927575f83141c` is recorded in
 [`m21-mcpmark-metadata-profile-v1.json`](paper/results/raw/m21-mcpmark-metadata-profile-v1.json).
 The checkout contains 239 metadata rows: 169 `standard` L3 tasks and 70 `easy` L1 smoke tasks,
 covering 38 Notion, 35 browser/Playwright, 40 filesystem, 33 GitHub, and 93 database tasks.
@@ -575,6 +576,26 @@ with m37's `15.90%`, `0%`, and `0.42%`. Standard is `50.89% / 37.87% / 66.27%`; 
 the official MCPMark runner, stateful MCP servers, and verifiers are still required before any
 claim of task success. The complete hash-bound receipt is
 [`m38`](paper/results/raw/m38-mcp-service-contract-probe-v1.json).
+
+### MCP service-contract matched no-transfer control (m53)
+
+To test whether the m38 selector result came from the pretrained representation rather than only
+head fitting, the same 28 generated service/tool contracts, tokenizer, architecture, 800 route
+updates, 800 selector updates, and seed were run with a fresh random backbone.  The control was
+evaluated against the same 239 public MCPMark task descriptions; task text was transient, and no
+MCP server or verifier was executed.  The [`m53 receipt`](paper/results/raw/m53-mcp-service-contract-no-transfer-v1.json)
+records the child hash and self-hash.
+
+| Condition | Route accuracy | Selector top-1 | Selector top-3 |
+| --- | ---: | ---: | ---: |
+| Pretrained backbone frozen (m38) | 46.86% | 37.24% | 69.87% |
+| Fresh random backbone (m53) | 47.28% | 23.43% | 64.44% |
+| Random − pretrained | +0.42 pp | −13.81 pp | −5.44 pp |
+
+This is bounded transfer evidence: the pretrained representation materially improves tool-family
+selection on unseen Notion/browser/database descriptions, while route classification is unchanged.
+It is not MCPMark task success, pass@k, verifier success, or evidence that live accounts can be
+controlled; the official runner remains a workshop-gate requirement.
 
 The public [Apple ToolSandbox](https://github.com/apple/ToolSandbox) is the next stateful
 productivity gate. Its scenarios model implicit tool dependencies, user simulation, messaging,

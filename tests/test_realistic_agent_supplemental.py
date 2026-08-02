@@ -26,3 +26,9 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         assert entry["split_policy"]
         assert entry["runtime"]
         assert entry["webgpu_projection"]
+
+
+def test_mcpmark_revision_matches_the_published_metadata_profile() -> None:
+    payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
+    entry = next(row for row in payload["entries"] if row["id"] == "mcpmark")
+    assert entry["source_revision"] == "cd45b7f57923b9b3985467f5139927575f83141c"

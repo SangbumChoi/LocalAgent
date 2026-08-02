@@ -68,14 +68,14 @@ entries:
     name: MCPMark
     source_url: https://github.com/eval-sys/mcpmark
     license: Apache-2.0
-    source_revision: pin_before_use
+    source_revision: cd45b7f57923b9b3985467f5139927575f83141c
     scale: standard_and_easy_task_suites_across_5_MCP_services
     modalities: [task_prompt, tool_schema, service_state, verifier]
     split_policy: evaluation_only; task text and verifiers are not SFT inputs
     runtime: isolated_Notion_GitHub_Filesystem_Postgres_Playwright_services
     webgpu_projection: tool routing, schema validation, abstention, and local service-contract probes
     metric: pass_at_k_pass_power_k_and_verifier_success
-    notes: The benchmark explicitly covers Notion, GitHub, Filesystem, Postgres, and Playwright; credentials and real accounts are never supplied to this project.
+    notes: Metadata profile is frozen at the pinned commit with 239 rows (169 standard, 70 easy), including 38 Notion and 35 browser/Playwright rows; credentials, task descriptions, state assets, and real accounts are never supplied to this project.
 
   - id: toolsandbox
     family: tool_api
