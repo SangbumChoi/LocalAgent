@@ -133,11 +133,30 @@ class Agent:
             ptr.load_state_dict(ck["ptr_head"])
             ptr.eval()
         selector = route_head = None
-        if ck.get("dense_selector"):
+        selector_state = ck.get("dense_selector")
+        selector_examples = examples
+        # Surface-specific selectors let one checkpoint preserve the browser/productivity tool
+        # space while adapting the low-level ``agentnet_*`` desktop action names.  Older
+        # checkpoints have no ``surface_selectors`` key and continue through the generic path.
+        surface_selectors = ck.get("surface_selectors")
+        tool_names = {spec.name for spec in specs}
+        if isinstance(surface_selectors, dict) and tool_names and all(
+            name.startswith("agentnet_") for name in tool_names
+        ):
+            payload = surface_selectors.get("agentnet")
+            if isinstance(payload, dict) and payload.get("state_dict"):
+                selector_state = payload["state_dict"]
+                selector_examples = payload.get("examples", examples)
+                selector_proj = payload.get("selector_proj", 256)
+            else:
+                selector_proj = ck.get("selector_proj", 256)
+        else:
+            selector_proj = ck.get("selector_proj", 256)
+        if selector_state:
             emb_dim = tool_embeddings(specs[:1]).shape[1]
-            sel = DenseToolSelector(cfg.d_model, emb_dim=emb_dim, proj=ck.get("selector_proj", 256))
-            sel.load_state_dict(ck["dense_selector"])
-            selector = BoundSelector(sel, specs, examples=examples)
+            sel = DenseToolSelector(cfg.d_model, emb_dim=emb_dim, proj=selector_proj)
+            sel.load_state_dict(selector_state)
+            selector = BoundSelector(sel, specs, examples=selector_examples)
         if ck.get("route_head"):
             route_head = RouteHead(cfg.d_model)
             route_head.load_state_dict(ck["route_head"])

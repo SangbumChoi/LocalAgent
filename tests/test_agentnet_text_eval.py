@@ -24,3 +24,9 @@ def test_agentnet_text_eval_preserves_wait_and_hotkey_projection() -> None:
     hotkey = _row("key_press", {"key": "ctrl+o"}, "pyautogui.hotkey(['ctrl', 'o'])")
     assert _source_action(hotkey) == "hotkey"
     assert _ground_truth(hotkey) == {"type": "hotkey", "params": {"keys": ["ctrl", "o"]}}
+
+
+def test_agentnet_text_eval_accepts_legacy_list_wrapped_arguments() -> None:
+    row = _row("wait", {"seconds": 1}, "computer.wait()")
+    row.messages[1].tool_calls[0].arguments = ["wait", {"seconds": 1}]
+    assert _ground_truth(row) == {"type": "wait", "params": {"seconds": 1}}

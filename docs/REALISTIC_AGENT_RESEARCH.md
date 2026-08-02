@@ -129,6 +129,15 @@ offline mixed selector probe, so the result is a practical deployment repair—n
 pretrained weights universally improve tool selection.  Native AndroidWorld, OSWorld, AgentNet,
 MCPMark, EnterpriseOps-Gym, and official ToolSandbox evidence remain separate publication gates.
 
+The [`m112 AgentNet surface-selector receipt`](paper/results/raw/m112-agentnet-surface-selector-repair-v1.json)
+closes a naming mismatch discovered in the desktop projection: AgentNet's low-level `agentnet_*`
+candidate surface now has its own selector in the checkpoint while the browser selector remains
+intact.  Warm selector top-1 is 70.68% versus 71.43% for the matched random selector, and
+end-to-end first-action type reaches 1.0, but all eight projected trajectories remain unsuccessful
+because screenshots and coordinate/text grounding were deliberately not consumed.  This is a useful
+negative transfer result: surface-specific selector routing helps the action-family contract, while
+pretrained initialization is not a universal advantage and does not replace a native desktop adapter.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

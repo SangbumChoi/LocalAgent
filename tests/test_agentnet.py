@@ -36,6 +36,21 @@ def test_published_agentnet_text_projection_receipt_is_explicitly_offline() -> N
     assert receipt["transfer_arms"]["matched_random_backbone"]["first_action_type_rate"] == 0.0
 
 
+def test_m112_surface_selector_receipt_preserves_negative_transfer_boundary() -> None:
+    receipt = json.loads(
+        Path("docs/paper/results/raw/m112-agentnet-surface-selector-repair-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert receipt["source"]["official_split_verified"] is False
+    assert receipt["source"]["images_consumed"] is False
+    assert receipt["training"]["backbone_frozen"] is True
+    assert receipt["training"]["warm"]["eval_selector_top1"] == pytest.approx(0.7067669034004211)
+    assert receipt["training"]["random"]["eval_selector_top1"] == pytest.approx(0.7142857313156128)
+    assert receipt["end_to_end_text_projection"]["first_action_type_rate"] == 1.0
+    assert receipt["end_to_end_text_projection"]["success_rate"] == 0.0
+
+
 def test_published_mixed_public_continuation_receipt_is_hash_bound_and_negative() -> None:
     path = Path("docs/paper/results/raw/m68-mixed-public-agent-continuation-v1.json")
     receipt = json.loads(path.read_text(encoding="utf-8"))

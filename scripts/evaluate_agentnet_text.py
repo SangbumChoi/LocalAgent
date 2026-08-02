@@ -15,6 +15,7 @@ import argparse
 import hashlib
 import json
 from collections import defaultdict
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -138,10 +139,20 @@ def _source_action(row: Conversation) -> str:
     return _SOURCE_TO_ACTION.get(name, name)
 
 
+def _argument_mapping(raw: Any) -> dict[str, Any]:
+    """Normalize AgentNet's mapping and legacy ``[name, mapping]`` argument forms."""
+
+    if isinstance(raw, Mapping):
+        return dict(raw)
+    if isinstance(raw, list) and len(raw) == 2 and isinstance(raw[1], Mapping):
+        return dict(raw[1])
+    raise ValueError(f"unsupported AgentNet argument shape: {raw!r}")
+
+
 def _ground_truth(row: Conversation) -> dict[str, Any]:
     call = row.messages[1].tool_calls[0]
     action = _source_action(row)
-    args = call.arguments
+    args = _argument_mapping(call.arguments)
     if action in {
         "click",
         "doubleClick",

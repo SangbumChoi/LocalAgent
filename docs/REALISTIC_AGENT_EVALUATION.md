@@ -931,6 +931,18 @@ URL grounding.  With planner mode enabled, the bounded local workflow returns ex
 explicit safety adapters, not hidden benchmark labels.  The [`m111 receipt`](paper/results/raw/m111-deployment-dispatch-repair-v1.json) keeps those policies separate from learned-head metrics and
 continues to disclaim native adapters, external side effects, and official benchmark success.
 
+### AgentNet surface-selector follow-up (m112)
+
+The bounded AgentNet text projection exposed a separate contract issue: the public rows retain
+low-level `agentnet_*` tool names, while the browser repair trains generic `click`/`type_text`
+names.  The [`m112 receipt`](paper/results/raw/m112-agentnet-surface-selector-repair-v1.json)
+adds a surface-specific selector to the same checkpoint, freezes the 10.52M backbone, and compares
+warm and random selector arms on the same 513/133 projected rows.  Warm selector top-1 is 70.68%
+versus 71.43% random; the end-to-end projection reaches 1.0 first-action type but 0/8 complete
+trajectories because screenshots, coordinates, and desktop execution are absent.  A legacy
+list-wrapped AgentNet argument form was also normalized in the evaluator.  This is explicit
+negative transfer evidence, not native AgentNetBench or OSWorld success.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
