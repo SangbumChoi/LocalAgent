@@ -349,6 +349,23 @@ mobile action adaptation does not transfer to stateful Notion/email/browser/data
 The result is a service-routing proxy, not MCPMark task success, pass@k, or leaderboard evidence;
 the complete source and checkpoint hashes are in [`m37`](paper/results/raw/m37-mcpmark-task-router-proxy-v1.json).
 
+### MCP service-contract transfer probe (m38)
+
+The first routing failure is now separated from the language-model representation. The
+[`train_mcp_service_probe.py`](../scripts/train_mcp_service_probe.py) experiment creates 28 short
+service/tool-contract examples for filesystem, GitHub, Notion, Playwright, and PostgreSQL. It
+trains only the five-way route head and the description-based dense selector; the 10.5M language
+model backbone is copied unchanged (aggregate backbone delta `0.0`). No MCPMark description,
+state fixture, verifier, or server is used as training input.
+
+On the same untouched 169-task standard and 70-task easy MCPMark descriptions, the child reaches
+`46.86%` combined route accuracy, `37.24%` selector top-1, and `69.87%` selector top-3, compared
+with m37's `15.90%`, `0%`, and `0.42%`. Standard is `50.89% / 37.87% / 66.27%`; easy is
+`37.14% / 35.71% / 78.57%`. This is a meaningful head-transfer result, not an execution score:
+the official MCPMark runner, stateful MCP servers, and verifiers are still required before any
+claim of task success. The complete hash-bound receipt is
+[`m38`](paper/results/raw/m38-mcp-service-contract-probe-v1.json).
+
 The public [Apple ToolSandbox](https://github.com/apple/ToolSandbox) is the next stateful
 productivity gate. Its scenarios model implicit tool dependencies, user simulation, messaging,
 canonicalization, distraction tools, and insufficient-information abstention; the upstream CLI
