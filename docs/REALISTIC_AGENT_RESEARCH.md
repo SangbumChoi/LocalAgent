@@ -145,6 +145,15 @@ matched random control.  Warm transfer therefore helps retrieval relative to ran
 surface, but it trails the older m14 diagnostic at hit@1 (26.87%) and does not establish database
 verifier, MCP execution, or real-email success.
 
+The [`m115 xLAM-derived receipt`](paper/results/raw/m115-xlam-derived-function-calling-transfer-v1.json)
+adds generic function-calling coverage without claiming access to the gated Salesforce source.  On
+128 rows from a public Apache-2.0 derivative test shard, row-local retrieval produces 50% first-tool
+exactness and 100% schema-valid calls, but 0% exact arguments.  The global selector transfers poorly
+to the unseen xLAM tool vocabulary (0.78% warm first-tool exact versus 0% random).  This separates
+three failure modes for the WebGPU model: retrieval can locate a tool, schema-constrained emission
+can be valid, and argument copying/multi-call planning still fail.  The original xLAM dataset is
+gated here, so this is derivative evidence rather than an official Salesforce split.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

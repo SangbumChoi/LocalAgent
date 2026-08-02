@@ -963,6 +963,15 @@ therefore beats random on all three retrieval depths, but trails the older m14 d
 keeps this as an out-of-domain name-only diagnostic, not EnterpriseOps-Gym task success or real
 email execution.
 
+### xLAM-derived function-calling transfer (m115)
+
+The official Salesforce xLAM repository is gated in the current environment, so the evaluator uses
+128 rows from a hash-pinned public Apache-2.0 derivative test shard and records the original link
+separately.  Row-local retrieval reaches 50% first-tool exactness and 100% schema validity, but
+argument exactness is 0%.  The global selector reaches only 0.78% first-tool exactness for warm
+weights versus 0% for the matched random control.  The [`m115 receipt`](paper/results/raw/m115-xlam-derived-function-calling-transfer-v1.json)
+therefore supports retrieval/schema diagnostics, not official xLAM, multi-call, or live API success.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
