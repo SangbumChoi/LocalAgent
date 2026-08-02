@@ -12,10 +12,12 @@
       <h1>🛠️ LocalAgent <span class="sub">tool calling in your browser</span></h1>
       <p class="tagline">
         A <strong>sub-100M, from-scratch</strong> byte-level agent over <strong>50 tools</strong>.
+        The verified bundle currently contains <strong>10,524,544 parameters</strong>;
+        <code>meta.json</code> and <code>bundle-manifest.json</code> remain the source of truth.
         The transformer requests the <strong>WebGPU</strong> execution provider
         (<code>onnxruntime-web</code>; per-node placement is not exposed); the
         <strong>route head → dense selector → pointer-copy</strong> dispatch and the planner loop are
-        light JS. <a href="https://huggingface.co/danelcsb/localagent-tiny-30m-byte" target="_blank" rel="noopener">model</a> ·
+        light JS. The public model URL is intentionally omitted until a verified Hub upload exists ·
         <a href="https://github.com/sangbumchoi/localagent" target="_blank" rel="noopener">code</a>
       </p>
     </header>

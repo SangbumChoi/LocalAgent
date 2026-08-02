@@ -20,7 +20,9 @@ whole session on WASM). No server, no API key; the model is downloaded once and 
 The staged model size is bound by `meta.json` and `bundle-manifest.json`; the currently verified
 seed-2027 export is 10,524,544 parameters. Do not infer a parameter count from this static text.
 
-Model: [`danelcsb/localagent-tiny-30m-byte`](https://huggingface.co/danelcsb/localagent-tiny-30m-byte).
+The public Hugging Face model URL is intentionally omitted until authentication and upload are
+verified. The local export receipt is tracked in
+[`m26-hf-local-export-v2.json`](../../docs/paper/results/raw/m26-hf-local-export-v2.json).
 Source: [LocalAgent](https://github.com/sangbumchoi/localagent).
 
 ## What it shows (generable dispatch — no fixed-N classifier)
@@ -154,7 +156,7 @@ Space:
 
 ```bash
 python -c "from localagent.inference.export.to_onnx import export_web; \
-           export_web('runs/tiny-30m-scenarios-best.pt', 'build/web', action_only=True)"
+           export_web('runs/sft-webgpu-proxy-pilot-hybrid-seed2027/latest.pt', 'build/web', action_only=True)"
 ```
 
 All generated bundle files must sit next to `index.html`. Export refuses to publish its manifest

@@ -1,11 +1,13 @@
 # Deploy the latest model + WebGPU demo to Hugging Face
 
 Everything here is **prepared but not pushed** — publishing to your HF account is yours to run.
-Requires `huggingface_hub` (installed) and a write token. Replace `SangbumChoi` with your namespace.
+Requires `huggingface_hub` (installed) and a write token. Set `HF_USER` to your own namespace;
+the commands below deliberately do not assume a public account or URL.
 
-The deployable checkpoint is `runs/tiny-30m-scenarios-best.pt` (free-form OOD call-name ~57%,
-multi-turn next-tool selection ~74%). The app (`app.js`) is already rewritten for the generable
-dispatch (route head → dense selector → pointer-copy over the 50-tool surface).
+The verified deployable checkpoint is `runs/sft-webgpu-proxy-pilot-hybrid-seed2027/latest.pt`
+(10,524,544 parameters; see the local export receipt for its hash). The app (`app.js`) uses the
+structured route head → dense selector → pointer-copy dispatch over the 50-tool surface. A public
+Hub URL is not claimed until the upload completes and is independently verified.
 
 ## 0. Authenticate (once)
 ```bash
@@ -15,7 +17,7 @@ hf auth login          # paste a token with write access  (or: export HF_TOKEN=h
 ## 1. Export the inference bundle from the latest checkpoint
 ```bash
 python -c "from localagent.inference.export.to_onnx import export_web; \
-           export_web('runs/tiny-30m-scenarios-best.pt', 'build/web', action_only=True)"
+           export_web('runs/sft-webgpu-proxy-pilot-hybrid-seed2027/latest.pt', 'build/web', action_only=True)"
 # writes the full logits graph, hidden-only action graph, heads/meta, and bundle-manifest.json
 # bundle-manifest.json is published only after all fp32/fp16 graphs pass hard PyTorch parity
 
@@ -30,14 +32,17 @@ python -c "import json, pathlib; p=pathlib.Path('build/web'); \
 
 ## 2. Model repo — host the checkpoint + ONNX
 ```bash
-hf repo create danelcsb/localagent-tiny-30m-byte --repo-type model -y || true
-hf upload danelcsb/localagent-tiny-30m-byte runs/tiny-30m-scenarios-best.pt model.pt        --repo-type model
-hf upload danelcsb/localagent-tiny-30m-byte build/web/model.onnx           model.onnx      --repo-type model
-hf upload danelcsb/localagent-tiny-30m-byte build/web/model.fp16.onnx      model.fp16.onnx --repo-type model
-hf upload danelcsb/localagent-tiny-30m-byte build/web/action_model.onnx action_model.onnx --repo-type model
-hf upload danelcsb/localagent-tiny-30m-byte build/web/action_model.fp16.onnx action_model.fp16.onnx --repo-type model
-hf upload danelcsb/localagent-tiny-30m-byte build/web/dispatch_heads.json  dispatch_heads.json --repo-type model
-hf upload danelcsb/localagent-tiny-30m-byte build/web/bundle-manifest.json bundle-manifest.json --repo-type model
+HF_USER=your-huggingface-user
+MODEL_REPO="$HF_USER/localagent-webgpu-10m"
+SPACE_REPO="$HF_USER/localagent-webgpu"
+hf repo create "$MODEL_REPO" --repo-type model -y || true
+hf upload "$MODEL_REPO" runs/sft-webgpu-proxy-pilot-hybrid-seed2027/latest.pt model.pt --repo-type model
+hf upload "$MODEL_REPO" build/web/model.onnx model.onnx --repo-type model
+hf upload "$MODEL_REPO" build/web/model.fp16.onnx model.fp16.onnx --repo-type model
+hf upload "$MODEL_REPO" build/web/action_model.onnx action_model.onnx --repo-type model
+hf upload "$MODEL_REPO" build/web/action_model.fp16.onnx action_model.fp16.onnx --repo-type model
+hf upload "$MODEL_REPO" build/web/dispatch_heads.json dispatch_heads.json --repo-type model
+hf upload "$MODEL_REPO" build/web/bundle-manifest.json bundle-manifest.json --repo-type model
 # (load in PyTorch via this repo's LocalAgentLM/ModelConfig — pure PyTorch, no transformers dep)
 ```
 
@@ -46,12 +51,12 @@ The Space is `sdk: static` (see the frontmatter in `README.md`). Copy the comple
 next to the app, then push the whole folder.
 ```bash
 cp build/web/{model.fp16.onnx,action_model.fp16.onnx,heads.json,meta.json,dispatch_heads.json,bundle-manifest.json} spaces/localagent-webgpu/
-hf repo create danelcsb/localagent-webgpu --repo-type space --space_sdk static -y || true
-hf upload danelcsb/localagent-webgpu spaces/localagent-webgpu/ . --repo-type space \
+hf repo create "$SPACE_REPO" --repo-type space --space_sdk static -y || true
+hf upload "$SPACE_REPO" spaces/localagent-webgpu/ . --repo-type space \
   --exclude "DEPLOY.md"        # DEPLOY.md is for maintainers, not the live Space
 ```
 `hf upload` puts the ONNX graphs on LFS automatically. The demo is then live at
-`https://huggingface.co/spaces/danelcsb/localagent-webgpu`.
+`https://huggingface.co/spaces/$HF_USER/localagent-webgpu`.
 
 ## 3a. Verify before uploading (fail closed)
 
