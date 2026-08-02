@@ -104,6 +104,16 @@ weights and cannot be counted as a training gain.  A screenshot/accessibility gr
 and the official AgentNetBench prediction protocol are required before a WebGPU model can be
 compared on that benchmark.
 
+The m59 ToolSandbox public-source projection provides a sharper small-data control.  Static-AST
+rows from the pinned scenario definitions improve the transferred child's held-out token accuracy
+from `65.31%` to `71.53%` after 32 updates, with backbone relative movement of `0.196%` in
+attention/mixer, `0.476%` in embeddings, and `0.243%` in FFN weights.  A candidate-list selector
+probe improves the inherited selector from `45%` to `75%` top-1, but a matched random backbone
+also reaches `75%`; selector movement is large (query `1.321`, tool `1.035` relative ΔL2).  This
+supports retraining the tool-specific head while rejecting the stronger claim that the pretrained
+representation itself is responsible for the gain.  See the [`m59 receipt`](paper/results/raw/m59-toolsandbox-public-projection-transfer-v1.json)
+and [`ToolSandbox adapter`](../scripts/ingest_toolsandbox_public.py).
+
 The first bounded public browser continuation is recorded in
 [`mind2web-public-train-sample-v1.json`](paper/results/raw/mind2web-public-train-sample-v1.json).
 Sixteen updates on 10 normalized Mind2Web training trajectories moved the transferred backbone by

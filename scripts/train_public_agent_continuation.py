@@ -301,7 +301,11 @@ def main() -> int:
         "heads": {"before": heads_before, "after": heads_after},
         "loss_history": loss_history,
         "token_accounting": training,
-        "claim_boundary": "Held-out public Mind2Web train-record continuation with text-first teacher-forced metrics; no Mind2Web test score, browser execution, emulator reward, or external-account claim.",
+        "claim_boundary": (
+            f"Held-out public {args.source_dataset} source continuation with text-first "
+            "teacher-forced metrics; this is not an official benchmark score and makes no "
+            "native browser/emulator/MCP/external-account claim."
+        ),
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

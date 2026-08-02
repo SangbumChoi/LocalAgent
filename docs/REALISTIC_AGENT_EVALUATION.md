@@ -1096,6 +1096,23 @@ This remains a synthetic local transfer ablation.  It reads no public benchmark 
 screenshots, emulator, MCP server, real email, or Notion account and must not be reported as an
 official benchmark score.
 
+### ToolSandbox public-source projection and transfer probe (m59)
+
+ToolSandbox is the most direct public stress test for the requested stateful productivity surface:
+its scenarios cover state dependency, canonicalization, multiple tool calls, multi-turn
+clarification, and insufficient information.  The [`m59 receipt`](paper/results/raw/m59-toolsandbox-public-projection-transfer-v1.json)
+comes from a pinned upstream checkout and a static-AST adapter, producing 107 train and 20
+held-out canonical `Conversation` rows over 32 candidate tools.  The adapter retains the public
+scenario request and candidate list but reads no verifier, imports no simulator, executes no tool,
+and calls no external API.
+
+Starting from the transferred m56 child, 32 low-rate SFT updates improve held-out teacher-forced
+token accuracy from `65.31%` to `71.53%` and reduce mean loss from `2.766` to `2.139`; sequence
+exactness remains `0/20`.  A candidate-list dense-selector probe raises top-1 from `45%` for the
+inherited selector to `75%` after retraining, but a matched random backbone also reaches `75%`.
+The result supports the data adapter and selector retraining protocol, not representation transfer
+or stateful execution; the adoption decision is explicitly `do_not_adopt_as_representation_evidence`.
+
 ### Local WebGPU and Hugging Face export receipts (m57–m58)
 
 The same m56 child was exported to a clean static-demo bundle and an independent Hugging Face
