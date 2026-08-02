@@ -1863,6 +1863,23 @@ checks, while seven independent native requirements remain absent: AndroidWorld,
 OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym.  The report therefore remains
 `ready: false`; the MobileGym result must not be used to imply completion of those other surfaces.
 
+### Focused mobile-action warm-start canary (m135)
+
+The [`m135 canary receipt`](paper/results/raw/m135-mobile-action-focus-canary-v1.json) records a
+train-only corrective arm after m133 exposed answer-tool collapse.  It starts from the m129
+state-routing checkpoint, repeats the seven low-level mobile actions 32 times, and adds 31
+generic state-conditioned trajectory rows.  The public AndroidControl/AITW eval file remains
+held out; no MobileGym task text, DOM state, answer, or judge output enters training.  The arm
+raises the held-out selector top-1 from the parent report's `47.12%` to `50.00%`, while pointer
+exactness is `25%` and route accuracy is `100%`.
+
+That offline movement does not transfer to the native canary: on the same first 20 official
+MobileGym test IDs, m135 also passes `1/20` (`5%`) and emits `mobile_submit_answer` 14 times.
+The child is therefore not promoted as a production checkpoint or a full benchmark score.  The
+receipt is useful negative evidence: action-head oversampling can improve a held-out selector
+without fixing state-conditioned UI grounding, and the backbone remains a frozen warm-start
+transfer rather than a newly pretrained representation.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
