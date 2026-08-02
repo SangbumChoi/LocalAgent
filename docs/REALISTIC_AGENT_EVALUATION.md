@@ -134,12 +134,31 @@ updates reduced held-out mean loss `2.2349 → 1.6979` and raised assistant-toke
 decisions (`63.64%`) and route accuracy reached `34/34`. These are text-first held-out
 train-record metrics, not an official Mind2Web test score.
 
+The paired [`m46 weight-transfer analysis`](paper/results/raw/m46-weight-transfer-analysis-v1.json)
+shows why the pretrained backbone remains deployable: configuration, tokenizer, and all 51 shared
+tensors are compatible; the attention/mixer, FFN, and embedding groups moved only `0.37%`, `0.45%`,
+and `0.93%` in relative L2, respectively, while action heads moved `69.19%`. This supports a
+small-learning-rate backbone plus larger head-rate recipe, but does not prove transfer is optimal;
+the existing matched no-transfer ablation remains the required quality control.
+
 The child was also exercised in a ten-episode pinned BrowserGym/MiniWoB canary using the explicit
 `realistic_browser` pool (`web_click`, `web_type`, `web_select`). The [`m45 receipt`](paper/results/raw/m45-browsergym-native-realistic-toolpool-canary-v1.json)
 records `0/10` success. This is a diagnostic only: Mind2Web backend-node IDs are not MiniWoB's
 live DOM IDs, so the canary does not measure cross-site grounding or justify an official BrowserGym
 score. The native runner defaults to the legacy `standard` pool and now exposes the realistic pool
 explicitly to prevent silent vocabulary mismatch.
+
+### Larger bounded public Mind2Web continuation (m46)
+
+The next dataset-server request covered 16 additional `train` records. Twelve passed the same
+fail-closed grounding rule after truncating each sequence to 12 actions, producing 48 normalized
+rows. Nine parent records (36 rows) were used for training and three unseen parents (12 rows) for
+evaluation; the acquisition receipt records zero parent and typed-slot overlap. Starting again from
+the same 10.52M parent, 64 backbone updates and 256 frozen-feature route/selector updates raised
+held-out assistant-token accuracy `65.75% → 78.73%` and reduced mean loss `2.2328 → 1.4992`.
+Route accuracy reached `66/66`, selector top-1 reached `55/63` (`87.30%`), and sequence exactness
+remained `0/12`. This is stronger public-train evidence than m44, but it is still not an official
+Mind2Web test score, native browser success, or screenshot-grounding result.
 
 ## Bounded public Mind2Web training continuation
 
