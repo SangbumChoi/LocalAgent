@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.train_mcp_service_probe_ablation import (
     MCPMARK_REVISION,
     _combined_mcpmark_metrics,
@@ -62,3 +64,21 @@ def test_mind2web_mcp_probe_records_a_matched_cross_domain_negative() -> None:
     assert random_scores[0] - transfer_scores[0] > 0.20
     assert transfer_scores[1] - random_scores[1] > 0.05
     assert transfer_scores[2] == random_scores[2]
+
+
+def test_lowrate_mind2web_mcp_probe_binds_all_three_arms_and_weight_movement() -> None:
+    path = Path(__file__).parents[1] / (
+        "docs/paper/results/raw/m96-mind2web-mcp-service-lowrate-matched-v1.json"
+    )
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    expected = receipt.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    assert receipt["comparison"]["rows"] == 239
+    assert receipt["comparison"]["lowrate_minus_random"]["route_accuracy"] > 0.0
+    assert receipt["comparison"]["lowrate_minus_random"]["selector_top1"] < 0.0
+    assert receipt["weight_delta"]["groups"]["backbone"] == pytest.approx(
+        0.002970523722023013
+    )

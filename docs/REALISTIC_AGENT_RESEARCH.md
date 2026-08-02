@@ -69,11 +69,12 @@ promote the weight transfer. The current AgentNet and ToolSandbox receipts there
 compatibility and a low-rate initialization policy, but not a claim of stateful computer-use
 capability.
 
-The m93 Mind2Web→MCPMark matched probe is an explicit negative control for cross-domain reuse:
-the frozen browser-adapted backbone improved exact MCP tool selection by 5.02 percentage points
-over a matched random backbone, but reduced service routing by 20.92 points and left top-3
-unchanged.  Until a native, verifier-backed MCP run reproduces a benefit, keep this backbone as a
-browser candidate only and do not describe it as a general MCP router.
+The m93–m96 Mind2Web→MCPMark matched triad is an explicit cross-domain reuse audit.  Frozen
+transfer improves exact MCP tool selection by 5.02 percentage points over random but reduces
+service routing by 20.92 points; low-rate unfreezing recovers routing to 48.12% but falls below
+random on selector top-1/top-3 and moves the backbone by 0.297% relative L2.  Until a native,
+verifier-backed MCP run reproduces a benefit, keep this backbone as a browser candidate only and
+do not describe it as a general MCP router.
 
 ## Publication checklist
 

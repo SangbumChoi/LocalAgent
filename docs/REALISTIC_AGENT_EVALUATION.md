@@ -796,6 +796,14 @@ a universal MCP router.  The receipts are [`m93 transfer`](paper/results/raw/m93
 and [`m94 matched random control`](paper/results/raw/m94-mind2web-mcp-service-random-matched-v1.json); MCP servers,
 state fixtures, verifiers, and official MCPMark scoring were not executed.
 
+The required third arm is now recorded in [`m96`](paper/results/raw/m96-mind2web-mcp-service-lowrate-matched-v1.json):
+the same m46 backbone was unfrozen at `1e-5` for 200 updates while route/selector heads used
+`5e-3`.  Low-rate unfreezing raises route accuracy to `48.12%`, just `+0.84` points over random,
+but lowers selector top-1/top-3 to `15.90%/55.23%`.  Relative backbone movement is `0.297%`
+(embedding `0.059%`, mixer `0.602%`, FFN `0.697%`, normalization `0.013%`).  Across all three
+arms, the decision is therefore mixed: retain the m46 initialization for browser work, but do not
+promote low-rate MCP adaptation or frozen transfer as a general tool-use weight policy.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
