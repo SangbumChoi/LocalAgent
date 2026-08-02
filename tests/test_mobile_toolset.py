@@ -4,7 +4,7 @@ from localagent.agent.routes import route_of
 
 def test_mobile_toolset_is_additive_and_schema_complete():
     tools = mobile_tools()
-    assert len(tools) == 10
+    assert len(tools) == 11
     assert all(tool.name.startswith("mobile_") for tool in tools)
     assert {tool.name for tool in tools} == {
         "mobile_click",
@@ -17,6 +17,7 @@ def test_mobile_toolset_is_additive_and_schema_complete():
         "mobile_navigate_back",
         "mobile_press_enter",
         "mobile_wait",
+        "mobile_submit_answer",
     }
     for tool in tools:
         schema = tool.parameters

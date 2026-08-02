@@ -1088,6 +1088,31 @@ stores only hashes and aggregate judge fields, is marked `native_receipt_eligibl
 therefore cannot satisfy the publication gate; it is a direct negative result for the current
 text-first mobile adapter.
 
+### MobileGym answer-tool adaptation and transfer control (m125)
+
+The [`m125 receipt`](paper/results/raw/m125-mobilegym-answer-adaptation-v1.json) records a bounded
+surface adaptation rather than silently turning the m124 failure into a benchmark claim.  The
+training input is the public AndroidControl/AITW train projection (4,096 rows) with its disjoint
+held-out file (904 rows), plus the existing synthetic mobile rows and eight generic answer-action
+examples.  No MobileGym task text, answer value, simulator state, or judge output entered SFT.
+The additive `mobile_submit_answer(message)` schema is translated to MobileGym's native answer
+action only during evaluation.
+
+Two 300-step, frozen-backbone dispatch-head arms are matched on data and budget.  The pretrained
+head warm start reaches `42.92%` held-out selector top-1, while the random-head control reaches
+`47.46%`; both route at `100%`.  Weight inspection finds 51 same-shape tensors with matching
+configuration and tokenizer.  The backbone remains unchanged (`0.0%` relative ΔL2) in both
+arms; action-head movement is `44.83%` for warm and `93.72%` for random.  This supports retaining
+the compatible pretrained body while treating the surface head as an ablation variable, not as
+a capability guarantee.
+
+On the official `notes.ReadTodoText` test task, each arm executes two native calls and scores
+`0/1`.  The warm arm does select the new answer action, but its copied `message` is empty, so all
+three answer fields fail.  The result is explicitly `native_receipt_eligible: false`: it is a
+useful grounding/argument failure record, not a MobileGym score, screenshot-grounding result,
+or publication-gate pass.  The next mobile milestone is answer-span/pointer training plus a
+larger multi-task native run, not promotion of this adapter.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

@@ -103,6 +103,15 @@ MOBILE_TOOLS = [
             "required": [],
         },
     ),
+    ToolSpec(
+        name="mobile_submit_answer",
+        description="Submit a text answer for the current mobile task.",
+        parameters={
+            "type": "object",
+            "properties": {"message": {"type": "string"}},
+            "required": ["message"],
+        },
+    ),
 ]
 
 

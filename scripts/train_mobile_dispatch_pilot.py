@@ -299,6 +299,16 @@ def _synthetic_mobile_samples() -> list[Sample]:
             "Allow the Android screen to update before continuing.",
             "Wait a moment on the phone.",
         ],
+        "mobile_submit_answer": [
+            "Submit the mobile task answer 'alpha, beta'.",
+            "On the phone, send the answer 'one; two' for the current task.",
+            "提交手机任务答案「会议、购物清单」。",
+            "把当前手机任务的答案提交为「第一项，第二项」。",
+            "Answer the handset question with 'red, blue'.",
+            "Submit the requested phone answer '完成'.",
+            "在移动设备上提交文本答案「已确认」。",
+            "Send the current mobile answer '7'.",
+        ],
     }
     return [
         Sample(

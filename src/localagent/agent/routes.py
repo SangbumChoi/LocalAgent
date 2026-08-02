@@ -42,6 +42,7 @@ _TOOL_ROUTE: dict[str, str] = {
     "mobile_open_app": "computer_use", "mobile_input_text": "computer_use",
     "mobile_navigate_home": "computer_use", "mobile_navigate_back": "computer_use",
     "mobile_press_enter": "computer_use", "mobile_wait": "computer_use",
+    "mobile_submit_answer": "computer_use",
     # --- code: run code/commands, files, dev ops, compute --------------------------------------
     "calculator": "code", "planner": "code", "run_python": "code", "run_command": "code",
     "read_file": "code", "write_file": "code", "edit_file": "code", "apply_patch": "code",

@@ -93,6 +93,8 @@ def _action_from_call(call: Any):
             return Action.wait(float(seconds))
         except (TypeError, ValueError):
             return None
+    if name == "mobile_submit_answer":
+        return Action.answer(str(args.get("message", "")))
     return None
 
 
