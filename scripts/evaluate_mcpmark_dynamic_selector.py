@@ -226,6 +226,11 @@ def main() -> int:
     eval_decisions = probe_decisions(eval_rows)
     parent = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     tokenizer = _checkpoint_tokenizer(parent)
+    model_config = dict(parent["cfg"])
+    model_config_sha256 = hashlib.sha256(
+        json.dumps(model_config, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    parameter_count = sum(int(value.numel()) for value in parent["state_dict"].values())
     warm, warm_state = _run_arm(
         parent,
         tokenizer,
@@ -258,7 +263,9 @@ def main() -> int:
         "evaluator": file_identity(Path(__file__).resolve()),
         "source": {
             "dataset": "Jakumetsu/mcpmark-trajectory-log",
+            "url": "https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log",
             "revision": "e50578f0ab904d8e6a7c576c387c1e76ae482c89",
+            "license": "MIT",
             "train_inputs": [file_identity(path) for path in args.train],
             "eval_inputs": [file_identity(path) for path in args.eval],
             "train_rows": len(train_rows),
@@ -270,6 +277,12 @@ def main() -> int:
             "assistant_free_text_redacted": True,
         },
         "checkpoint": file_identity(args.checkpoint),
+        "model_contract": {
+            "config": model_config,
+            "config_sha256": model_config_sha256,
+            "parameter_count": parameter_count,
+            "tokenizer": parent.get("tokenizer"),
+        },
         "hyperparameters": {
             "steps": args.steps,
             "batch_size": args.batch_size,

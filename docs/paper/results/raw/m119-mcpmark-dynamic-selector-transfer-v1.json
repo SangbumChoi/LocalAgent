@@ -152,9 +152,9 @@
   },
   "claim_boundary": "Public redacted MCPMark trajectory routing diagnostic over filesystem/Notion training rows and a held-out Playwright row. The global catalog contains tool schemas from both splits; no MCP server, browser, verifier, official split score, or external side effect was run. This is not an official MCPMark result.",
   "evaluator": {
-    "bytes": 12273,
+    "bytes": 12889,
     "path": "/Users/sangbumchoi/Documents/LocalAgent/scripts/evaluate_mcpmark_dynamic_selector.py",
-    "sha256": "132a623554eb9268549e09feb1d0ccd1f19158535238e6f9f969c0c2e10fe8b8"
+    "sha256": "79582c835482e573888c36dec80ef86906ae19a54fc9c26304baf407c42749e8"
   },
   "hyperparameters": {
     "batch_size": 64,
@@ -166,6 +166,39 @@
     "steps": 500
   },
   "kind": "localagent_mcpmark_dynamic_selector_transfer",
+  "model_contract": {
+    "config": {
+      "conv_kernel": 3,
+      "d_model": 384,
+      "dropout": 0.0,
+      "embed_dim": 384,
+      "ffn_hidden": 512,
+      "layer_types": [
+        "conv",
+        "attn",
+        "conv",
+        "attn"
+      ],
+      "max_seq_len": 2048,
+      "n_heads": 6,
+      "n_kv_heads": 1,
+      "n_layers": 4,
+      "n_loops": 1,
+      "name": "webgpu-10m-hybrid",
+      "norm_eps": 1e-05,
+      "qk_norm": true,
+      "rope_theta": 10000.0,
+      "tie_embeddings": true,
+      "vocab_size": 16384
+    },
+    "config_sha256": "06f1e4707906d6bf0eda65764e76f8561a723d46fb829542e4554946680bf454",
+    "parameter_count": 10524544,
+    "tokenizer": {
+      "kind": "bpe",
+      "path": "data/tokenizer-webgpu-proxy-16k.json",
+      "sha256": "8365405524329487aea3b087cc999db887d8276115e67e88ebfcf7901b15617c"
+    }
+  },
   "schema_version": 1,
   "source": {
     "assistant_free_text_redacted": true,
@@ -179,6 +212,7 @@
       }
     ],
     "eval_rows": 1,
+    "license": "MIT",
     "revision": "e50578f0ab904d8e6a7c576c387c1e76ae482c89",
     "tool_catalog": [
       "API-delete-a-block",
@@ -212,7 +246,8 @@
         "sha256": "6fc70975da8b7fe0539cae97591bb2065904390590a64217b74f468c3c4dcabb"
       }
     ],
-    "train_rows": 2
+    "train_rows": 2,
+    "url": "https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log"
   },
   "weight_analysis": {
     "interpretation": "The selector is trained on frozen model features. A warm-vs-random top-k gap is therefore representation-transfer evidence, while equal or poor top-1 does not establish native MCP execution.",
