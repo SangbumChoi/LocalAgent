@@ -990,6 +990,25 @@ profiles one hash-pinned filesystem trace with 45 events and 21 paired calls acr
 Only metadata is retained: raw prompts, arguments, assistant text, and tool outputs are excluded,
 so this is acquisition evidence rather than an evaluation score or training artifact.
 
+### MCPMark redacted trajectory SFT transfer (m118)
+
+The [m118 receipt](paper/results/raw/m118-mcpmark-redacted-trajectory-sft-transfer-v1.json) records
+a content-audited continuation experiment over three public MIT-licensed trajectory files from the
+same dataset: filesystem and Notion are training rows, and Playwright is a held-out service.  The
+normalizer ([`normalize_mcpmark_trajectory.py`](../scripts/normalize_mcpmark_trajectory.py)) retains
+user requests and structured tool arguments, redacts all tool outputs and assistant free text with
+fixed markers, and rewrites absolute paths to short workspace suffixes.  The resulting 67 paired
+calls are valid canonical `Conversation` rows and are bound by source/output hashes.
+
+With 16 CPU SFT steps, both the warm and matched-random parents produce identical teacher-forced
+metrics: training loss falls 4.9972→4.5967 and the held-out Playwright loss falls 5.6167→5.5599,
+but held-out sequence accuracy remains 0%.  The warm/random parent and child backbones are
+bitwise identical, so this run shows no body-level transfer advantage.  A constrained first-action
+probe on the unseen Playwright row predicts `browser_type`/`browser_click` instead of the target
+`browser_navigate` in all four arms.  This is a redacted SFT and decoder diagnostic only—not an
+official MCPMark result, native browser/MCP execution, verifier success, or evidence that the tiny
+sample is sufficient for deployment.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

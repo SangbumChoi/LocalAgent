@@ -173,6 +173,18 @@ large third-party document outputs, this pass deliberately stores only provenanc
 does not silently turn public logs into training data.  A content/license audit and argument/schema
 normalizer are required before any SFT or distillation use.
 
+The [`m118 redacted trajectory SFT receipt`](paper/results/raw/m118-mcpmark-redacted-trajectory-sft-transfer-v1.json)
+implements that audit on three hash-pinned public traces (filesystem, Notion, and Playwright; 67
+paired calls).  The normalizer keeps user prompts and structured arguments, but replaces every tool
+result and assistant free-text response with fixed markers and rewrites absolute paths to workspace
+suffixes.  Filesystem and Notion rows train a 16-step teacher-forced continuation; the Playwright
+row is held out.  Both warm and matched-random arms have identical train/eval loss and identical
+backbone movement, with held-out loss improving from 5.6167 to 5.5599 but sequence accuracy staying
+at 0%; a one-step unseen Playwright probe selects the wrong action in all four arms.  This is useful
+evidence that redacted multi-turn traces are ingestible and that the current tiny model still lacks
+stateful action planning.  It is not an official MCPMark score, native MCP execution, or a reason to
+publish a universal adapter.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

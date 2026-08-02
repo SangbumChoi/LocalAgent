@@ -24,7 +24,7 @@
     },
     "random_control": {
       "path": "/private/tmp/m111-deployment-repair-random.pt",
-      "bytes": 52283646,
+      "bytes": 52283760,
       "sha256": "f52549e366cf60a529ba3b197bd64fedd8b34d07fb137c0bcf625d56a4bacb9f"
     }
   },
