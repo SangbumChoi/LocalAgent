@@ -65,8 +65,7 @@ tokenizer SHA-256, and no shape additions/removals.  The training probe intentio
 backbone, so attention/mixer, FFN, embedding, and normalization movement is `0.0`; the action-head
 group moved by aggregate relative ΔL2 `1.7017` (mostly the dense selector at `1.9213`).  This is
 the expected head-only adaptation pattern, not evidence that the pretrained representation is
-optimal.  The next controlled experiment must compare this head-only child with a low-rate
-backbone-unfrozen continuation and a no-transfer initialization under the same held-out prompts.
+optimal.  The low-rate-unfrozen and no-transfer comparison is recorded below.
 
 The v9 selector continuation adds 86 instruction-only mobile paraphrases (repeated four times for
 the probe) and removes inherited full accessibility dumps from the mobile tool centroids.  It
@@ -86,6 +85,18 @@ steps, with complete-trajectory pass@1 still `0/3`.  This is evidence for cheap 
 its current limit, not evidence that the frozen representation is sufficient for browser-agent
 control.  The full v14 artifact and first-failure receipt is
 [`m16-webgpu-mobile-productivity-trajectories-v14.json`](paper/results/raw/m16-webgpu-mobile-productivity-trajectories-v14.json).
+
+The m56 stateful-productivity transfer ablation closes the proposed comparison on one fixed local
+state machine.  It uses the same 62-tool pool, 16 held-out decisions, seed, and pointer budget for
+three arms: frozen pretrained, pretrained with a `1e-5` backbone learning rate, and matched random
+backbone.  The low-rate arm improves selector top-1 from `53.33%` to `73.33%` over the frozen arm
+and reaches `73.33%` versus `33.33%` for random; its aggregate backbone relative ΔL2 is `0.188%`
+(mixer `0.411%`, FFN `0.409%`, embedding `0.046%`, normalization `0.0084%`).  Closed-loop
+success remains `1/16` for every arm, complete workflows remain `1/5` (abstention only), and
+recovery remains `0/1`.  The result supports low-rate pretrained initialization as a selector
+optimization prior, but does not support adopting it as evidence of stateful execution.  See the
+[`m56 receipt`](paper/results/raw/m56-stateful-productivity-transfer-ablation-v1.json) and
+[`low-rate trainer`](../scripts/train_stateful_productivity_lowrate_probe.py).
 
 The AgentNet/OpenCUA adapter is deliberately outside this weight-transfer series.  Its 12-action
 official sample is parsed into evaluation-only coordinate tools, so it changes no checkpoint

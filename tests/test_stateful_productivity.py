@@ -94,3 +94,22 @@ def test_published_stateful_probe_receipt_is_self_hashed_and_negative() -> None:
     assert receipt["source"]["public_benchmark_text_used"] is False
     assert receipt["arms"]["pretrained_frozen_backbone"]["closed_loop"]["task_complete_rate"] == 0.2
     assert receipt["arms"]["pretrained_frozen_backbone"]["closed_loop"]["recovery_task_complete_rate"] == 0.0
+
+
+def test_published_lowrate_transfer_receipt_binds_all_three_arms() -> None:
+    path = Path(__file__).parents[1] / "docs/paper/results/raw/m56-stateful-productivity-transfer-ablation-v1.json"
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    expected = receipt.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    assert set(receipt["arms"]) == {
+        "pretrained_frozen_backbone",
+        "pretrained_lowrate_unfrozen_backbone",
+        "matched_random_backbone",
+    }
+    lowrate = receipt["arms"]["pretrained_lowrate_unfrozen_backbone"]
+    assert lowrate["weight_movement"]["backbone"] > 0.0
+    assert lowrate["closed_loop"]["task_complete_rate"] == 0.2
+    assert receipt["source"]["native_runtime_executed"] is False

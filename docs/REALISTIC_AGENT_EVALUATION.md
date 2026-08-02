@@ -1071,6 +1071,31 @@ The probe is synthetic and local by design: it uses no public benchmark task tex
 emulators, MCP servers, external APIs, real email, or real Notion account.  It is a training and
 diagnostic contract, not an AndroidWorld, BrowserGym, MCPMark, or publication score.
 
+### Stateful productivity low-rate transfer ablation (m56)
+
+The [`m56 receipt`](paper/results/raw/m56-stateful-productivity-transfer-ablation-v1.json) adds the
+missing weight-adoption control.  It keeps the same five disjoint workflows, 16 evaluation
+decisions, 62-tool catalog, seed, pointer vocabulary, and closed-loop evaluator while comparing:
+
+| Arm | Selector top-1 | Selector top-3 | Closed-loop | Complete workflows | Backbone relative ΔL2 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Pretrained, frozen | 53.33% | 73.33% | 1/16 | 1/5 | 0 |
+| Pretrained, low-rate unfrozen (`1e-5`) | 73.33% | 80.00% | 1/16 | 1/5 | 0.188% |
+| Matched random backbone | 33.33% | 80.00% | 1/16 | 1/5 | not applicable |
+
+The low-rate arm improves held-out selector top-1 by `20.00` percentage points over the frozen
+arm and `40.00` points over random, while changing the mixer/FFN/embedding groups by only
+`0.41%`/`0.41%`/`0.046%` respectively.  It does **not** improve closed-loop execution, recovery
+(`0/1`), or complete workflows; the only completed task remains abstention.  The appropriate
+weight policy is therefore: retain the verified BPE backbone as a low-rate initialization for
+future native adaptation, but do not promote it as evidence of stateful agent capability.  The
+next decisive experiment is a larger public-train continuation with native BrowserGym/MobileGym
+or MCPMark execution, not more selector-only tuning on this five-task mock.
+
+This remains a synthetic local transfer ablation.  It reads no public benchmark task text,
+screenshots, emulator, MCP server, real email, or Notion account and must not be reported as an
+official benchmark score.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
