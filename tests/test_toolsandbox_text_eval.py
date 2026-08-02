@@ -35,3 +35,16 @@ def test_published_toolsandbox_decoder_receipt_is_explicitly_offline() -> None:
     assert receipt["arms"]["schema_child_row_retriever"]["tool_exact_rate"] == 0.6
     assert receipt["arms"]["schema_child_row_retriever"]["schema_valid_rate"] == 1.0
     assert receipt["arms"]["schema_child_global_selector"]["tool_exact_rate"] == 0.1
+
+
+def test_m113_current_checkpoint_projection_preserves_native_boundary() -> None:
+    receipt = json.loads(
+        Path("docs/paper/results/raw/m113-toolsandbox-text-projection-current-checkpoint-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert receipt["source"]["official_split_verified"] is False
+    assert receipt["source"]["simulator_executed"] is False
+    assert receipt["row_retriever"]["tool_exact_rate"] == 0.3
+    assert receipt["row_retriever"]["schema_valid_rate"] == 1.0
+    assert receipt["global_selector_control"]["tool_exact_rate"] == 0.0

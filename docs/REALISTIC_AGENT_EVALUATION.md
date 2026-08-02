@@ -943,6 +943,16 @@ trajectories because screenshots, coordinates, and desktop execution are absent.
 list-wrapped AgentNet argument form was also normalized in the evaluator.  This is explicit
 negative transfer evidence, not native AgentNetBench or OSWorld success.
 
+### ToolSandbox static projection replay (m113)
+
+The same m111 warm checkpoint was also run through the pinned 20-row ToolSandbox static projection.
+With each row's candidate list preserved, the decoder produced 30% exact tool names and 100%
+schema-valid calls; the global 50-tool selector control produced 0% exact names and 5% schema-valid
+calls.  Canonicalization rows are only 21.43% exact and state-dependent rows are 0%, which warns
+that a valid JSON call is not stateful task success.  The [`m113 receipt`](paper/results/raw/m113-toolsandbox-text-projection-current-checkpoint-v1.json)
+records the pinned source revision and explicitly excludes the simulator, user model, verifiers,
+official split, and external services.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
