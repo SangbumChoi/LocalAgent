@@ -75,6 +75,23 @@ def test_native_browsergym_full_pinned_split_passes_receipt_contract() -> None:
     assert check["status"] == "pass"
 
 
+def test_native_browsergym_adapter_ablation_passes_receipt_contract() -> None:
+    receipt = ROOT / "docs/paper/results/raw/m43-browsergym-native-adapter-full-model-eval-v1.json"
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    assert payload["official_split_verified"] is True
+    assert payload["task_count"] == 240
+    assert payload["success_rate"] == 5 / 240
+    successes = [case for case in payload["cases"] if case["success"]]
+    assert len(successes) == 5
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        native_receipts={"browsergym_miniwob": receipt},
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "native:browsergym_miniwob")
+    assert check["status"] == "pass"
+
+
 def test_native_webgpu_capability_receipt_passes_hardware_contract() -> None:
     receipt = ROOT / "docs/paper/results/raw/m39-webgpu-native-capability-v1.json"
     payload = json.loads(receipt.read_text(encoding="utf-8"))

@@ -47,7 +47,7 @@ the verified native WebGPU and full BrowserGym receipts reduces this to seven:
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
   --webgpu-receipt docs/paper/results/raw/m40-webgpu-native-capability-notion-v1.json \
-  --native-receipt browsergym_miniwob=docs/paper/results/raw/m41-browsergym-native-full-model-eval-v1.json \
+  --native-receipt browsergym_miniwob=docs/paper/results/raw/m43-browsergym-native-adapter-full-model-eval-v1.json \
   --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json
 ```
 
@@ -101,14 +101,21 @@ observation-contract adapter is learnable, not a native BrowserGym result; the r
 errors and the 240-episode m29 abstention result still block any browser-agent claim.  The native
 runner now emits quoted accessibility names so a future run evaluates the same contract.
 
-The complete pinned native split is now recorded in the [`m41 receipt`](paper/results/raw/m41-browsergym-native-full-model-eval-v1.json).
+The replayed train-only adapter is recorded in [`m42`](paper/results/raw/m42-browser-context-adapter-replay-v1.json).
+It reused 589 synthetic computer-use rows for 300 low-rate backbone updates plus 1,000 route and
+selector-head updates.  On ten disjoint projected rows, route accuracy improved `40% → 100%`,
+tool accuracy `30% → 100%`, and exact arguments `20% → 60%`.  This is a contract-transfer result,
+not BrowserGym training; no BrowserGym goals, screenshots, task plans, or labels were read.
+
+The complete pinned native split is now recorded in the [`m43 receipt`](paper/results/raw/m43-browsergym-native-adapter-full-model-eval-v1.json).
 It ran the exact 240-episode plan (60 task variants, four fixed seeds, ten model steps per
 episode) with BrowserGym `0.14.3`, MiniWoB++ at the pinned revision, Playwright `1.44.0`, and
-Chromium `125.0.6422.26`; `official_split_verified` is true.  The result was `0/240` success:
-all 240 episodes abstained at every step (`I am LocalAgent.`), with 0 grounded actions and zero
-action errors.  This is a reproducible native text/accessibility-tree baseline, not a visual-agent,
-WebArena, real-account, or leaderboard score; the compact tracked receipt retains per-task and
-per-seed aggregates and hashes the full local case log.
+Chromium `125.0.6422.26`; `official_split_verified` is true.  The train-only accessibility
+contract adapter produced `5/240` success (`2.08%`): two `click-button` and three
+`stock-market` episodes.  This is a reproducible native text/accessibility-tree ablation, not a
+visual-agent, WebArena, real-account, or leaderboard score; the compact tracked receipt retains
+per-task and per-seed aggregates and hashes the full local case log.  The unchanged base
+checkpoint remains the m41 `0/240` baseline.
 
 ## Bounded public Mind2Web training continuation
 

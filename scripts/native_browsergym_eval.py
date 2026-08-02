@@ -94,7 +94,7 @@ def _visible_elements(observation: dict[str, Any]) -> list[dict[str, str]]:
 def _compact_context(observation: dict[str, Any]) -> str:
     elements = _visible_elements(observation)
     lines = [
-        "Visible accessibility elements (the bracketed id is the BrowserGym target id):",
+        "Live accessibility elements (quoted names are valid targets):",
     ]
     for element in elements:
         name = element["name"] or "<unnamed>"
@@ -111,8 +111,7 @@ def _model_prompt(observation: dict[str, Any]) -> str:
     goal = str(observation.get("goal", "")).strip()
     return (
         f"Browser task: {goal}\n\n{_compact_context(observation)}\n\n"
-        "Choose exactly one action from click, type_text, key_press, scroll, or abstain. "
-        "Use the visible element's name as the target for click."
+        "Choose exactly one grounded computer action or abstain."
     )
 
 
