@@ -41,8 +41,17 @@ state loop, SwiftShader, or a local checkpoint path as a pass:
 PYTHONPATH=src python scripts/workshop_gate.py --strict
 ```
 
-The command currently exits non-zero with nine blocking requirements (the weight-transfer check
-passes).  That is intentional:
+The command without supplied receipts exits non-zero with nine blocking requirements.  Supplying
+the verified native WebGPU receipt reduces this to eight:
+
+```bash
+PYTHONPATH=src python scripts/workshop_gate.py --strict \
+  --webgpu-receipt docs/paper/results/raw/m39-webgpu-native-capability-v1.json \
+  --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json
+```
+
+The seven remaining native benchmark receipts and the public artifact manifest are still absent.
+That is intentional:
 four train adapters and the tracked offline receipts are useful progress, but they do not prove
 native OS/emulator/MCP control or public deployment.  Once a native runner produces a receipt, it
 can be supplied as `--native-receipt BENCHMARK_ID=PATH`; the receipt contract requires explicit
