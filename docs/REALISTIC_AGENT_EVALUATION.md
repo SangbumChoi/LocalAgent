@@ -412,6 +412,24 @@ The upstream environment reward and generated task instances remain required for
 claim; the inventory instead gives the WebGPU adapter a pinned, auditable task taxonomy and step
 budget for future emulator runs.
 
+### EnterpriseOps-Gym public card/API inventory (m52)
+
+The pinned [EnterpriseOps-Gym dataset card](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym)
+and Hugging Face API metadata were acquired at revision `c8e538eae8a6205294f0a86675fefdc1fac408f6`.
+The card/API profile is frozen in the [`m52 receipt`](paper/results/raw/m52-enterpriseopsgym-metadata-v1.json)
+and records the source hashes, schema, split sizes, and tool-set modes.  It makes an important
+source discrepancy explicit: the card's About paragraph says **1,150** expert-curated tasks,
+while its domain table sums to **1,115**; the API's downloadable row counts are 649 (`oracle`) and
+637 for each `plus_5_tools`, `plus_10_tools`, and `plus_15_tools` configuration.  The domain table
+also reports 104 email tasks, 79 email tools, eight enterprise domains, 512 tools overall, and a
+9.15-step average (maximum 34).
+
+This is metadata-only evidence.  The profile did not download parquet rows, read task verifiers or
+server configuration, start Docker/MCP services, execute a state transition, or add benchmark text
+to training.  A native EnterpriseOps claim still requires the resettable containerized servers and
+SQL final-state verifiers; the existing 67-row email retrieval receipt remains a name-only selector
+diagnostic, not task success.
+
 ## What can be trained
 
 Only the following public demonstrations are currently training candidates:
@@ -458,16 +476,17 @@ The following are important reality checks, not extra SFT rows:
   checked before any redistribution, so it remains evaluation-only.
 - [MCPMark Verified](https://github.com/eval-sys/mcpmark): pinned Notion, GitHub, filesystem, Postgres,
   and Playwright environments with deterministic verifiers.
-- [EnterpriseOps-Gym](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym): the official
-  card inventories 1,115 enterprise tasks across eight domains, including 104 email tasks and 512
-  tools.  The current Hugging Face viewer exposes 649 rows in the `oracle` configuration; the
-  four tool-set modes are a configuration view of the same card-level inventory, not 1,115
-  additional rows.  The official card describes containerized execution with SQL state verifiers
-  and reports Apache-2.0; tasks/verifiers stay evaluation-only to prevent benchmark memorization.
-  The pinned HF revision is `c8e538eae8a6205294f0a86675fefdc1fac408f6`.  The card-level inventory
-  (104 email tasks) is not the same as a downloadable config row count: the bounded oracle and
-  `plus_15_tools` email configs used below expose 67 matching task IDs, so the receipt reports 67
-  and retains the 104 figure only as inventory context.
+- [EnterpriseOps-Gym](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym): the pinned
+  card reports about 1,150 expert-curated tasks in its About paragraph, while its domain table
+  totals 1,115 (including 104 email tasks), across eight domains and 512 tools.  The API exposes
+  649 rows in `oracle` and 637 rows in each distractor configuration; these are configuration
+  views, not additional task claims.  The official card describes containerized execution with
+  SQL state verifiers and reports Apache-2.0; tasks/verifiers stay evaluation-only to prevent
+  benchmark memorization.  The pinned HF revision is `c8e538eae8a6205294f0a86675fefdc1fac408f6`.
+  The card/API reconciliation is frozen in the [`m52 metadata receipt`](paper/results/raw/m52-enterpriseopsgym-metadata-v1.json).
+  The card-level inventory (104 email tasks) is not the same as a downloadable config row count:
+  the bounded oracle and `plus_15_tools` email configs used below expose 67 matching task IDs, so
+  the retrieval receipt reports 67 and retains 104 only as inventory context.
 - [MCP-Persona](https://github.com/wwh0411/MCP-Persona): 173 personalized tool-calling tasks that
   include Notion and email MCP servers.  Its repository terms must be checked before redistribution;
   keep the simulated account state and checkpoint labels evaluation-only.

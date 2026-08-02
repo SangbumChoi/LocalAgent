@@ -55,13 +55,13 @@ entries:
     code_url: https://github.com/ServiceNow/EnterpriseOps-Gym
     license: Apache-2.0
     source_revision: c8e538eae8a6205294f0a86675fefdc1fac408f6
-    scale: 1115_tasks_512_tools_8_enterprise_domains
+    scale: about_1150_tasks;_domain_table_1115_tasks;_512_tools_8_enterprise_domains
     modalities: [system_prompt, user_prompt, tool_set, sql_verifier, mcp_server_state]
     split_policy: evaluation_only; verifiers and server configuration stay out of training
     runtime: resettable_containerized_MCP_servers
     webgpu_projection: name/schema retrieval and local state-machine rehearsal only
     metric: final_state_SQL_verifier_success_and_long_horizon_tool_use
-    notes: Email, calendar, drive, HR, ITSM, CSM, Teams, and hybrid workflows are stateful; name-only retrieval is not task success.
+    notes: The pinned card says about 1,150 tasks while its domain table totals 1,115; the API exposes 649 oracle rows and 637 rows in each distractor mode. Email, calendar, drive, HR, ITSM, CSM, Teams, and hybrid workflows are stateful; name-only retrieval is not task success.
 
   - id: mcpmark
     family: tool_api
