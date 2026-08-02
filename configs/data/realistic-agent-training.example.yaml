@@ -42,6 +42,10 @@ forbidden_train_ids:
   - worldgui
   - macosworld
   - assistgui
+  - androiddaily
+  - windows_agent_arena
+  - webchorearena
+  - timewarp
 normalization:
   interchange: localagent.data.schema.Conversation
   text_first_observation: accessibility_tree_or_cleaned_dom_plus_goal

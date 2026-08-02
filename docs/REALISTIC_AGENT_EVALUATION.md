@@ -7,9 +7,9 @@ desktop workflows, and stateful API/MCP tools.  The source-linked inventory is
 It is deliberately a catalog, not a downloader: every acquired byte must be recorded in a local
 provenance manifest with an upstream revision, byte count, and SHA-256.
 
-The current catalog contains 36 source-linked rows (four train-eligible and 32 evaluation or
+The current catalog contains 40 source-linked rows (four train-eligible and 36 evaluation or
 restricted) and has a canonical SHA-256 fingerprint recorded by the preflight command below.
-The current fingerprint is `aa7e7b90d9b8158d7bd1c76430a6ffb6bbb0ad3ceef1aaac14046684cfc93f30`.
+The fingerprint is generated from the canonical catalog by the preflight command below.
 
 Run the read-only readiness report before acquiring or evaluating anything:
 
@@ -17,11 +17,16 @@ Run the read-only readiness report before acquiring or evaluating anything:
 PYTHONPATH=src python scripts/realistic_agent_preflight.py
 ```
 
-The report currently identifies the four local text-first adapters as runnable and all 32
+The report currently identifies the four local text-first adapters as runnable and all 36
 environment/evaluation rows as blocked by their pending integration status (for example, no
 `adb`, Docker, VM, or upstream BrowserGym checkout).  `--strict` intentionally exits non-zero
 until those external runners are installed and pinned; this is a readiness gate, not a benchmark
 score.
+
+The current inventory also tracks recent realism upgrades: AndroidDaily (daily-use closed-source
+mobile tasks), Windows Agent Arena (Windows desktop workflows), WebChoreArena (memory-heavy
+browser chores), and TimeWarp (cross-version web UI drift).  They are evaluation-only until their
+runtime dependencies, task revisions, and licensing terms are pinned.
 
 ### Workshop/publication gate
 
@@ -36,7 +41,8 @@ state loop, SwiftShader, or a local checkpoint path as a pass:
 PYTHONPATH=src python scripts/workshop_gate.py --strict
 ```
 
-The command currently exits non-zero with ten blocking requirements.  That is intentional: the
+The command currently exits non-zero with nine blocking requirements (the weight-transfer check
+passes).  That is intentional:
 four train adapters and the tracked offline receipts are useful progress, but they do not prove
 native OS/emulator/MCP control or public deployment.  Once a native runner produces a receipt, it
 can be supplied as `--native-receipt BENCHMARK_ID=PATH`; the receipt contract requires explicit
@@ -57,6 +63,14 @@ and `tool_head`, `ptr_head`, `route_head`, `dense_selector`, and `selector_proj`
 [`m26 receipt`](paper/results/raw/m26-hf-local-export-v2.json) binds all five file hashes and marks
 `published: false`: this environment is not authenticated to Hugging Face, so no public model URL
 is claimed.
+
+The first native checkpoint-in-loop browser probe is now recorded in the [`m29 receipt`](paper/results/raw/m29-browsergym-native-model-eval-v1.json).
+It executed the pinned BrowserGym/MiniWoB environment for all 240 episodes (60 task variants,
+four fixed seeds) with live accessibility-tree observations.  This is a real environment result,
+but only a one-step diagnostic: the current SFT checkpoint abstained on all 240 episodes, produced
+zero grounded actions, and achieved 0/240 success.  It is explicitly not an official multi-step
+BrowserGym score and does not support visual, WebArena, mobile-emulator, desktop-VM, or real-account
+email/Notion claims.
 
 ## Bounded public Mind2Web training continuation
 

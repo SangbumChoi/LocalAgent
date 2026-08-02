@@ -1308,3 +1308,148 @@ entries:
       split: official_test
       rule: project files, task instructions, and completion states remain outside training
     notes: Nine Windows productivity applications with 100 task workflows; useful for measuring computer-use transfer across operating systems.
+
+  - id: androiddaily
+    family: mobile
+    name: AndroidDaily
+    source_url: https://huggingface.co/datasets/stepfun-ai/AndroidDaily
+    paper_url: https://arxiv.org/abs/2512.15431
+    code_url: https://github.com/stepfun-ai/gelab-zero
+    data_access_url: https://huggingface.co/datasets/stepfun-ai/AndroidDaily
+    access_status: public_download
+    license:
+      name: terms_review_required
+      evidence: https://huggingface.co/datasets/stepfun-ai/AndroidDaily
+    scale:
+      kind: benchmark
+      tasks: 235
+      static_actions: 3146
+      applications: 94
+    observation:
+      modalities: [text, screenshot, accessibility_tree, emulator_state]
+      formats: [JSON, PNG, APK, live_device]
+    action:
+      modalities: [mobile_action, structured_action]
+      formats: [tap, swipe, type, keyevent, JSON]
+    domains: [mobile_ui, shopping, transportation, social, entertainment, productivity]
+    train_policy: eval_only
+    integration:
+      status: APK_runner_pending
+      target_adapter: androiddaily_episode_v1
+      source_split_policy: official_task_and_device_holdout
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: accessibility_tree_plus_goal
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_task_and_device_holdout
+      rule: closed-source app trajectories, task instructions, and evaluator judgments remain outside training
+    notes: Realistic daily-use tasks with process-aware GRADE evaluation; requires a connected Android device or emulator and terms review before redistribution.
+
+  - id: windows_agent_arena
+    family: computer
+    name: Windows Agent Arena
+    source_url: https://github.com/microsoft/WindowsAgentArena
+    paper_url: https://arxiv.org/abs/2409.08264
+    code_url: https://github.com/microsoft/WindowsAgentArena
+    access_status: public_runtime
+    license:
+      name: MIT
+      url: https://opensource.org/license/mit
+      evidence: https://github.com/microsoft/WindowsAgentArena
+    scale:
+      kind: benchmark
+      tasks: 150
+      difficulty_modes: 2
+    observation:
+      modalities: [screenshot, accessibility_tree, desktop_state, VM_state]
+      formats: [PNG, JSON, Windows_VM]
+    action:
+      modalities: [computer_action]
+      formats: [click, type, hotkey, scroll, drag, shell]
+    domains: [windows_gui, browser, office, file_management, productivity]
+    train_policy: eval_only
+    integration:
+      status: VM_runner_pending
+      target_adapter: windows_agent_arena_episode_v1
+      source_split_policy: official_task_holdout
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: accessibility_tree_plus_compact_desktop_context
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_test
+      rule: Windows VM images, task files, and completion states remain evaluation-only
+    notes: Reproducible Windows computer-use environment; local runs need nested virtualization or Azure and cannot be replaced by a text-only offline replay.
+
+  - id: webchorearena
+    family: browser
+    name: WebChoreArena
+    source_url: https://webchorearena.github.io/
+    paper_url: https://arxiv.org/abs/2506.01952
+    code_url: https://github.com/WebChoreArena/WebChoreArena
+    access_status: public_runtime
+    license:
+      name: CC-BY-SA-4.0_site_terms_review_benchmark
+      url: https://creativecommons.org/licenses/by-sa/4.0/
+      evidence: https://webchorearena.github.io/
+    scale:
+      kind: benchmark
+      tasks: 532
+      templates: 117
+      websites: 5
+    observation:
+      modalities: [DOM, accessibility_tree, screenshot, browser_state]
+      formats: [HTML, JSON, PNG, Playwright]
+    action:
+      modalities: [browser_action]
+      formats: [click, type, select, scroll, submit]
+    domains: [shopping, reddit, gitlab, cross_site, long_horizon_memory]
+    train_policy: eval_only
+    integration:
+      status: environment_runner_pending
+      target_adapter: webchorearena_episode_v1
+      source_split_policy: official_webarena_environment_holdout
+    webgpu_projection:
+      status: native_text_first
+      recommended_observation: compact_dom_plus_task_memory
+      screenshot_policy: optional
+    contamination:
+      split: official_test
+      rule: task templates, website state, and success labels stay out of tokenizer and training inputs
+    notes: Extends WebArena with memory-heavy, calculation, and long-term-memory chores; a stronger browser realism gate than MiniWoB-only evaluation.
+
+  - id: timewarp
+    family: browser
+    name: TimeWarp
+    source_url: https://arxiv.org/abs/2603.04949
+    paper_url: https://arxiv.org/abs/2603.04949
+    code_url: https://arxiv.org/abs/2603.04949
+    access_status: public_runtime
+    license:
+      name: terms_review_required
+      evidence: https://arxiv.org/abs/2603.04949
+    scale:
+      kind: benchmark
+      web_environments: 3
+      ui_versions_per_environment: 6
+    observation:
+      modalities: [DOM, accessibility_tree, screenshot, browser_state]
+      formats: [HTML, JSON, PNG, container]
+    action:
+      modalities: [browser_action]
+      formats: [click, type, select, scroll, submit]
+    domains: [web_navigation, UI_shift_robustness, cross_version_generalization]
+    train_policy: eval_only
+    integration:
+      status: container_runner_pending
+      target_adapter: timewarp_episode_v1
+      source_split_policy: official_ui_version_holdout
+    webgpu_projection:
+      status: native_text_first
+      recommended_observation: compact_dom_plus_goal
+      screenshot_policy: optional
+    contamination:
+      split: official_version_holdout
+      rule: do not train on held-out historical UI versions or their task trajectories
+    notes: Tests whether a browser policy survives UI/layout changes; use alongside WebArena/WebChoreArena to detect single-version behavior cloning.

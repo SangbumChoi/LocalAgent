@@ -39,12 +39,13 @@ benchmark evaluation nor a training result.
 | BrowserGym episode aggregation bridge | Strict parser for normalized Gymnasium task/seed episode logs | [`browsergym.py`](../../../src/localagent/eval/browsergym.py), [`aggregate_browsergym.py`](../../../scripts/aggregate_browsergym.py) | Reward/success/action-error diagnostics with exact case coverage; no live browser score yet |
 | AgentNet/OpenCUA desktop-action result aggregation bridge | Strict join of AgentNet ground-truth and prediction JSONL | [`agentnet_results.py`](../../../src/localagent/eval/agentnet_results.py), [`aggregate_agentnet.py`](../../../scripts/aggregate_agentnet.py) | Offline coordinate/text/keyboard/scroll score and platform breakdown; no native OS or AgentNetBench leaderboard score |
 | tau2-bench trajectory/result aggregation bridge | Strict parser for upstream monolithic or directory-based Results JSON | [`tau2.py`](../../../src/localagent/eval/tau2.py), [`aggregate_tau2.py`](../../../scripts/aggregate_tau2.py) | Upstream reward≈1 success and combinatorial Pass^k per task with exact task/trial coverage; no live tau2 score yet |
-| Workshop/publication readiness gate | Fail-closed join of native receipts, hardware WebGPU evidence, transfer ablations, and public model/demo manifest | [`workshop_gate.py`](../../../src/localagent/eval/workshop_gate.py), [`workshop_gate.py`](../../../scripts/workshop_gate.py) | Currently blocked by ten explicit requirements; protocol bridges and synthetic/SwiftShader receipts cannot pass |
+| Workshop/publication readiness gate | Fail-closed join of native receipts, hardware WebGPU evidence, transfer ablations, and public model/demo manifest | [`workshop_gate.py`](../../../src/localagent/eval/workshop_gate.py), [`workshop_gate.py`](../../../scripts/workshop_gate.py) | Currently nine blockers in the checked invocation (weight transfer passes); protocol bridges and synthetic/SwiftShader receipts cannot pass |
 | Local checkpoint deployment smoke | Actual SFT checkpoint through route/head/pointer dispatch with echo-only tools | [`deploy_smoke.py`](../../../scripts/deploy_smoke.py), [`m24 receipt`](raw/m24-local-deployment-smoke-v1.json) | 4/10 exact tool names (browser 1/3, computer 1/4, productivity 1/1); no external environment or account was executed |
 | Pretrained-weight transfer and matched no-transfer ablation | Current 10.5M pretrain→midtrain→SFT tensor audit plus parent-head vs random-probe control | [`m25 receipt`](raw/m25-weight-transfer-ablation-v1.json), [`analyze_weight_transfer.py`](../../../scripts/analyze_weight_transfer.py) | Config/tokenizer/shape compatible; held-out selector is 60% mobile and 75% productivity for both arms, so reuse is not a proven quality gain |
 | Hugging Face-format local export | Self-contained BPE model bundle with tokenizer, checkpoint hash, safetensors, and all dispatch heads | [`m26 receipt`](raw/m26-hf-local-export-v2.json), [`to_hf.py`](../../../src/localagent/inference/export/to_hf.py) | 10.52M parameters; export verified locally, but not uploaded because HF authentication is absent |
 | WebGPU demo deployment verification | Clean static Space plus exporter-produced bundle checked before upload; source bundle passes parity/hash checks but is intentionally not staged in git | [`m27 receipt`](raw/m27-demo-deploy-verification-v1.json), [`verify_demo_deploy.py`](../../../scripts/verify_demo_deploy.py) | Temporary synced copy loaded in the in-app browser and produced a WebGPU-labeled action; clean source remains blocked by `deployment_target:bundle_not_staged` |
 | Current WebGPU demo browser smoke | Same verified 10.52M bundle staged beside the current static Space and exercised with a realistic email prompt | [`m28 receipt`](raw/m28-webgpu-demo-browser-smoke-v1.json) | 1/1 in-browser route/tool dispatch (`send_email`, 19 ms); no native adapter, external account, or benchmark claim |
+| Native BrowserGym/MiniWoB model-in-loop probe | Pinned BrowserGym 0.14.3 + MiniWoB++ task plan, Chromium 125, current SFT checkpoint | [`m29 receipt`](raw/m29-browsergym-native-model-eval-v1.json) | 240 native episodes / 60 task variants / 4 seeds at one model step; 0/240 success and 240/240 abstentions; explicitly not an official max-step score |
 | AndroidControl/AITW normalized mobile action bridge | Dependency-free offline scorer for normalized `mobile_*` predictions | [`mobile.py`](../../../src/localagent/eval/mobile.py) | Tool/exact-action/trajectory/coordinate diagnostics only; no emulator reward or official device score |
 | AndroidControl/AITW mobile scorer replay | Ground-truth replay over bounded normalized public training slices | [`m22-mobile-action-score-replay-v1.json`](raw/m22-mobile-action-score-replay-v1.json) | 26 records / 130 calls; exact replay sanity check only, not model accuracy |
 | AndroidWorld emulator-result bridge | Strict parser for upstream gzip-pickle `run_...` checkpoint directories | [`androidworld.py`](../../../src/localagent/eval/androidworld.py), [`aggregate_androidworld.py`](../../../scripts/aggregate_androidworld.py) | Requires expected task coverage and, for full upstream episodes, explicit trusted-pickle acknowledgement; no device score yet |
@@ -182,6 +183,23 @@ checkpoint hash; the payload itself contains no capability score. The checkpoint
 only, with no midtraining, SFT, RL, action, browser-task, or agent evaluation. The exact WebGPU
 provider request succeeded, but adapter identity and per-node placement/fallback remain unknown.
 Coverage is one M5, Chrome version, and runtime version—not multi-seed or cross-device evidence.
+
+## Native BrowserGym/MiniWoB checkpoint-in-loop probe
+
+The current SFT checkpoint was run inside a real, headless BrowserGym/MiniWoB environment rather
+than a synthetic state loop. The runner pinned BrowserGym commit
+`9e779f087de9a65668b6974d11f9ce9816026e96`, MiniWoB++ commit
+`7fd85d71a4b60325c6585396ec4f48377d049838`, Playwright `1.44.0`, and Chromium revision `1117`
+(`125.0.6422.26`). It executed all 240 episodes in the repository's fixed 60-task, four-seed
+plan and supplied each live accessibility tree plus task goal to the checkpoint.
+
+This is intentionally a one-step capability probe: the model produced no parseable tool call in
+any episode, so all 240 episodes abstained (`I am LocalAgent.`), with 0 grounded actions and 0/240
+success. Every episode truncated after the one allowed model step. The result is therefore a real
+native-environment negative result, not a BrowserGym leaderboard score;
+`official_split_verified` is false because the official protocol requires the production
+multi-step budget. The compact receipt is [`m29`](raw/m29-browsergym-native-model-eval-v1.json);
+the full local case log is intentionally outside Git under `/private/tmp`.
 
 ## Seed-2027 post-training pilot
 

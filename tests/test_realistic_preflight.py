@@ -8,12 +8,12 @@ CATALOG = Path(__file__).parents[1] / "configs/data/realistic-agent-eval.catalog
 
 def test_preflight_is_fail_closed_and_split_aware() -> None:
     report = preflight_catalog(CATALOG)
-    assert report["catalog_entries"] == 36
+    assert report["catalog_entries"] == 40
     assert report["counts"] == {
         "runnable": 4,
-        "blocked": 32,
+        "blocked": 36,
         "train_rows": 4,
-        "evaluation_or_restricted_rows": 32,
+        "evaluation_or_restricted_rows": 36,
     }
     assert set(report["runnable_ids"]) == {
         "androidcontrol",

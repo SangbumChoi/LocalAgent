@@ -41,6 +41,22 @@ def test_native_receipt_contract_requires_execution_and_split(tmp_path: Path) ->
     assert check["status"] == "pass"
 
 
+def test_native_browsergym_probe_is_recorded_but_not_official_score() -> None:
+    receipt = ROOT / "docs/paper/results/raw/m29-browsergym-native-model-eval-v1.json"
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    assert payload["environment_executed"] is True
+    assert payload["task_count"] == 240
+    assert payload["success_rate"] == 0.0
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        native_receipts={"browsergym_miniwob": receipt},
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "native:browsergym_miniwob")
+    assert check["status"] == "blocked"
+    assert check["blockers"] == ["official_split_not_verified"]
+
+
 def test_weight_gate_requires_two_compatible_labeled_reports(tmp_path: Path) -> None:
     payload = {
         "compatibility": {
