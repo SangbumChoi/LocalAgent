@@ -79,7 +79,20 @@ def _oracle_call(runtime: StatefulRuntime) -> tuple[str | None, dict[str, Any]]:
     return action.tool, copy.deepcopy(action.arguments)
 
 
-def _model_call(runtime: StatefulRuntime, *, model, tokenizer, tools, route, selector, pointer, device):
+def _model_call(
+    runtime: StatefulRuntime,
+    *,
+    model,
+    tokenizer,
+    tools,
+    route,
+    selector,
+    pointer,
+    device,
+    top_m: int,
+    blocked_candidates: set[str] | None = None,
+    selector_first: bool = False,
+):
     output = hybrid_decode(
         model,
         tokenizer,
@@ -89,7 +102,9 @@ def _model_call(runtime: StatefulRuntime, *, model, tokenizer, tools, route, sel
         selector=selector,
         route_head=route,
         ptr_head=pointer,
-        top_m=1,
+        top_m=top_m,
+        blocked_candidates=blocked_candidates,
+        selector_first=selector_first,
     )
     calls = extract_tool_calls(output)
     if not calls:
@@ -129,6 +144,51 @@ def _episode(
         "events": events,
         **({"model_outputs": outputs} if keep_output else {}),
     }
+
+
+def _model_episode(
+    task,
+    *,
+    model,
+    tokenizer,
+    tools,
+    route,
+    selector,
+    pointer,
+    device: str,
+    top_m: int,
+    max_attempts_per_step: int,
+    selector_first: bool,
+) -> dict[str, Any]:
+    """Run one model episode while remembering exact rejected outputs for retries."""
+
+    blocked_candidates: set[str] = set()
+
+    def policy(runtime: StatefulRuntime):
+        if runtime.events and runtime.events[-1]["accepted"]:
+            blocked_candidates.clear()
+        result = _model_call(
+            runtime,
+            model=model,
+            tokenizer=tokenizer,
+            tools=tools,
+            route=route,
+            selector=selector,
+            pointer=pointer,
+            device=device,
+            top_m=top_m,
+            blocked_candidates=blocked_candidates,
+            selector_first=selector_first,
+        )
+        blocked_candidates.add(result[2])
+        return result
+
+    return _episode(
+        task,
+        policy,
+        max_attempts_per_step=max_attempts_per_step,
+        keep_output=True,
+    )
 
 
 def _aggregate(rows: list[dict[str, Any]], *, max_attempts_per_step: int) -> dict[str, Any]:
@@ -178,11 +238,19 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--max-attempts-per-step", type=int, default=3)
+    parser.add_argument("--top-m", type=int, default=1)
+    parser.add_argument(
+        "--selector-first",
+        action="store_true",
+        help="choose the highest-ranked grounded candidate instead of LM reranking",
+    )
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit(f"refusing to overwrite {args.output}")
     if args.max_attempts_per_step < 1:
         raise ValueError("max-attempts-per-step must be positive")
+    if args.top_m < 1:
+        raise ValueError("top-m must be positive")
 
     checkpoint, model, tokenizer = probe._load_parent(args.checkpoint)
     model.to(args.device).eval()
@@ -199,20 +267,18 @@ def main() -> int:
         for task in tasks
     ]
     model_rows = [
-        _episode(
+        _model_episode(
             task,
-            lambda runtime: _model_call(
-                runtime,
-                model=model,
-                tokenizer=tokenizer,
-                tools=tools,
-                route=route,
-                selector=selector,
-                pointer=pointer,
-                device=args.device,
-            ),
+            model=model,
+            tokenizer=tokenizer,
+            tools=tools,
+            route=route,
+            selector=selector,
+            pointer=pointer,
+            device=args.device,
+            top_m=args.top_m,
             max_attempts_per_step=args.max_attempts_per_step,
-            keep_output=True,
+            selector_first=args.selector_first,
         )
         for task in tasks
     ]
@@ -238,6 +304,9 @@ def main() -> int:
         "configuration": {
             "device": args.device,
             "max_attempts_per_step": args.max_attempts_per_step,
+            "top_m": args.top_m,
+            "selector_first": args.selector_first,
+            "rejection_memory": "exact_decoder_output_per_episode",
             "tool_pool_size": len(tools),
             "tool_pool_sha256": _state_hash([tool.name for tool in tools]),
             "reward_spec": stateful_reward_spec(),

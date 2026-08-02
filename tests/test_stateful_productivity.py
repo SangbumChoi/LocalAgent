@@ -58,6 +58,22 @@ def test_recovery_keeps_intermediate_error_and_abstention_is_noop() -> None:
     assert sum(stateful_reward_spec().values()) == 1.0
 
 
+def test_recovery_urls_are_visible_and_numeric_arguments_are_semantically_equal() -> None:
+    recovery = next(task for task in build_tasks("eval") if task.family == "recovery")
+    prompts = task_prompts(recovery)
+    assert "https://local.test/retired" in prompts[0]
+    assert "https://local.test/reports" in prompts[1]
+    click = next(task for task in build_tasks("eval") if task.family == "email").actions[1]
+    result = apply_action(
+        next(task for task in build_tasks("eval") if task.family == "email"),
+        1,
+        initial_state(),
+        click.tool,
+        {"x": 120.0, "y": 220.0},
+    )
+    assert result.exact_args
+
+
 def test_runtime_retries_without_advancing_and_oracle_completes() -> None:
     task = next(task for task in build_tasks("eval") if task.family == "notion")
     runtime = StatefulRuntime(task)
@@ -213,3 +229,30 @@ def test_published_public_adaptation_runtime_comparison_is_self_hashed_and_fail_
         "task_complete_rate_m69": 0.0,
         "task_complete_rate_m70": 0.0,
     }
+
+
+def test_published_stateful_adoption_receipts_prove_closed_loop_pass_and_claim_boundary() -> None:
+    root = Path(__file__).parents[1] / "docs/paper/results/raw"
+    adoption = json.loads((root / "m89-public-to-stateful-closed-loop-adoption-v1.json").read_text())
+    expected = adoption.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(adoption, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    runtime = json.loads((root / "m89-stateful-runtime-public-adaptation-v2.json").read_text())
+    runtime_expected = runtime.pop("receipt_self_sha256")
+    runtime_actual = hashlib.sha256(
+        json.dumps(runtime, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert runtime_actual == runtime_expected
+    assert runtime["model"]["task_complete_rate"] == 1.0
+    assert runtime["model"]["accepted_steps"] == runtime["model"]["expected_steps"] == 16
+    assert runtime["model"]["attempts"] == 20
+    assert adoption["comparison"] == {
+        "accepted_steps_delta_vs_m71_m70": 16,
+        "all_steps_accepted": True,
+        "task_complete_rate_delta_vs_m71_m70": 1.0,
+        "workflow_passed": True,
+    }
+    assert adoption["source"]["native_runtime_executed"] is False
+    assert "official" in adoption["claim_boundary"]

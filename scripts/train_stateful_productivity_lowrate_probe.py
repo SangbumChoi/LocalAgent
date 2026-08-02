@@ -15,6 +15,7 @@ import copy
 import hashlib
 import json
 import random
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -122,14 +123,32 @@ def _train_lowrate(
     route = RouteHead(model.cfg.d_model).to(device)
     if parent.get("route_head"):
         route.load_state_dict(parent["route_head"])
+    # A deployed runtime appends a compact error observation after a rejected call and retries
+    # against the same state.  The original probe only trained on clean state transitions, so a
+    # policy could achieve good teacher-forced selection while repeating its failed action in the
+    # actual loop.  Add one deterministic action-mismatch view per decision; the gold action and
+    # state remain unchanged, and eval rows stay untouched.
+    error_rows = []
+    for row in train_rows:
+        sample = row["sample"]
+        error_rows.append(
+            {
+                **row,
+                "sample": replace(
+                    sample,
+                    prompt=f"{sample.prompt} Last tool result: error=action_mismatch",
+                ),
+            }
+        )
+    feature_rows = [*train_rows, *error_rows]
     examples = base._examples(train_rows)
     dense = DenseToolSelector(model.cfg.d_model, proj=int(parent.get("selector_proj", 256))).to(device)
     if parent.get("dense_selector"):
         dense.load_state_dict(parent["dense_selector"])
     embeddings = tool_embeddings(tools, device=device, examples=examples)
     name_index = {tool.name: index for index, tool in enumerate(tools)}
-    selector_rows = [row for row in train_rows if row["sample"].kind == "tool"]
-    route_labels = [ROUTE_INDEX[route_of(row["sample"].ref_name)] for row in train_rows]
+    selector_rows = [row for row in feature_rows if row["sample"].kind == "tool"]
+    route_labels = [ROUTE_INDEX[route_of(row["sample"].ref_name)] for row in feature_rows]
     selector_labels = [name_index[row["sample"].ref_name] for row in selector_rows]
     optimizer = torch.optim.AdamW(
         [
@@ -143,9 +162,9 @@ def _train_lowrate(
     route.train()
     dense.train()
     for _ in range(max(1, steps)):
-        route_index = [rng.randrange(len(train_rows)) for _ in range(min(batch_size, len(train_rows)))]
+        route_index = [rng.randrange(len(feature_rows)) for _ in range(min(batch_size, len(feature_rows)))]
         selector_index = [rng.randrange(len(selector_rows)) for _ in range(min(batch_size, len(selector_rows)))]
-        route_prompts = [train_rows[index]["sample"].prompt for index in route_index]
+        route_prompts = [feature_rows[index]["sample"].prompt for index in route_index]
         selector_prompts = [selector_rows[index]["sample"].prompt for index in selector_index]
         features = _batch_features(model, tokenizer, route_prompts + selector_prompts, device)
         route_features = features[: len(route_prompts)]
@@ -178,7 +197,9 @@ def _train_lowrate(
         model, tokenizer, eval_tasks, route, dense, pointer, tools, examples, device
     )
     train_info = {
-        "route_features": len(train_rows),
+        "route_features": len(feature_rows),
+        "clean_route_features": len(train_rows),
+        "error_recovery_features": len(error_rows),
         "selector_features": len(selector_rows),
         "pointer_span_examples": sum(
             isinstance(value, str)

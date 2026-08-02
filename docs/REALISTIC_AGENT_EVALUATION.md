@@ -282,6 +282,24 @@ closed-loop/recovery rewards; retraining projected route/selector heads alone is
 The runtime is resettable and in-memory only, and this receipt is not an AndroidWorld, BrowserGym,
 OSWorld, MCPMark, ToolSandbox, email, Notion, or native WebGPU benchmark score.
 
+### Stateful closed-loop adoption from the public checkpoint (m89)
+
+The [`m89 adoption receipt`](paper/results/raw/m89-public-to-stateful-closed-loop-adoption-v1.json)
+records the next training and runtime decision.  Starting from the m70 AgentNet+Mind2Web public
+continuation, the stateful probe adds 512 low-rate updates over the disjoint local productivity
+contract plus one action-mismatch recovery view per decision.  The matched ablation moves the
+backbone by only `0.422%` relative L2 (embedding `0.133%`, mixer `0.884%`, FFN `0.936%`,
+normalization `0.0197%`) and improves the fixed-step selector diagnostic to `80%` top-1.
+
+The deployment-shaped runtime then uses a bounded top-5 selector-first candidate set, remembers
+exact rejected decoder outputs per episode, grounds labelled numeric/text spans, and exposes the
+recovery URLs in the current-step observation.  The [`m89 runtime receipt`](paper/results/raw/m89-stateful-runtime-public-adaptation-v2.json)
+reaches `5/5` workflows and `16/16` accepted steps after 20 attempts; the oracle is also `5/5`
+and `16/16`.  The earlier m71 public-only arms were `0/5` and `0/16`, so this is evidence that
+state-conditioned adaptation and execution-aware decoding—not public action-head projection alone—
+are the useful adoption path.  The result remains a deterministic in-memory local diagnostic and
+does not satisfy any official native benchmark gate.
+
 ### AgentNet text-observation/action projection evaluation (m62)
 
 The retained eight-parent evaluation projection was then run through the actual LocalAgent

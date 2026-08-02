@@ -42,6 +42,13 @@ def _strip(s: str) -> str:
     return re.sub(r"^[^A-Za-z0-9]+|\s*(online|please|right now)?\s*[.?!]*$", "", s, flags=re.I).strip()
 
 
+def _action_tail(prompt: str) -> str:
+    """Return the current-step instruction, excluding earlier goal/state slots when present."""
+
+    match = re.search(r"Next required action:\s*(.*?)(?:\s+Last tool result:|$)", prompt, re.I)
+    return match.group(1).strip() if match else prompt
+
+
 # Argument names whose value is a proper-noun entity (take the capitalized span) vs free text
 # (take the whole tail, which may itself contain a proper noun, e.g. query "capital of Peru").
 ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place",
@@ -73,12 +80,18 @@ def _phone(prompt: str) -> list[str]:
 
 def _text_arg(prompt: str, arg: str = "") -> list[str]:
     """Extract a text slot from generic delimiters or field-labelled quoted values."""
-    match = re.search(r"(?:saying|with message|message|text|content)\s*:\s*(.+)", prompt, re.I)
-    if match:
-        return [_strip(match.group(1))]
+    action = _action_tail(prompt)
+    goal = prompt.split(" Current state JSON:", 1)[0]
+    for source in (action, goal):
+        match = re.search(r"(?:saying|with message|message|text|content)\s*:\s*(.+)", source, re.I)
+        if match:
+            return [_strip(match.group(1))]
     low = prompt.lower()
-    quoted = [value for left, right in re.findall(r"'([^']+)'|\"([^\"]+)\"", prompt)
+    quoted = [value for left, right in re.findall(r"'([^']+)'|\"([^\"]+)\"", action)
               for value in (left or right,)]
+    if not quoted:
+        quoted = [value for left, right in re.findall(r"'([^']+)'|\"([^\"]+)\"", goal)
+                  for value in (left or right,)]
     if arg in {"to", "recipient"} or "address field" in low or "recipient" in low:
         email = re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", prompt)
         if email:
@@ -91,42 +104,51 @@ def _text_arg(prompt: str, arg: str = "") -> list[str]:
     }
     label = labels.get(arg)
     if label:
-        match = re.search(label + r"[^'\"]*['\"]([^'\"]+)['\"]", prompt, re.I)
+        match = re.search(r"(?:" + label + r")[^'\"]*['\"]([^'\"]+)['\"]", prompt, re.I)
         if match:
             return [match.group(1)]
     if arg in {"text", "message"}:
-        if "subject" in low and quoted:
+        action_low = action.lower()
+        if "subject" in action_low and quoted:
             return [quoted[0]]
-        if ("body" in low or "message field" in low) and quoted:
+        if ("body" in action_low or "message field" in action_low) and quoted:
+            return [quoted[-1]]
+        if quoted:
             return [quoted[-1]]
     return []
 
 
 def _app_name(prompt: str) -> list[str]:
     """Extract the application named after a generic launch/open/start instruction."""
-    match = re.search(
-        r"(?:launch|open|bring\s+up|start)\s+(?:the\s+)?([A-Z][A-Za-z0-9_.-]*)",
-        prompt,
-        re.I,
-    )
-    return [match.group(1)] if match else []
+    action = _action_tail(prompt)
+    sources = (action,) if action != prompt else (prompt,)
+    for source in sources:
+        match = re.search(
+            r"(?:launch|open|bring\s+up|start)\s+(?:the\s+)?([A-Z][A-Za-z0-9_.-]*)",
+            source,
+            re.I,
+        )
+        if match:
+            return [match.group(1)]
+    return []
 
 
 def _target(prompt: str) -> list[str]:
     """Extract a semantic UI target from click/select/tap wording."""
-    quoted = re.search(r"(?:click|select|tap)\s+['\"]([^'\"]+)['\"]", prompt, re.I)
-    if quoted:
-        value = quoted.group(1).strip()
-        return [value if value.lower().startswith("the ") else f"the {value}"]
-    match = re.search(
-        r"(?:click|select|tap)\s+(?:on\s+)?((?:the\s+)?[A-Za-z][A-Za-z ]*?)(?:\s+at\s+x=|\s+on\s+(?:the\s+)?(?:phone|android)|[.!?]|$)",
-        prompt,
-        re.I,
-    )
-    if not match:
-        return []
-    value = _strip(match.group(1))
-    return [value if value.lower().startswith("the ") else f"the {value}"]
+    for source in (_action_tail(prompt), prompt):
+        quoted = re.search(r"(?:click|select|tap)\s+['\"]([^'\"]+)['\"]", source, re.I)
+        if quoted:
+            value = quoted.group(1).strip()
+            return [value if value.lower().startswith("the ") else f"the {value}"]
+        match = re.search(
+            r"(?:click|select|tap)\s+(?:on\s+)?((?:the\s+)?[A-Za-z][A-Za-z ]*?)(?:\s+at\s+x=|\s+on\s+(?:the\s+)?(?:phone|android)|[.!?]|$)",
+            source,
+            re.I,
+        )
+        if match:
+            value = _strip(match.group(1))
+            return [value if value.lower().startswith("the ") else f"the {value}"]
+    return []
 
 
 def _best_string(prompt: str, arg: str = "") -> str:
@@ -176,6 +198,16 @@ def _numbers(prompt: str) -> list[str]:
     return re.findall(r"-?\d+", prompt)
 
 
+def _number_arg(prompt: str, name: str) -> list[str]:
+    """Prefer a labelled numeric argument such as ``x=120`` over unrelated state numbers."""
+
+    for source in (_action_tail(prompt), prompt):
+        match = re.search(rf"\b{re.escape(name)}\s*=\s*(-?\d+(?:\.\d+)?)", source, re.I)
+        if match:
+            return [match.group(1)]
+    return _numbers(prompt)
+
+
 def _quoted(prompt: str) -> list[str]:
     """Content of the first single/double-quoted span (patterns, commands, commit messages)."""
     m = re.search(r"'([^']+)'|\"([^\"]+)\"", prompt)
@@ -191,8 +223,11 @@ def _path(prompt: str) -> list[str]:
 
 def _url(prompt: str) -> list[str]:
     """First URL/domain token (optionally with scheme/path)."""
-    m = re.search(r"(?:https?://)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:/[\w./-]*)?", prompt)
-    return [m.group(0).rstrip(".")] if m else []  # drop trailing sentence period
+    for source in (_action_tail(prompt), prompt):
+        m = re.search(r"(?:https?://)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:/[\w./-]*)?", source)
+        if m:
+            return [m.group(0).rstrip(".")]  # drop trailing sentence period
+    return []
 
 
 def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None) -> list:
@@ -232,7 +267,7 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
     elif schema.get("type") in ("integer", "number"):
         # cast to typed numbers so the canonical body matches the int/float target (not "5").
         cast = int if schema.get("type") == "integer" else float
-        opts = [cast(n) for n in _numbers(prompt)]
+        opts = [cast(n) for n in _number_arg(prompt, name)]
     else:  # string / unknown -> deterministic best prompt span (arg-aware)
         opts = [_best_string(prompt, name)]
     if not required:
@@ -257,6 +292,8 @@ def _tool_bodies(prompt: str, tool: ToolSpec, ptr=None) -> list[str]:
 def _text_candidates(prompt: str) -> list[str] | None:
     low = prompt.lower()
     caps = [re.sub(r"[^A-Za-z]", "", w) for w in prompt.split()[1:] if re.match(r"[A-Z][a-z]", w)]
+    if re.search(r"\b(?:already complete|no action|nothing to do|without invoking)\b", low):
+        return ["I won't invoke a tool."]
     if "hello" in low:
         return [f"Hello, {nm}!" for nm in caps] or ["Hello!"]
     if "morning" in low or "greet" in low:
@@ -333,7 +370,8 @@ def _ctx_feats(model, tok, ctx: str, device):
 
 def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", *,
                   retriever=None, route_head=None, ptr_head=None, selector=None, top_m=1, k=8,
-                  framed=False) -> str:
+                  framed=False, blocked_candidates: set[str] | None = None,
+                  selector_first: bool = False) -> str:
     """The *generable* decode path — no fixed-N classifier. Selection narrows the catalog to a few
     candidates, then the model RANKS their grounded bodies; argument *values* are copied by
     `ptr_head` (the one sub-task a tiny model can't free-generate). An optional 5-way `route_head`
@@ -367,12 +405,17 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
         if txt is not None:
             return _best(model, tok, score, txt, device)
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
+    selector_order: list[str] | None = None
     if selector is not None:
-        keep = set(selector.rank(feats[-1])[:top_m])
+        selector_order = selector.rank(feats[-1])
+        keep = set(selector_order[:top_m])
     else:
         retriever = retriever or ToolRetriever(tools)
         keep = set(retriever.retrieve(prompt, k=k))
     use = [t for t in tools if t.name in keep] or tools
+    if selector_order is not None:
+        order = {name: index for index, name in enumerate(selector_order)}
+        use.sort(key=lambda tool: order.get(tool.name, len(order)))
     # 2. argument values via learned pointer/copy spans
     ptr = None
     if ptr_head is not None:
@@ -385,6 +428,14 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
         bodies += _tool_bodies(prompt, t, ptr)
     if not bodies:
         return "I am LocalAgent."
+    if blocked_candidates:
+        available = [body for body in bodies if body not in blocked_candidates]
+        # If every grounded candidate was rejected, fail open and let the model retry rather than
+        # returning an unrelated abstention.  The runtime's bounded attempt budget still limits
+        # repeated calls, while the common case gets a genuine alternative candidate.
+        bodies = available or bodies
+    if selector_first:
+        return bodies[0]
     return _best(model, tok, score, bodies, device)
 
 

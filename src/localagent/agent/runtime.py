@@ -59,7 +59,8 @@ def _checkpoint_tokenizer(
 class Agent:
     def __init__(self, tools: ToolRegistry, model=None, tokenizer=None, memory: Memory | None = None,
                  catalog=None, retriever=None, retrieve_k: int = 10, tool_head=None, ptr_head=None,
-                 route_head=None, selector=None):
+                 route_head=None, selector=None, selector_top_m: int = 1,
+                 selector_first: bool = False):
         """`tools`: registry for dispatch. For a large tool space pass `catalog` (list of ToolSpec)
         and optionally a `retriever` (built from the catalog if omitted).
 
@@ -75,6 +76,10 @@ class Agent:
         self.retrieve_k = retrieve_k
         self.tool_head, self.ptr_head = tool_head, ptr_head
         self.route_head, self.selector = route_head, selector
+        if selector_top_m < 1:
+            raise ValueError("selector_top_m must be positive")
+        self.selector_top_m = selector_top_m
+        self.selector_first = selector_first
         self.retriever = retriever
         if self.retriever is None and catalog is not None:
             from localagent.agent.retriever import ToolRetriever
@@ -155,7 +160,8 @@ class Agent:
             # generable path: route gate -> dense selector -> pointer-copy args (scales to any pool)
             out = hybrid_decode(self.model, self.tokenizer, user_message, list(self.catalog.values()),
                                 selector=self.selector, route_head=self.route_head,
-                                ptr_head=self.ptr_head, top_m=1)
+                                ptr_head=self.ptr_head, top_m=self.selector_top_m,
+                                selector_first=self.selector_first)
         elif self.model is not None:
             # legacy: rank the (retrieved) candidates' grounded bodies with the fixed-N tool head
             out = grounded_decode(self.model, self.tokenizer, user_message, specs,

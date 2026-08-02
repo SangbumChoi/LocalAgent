@@ -85,6 +85,11 @@ def test_thanks_abstains_with_text():
     assert all(not is_tool for _, is_tool, _ in cands)
 
 
+def test_completion_language_abstains_from_tool_calls():
+    cands = candidates("The work is already complete; no action is needed.", TOOLS)
+    assert cands == [("I won't invoke a tool.", False, "text")]
+
+
 def test_best_clamps_overlong_context():
     # A long multi-turn history + a candidate body can exceed max_seq_len; _best must trim the
     # oldest prompt tokens (left) instead of overflowing RoPE. Regression for the flywheel

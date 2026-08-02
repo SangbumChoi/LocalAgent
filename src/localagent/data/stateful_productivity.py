@@ -291,6 +291,12 @@ def build_tasks(split: str = "train") -> list[StatefulTask]:
 
     slots = _slots(split)
     text = _instructions(split)
+    # Recovery URLs are part of the visible browser observation in a deployed agent.  Keep them
+    # in the current-step instruction so the first navigation is grounded rather than requiring
+    # the policy to guess a hidden fixture argument.
+    text = dict(text)
+    text["open_bad"] = (f"Open {slots['recovery_bad_url']} in the browser.",)
+    text["open_good"] = (f"Open {slots['recovery_good_url']} after the error.",)
     email = StatefulTask(
         task_id=f"{split}-email-send",
         family="email",
@@ -473,8 +479,17 @@ def _schema_valid(tool: str | None, arguments: Mapping[str, Any]) -> bool:
 
 
 def _same_args(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    def normalize_number(value: Any) -> Any:
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
+        if isinstance(value, Mapping):
+            return {key: normalize_number(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [normalize_number(item) for item in value]
+        return value
+
     def normalize(value: Mapping[str, Any]) -> dict[str, Any]:
-        result = dict(value)
+        result = normalize_number(value)
         target = result.get("target")
         if isinstance(target, str):
             low = target.lower().removeprefix("the ")
