@@ -770,6 +770,24 @@ selection on unseen Notion/browser/database descriptions, while route classifica
 It is not MCPMark task success, pass@k, verifier success, or evidence that live accounts can be
 controlled; the official runner remains a workshop-gate requirement.
 
+### Mind2Web→MCPMark matched transfer probe (m93)
+
+The same 28 service/tool-contract rows were then trained with the frozen m46 checkpoint, whose
+backbone had been continued on public Mind2Web browser trajectories.  A second arm used the same
+architecture, parent checkpoint, rows, seed, and 800+800 head-update budget but replaced the
+backbone with deterministic random weights.  Neither arm used MCPMark task text during training.
+On the untouched pinned 169 standard plus 70 easy descriptions, the Mind2Web transfer arm scored
+`26.36%` route accuracy, `22.18%` selector top-1, and `65.27%` top-3.  The matched random arm
+scored `47.28%`, `17.15%`, and `65.27%`, respectively: transfer improves exact tool selection by
+`+5.02` percentage points but loses `20.92` points on service routing and does not change top-3.
+
+The transfer receipt records zero backbone movement; the dense selector and route-head movement is
+`92.49` and `4.82` relative units, so this is a head-only diagnostic rather than a learned MCP
+representation.  It is deliberately negative evidence against adopting the Mind2Web backbone as
+a universal MCP router.  The receipts are [`m93 transfer`](paper/results/raw/m93-mind2web-mcp-service-contract-v1.json)
+and [`m93 random control`](paper/results/raw/m93-mind2web-mcp-service-random-v1.json); MCP servers,
+state fixtures, verifiers, and official MCPMark scoring were not executed.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

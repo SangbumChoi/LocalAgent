@@ -25,3 +25,29 @@ def test_published_no_transfer_receipt_is_self_hashed_and_matched() -> None:
     assert actual == expected
     assert receipt["comparison"]["rows"] == 239
     assert receipt["comparison"]["random_minus_transfer"]["selector_top1"] < -0.1
+
+
+def test_mind2web_mcp_probe_records_a_matched_cross_domain_negative() -> None:
+    root = Path(__file__).parents[1] / "docs/paper/results/raw"
+    transfer = json.loads(
+        (root / "m93-mind2web-mcp-service-contract-v1.json").read_text(encoding="utf-8")
+    )
+    random = json.loads(
+        (root / "m93-mind2web-mcp-service-random-v1.json").read_text(encoding="utf-8")
+    )
+    assert transfer["weight_delta"]["backbone"] == 0.0
+    assert transfer["parent"]["sha256"] == random["parent"]["sha256"]
+
+    def combined(receipt: dict) -> tuple[float, float, float]:
+        rows = [receipt["mcpmark"][name]["overall"] for name in ("standard", "easy")]
+        total = sum(item["rows"] for item in rows)
+        return tuple(
+            sum(item[key] * item["rows"] for item in rows) / total
+            for key in ("route_accuracy", "selector_top1", "selector_top3")
+        )
+
+    transfer_scores = combined(transfer)
+    random_scores = combined(random)
+    assert random_scores[0] - transfer_scores[0] > 0.20
+    assert transfer_scores[1] - random_scores[1] > 0.05
+    assert transfer_scores[2] == random_scores[2]

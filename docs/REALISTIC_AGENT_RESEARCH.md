@@ -67,6 +67,12 @@ promote the weight transfer. The current AgentNet and ToolSandbox receipts there
 compatibility and a low-rate initialization policy, but not a claim of stateful computer-use
 capability.
 
+The m93 Mind2Web→MCPMark matched probe is an explicit negative control for cross-domain reuse:
+the frozen browser-adapted backbone improved exact MCP tool selection by 5.02 percentage points
+over a matched random backbone, but reduced service routing by 20.92 points and left top-3
+unchanged.  Until a native, verifier-backed MCP run reproduces a benefit, keep this backbone as a
+browser candidate only and do not describe it as a general MCP router.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
