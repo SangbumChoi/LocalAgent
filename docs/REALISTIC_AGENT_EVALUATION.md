@@ -334,6 +334,21 @@ local result aggregator: it requires every expected task for every run before re
 pass@1/pass@k/pass^k, mean turns, latency, and token use. No result has been produced here because
 Docker/MCP services are not installed; the implementation is a protocol bridge, not a score.
 
+### MCPMark task-router proxy (m37)
+
+To quantify the model's current productivity/tool gap without pretending to execute external
+accounts, [`eval_mcpmark_task_router.py`](../scripts/eval_mcpmark_task_router.py) consumes only the
+public `meta.json` and `description.md` files from the pinned MCPMark checkout. It evaluates both
+the 169-task standard suite and the 70-task easy suite against service-level tool families:
+Notion, Playwright/browser, filesystem, GitHub, and Postgres. Task text is used transiently for
+feature extraction and is not retained in the receipt; verifiers and MCP servers are never run.
+
+The frozen 62-tool AndroidControl dispatch child achieved only `15.90%` combined route accuracy,
+`0%` selector top-1, and `0.42%` selector top-3 on 239 tasks. This is a useful transfer failure:
+mobile action adaptation does not transfer to stateful Notion/email/browser/database workflows.
+The result is a service-routing proxy, not MCPMark task success, pass@k, or leaderboard evidence;
+the complete source and checkpoint hashes are in [`m37`](paper/results/raw/m37-mcpmark-task-router-proxy-v1.json).
+
 The public [Apple ToolSandbox](https://github.com/apple/ToolSandbox) is the next stateful
 productivity gate. Its scenarios model implicit tool dependencies, user simulation, messaging,
 canonicalization, distraction tools, and insufficient-information abstention; the upstream CLI
