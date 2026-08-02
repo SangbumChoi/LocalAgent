@@ -18,7 +18,7 @@ from localagent.agent.dense_selector import (
 )
 from localagent.agent.routes import ROUTES, RouteHead
 from localagent.agent.tool_head import _feat
-from localagent.agent.toolset import STANDARD_TOOLS
+from localagent.agent.toolset import REALISTIC_BROWSER_TOOLS, STANDARD_TOOLS
 from localagent.inference.export.to_dispatch import (
     dispatch_heads_json,
     parity_dispatch,
@@ -111,6 +111,19 @@ def test_dense_selector_top1_parity(tmp_path):
     with torch.no_grad():
         ref_scores = sel(feats, bound.embs).numpy()
     assert np.abs(ref_scores - scores).max() < 1e-3
+
+
+def test_extended_browser_tool_pool_dispatch_parity(tmp_path):
+    ck, cfg, *_ = _make_ck(tmp_path)
+    heads = dispatch_heads_json(ck, tools=REALISTIC_BROWSER_TOOLS)
+    assert heads["dense_selector"]["tool_names"][-3:] == [
+        "web_click",
+        "web_type",
+        "web_select",
+    ]
+    result = parity_dispatch(ck, cfg, heads, n_prompts=2, tools=REALISTIC_BROWSER_TOOLS)
+    assert result["route_agree"] == 1.0
+    assert result["selector_agree"] == 1.0
 
 
 def test_selector_tool_matrix_matches_bound_embs(tmp_path):

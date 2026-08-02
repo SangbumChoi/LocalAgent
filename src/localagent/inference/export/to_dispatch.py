@@ -221,6 +221,7 @@ def export_dispatch(
             heads,
             tokenizer_path=tokenizer_path,
             checkpoint_path=checkpoint,
+            tools=tools,
         )
         stats.update(res)
         print(f"route argmax agreement: {res['route_agree']*100:.1f}%  "
@@ -238,6 +239,7 @@ def parity_dispatch(
     *,
     tokenizer_path: str | Path | None = None,
     checkpoint_path: str | Path | None = None,
+    tools=None,
 ) -> dict:
     """Compare the exported (numpy-style) route head + dense selector against the PyTorch
     ``RouteHead`` / ``BoundSelector`` on a batch of real prompt features.
@@ -288,7 +290,8 @@ def parity_dispatch(
     sel = DenseToolSelector(cfg.d_model, emb_dim=sd["t_proj.weight"].shape[1],
                             proj=sd["q_proj.weight"].shape[0])
     sel.load_state_dict(sd)
-    bound = BoundSelector(sel, STANDARD_TOOLS, examples=ck.get("examples"))
+    bound_tools = STANDARD_TOOLS if tools is None else list(tools)
+    bound = BoundSelector(sel, bound_tools, examples=ck.get("examples"))
     ref_top1 = [bound.rank(f)[0] for f in feats]
 
     qW = np.array(heads["dense_selector"]["q_proj_weight"], dtype=np.float32)

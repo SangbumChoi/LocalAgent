@@ -107,6 +107,27 @@ configuration and tokenizer identity, no shape additions/removals, and frozen ac
 is legitimate public-data adaptation evidence, not a native Mind2Web score: the protected test
 archive and browser environment were not executed.
 
+### Held-out public Mind2Web continuation (m31)
+
+The next public-data run downloaded only the pinned `data/train/train_10.json` shard, retained six
+records whose complete action sequences had positive grounded backend-node IDs, and normalized 24
+Conversation rows. Five source records (20 enriched rows) were used for training; the sixth source
+record (four rows) was held out, with both parent-record IDs and typed slot values disjoint. Raw
+Mind2Web bytes remain outside Git; the exact shard, filtered snapshot, normalized output, split
+hashes, and manifest are bound in the [`m31 receipt`](paper/results/raw/m31-mind2web-public-train10-continuation-v1.json).
+
+This run also closes a tool-catalog mismatch without changing the legacy 50-tool checkpoint shape:
+[`REALISTIC_BROWSER_TOOLS`](../src/localagent/agent/toolset.py) extends the dense two-tower pool with
+`web_click`, `web_type`, and `web_select`, and all three map to the stable `computer_use` route.
+After 32 low-rate backbone updates and 256 frozen-feature head updates, held-out teacher-forced
+token accuracy rose from `69.1%` to `80.0%`; the browser selector rose from `0/6` to `6/6` top-1
+tool decisions. A generative replay was weaker—parseable calls `2/6` to `3/6`, exact tool names
+`0/6` to `3/6`—because multi-turn context and argument copying still fail. This is public-train
+generalization evidence, not an official Mind2Web test score or native browser execution result. The
+extended 53-tool dispatch export also reproduced PyTorch route argmax and selector top-1 exactly
+(`1.0` agreement; max score drift `1.26e-6`), proving that the new browser columns can be shipped
+to a device without changing the backbone graph.
+
 The adapted child was then exported through the browser bundle path.  The fp32/fp16 logits and
 hidden graphs plus the distinct hidden-only action graph passed the hard parity gate; fp32 logits
 drift was `6.91e-06`, fp32 hidden drift `5.66e-06`, and fp16 logits argmax agreement was `1.0`.

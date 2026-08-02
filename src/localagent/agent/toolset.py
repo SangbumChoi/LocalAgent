@@ -326,3 +326,47 @@ STANDARD_TOOLS = [
                     "required": ["image"]},
     ),
 ]
+
+# Public browser datasets use grounded backend-node IDs and distinguish click, type, and select
+# actions.  Keep these tools in an explicit extension pool instead of changing STANDARD_TOOLS:
+# existing 50-tool checkpoints and their legacy fixed head remain loadable, while the dense
+# two-tower selector can score the extra tools without a tensor reshape.
+REALISTIC_BROWSER_TOOLS = [
+    *STANDARD_TOOLS,
+    ToolSpec(
+        name="web_click",
+        description="Click a grounded web-page element by backend node id.",
+        parameters={
+            "type": "object",
+            "properties": {"target_id": {"type": "string"}},
+            "required": ["target_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="web_type",
+        description="Type text into a grounded web-page element by backend node id.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "target_id": {"type": "string"},
+                "text": {"type": "string"},
+            },
+            "required": ["target_id", "text"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="web_select",
+        description="Select an option on a grounded web-page element by backend node id.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "target_id": {"type": "string"},
+                "value": {"type": "string"},
+            },
+            "required": ["target_id", "value"],
+            "additionalProperties": False,
+        },
+    ),
+]

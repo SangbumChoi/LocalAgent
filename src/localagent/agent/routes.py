@@ -36,6 +36,7 @@ _TOOL_ROUTE: dict[str, str] = {
     "type_text": "computer_use", "key_press": "computer_use", "scroll": "computer_use",
     "drag": "computer_use", "wait": "computer_use", "move_cursor": "computer_use",
     "open_app": "computer_use", "read_clipboard": "computer_use", "write_clipboard": "computer_use",
+    "web_click": "computer_use", "web_type": "computer_use", "web_select": "computer_use",
     "mobile_click": "computer_use", "mobile_long_press": "computer_use",
     "mobile_scroll": "computer_use", "mobile_swipe": "computer_use",
     "mobile_open_app": "computer_use", "mobile_input_text": "computer_use",
