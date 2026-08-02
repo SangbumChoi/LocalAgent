@@ -813,6 +813,27 @@ the proxy evidence: neither frozen transfer nor low-rate unfreezing improves sta
 ToolSandbox completion.  These receipts use a bounded scripted user; the official split,
 model-based user simulator, full scenario matrix, and optional RapidAPI tools were not run.
 
+### Cross-surface public continuation and weight audit (m100)
+
+To test whether one small WebGPU backbone can absorb the requested mobile, browser, and desktop
+surfaces together, the same 10.52M-parameter BPE parent was continued for 32 low-rate updates over
+4,629 public-train projection rows: 4,096 AndroidControl mirror rows, 513 AgentNet Ubuntu rows,
+and 20 Mind2Web train records.  The 1,041-row evaluation is source-disjoint: 904 AndroidControl
+test rows, 133 AgentNet held-out parents, and four held-out Mind2Web train records.  The catalog
+links AndroidControl's primary Google source; this continuation's input is the explicit
+Apache-2.0 OfficerChul mirror, alongside AgentNet and Mind2Web.  The receipt records those public
+references, file hashes, split metadata, and visual omission.
+
+Aggregate teacher-forced token accuracy rises from `57.67%` to `62.58%`, driven by mobile
+`59.28%` → `65.45%`; desktop changes `49.70%` → `48.87%`, and the four-row browser slice changes
+`69.09%` → `67.27%`.  Relative movement is small—embedding `0.494%`, mixer `0.205%`, FFN
+`0.250%`, normalization `0.010%`—with action heads unchanged.  This is useful evidence that the
+parent is compatible with all three text-first interfaces, but it is also a negative adoption
+signal: a single low-rate mixed continuation does not improve every surface and is not a native
+Android, browser, desktop, email, Notion, or MCP score.  The reproducible receipt is
+[`m100`](paper/results/raw/m100-cross-surface-public-continuation-v1.json), and the runner is
+[`train_cross_surface_continuation.py`](../scripts/train_cross_surface_continuation.py).
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

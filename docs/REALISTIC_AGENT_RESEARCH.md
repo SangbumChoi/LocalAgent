@@ -76,6 +76,13 @@ random on selector top-1/top-3 and moves the backbone by 0.297% relative L2.  Un
 verifier-backed MCP run reproduces a benefit, keep this backbone as a browser candidate only and
 do not describe it as a general MCP router.
 
+The m100 public tri-domain continuation extends that decision beyond MCP routing.  A shared
+low-rate update improves the large mobile holdout but slightly degrades the desktop and tiny
+browser holdouts, while moving the backbone by less than 0.5% relative L2 in every substantial
+group and leaving action heads fixed.  The current policy is therefore to reuse the BPE parent
+for compatibility, keep surface-specific adapters/heads, and require a matched random control
+plus native closed-loop evidence before merging one universal mobile/browser/desktop adapter.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
