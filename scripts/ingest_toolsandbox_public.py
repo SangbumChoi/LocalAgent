@@ -186,7 +186,130 @@ def _tool_traces(node: ast.AST | None, constants: dict[str, str]) -> list[tuple[
     return traces
 
 
-def _tool_spec(name: str) -> ToolSpec:
+_ANNOTATION_TYPES = {
+    "str": "string",
+    "string": "string",
+    "int": "integer",
+    "integer": "integer",
+    "float": "number",
+    "number": "number",
+    "bool": "boolean",
+    "boolean": "boolean",
+}
+
+
+def _annotation_schema(node: ast.AST | None) -> dict[str, Any]:
+    """Convert a safe, shallow Python annotation into a JSON-schema fragment.
+
+    This deliberately handles only primitive annotations and common ``List``/``Dict`` forms.
+    ToolSandbox's runtime conversion supports more Python types, but importing it would execute
+    environment code and violate this adapter's source-only policy.  Unknown annotations remain
+    unconstrained strings rather than being guessed from task text.
+    """
+
+    if isinstance(node, ast.Name):
+        kind = _ANNOTATION_TYPES.get(node.id.lower())
+        if kind:
+            return {"type": kind}
+        if node.id in {"List", "list", "Sequence", "Iterable"}:
+            return {"type": "array", "items": {"type": "string"}}
+        if node.id in {"Dict", "dict", "Mapping"}:
+            return {"type": "object"}
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        kind = _ANNOTATION_TYPES.get(node.value.lower())
+        if kind:
+            return {"type": kind}
+    if isinstance(node, ast.Subscript):
+        base = node.value
+        base_name = base.id if isinstance(base, ast.Name) else ""
+        if base_name.lower() in {"list", "sequence", "iterable"}:
+            slice_node = node.slice
+            return {"type": "array", "items": _annotation_schema(slice_node)}
+        if base_name.lower() in {"dict", "mapping"}:
+            return {"type": "object"}
+        if base_name.lower() in {"optional", "union"}:
+            # Optional[T] and Union[T, NotGiven] are represented by the useful first arm.  The
+            # presence/absence of a default still controls requiredness below.
+            slice_node = node.slice
+            arms = list(slice_node.elts) if isinstance(slice_node, ast.Tuple) else [slice_node]
+            for arm in arms:
+                parsed = _annotation_schema(arm)
+                if parsed.get("type"):
+                    return parsed
+        if base_name == "Literal" and isinstance(node.slice, ast.Tuple):
+            values = [item.value for item in node.slice.elts if isinstance(item, ast.Constant)]
+            if values:
+                kind = "string" if all(isinstance(value, str) for value in values) else None
+                return {"type": kind, "enum": values} if kind else {"enum": values}
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        left = _annotation_schema(node.left)
+        if left.get("type"):
+            return left
+        return _annotation_schema(node.right)
+    return {"type": "string"}
+
+
+def _doc_summary(docstring: str | None) -> str:
+    if not docstring:
+        return ""
+    paragraphs = [" ".join(line.strip() for line in block.splitlines()) for block in docstring.split("\n\n")]
+    return next((paragraph for paragraph in paragraphs if paragraph), "")
+
+
+def _tool_specs(tool_root: Path) -> tuple[dict[str, ToolSpec], list[dict[str, Any]]]:
+    """Statically extract public function signatures/docs into ToolSpec objects.
+
+    The parser reads only ``tool_sandbox/tools/*.py``.  It never imports modules, resolves
+    decorators, executes validators, or opens the simulator database.  Missing functions simply
+    fall back to the generic schema used by the original projection.
+    """
+
+    specs: dict[str, ToolSpec] = {}
+    identities: list[dict[str, Any]] = []
+    for path in sorted(tool_root.glob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        source = _source_identity(path)
+        identities.append(source)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name.startswith("_"):
+                continue
+            positional = list(node.args.posonlyargs) + list(node.args.args)
+            defaults = [None] * (len(positional) - len(node.args.defaults)) + list(node.args.defaults)
+            properties: dict[str, dict[str, Any]] = {}
+            required: list[str] = []
+            for argument, default in zip(positional, defaults):
+                if argument.arg in {"self", "cls"}:
+                    continue
+                properties[argument.arg] = _annotation_schema(argument.annotation)
+                if default is None:
+                    required.append(argument.arg)
+            for argument, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
+                if argument.arg in {"self", "cls"}:
+                    continue
+                properties[argument.arg] = _annotation_schema(argument.annotation)
+                if default is None:
+                    required.append(argument.arg)
+            description = _doc_summary(ast.get_docstring(node, clean=True))
+            if not description:
+                description = f"ToolSandbox operation: {node.name.replace('_', ' ')}."
+            specs[node.name] = ToolSpec(
+                name=node.name,
+                description=description,
+                parameters={
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": properties,
+                    "required": required,
+                },
+            )
+    return specs, identities
+
+
+def _tool_spec(name: str, specs: dict[str, ToolSpec] | None = None) -> ToolSpec:
+    if specs and name in specs:
+        return specs[name]
     readable = name.replace("_", " ")
     return ToolSpec(
         name=name,
@@ -195,6 +318,7 @@ def _tool_spec(name: str) -> ToolSpec:
             "type": "object",
             "additionalProperties": True,
             "properties": {},
+            "required": [],
         },
     )
 
@@ -225,6 +349,7 @@ def _conversation(
     categories: list[str],
     split: str,
     source: dict[str, Any],
+    specs: dict[str, ToolSpec] | None = None,
 ) -> Conversation:
     all_tools = sorted(set(tools) | {target})
     return Conversation(
@@ -235,7 +360,7 @@ def _conversation(
                 tool_calls=[ToolCall(name=target, arguments=arguments)],
             ),
         ],
-        tools=[_tool_spec(tool) for tool in all_tools],
+        tools=[_tool_spec(tool, specs) for tool in all_tools],
         meta={
             "category": "toolsandbox",
             "group": "public_agent",
@@ -269,7 +394,13 @@ def _conversation(
     )
 
 
-def _extract_file(path: Path, *, split: str, holdout_modulo: int) -> list[Conversation]:
+def _extract_file(
+    path: Path,
+    *,
+    split: str,
+    holdout_modulo: int,
+    specs: dict[str, ToolSpec] | None = None,
+) -> list[Conversation]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     constants = _constants(tree)
     source = _source_identity(path)
@@ -305,6 +436,7 @@ def _extract_file(path: Path, *, split: str, holdout_modulo: int) -> list[Conver
                 categories=categories,
                 split=split,
                 source=source,
+                specs=specs,
             )
         )
     return rows
@@ -321,8 +453,17 @@ def build(source_root: Path, output_dir: Path, *, holdout_modulo: int = 5) -> di
     if missing:
         raise ValueError(f"missing pinned ToolSandbox scenario files: {missing}")
     output_dir.mkdir(parents=True, exist_ok=False)
-    train = [row for path in paths for row in _extract_file(path, split="train", holdout_modulo=holdout_modulo)]
-    evaluation = [row for path in paths for row in _extract_file(path, split="eval", holdout_modulo=holdout_modulo)]
+    specs, tool_schema_files = _tool_specs(source_root / "tool_sandbox" / "tools")
+    train = [
+        row
+        for path in paths
+        for row in _extract_file(path, split="train", holdout_modulo=holdout_modulo, specs=specs)
+    ]
+    evaluation = [
+        row
+        for path in paths
+        for row in _extract_file(path, split="eval", holdout_modulo=holdout_modulo, specs=specs)
+    ]
     if not train or not evaluation:
         raise ValueError("ToolSandbox projection did not produce both train and eval rows")
     outputs: dict[str, Path] = {}
@@ -339,6 +480,9 @@ def build(source_root: Path, output_dir: Path, *, holdout_modulo: int = 5) -> di
         "license": LICENSE,
         "source_policy": {
             "ast_only": True,
+            "tool_schema_ast_only": True,
+            "tool_schema_files": tool_schema_files,
+            "tool_schema_functions": len(specs),
             "scenario_prompts_retained": True,
             "verifiers_read": False,
             "tools_executed": False,

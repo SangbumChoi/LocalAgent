@@ -1130,6 +1130,29 @@ inherited selector to `75%` after retraining, but a matched random backbone also
 The result supports the data adapter and selector retraining protocol, not representation transfer
 or stateful execution; the adoption decision is explicitly `do_not_adopt_as_representation_evidence`.
 
+### ToolSandbox schema-conditioned transfer probe (m61)
+
+The next pass keeps the same task-disjoint split but enriches each candidate tool with a static
+JSON schema: function signatures, primitive annotations, required arguments, and the first
+docstring summary are parsed from the pinned `tool_sandbox/tools/*.py` files with Python's AST.
+The adapter never imports ToolSandbox, resolves decorators, reads verifiers, executes tools, or
+contacts an API.  This is the right interface for the requested email/Notion-style deployment:
+the model sees the task plus the actual candidate schema instead of a name-only placeholder.
+
+The [`m61 receipt`](paper/results/raw/m61-toolsandbox-schema-conditioned-transfer-v1.json) binds
+38 statically extracted functions, 107 train rows, and 20 held-out rows.  The transferred
+backbone's teacher-forced metrics are unchanged from m59 (`65.31% → 71.53%` token accuracy;
+sequence exactness `0/20`) because this SFT path predicts the assistant call rather than training
+the schema text itself.  The schema-aware candidate selector improves top-3 coverage from `85%`
+to `100%`, while top-1 is `75%`; the matched-random backbone also reaches `75%` top-1.  Therefore
+schema conditioning is adopted as a deployment interface improvement, but pretrained
+representation reuse is still not promoted as a quality claim.  Native ToolSandbox/MCPMark
+execution and state verifiers remain required for any real side-effect or productivity score.  On
+the untouched pinned MCPMark descriptions, the same child remains at `20.71%` standard routing,
+`2.37%` selector top-1, and `14.79%` top-3 (`22.86%`, `1.43%`, and `14.29%` on easy), exactly
+matching m60's m59 arm.  This negative transfer is important: local schemas improve candidate
+coverage, but do not solve cross-service Notion/filesystem/Postgres schema retrieval.
+
 ### Local WebGPU and Hugging Face export receipts (m57–m58)
 
 The same m56 child was exported to a clean static-demo bundle and an independent Hugging Face
