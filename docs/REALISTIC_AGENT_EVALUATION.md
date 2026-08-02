@@ -1044,6 +1044,33 @@ This is stronger local evidence than the earlier M15 receipt, but it remains a n
 gate: no official Android emulator, AgentNetBench, BrowserGym/OSWorld VM, MCP server, screenshot
 grounding, real account, or hardware-throughput run has been completed.
 
+### Stateful email/Notion/browser transfer probe (m55)
+
+The reusable [`stateful_productivity.py`](../src/localagent/data/stateful_productivity.py) contract
+now gives SFT, pointer supervision, selector probes, and future RL one canonical local state
+machine.  It contains disjoint train/evaluation slots and phrasing for five workflows: complete
+Gmail compose/send, Notion page creation, browser search, browser 404 recovery, and no-tool
+abstention.  The evaluation split has 16 ordered decisions over a 62-tool WebGPU catalog.  Every
+step is scored independently for schema validity, tool/argument exactness, state transition, and
+closed-loop completion; final task state and recovery are scored separately.
+
+The [`m55 receipt`](paper/results/raw/m55-stateful-productivity-transfer-v1.json) compares the
+frozen 10.5M-parameter BPE backbone with a seed-matched random backbone.  Both arms receive the
+same 160 route/selector updates and pointer-copy budget.  The pretrained arm reaches selector
+top-1 `53.33%` and top-3 `80.00%`, versus `46.67%` and `86.67%` for the random arm.  Closed-loop
+success is only `1/16` (`6.25%`) for both arms, with `0/5` complete workflows and `0/1` recovery;
+the only successful episode is abstention (`1/1`).  This is a useful negative result: better
+teacher-forced selection does not yet imply stateful execution, so the next training target is
+argument/state grounding and recovery rather than more route-head fitting.
+
+The frozen shaped-reward projection (schema `0.10`, tool `0.25`, arguments `0.25`, transition
+`0.25`, terminal `0.15`) averages `0.2500` for the pretrained arm and `0.2656` for the random
+control, another warning that partial local signals can move independently of task completion.
+
+The probe is synthetic and local by design: it uses no public benchmark task text, screenshots,
+emulators, MCP servers, external APIs, real email, or real Notion account.  It is a training and
+diagnostic contract, not an AndroidWorld, BrowserGym, MCPMark, or publication score.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
