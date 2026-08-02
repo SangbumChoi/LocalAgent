@@ -205,6 +205,8 @@ def _synthetic_mobile_samples() -> list[Sample]:
             "Launch the shopping application on the phone.",
             "Start the browser app on the mobile screen.",
             "Open Settings on the Android device.",
+            "Launch Notes on the Android phone.",
+            "Open the notes app on the mobile device.",
         ],
         "mobile_click": [
             "Tap Compose at x=80 y=180 on the Android screen.",
@@ -216,6 +218,9 @@ def _synthetic_mobile_samples() -> list[Sample]:
             "Click the menu item shown on the mobile display.",
             "Touch the checkbox at x=300 y=500.",
             "Tap the notification card on Android.",
+            "Tap New folder in the Notes app at x=120 y=180.",
+            "Tap the first todo row in Notes at x=160 y=260.",
+            "Select the New note control in the mobile notes app.",
         ],
         "mobile_long_press": [
             "Long-press the photo at x=160 y=340 on the phone.",
@@ -259,6 +264,9 @@ def _synthetic_mobile_samples() -> list[Sample]:
             "Enter a message reading 'see you soon' on mobile.",
             "Write '42' in the active Android field.",
             "Input the requested text into the focused phone control.",
+            "Type 'weekly plan' into the focused Notes title field.",
+            "Enter 'buy groceries' in the active mobile note field.",
+            "Write 'remember the meeting' into the Notes editor on the phone.",
         ],
         "mobile_navigate_home": [
             "Go to the home screen on the Android phone.",
@@ -280,6 +288,7 @@ def _synthetic_mobile_samples() -> list[Sample]:
             "Use the Android back action.",
             "Return to the previous view on mobile.",
             "Leave this screen using Back.",
+            "Go back from the mobile note editor.",
         ],
         "mobile_press_enter": [
             "Press Enter on the Android keyboard.",
@@ -290,6 +299,8 @@ def _synthetic_mobile_samples() -> list[Sample]:
             "Press the enter key on Android.",
             "Send the focused form with Return on the phone.",
             "Activate the mobile keyboard's Enter button.",
+            "Press Enter to save the focused note field.",
+            "Confirm the Notes dialog with the phone Enter key.",
         ],
         "mobile_wait": [
             "Wait for the phone screen to finish loading.",
@@ -485,6 +496,54 @@ def _state_conditioned_trajectory_samples() -> list[Sample]:
             'Goal: search contacts. Current state JSON: {"query":"alice"}. '
             "Next required action: Press Enter and load the results.",
             "key_press", {"key": "Enter"},
+        ),
+        (
+            'Goal: create a note folder. Current state JSON: {"app":"notes","screen":"home"}. '
+            'Visible text: "New folder" "New note" "Todos". '
+            "Next required action: Tap New folder at x=120 y=180.",
+            "mobile_click", {"x": 120, "y": 180},
+        ),
+        (
+            'Goal: write a note. Current state JSON: {"app":"notes","screen":"home"}. '
+            'Visible text: "New note" "Folders". '
+            "Next required action: Tap New note at x=210 y=180.",
+            "mobile_click", {"x": 210, "y": 180},
+        ),
+        (
+            'Goal: remove a todo. Current state JSON: {"app":"notes","screen":"todos"}. '
+            'Visible text: "Todo A" "Todo B" "Completed". '
+            "Next required action: Tap the first todo row at x=150 y=260.",
+            "mobile_click", {"x": 150, "y": 260},
+        ),
+        (
+            'Goal: edit a note. Current state JSON: {"app":"notes","screen":"editor","focus":"title"}. '
+            'Visible text: "Title" "Content" "Save". '
+            "Next required action: Type 'weekly plan' into the focused title field.",
+            "mobile_input_text", {"text": "weekly plan"},
+        ),
+        (
+            'Goal: edit a note. Current state JSON: {"app":"notes","screen":"editor","focus":"content"}. '
+            'Visible text: "Title" "Content" "Save". '
+            "Next required action: Type 'buy groceries' into the focused content field.",
+            "mobile_input_text", {"text": "buy groceries"},
+        ),
+        (
+            'Goal: save a note. Current state JSON: {"app":"notes","screen":"editor","focus":"content"}. '
+            'Visible text: "Save" "Cancel". '
+            "Next required action: Press Enter to save the note.",
+            "mobile_press_enter", {"key": "Enter"},
+        ),
+        (
+            'Goal: leave the note editor. Current state JSON: {"app":"notes","screen":"editor"}. '
+            'Visible text: "Back" "Save". '
+            "Next required action: Navigate back to the Notes list.",
+            "mobile_navigate_back", {},
+        ),
+        (
+            'Goal: open notes. Current state JSON: {"app":"home","screen":"launcher"}. '
+            'Visible text: "Notes" "Calendar" "Settings". '
+            "Next required action: Launch Notes on the phone.",
+            "mobile_open_app", {"app_name": "Notes"},
         ),
     ])
     return [

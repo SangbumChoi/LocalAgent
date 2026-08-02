@@ -1146,6 +1146,22 @@ reach judge progress `0.5` before the repeated answer action, while the create a
 no judged progress.  This sweep establishes a broader routing failure: pointer supervision fixes
 the empty argument symptom, but the model still lacks state-conditioned mobile action selection.
 
+### MobileGym state-balanced routing and reranking ablation (m130)
+
+The [`m130 receipt`](paper/results/raw/m130-mobilegym-state-routing-rerank-v1.json) tests two
+deployment-side changes without touching the language-model backbone.  First, the dispatch
+continuation adds generic Notes-like state/action rows (no MobileGym task text or state values)
+and balances navigation, tap, typing, back, and wait examples.  Second, the native probe exposes
+the existing selector beam as a bounded `--selector-top-m` option so grounded body reranking can
+compare several candidates.
+
+The warm held-out public selector rises from `42.92%` to `47.12%`, with exact configuration and
+tokenizer compatibility and `0%` backbone movement.  On the native create-folder task, top-1
+still selects `mobile_submit_answer` and scores `0/1`; top-8 reranking changes the action to
+`mobile_wait` but also scores `0/1`.  The matched random arm selects different low-level actions
+under top-8 and also scores `0/1`.  This is a useful routing/reranking failure analysis, not
+evidence of mobile capability or a publication-gate pass.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

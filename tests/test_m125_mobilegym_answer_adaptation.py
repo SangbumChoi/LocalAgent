@@ -101,3 +101,19 @@ def test_m127_notes_sweep_is_hash_bound_and_bounded() -> None:
         "notes.ReadTodoText",
     }
     assert all(task["tools"] == ["mobile_submit_answer"] for task in receipt["tasks"])
+
+
+def test_m130_state_routing_rerank_receipt_is_hash_bound_and_non_gating() -> None:
+    receipt = json.loads(
+        Path("docs/paper/results/raw/m130-mobilegym-state-routing-rerank-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    self_hash = receipt.pop("receipt_self_sha256")
+    assert self_hash == _canonical_sha256(receipt)
+    assert receipt["native_receipt_eligible"] is False
+    assert receipt["data"]["synthetic_mobile_rows"] == 105
+    assert receipt["data"]["state_conditioned_trajectory_rows"] == 31
+    assert receipt["arms"]["warm"]["native_top1"]["tools"] == ["mobile_submit_answer"]
+    assert receipt["arms"]["warm"]["native_top8_rerank"]["tools"] == ["mobile_wait"]
+    assert receipt["arms"]["random"]["native_top8_rerank"]["success_rate"] == 0.0

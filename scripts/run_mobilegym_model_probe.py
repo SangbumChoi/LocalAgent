@@ -152,7 +152,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
     specs = mobile_tools()
     for spec in specs:
         registry.register(spec, lambda **kwargs: kwargs)
-    agent = Agent.from_checkpoint(args.checkpoint, registry)
+    agent = Agent.from_checkpoint(args.checkpoint, registry, selector_top_m=args.selector_top_m)
     env = MobileGymEnv(
         url=args.env_url,
         headless=True,
@@ -271,6 +271,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--revision", default="unknown")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-steps", type=int, default=2)
+    parser.add_argument(
+        "--selector-top-m",
+        type=int,
+        default=1,
+        help="number of learned selector candidates passed to grounded reranking",
+    )
     return parser.parse_args()
 
 
