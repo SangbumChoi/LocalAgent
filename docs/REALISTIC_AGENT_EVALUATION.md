@@ -178,6 +178,22 @@ experiment is larger official-train coverage plus candidate-ranking/state-transi
 followed by native browser execution; the four-case train-derived suite must not be promoted to an
 official Mind2Web score.
 
+### Gold-independent DOM candidate safety adapter (m34)
+
+The m33 failure was specific: the model selected `web_click` correctly but its pointer span crossed
+several serialized candidates and returned the wrong backend node.  The WebGPU runtime now has an
+explicit safety adapter that ranks only the observed candidate attributes against task-token
+overlap.  It selects the highest-scoring observed `target_id`; if no candidate matches, it preserves
+the learned pointer output for unlabeled/icon-only controls.  The adapter does not read positive or
+negative labels and is therefore a deployment policy, not a hidden test oracle.
+
+On the unchanged four-case public-train held-out suite, the adapter improved complete structured
+actions from `1/4` to `4/4`: three candidate-ranked web clicks and one cancellation abstention.
+The explicit in-app WebGPU adapter was Apple Metal-3 (non-fallback), with p50 harness TTFA
+`37.20 ms` and p95 `38.65 ms`.  The underlying learned pointer metric remains `3/6` exact spans;
+the 4/4 result must not be described as pointer-head-only generalization or official Mind2Web
+browser success.  See [`m34`](paper/results/raw/m34-mind2web-grounded-dom-webgpu-candidate-safety-v1.json).
+
 ### Offline normalized mobile action protocol
 
 [`src/localagent/eval/mobile.py`](../src/localagent/eval/mobile.py) now provides the common

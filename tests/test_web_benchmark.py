@@ -506,6 +506,34 @@ process.stdout.write(JSON.stringify(values));
     assert trie_abstain["schema_valid"] is True
 
 
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_browser_dom_candidate_safety_adapter_prefers_task_matching_observation():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { browserCandidateTargetId, groundFromSchema } = require(process.argv[1]);
+const prompt = [
+  "Find the results of the most recent NFL games.",
+  "Browser DOM candidates: operation=CLICK target_id=213 text=YAHOO PLUS |",
+  "target_id=2932 text=Final | target_id=170 id=root_3 text=NFL"
+].join(" ");
+const schema = {
+  properties: { target_id: { type: "string" } },
+  required: ["target_id"]
+};
+process.stdout.write(JSON.stringify({
+  target: browserCandidateTargetId(prompt),
+  args: groundFromSchema(prompt, schema, { target_id: "2932 text=Final" })
+}));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {"target": "170", "args": {"target_id": "170"}}
+
+
 def test_browser_benchmark_exposes_all_policy_modes_and_cached_decode_metadata():
     html = WEB_BENCHMARK_HTML.read_text()
     app = WEB_APP.read_text()

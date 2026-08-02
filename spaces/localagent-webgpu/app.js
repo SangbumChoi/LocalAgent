@@ -1781,6 +1781,64 @@ function pointerSpan(arg, ids, H, T) {
   try { return TOKENIZER.decode(ids.slice(s, e + 1), false); } catch { return ""; }
 }
 
+// Browser observations contain a bounded, pipe-delimited candidate list.  A pointer span is
+// still the learned signal, but it can legally span several adjacent candidates when the model
+// has not yet learned the DOM protocol.  Before accepting that span, rank the observed candidates
+// against the task text and use the highest-scoring *observed* backend id.  This is a safety
+// adapter, not a hidden label: it only reads the natural-language request and the candidate
+// attributes already supplied by the environment.  If no candidate shares a task token, the
+// learned pointer remains the fallback (important for unlabeled/icon-only controls).
+const DOM_CANDIDATE_STOPWORDS = new Set([
+  "a", "an", "and", "are", "at", "be", "by", "do", "for", "from", "in", "into", "is",
+  "it", "latest", "most", "of", "on", "or", "please", "results", "the", "this", "to", "use",
+  "with", "your",
+]);
+const DOM_CANDIDATE_FIELDS = new Set([
+  "target_id", "operation", "tag", "role", "id", "title", "aria_label", "placeholder", "value",
+  "text",
+]);
+
+function domCandidateTokens(value) {
+  return String(value).toLowerCase().match(/[a-z0-9]+/g) || [];
+}
+
+function browserCandidateTargetId(prompt) {
+  const marker = "Browser DOM candidates:";
+  const markerIndex = String(prompt).lastIndexOf(marker);
+  if (markerIndex < 0) return null;
+  let task = String(prompt).slice(0, markerIndex);
+  // In a trajectory, earlier tool responses may contain their own snapshots.  They are state
+  // history, not the current request; isolate the initial task before scoring the latest view.
+  const earlierMarkerIndex = task.indexOf(marker);
+  if (earlierMarkerIndex >= 0) task = task.slice(0, earlierMarkerIndex);
+  const instruction = task.match(/(?:next required action|instruction|request)\s*:\s*([\s\S]*)$/i);
+  if (instruction) task = instruction[1];
+  const taskTokens = new Set(
+    domCandidateTokens(task).filter((token) => token.length >= 3 && !DOM_CANDIDATE_STOPWORDS.has(token))
+  );
+  if (!taskTokens.size) return null;
+  const segments = String(prompt).slice(markerIndex + marker.length).split(/\s*\|\s*/);
+  let best = null;
+  for (let index = 0; index < segments.length; index++) {
+    const segment = segments[index];
+    const match = segment.match(/(?:^|\s)target_id=([^\s|]+)/i);
+    if (!match) continue;
+    const targetId = match[1];
+    const candidateText = segment.replace(/\b([a-z_]+)=([^\s|]+)/gi, (whole, key, value) => {
+      return DOM_CANDIDATE_FIELDS.has(String(key).toLowerCase()) ? ` ${value} ` : whole;
+    });
+    const candidateTokens = new Set(domCandidateTokens(candidateText));
+    let overlap = 0;
+    for (const token of taskTokens) if (candidateTokens.has(token)) overlap += 1;
+    if (!overlap) continue;
+    const score = overlap / taskTokens.size;
+    if (!best || score > best.score || (score === best.score && index < best.index)) {
+      best = { targetId, score, index };
+    }
+  }
+  return best?.targetId || null;
+}
+
 const PATH_HINTS = new Set([
   "path", "file", "filepath", "filename", "source", "src", "dest", "destination", "target",
 ]);
@@ -1935,11 +1993,16 @@ function groundedArgsValid(args, schema) {
 function groundFromSchema(prompt, schema, pointerValues = {}) {
   const properties = schema.properties || {};
   const required = new Set(schema.required || []);
+  const effectivePointerValues = { ...pointerValues };
+  const candidateTargetId = browserCandidateTargetId(prompt);
+  if (candidateTargetId && properties.target_id) {
+    effectivePointerValues.target_id = candidateTargetId;
+  }
   const pools = groundingPools(prompt);
   const args = {};
   for (const [arg, argSchema] of Object.entries(properties)) {
     const value = fillSchemaArg(
-      prompt, arg, argSchema, pools, required.has(arg), pointerValues[arg] || null
+      prompt, arg, argSchema, pools, required.has(arg), effectivePointerValues[arg] || null
     );
     if (value != null && value !== "") {
       args[arg] = value;
@@ -2588,6 +2651,7 @@ if (typeof module !== "undefined" && module.exports) {
     argmaxAllowed,
     bundleArtifactEvidence,
     bundleManifestByteEvidence,
+    browserCandidateTargetId,
     buildCandidateTrie,
     cachedActionPrompt,
     cachedDecodeBundleEvidence,
