@@ -56,17 +56,19 @@ PYTHONPATH=src python scripts/workshop_gate.py --strict
 ```
 
 The command without supplied receipts exits non-zero with nine blocking requirements.  Supplying
-the verified native WebGPU, full BrowserGym, and public-artifact receipts reduces this to six:
+the verified native WebGPU, full BrowserGym, MobileGym, and public-artifact receipts reduces this
+to seven:
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
   --webgpu-receipt docs/paper/results/raw/m40-webgpu-native-capability-notion-v1.json \
   --native-receipt browsergym_miniwob=docs/paper/results/raw/m43-browsergym-native-adapter-full-model-eval-v1.json \
+  --native-receipt mobilegym=docs/paper/results/raw/m133-mobilegym-native-text-eval-v1.json \
   --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json \
   --public-artifact-manifest docs/paper/results/raw/public-model-demo-manifest-v1.json
 ```
 
-The six remaining native benchmark receipts are still absent.  The public artifact manifest now
+The seven remaining native benchmark receipts are still absent.  The public artifact manifest now
 verifies the already-live 28.32M-parameter byte model and static WebGPU Space, but it does not
 prove native OS/emulator/MCP control or task success.  That is intentional:
 four train adapters and the tracked offline receipts are useful progress, but they do not prove
