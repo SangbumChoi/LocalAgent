@@ -11,6 +11,7 @@ from scripts.profile_computer_agent_arena import action_family, profile
 def test_action_family_is_conservative() -> None:
     assert action_family("click") == "pointer"
     assert action_family("left_click") == "pointer"
+    assert action_family("double_click") == "pointer"
     assert action_family("typewrite") == "type"
     assert action_family("type") == "type"
     assert action_family("hotkey") == "keyboard"

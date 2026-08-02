@@ -222,6 +222,23 @@ used for SFT.  The result makes the visual-grounding gap measurable rather than 
 thought text as an observation.  A future visual model must use the pinned image archive and a
 task-disjoint protocol before any image-grounded or native desktop claim is made.
 
+### Computer Agent Arena instruction-only checkpoint probe (m50)
+
+The current 10.52M-parameter BPE WebGPU checkpoint was then evaluated on 128 deterministic,
+source-disjoint first-action cases using only each public task instruction.  The probe is recorded
+in the [`m50 receipt`](paper/results/raw/m50-computer-agent-arena-instruction-probe-v1.json) and
+implemented by [`evaluate_computer_agent_arena_text.py`](../scripts/evaluate_computer_agent_arena_text.py).
+The route head correctly identified `computer_use` on `128/128` cases, but exact local-tool
+selection was only `5.47%` and action-family accuracy was `7.03%`; the model abstained on `9.38%`
+of cases.  It over-produced `screenshot` for pointer tasks, which is the expected failure mode when
+the model is asked to ground a coordinate action without an image or accessibility tree.
+
+This is a deliberately leakage-safe action-prior diagnostic.  It does not use the published
+thought traces, screenshots, later trajectory state, or action arguments, and it is not an official
+Computer Agent Arena, AgentNetBench, visual-grounding, or native desktop result.  The result is
+useful for model design: the route gate transfers, while grounding requires a visual/accessibility
+encoder and a stateful action loop before further SFT or RL can be expected to improve real tasks.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed

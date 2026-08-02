@@ -57,11 +57,17 @@ def action_family(name: str | None) -> str:
     if name in {
         "click",
         "doubleclick",
+        "double_click",
         "rightclick",
+        "right_click",
         "middleclick",
+        "middle_click",
         "tripleclick",
+        "triple_click",
         "moveto",
+        "move_cursor",
         "dragto",
+        "drag",
         "left_click",
         "right_click",
         "middle_click",
@@ -76,7 +82,16 @@ def action_family(name: str | None) -> str:
         return "scroll"
     if name in {"write", "typewrite", "type", "type_text"}:
         return "type"
-    if name in {"press", "hotkey", "keydown", "keyup", "key", "keypress", "key_press", "hold_key"}:
+    if name in {
+        "press",
+        "hotkey",
+        "keydown",
+        "keyup",
+        "key",
+        "keypress",
+        "key_press",
+        "hold_key",
+    }:
         return "keyboard"
     if name in {"sleep", "wait"}:
         return "wait"
