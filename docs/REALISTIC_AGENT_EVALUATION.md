@@ -1880,6 +1880,34 @@ receipt is useful negative evidence: action-head oversampling can improve a held
 without fixing state-conditioned UI grounding, and the backbone remains a frozen warm-start
 transfer rather than a newly pretrained representation.
 
+### Four-source public continuation with xLAM-derived tool data (m137)
+
+The [`m137 transfer receipt`](paper/results/raw/m137-cross-surface-xlam-derivative-transfer-v1.json)
+is the first explicit four-source continuation for this deployment family.  It combines 8,540
+public train rows from AndroidControl, AgentNet, Mind2Web, and the public Apache-2.0
+[`xLAM-derived dataset`](https://huggingface.co/datasets/product-science/xlam-function-calling-60k-raw),
+then evaluates 1,541 source-disjoint, globally slot-disjoint rows.  The original Salesforce xLAM
+dataset remains gated; the derivative is therefore bound to its own revision and is never called
+an official Salesforce split.
+
+The derivative normalizer rejects rather than coerces malformed generated schemas: 89/4,000
+train rows and 18/1,000 held-out rows were excluded, and a further 482 held-out rows with
+overlapping declared argument slots were removed to preserve the repository's exact-match split
+contract.  These exclusions are recorded in the receipt and are not hidden data cleaning.
+
+Starting from m129, warm continuation raises aggregate held-out token accuracy from `57.65%` to
+`58.81%` (Android `65.47% → 67.20%`, desktop `47.27% → 48.95%`, derivative tools `52.84% →
+53.45%`).  The matched random-backbone control reaches only `11.22%`.  Warm backbone movement is
+small (embedding `0.48%`, mixer `0.15%`, FFN `0.18%`, normalization `0.007%`), while the random
+control moves those groups by `123.6%`, `77.9%`, `87.8%`, and `7.9%`.  This supports reusing the
+pretrained backbone with conservative updates and separate head learning rates.
+
+It does not establish a production tool-use win: on a 128-row derivative xLAM first-call probe,
+row-local tool exactness changes `50.78% → 49.22%`, argument exactness remains `0%`, and global
+63-tool selection remains `0%`.  The warm child is consequently not promoted.  The experiment
+supports weight lineage and initialization choice, not official xLAM, native MCP/API, or WebGPU
+throughput claims.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
