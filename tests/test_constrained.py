@@ -18,6 +18,44 @@ def test_calculator_expression_extracted():
     assert any('"expression":"7*8"' in b for b in bodies)
 
 
+def test_boolean_and_message_slots_are_typed_and_grounded():
+    from localagent.data.schema import ToolSpec
+    from localagent.agent.constrained import _tool_bodies
+
+    toggle = ToolSpec(
+        name="set_wifi_status",
+        description="Enable or disable Wi-Fi.",
+        parameters={
+            "type": "object",
+            "properties": {"on": {"type": "boolean"}},
+            "required": ["on"],
+        },
+    )
+    assert any('"on":false' in body for body in _tool_bodies("Turn off wifi", toggle))
+
+    message = ToolSpec(
+        name="send_message",
+        description="Send a message.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "phone_number": {"type": "string"},
+                "content": {"type": "string"},
+            },
+            "required": ["phone_number", "content"],
+        },
+    )
+    bodies = _tool_bodies(
+        "Send a message to +12453344098 saying: How's the new album coming along", message
+    )
+    assert any(
+        '"phone_number":"+12453344098"' in body
+        and '"content":"' in body
+        and "How's the new album coming along" in body
+        for body in bodies
+    )
+
+
 def test_hello_is_text_only_not_planner():
     # "hello to X" must NOT fire the planner's " to " trigger.
     cands = candidates("Say hello to Zara.", TOOLS)

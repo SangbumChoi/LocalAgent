@@ -1195,6 +1195,33 @@ official split, native browser, or external side effect ran.  The practical depl
 to require task-scoped candidate retrieval and schema validation before dispatch, while treating
 stateful execution and exact argument grounding as unresolved training targets.
 
+### ToolSandbox native simulator/verifier smoke (m64)
+
+The [`m64 receipt`](paper/results/raw/m64-toolsandbox-native-smoke-v1.json) runs the same transferred
+checkpoint inside the pinned ToolSandbox execution context and upstream milestone evaluator for
+`cellular_off`, `wifi_off`, and `send_message_with_phone_number_and_content`.  The generic decoder
+now emits typed booleans and separates phone/message spans; all three tool mutations reached
+`milestone_similarity = 1.0` in the resettable smoke.
+
+This is native simulator/verifier evidence, not an official benchmark score: the smoke uses a
+scripted user, a deterministic post-tool confirmation template, three single-turn scenarios, and
+no model-based user simulator or RapidAPI.  The official split remains unverified, so m64 cannot
+clear the native ToolSandbox publication gate.  The result does, however, turn the m63 argument
+grounding failure into a reproducible training/runtime target instead of a projection-only claim.
+
+### ToolSandbox transfer movement audit (m65)
+
+The [`m65 receipt`](paper/results/raw/m65-toolsandbox-weight-transfer-v1.json) compares the exact
+stateful-productivity low-rate parent and the ToolSandbox continuation child.  Config and tokenizer
+hashes match, with no shape mismatch.  Relative movement is `0.476%` in the embedding, `0.196%` in
+attention/mixer, `0.243%` in FFN, and `0.0097%` in normalization; the inherited route, pointer,
+dense-selector, and fixed tool heads were unchanged in this child.
+
+That pattern supports reusing the pretrained backbone with a smaller backbone learning rate and
+separate head initialization, but it does not establish that transfer is better than a matched
+random control.  The adoption decision therefore remains compatibility-positive and quality-claim
+negative until the same native task set is run with frozen, low-rate, and matched-random arms.
+
 ### Local WebGPU and Hugging Face export receipts (m57–m58)
 
 The same m56 child was exported to a clean static-demo bundle and an independent Hugging Face

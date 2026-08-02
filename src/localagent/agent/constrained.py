@@ -46,6 +46,34 @@ def _strip(s: str) -> str:
 # (take the whole tail, which may itself contain a proper noun, e.g. query "capital of Peru").
 ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place",
                "recipient"}
+PHONE_ARGS = {"phone", "phone_number", "telephone", "telephone_number", "mobile"}
+TEXT_ARGS = {"content", "message", "text", "body", "subject", "title", "note", "comment"}
+
+
+def _boolean(prompt: str) -> list[bool]:
+    """Infer a JSON boolean from generic enable/disable language in the prompt."""
+    low = prompt.lower()
+    if re.search(r"\b(?:turn|switch|set|power)\s+off\b|\b(?:disable|disabled|false|no)\b", low):
+        return [False]
+    if re.search(r"\b(?:turn|switch|set|power)\s+on\b|\b(?:enable|enabled|true|yes)\b", low):
+        return [True]
+    return []
+
+
+def _phone(prompt: str) -> list[str]:
+    """Return the first phone-like span without trailing message prose."""
+    match = re.search(r"\+?\d[\d ()-]{6,}\d", prompt)
+    if not match:
+        return []
+    return [re.sub(r"[ ()-]", "", match.group(0))]
+
+
+def _text_arg(prompt: str) -> list[str]:
+    """Extract free-form message text after common generic delimiters."""
+    match = re.search(r"(?:saying|with message|message|text|content)\s*:\s*(.+)", prompt, re.I)
+    if match:
+        return [_strip(match.group(1))]
+    return []
 
 
 def _best_string(prompt: str, arg: str = "") -> str:
@@ -56,6 +84,14 @@ def _best_string(prompt: str, arg: str = "") -> str:
     low = prompt.lower()
     tails = [_strip(prompt[i + len(p) + 2:]) for p in PREPS if (i := low.find(f" {p} ")) >= 0]
     tails = [t for t in tails if t]
+    if arg in PHONE_ARGS:
+        values = _phone(prompt)
+        if values:
+            return values[0]
+    if arg in TEXT_ARGS:
+        values = _text_arg(prompt)
+        if values:
+            return values[0]
     if arg in ENTITY_ARGS and caps:
         return _strip(caps[0])
     if tails:
@@ -102,6 +138,12 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         opts = list(schema["enum"])
     elif fmt == "arithmetic" or "express" in name:
         opts = _arith(prompt)
+    elif schema.get("type") == "boolean":
+        opts = _boolean(prompt)
+    elif name in PHONE_ARGS:
+        opts = _phone(prompt)
+    elif name in TEXT_ARGS:
+        opts = _text_arg(prompt)
     elif ptr is not None and name in ptr[0].arg_idx:        # learned pointer/copy span
         ph, feats_row, framed_ids, tok = ptr
         s, e = ph.predict_span(feats_row, name)
