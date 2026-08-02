@@ -42,15 +42,16 @@ PYTHONPATH=src python scripts/workshop_gate.py --strict
 ```
 
 The command without supplied receipts exits non-zero with nine blocking requirements.  Supplying
-the verified native WebGPU receipt reduces this to eight:
+the verified native WebGPU and full BrowserGym receipts reduces this to seven:
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
   --webgpu-receipt docs/paper/results/raw/m40-webgpu-native-capability-notion-v1.json \
+  --native-receipt browsergym_miniwob=docs/paper/results/raw/m41-browsergym-native-full-model-eval-v1.json \
   --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json
 ```
 
-The seven remaining native benchmark receipts and the public artifact manifest are still absent.
+The six remaining native benchmark receipts and the public artifact manifest are still absent.
 That is intentional:
 four train adapters and the tracked offline receipts are useful progress, but they do not prove
 native OS/emulator/MCP control or public deployment.  Once a native runner produces a receipt, it
@@ -99,6 +100,15 @@ screenshot, scroll, type, and wait), route accuracy moved from `40%` to `100%`, 
 observation-contract adapter is learnable, not a native BrowserGym result; the remaining argument
 errors and the 240-episode m29 abstention result still block any browser-agent claim.  The native
 runner now emits quoted accessibility names so a future run evaluates the same contract.
+
+The complete pinned native split is now recorded in the [`m41 receipt`](paper/results/raw/m41-browsergym-native-full-model-eval-v1.json).
+It ran the exact 240-episode plan (60 task variants, four fixed seeds, ten model steps per
+episode) with BrowserGym `0.14.3`, MiniWoB++ at the pinned revision, Playwright `1.44.0`, and
+Chromium `125.0.6422.26`; `official_split_verified` is true.  The result was `0/240` success:
+all 240 episodes abstained at every step (`I am LocalAgent.`), with 0 grounded actions and zero
+action errors.  This is a reproducible native text/accessibility-tree baseline, not a visual-agent,
+WebArena, real-account, or leaderboard score; the compact tracked receipt retains per-task and
+per-seed aggregates and hashes the full local case log.
 
 ## Bounded public Mind2Web training continuation
 
