@@ -96,14 +96,14 @@ entries:
     name: AndroidWorld
     source_url: https://github.com/google-research/android_world
     license: Apache-2.0
-    source_revision: pin_before_use
+    source_revision: 3e50888527ef9f29b9157ecd537e408008bb1c85
     scale: 116_tasks_20_apps_with_dynamic_variations
     modalities: [goal, accessibility_tree, screenshot, emulator_state]
     split_policy: evaluation_only; task templates and generated goals are runtime inputs
     runtime: Android_emulator_with_adb
     webgpu_projection: accessibility-tree text probe only; no visual or emulator reward claim
     metric: environment_reward_and_task_success
-    notes: The current machine has no adb or Android emulator, so no native receipt is asserted.
+    notes: Pinned public task_metadata.json is profiled in m51; the current machine has no adb or Android emulator, so no native receipt is asserted.
 
   - id: browsergym_miniwob
     family: browser

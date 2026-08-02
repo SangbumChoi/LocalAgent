@@ -396,6 +396,22 @@ This is a local result-protocol bridge, not a live runner or an official Android
 score. No AndroidWorld device result is published yet: the current environment lacks the
 upstream emulator/`adb` prerequisites.
 
+### AndroidWorld public task inventory (m51)
+
+The public [`android_world/task_metadata.json`](https://github.com/google-research/android_world/blob/3e50888527ef9f29b9157ecd537e408008bb1c85/android_world/task_metadata.json)
+was acquired at commit `3e50888527ef9f29b9157ecd537e408008bb1c85` and summarized in the
+[`m51 receipt`](paper/results/raw/m51-androidworld-metadata-v1.json).  It contains 116 unique
+task templates: 61 easy, 36 medium, and 19 hard; the median optimal budget is six steps, 96
+templates are tagged parameterized, 24 require screen reading, and eight span multiple apps.
+The task families cover messaging, calendar, contacts, browser, files, notes, recipes, settings,
+media, and information retrieval—closely matching the requested mobile/email/productivity surface.
+
+This receipt is a metadata inventory, not an AndroidWorld score.  It did not import AndroidWorld,
+install APKs, invoke `adb`, launch an emulator, read screenshots, or feed task templates to SFT/RL.
+The upstream environment reward and generated task instances remain required for a native mobile
+claim; the inventory instead gives the WebGPU adapter a pinned, auditable task taxonomy and step
+budget for future emulator runs.
+
 ## What can be trained
 
 Only the following public demonstrations are currently training candidates:
