@@ -12,13 +12,13 @@ entries:
     source_url: https://huggingface.co/datasets/xlangai/computer-agent-arena
     license: CC-BY-4.0
     source_revision: 897b9f45287c516a44f9e79879b14bc3c1bc5b0a
-    scale: 4641_trajectories_and_about_65000_images
+    scale: 4641_trajectories_and_99765_steps; metadata_jsonl_50609777_bytes; image_archives_30527486683_bytes
     modalities: [instruction, pyautogui_code, textual_thought, screenshot]
     split_policy: evaluation_only_until_task_and_model_identity_deduplication_is_verified
     runtime: controlled_ubuntu_desktop
     webgpu_projection: text-only action-vocabulary diagnostic; screenshots require a visual encoder
     metric: human_evaluation_correctness_plus_action_and_trajectory_diagnostics
-    notes: Main JSONL is about 48 MB; screenshot archive is about 17 GB. Do not train on evaluation battles without a frozen task/model holdout.
+    notes: Main JSONL is 50,609,777 bytes; the repository reports 30,527,486,683 bytes across duplicate and split image archives. Do not train on evaluation battles without a frozen task/model holdout.
 
   - id: cua_lite_agentnet
     family: computer

@@ -205,6 +205,23 @@ accuracy and mean loss `2.6121`, versus `21.19%` and `8.5930` for the fresh-back
 arms remained at `0/133` sequence exactness. This isolates a strong initialization effect in this
 bounded pilot, while leaving the no-transfer and native-runtime limitations explicit.
 
+### Computer Agent Arena metadata audit (m49)
+
+The public [Computer Agent Arena](https://huggingface.co/datasets/xlangai/computer-agent-arena)
+metadata file was downloaded at revision
+`897b9f45287c516a44f9e79879b14bc3c1bc5b0a` and hash-bound in the
+[`m49 receipt`](paper/results/raw/m49-computer-agent-arena-metadata-v1.json).  The snapshot has
+4,641 unique trajectories and 99,765 steps; 76,942 steps reference screenshots, 83,007 contain
+textual thought, and 89,144 contain a conservatively recognized computer-use primitive.  The
+metadata records a 57.90% human-evaluation correctness rate across the published trajectories.
+The 50,609,777-byte JSONL was read, but no screenshot archive was downloaded or opened.
+
+This is a source and modality-coverage audit, not a Computer Agent Arena score: the benchmark is
+evaluation-only, screenshots are omitted from the text-first WebGPU path, and the rows were not
+used for SFT.  The result makes the visual-grounding gap measurable rather than silently treating
+thought text as an observation.  A future visual model must use the pinned image archive and a
+task-disjoint protocol before any image-grounded or native desktop claim is made.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed
