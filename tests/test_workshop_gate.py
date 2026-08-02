@@ -72,6 +72,26 @@ def test_native_webgpu_capability_receipt_passes_hardware_contract() -> None:
     assert check["status"] == "pass"
 
 
+def test_native_webgpu_capability_receipt_covers_notion_dispatch() -> None:
+    receipt = ROOT / "docs/paper/results/raw/m40-webgpu-native-capability-notion-v1.json"
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    assert payload["capability"]["evaluated_cases"] == 3
+    notion = next(
+        case
+        for case in payload["capability"]["cases"]
+        if case["expected_tool"] == "notion_write"
+    )
+    assert notion["exact_action_rate"] == 1.0
+    assert notion["last_result"]["args"]["content"] == "WebGPU state loop passed"
+    report = build_workshop_gate(CATALOG, repo_root=ROOT, webgpu_receipt=receipt)
+    check = next(
+        item
+        for item in report["checks"]
+        if item["requirement"] == "webgpu:native_capability_and_latency"
+    )
+    assert check["status"] == "pass"
+
+
 def test_weight_gate_requires_two_compatible_labeled_reports(tmp_path: Path) -> None:
     payload = {
         "compatibility": {

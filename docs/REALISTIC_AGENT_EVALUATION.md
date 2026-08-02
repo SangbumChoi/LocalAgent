@@ -46,7 +46,7 @@ the verified native WebGPU receipt reduces this to eight:
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
-  --webgpu-receipt docs/paper/results/raw/m39-webgpu-native-capability-v1.json \
+  --webgpu-receipt docs/paper/results/raw/m40-webgpu-native-capability-notion-v1.json \
   --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json
 ```
 
@@ -203,22 +203,24 @@ The explicit in-app WebGPU adapter was Apple Metal-3 (non-fallback), with p50 ha
 the 4/4 result must not be described as pointer-head-only generalization or official Mind2Web
 browser success.  See [`m34`](paper/results/raw/m34-mind2web-grounded-dom-webgpu-candidate-safety-v1.json).
 
-### Native WebGPU action capability receipt (m39)
+### Native WebGPU action capability receipt (m40)
 
-The new [`webgpu-capability.html`](../spaces/localagent-webgpu/webgpu-capability.html) harness
-loads the hash-bound 10,524,544-parameter action graph with an exact WebGPU provider request,
-queries `navigator.gpu.requestAdapter()`, and records the exposed Apple Metal-3 adapter identity
-(`vendor=apple; architecture=metal-3`). It ran two realistic local dispatch cases—email and
-browser navigation—with three warmups and 30 measured repetitions per case. Both selected the
-expected tool and schema-valid argument on all 30 repetitions. The action graph's p50
-input-throughput estimate was `1,711.7 tokens/s`, p50 end-to-end dispatch latency was `5.9 ms`, and
-the conservative graph-plus-host-tensor memory estimate was `20.45 MB`.
+The [`webgpu-capability.html`](../spaces/localagent-webgpu/webgpu-capability.html) harness loads
+the hash-bound 10,524,544-parameter action graph with an exact WebGPU provider request, queries
+`navigator.gpu.requestAdapter()`, and records the exposed Apple Metal-3 adapter identity
+(`vendor=apple; architecture=metal-3`). The expanded receipt covers three realistic local
+dispatch cases—email, browser navigation, and a Notion write—with three warmups and 30 measured
+repetitions per case. All three selected the expected tool and schema-valid argument on all 30
+repetitions. The action graph's p50 input-throughput estimate was `1,355.9 tokens/s`, p50
+end-to-end dispatch latency was `7.9 ms`, and the conservative graph-plus-host-tensor memory
+estimate was `20.46 MB`.
 
 This is now sufficient for the workshop gate's native WebGPU capability/latency requirement, but
 it is not an external side-effect test: no email account, browser navigation, or Notion account
 was touched, so `closed_loop_success` is explicitly `0`. The memory figure is an allocation
-estimate because WebGPU/ORT exposes no driver VRAM counter. See the full hash-bound
-[`m39 receipt`](paper/results/raw/m39-webgpu-native-capability-v1.json).
+estimate because WebGPU/ORT exposes no driver VRAM counter. The two-case predecessor remains
+[`m39`](paper/results/raw/m39-webgpu-native-capability-v1.json); the full three-case hash-bound
+receipt is [`m40`](paper/results/raw/m40-webgpu-native-capability-notion-v1.json).
 
 ### Offline normalized mobile action protocol
 

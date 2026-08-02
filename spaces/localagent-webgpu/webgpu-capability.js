@@ -14,6 +14,11 @@ const CAPABILITY_QUERIES = Object.freeze([
     expected_tool: "open_url",
     expected_argument: "url",
   },
+  {
+    prompt: "Write 'WebGPU state loop passed' to Notion",
+    expected_tool: "notion_write",
+    expected_argument: "content",
+  },
 ]);
 
 function capabilityElement(id) {
