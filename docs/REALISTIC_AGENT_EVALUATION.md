@@ -1113,6 +1113,24 @@ useful grounding/argument failure record, not a MobileGym score, screenshot-grou
 or publication-gate pass.  The next mobile milestone is answer-span/pointer training plus a
 larger multi-task native run, not promotion of this adapter.
 
+### MobileGym pointer/copy adaptation control (m126)
+
+The [`m126 receipt`](paper/results/raw/m126-mobilegym-pointer-adaptation-v1.json) follows that
+failure with the smallest targeted intervention: the backbone stays frozen, while the existing
+copy head receives 300 updates from 4,225 train-side rows containing literal string arguments.
+This includes the public AndroidControl/AITW train projection, generic mobile answer examples,
+and state-conditioned productivity rows; the 904-row public evaluation file remains held out.
+The synthetic answer rows now carry explicit `message` spans, so pointer supervision is real
+span supervision rather than an empty-argument selector label.
+
+The warm and matched-random arms both reach `25%` exact pointer spans on four held-out string
+rows and both emit non-empty arguments on the native probe.  Neither reaches the answer task:
+both execute two `mobile_submit_answer` calls and score `0/1`, with all three answer fields still
+wrong.  Configuration/tokenizer compatibility remains exact, backbone movement remains `0%`,
+and action-head movement is `64.84%` for warm versus `104.77%` for random.  The intervention
+removes the empty-span symptom but does not solve multi-answer state grounding, so it is retained
+as a diagnostic and not promoted to a MobileGym or publication result.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

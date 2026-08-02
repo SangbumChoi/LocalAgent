@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 """Train an additive standard+mobile dispatch selector on a verified mobile Conversation mix.
 
-The LM backbone and legacy 50-tool head remain shape-compatible.  Only the route and dense
-selector probes are continued, and the exported tool pool is explicitly recorded.  A deterministic
-episode holdout reports selection and grounded-call metrics; it is not an Android emulator score.
+The LM backbone and legacy 50-tool head remain shape-compatible.  Route and dense-selector probes
+are continued, with an optional train-only pointer/copy-head continuation for literal arguments.
+The exported tool pool is explicitly recorded.  A deterministic episode holdout reports selection
+and grounded-call metrics; it is not an Android emulator score.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import torch.nn.functional as F
 
 from localagent.agent.dense_selector import BoundSelector, DenseToolSelector, tool_embeddings
 from localagent.agent.mobile_toolset import mobile_tools, realistic_productivity_tools
+from localagent.agent.pointer_head import PTR_ARGS, PointerHead, gold_span
 from localagent.agent.routes import ROUTE_INDEX, ROUTES, RouteHead, route_of
 from localagent.agent.toolset import STANDARD_TOOLS
 from localagent.data.agent_synth import Generator, Sample
@@ -310,15 +312,34 @@ def _synthetic_mobile_samples() -> list[Sample]:
             "Send the current mobile answer '7'.",
         ],
     }
+    answer_values = {
+        "Submit the mobile task answer 'alpha, beta'.": "alpha, beta",
+        "On the phone, send the answer 'one; two' for the current task.": "one; two",
+        "提交手机任务答案「会议、购物清单」。": "会议、购物清单",
+        "把当前手机任务的答案提交为「第一项，第二项」。": "第一项，第二项",
+        "Answer the handset question with 'red, blue'.": "red, blue",
+        "Submit the requested phone answer '完成'.": "完成",
+        "在移动设备上提交文本答案「已确认」。": "已确认",
+        "Send the current mobile answer '7'.": "7",
+    }
     return [
         Sample(
             "realistic_mobile_synthetic",
             "mobile",
             prompt,
             "tool",
-            json.dumps({"arguments": {}, "name": name}, sort_keys=True, separators=(",", ":")),
+            json.dumps(
+                {"arguments": ({"message": answer_values[prompt]} if name == "mobile_submit_answer" else {}),
+                 "name": name},
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
             name,
-            "{}",
+            json.dumps(
+                {"message": answer_values[prompt]} if name == "mobile_submit_answer" else {},
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
         )
         for name, prompts in rows.items()
         for prompt in prompts
@@ -527,6 +548,99 @@ def _checkpoint_tokenizer(parent: dict):
     return load_tokenizer(kind, path)
 
 
+def _warm_pointer(parent: dict, d_model: int) -> PointerHead:
+    """Load the parent's copy head without changing its argument vocabulary."""
+
+    args = tuple(parent.get("ptr_args", PTR_ARGS))
+    pointer = PointerHead(d_model, args=args)
+    if parent.get("ptr_head"):
+        pointer.load_state_dict(parent["ptr_head"])
+    return pointer
+
+
+def _pointer_examples(
+    model: LocalAgentLM,
+    tok,
+    rows: list[Sample],
+    pointer: PointerHead,
+    device: str,
+) -> list[tuple[torch.Tensor, int, int, int]]:
+    examples: list[tuple[torch.Tensor, int, int, int]] = []
+    model.eval()
+    with torch.no_grad():
+        for sample in rows:
+            if sample.kind != "tool":
+                continue
+            try:
+                arguments = json.loads(sample.ref_args)
+            except json.JSONDecodeError:
+                continue
+            ids = tok.encode(f"{USER}{sample.prompt}{ASSISTANT}")
+            if len(ids) > model.cfg.max_seq_len:
+                ids = ids[-model.cfg.max_seq_len :]
+            _, hidden = model(
+                torch.tensor([ids], dtype=torch.long, device=device),
+                return_hidden=True,
+            )
+            for name, value in arguments.items():
+                if name not in pointer.arg_idx or not isinstance(value, str):
+                    continue
+                span = gold_span(ids, tok.encode(value))
+                if span is not None:
+                    examples.append((hidden[0, : len(ids)].detach(), pointer.arg_idx[name], span[0], span[1]))
+    return examples
+
+
+def _train_pointer(
+    model: LocalAgentLM,
+    tok,
+    rows: list[Sample],
+    pointer: PointerHead,
+    *,
+    steps: int,
+    seed: int,
+    device: str,
+) -> dict[str, int]:
+    """Continue only the copy head on literal train-side argument spans."""
+
+    examples = _pointer_examples(model, tok, rows, pointer, device)
+    if not examples:
+        raise ValueError("mobile pointer training found no literal string spans")
+    optimizer = torch.optim.AdamW(pointer.parameters(), lr=2e-2)
+    rng = random.Random(seed)
+    pointer.train()
+    for _ in range(max(1, steps)):
+        batch = [examples[rng.randrange(len(examples))] for _ in range(min(16, len(examples)))]
+        loss = torch.zeros((), device=device)
+        for hidden, arg_index, start, end in batch:
+            arg = torch.tensor([arg_index], dtype=torch.long, device=device)
+            start_logits, end_logits = pointer.logits(hidden.unsqueeze(0), arg)
+            loss = loss + F.cross_entropy(start_logits, torch.tensor([start], device=device))
+            loss = loss + F.cross_entropy(end_logits, torch.tensor([end], device=device))
+        optimizer.zero_grad(set_to_none=True)
+        (loss / len(batch)).backward()
+        optimizer.step()
+    pointer.eval()
+    return {"examples": len(examples), "steps": max(1, steps)}
+
+
+@torch.no_grad()
+def _pointer_score(
+    model: LocalAgentLM,
+    tok,
+    pointer: PointerHead,
+    rows: list[Sample],
+    device: str,
+) -> dict[str, int | float]:
+    total = exact = 0
+    for hidden, arg_index, start, end in _pointer_examples(model, tok, rows, pointer, device):
+        arg = pointer.args[arg_index]
+        predicted = pointer.predict_span(hidden, arg)
+        total += 1
+        exact += int(predicted == (start, end))
+    return {"rows": total, "exact": exact, "exact_rate": exact / max(1, total)}
+
+
 def _train_probe(
     model: LocalAgentLM,
     tok,
@@ -695,6 +809,12 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--steps", type=int, default=120)
+    parser.add_argument(
+        "--pointer-steps",
+        type=int,
+        default=0,
+        help="optional train-only copy-head updates for literal string arguments",
+    )
     parser.add_argument("--device", default="cpu")
     parser.add_argument(
         "--probe-init",
@@ -717,6 +837,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.steps < 1:
         raise ValueError("steps must be positive")
+    if args.pointer_steps < 0:
+        raise ValueError("pointer-steps must be non-negative")
     if args.focus_repeat < 0:
         raise ValueError("focus-repeat must be non-negative")
 
@@ -768,6 +890,36 @@ def main() -> None:
         focus_tools=set(args.focus_tool),
         focus_repeat=args.focus_repeat,
     )
+    pointer = None
+    pointer_training: dict[str, int | float] = {
+        "steps": 0,
+        "examples": 0,
+        "train_rows": 0,
+        "held_out": {"rows": 0, "exact": 0, "exact_rate": 0.0},
+    }
+    if args.pointer_steps:
+        pointer = _warm_pointer(parent, model.cfg.d_model).to(args.device)
+        pointer_train_rows = (
+            [sample for sample, _ in train_mobile]
+            + synthetic_mobile
+            + trajectory
+            + productivity_train
+        )
+        pointer_eval_rows = [sample for sample, _ in held_mobile] + productivity_holdout
+        train_info = _train_pointer(
+            model,
+            tok,
+            pointer_train_rows,
+            pointer,
+            steps=args.pointer_steps,
+            seed=2027,
+            device=args.device,
+        )
+        pointer_training = {
+            **train_info,
+            "train_rows": len(pointer_train_rows),
+            "held_out": _pointer_score(model, tok, pointer, pointer_eval_rows, args.device),
+        }
     bound = BoundSelector(selector, tools, device=args.device, examples=examples)
     train_metrics = _score(
         model,
@@ -808,6 +960,7 @@ def main() -> None:
                 "probe_initialization": args.probe_init,
                 "focus_tools": sorted(set(args.focus_tool)),
                 "focus_repeat": args.focus_repeat,
+                "pointer_training": pointer_training,
                 "synthetic_mobile_rows": len(synthetic_mobile),
                 "synthetic_mobile_repeats": 4,
                 "state_conditioned_trajectory_rows": len(trajectory),
@@ -825,6 +978,9 @@ def main() -> None:
             },
         }
     )
+    if pointer is not None:
+        child["ptr_head"] = pointer.state_dict()
+        child["ptr_args"] = list(pointer.args)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     torch.save(child, args.output)
     report = {
