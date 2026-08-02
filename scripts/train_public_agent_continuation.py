@@ -107,17 +107,31 @@ def _checkpoint_tokenizer(parent: dict[str, Any]):
     return tokenizer
 
 
-def _load_heads(parent: dict[str, Any], model: LocalAgentLM) -> tuple[RouteHead, BoundSelector]:
-    route = RouteHead(model.cfg.d_model)
-    route.load_state_dict(parent["route_head"])
-    route.eval()
+def _load_heads(
+    parent: dict[str, Any],
+    model: LocalAgentLM,
+    *,
+    init: str = "parent",
+    seed: int = 2027,
+) -> tuple[RouteHead, BoundSelector]:
+    if init not in {"parent", "random"}:
+        raise ValueError(f"unsupported head initialization: {init!r}")
     selector_state = parent["dense_selector"]
+    # Keep random-head initialization from perturbing the subsequent deterministic SFT sampling
+    # stream.  This makes the parent-vs-random head comparison use identical backbone updates.
+    rng_state = torch.get_rng_state()
+    torch.manual_seed(seed)
+    route = RouteHead(model.cfg.d_model)
     selector = DenseToolSelector(
         model.cfg.d_model,
         emb_dim=selector_state["t_proj.weight"].shape[1],
         proj=selector_state["q_proj.weight"].shape[0],
     )
-    selector.load_state_dict(selector_state)
+    torch.set_rng_state(rng_state)
+    if init == "parent":
+        route.load_state_dict(parent["route_head"])
+        selector.load_state_dict(selector_state)
+    route.eval()
     selector.eval()
     return route, BoundSelector(selector, REALISTIC_BROWSER_TOOLS, examples=parent.get("examples", {}))
 
@@ -169,6 +183,7 @@ def main() -> int:
     parser.add_argument("--source-revision", default="unknown")
     parser.add_argument("--steps", type=int, default=32)
     parser.add_argument("--head-steps", type=int, default=0)
+    parser.add_argument("--head-init", choices=("parent", "random"), default="parent")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1.0e-5)
     parser.add_argument("--max-seq-len", type=int, default=2048)
@@ -189,7 +204,7 @@ def main() -> int:
     model = LocalAgentLM(config)
     model.load_state_dict(parent["state_dict"])
     tokenizer = _checkpoint_tokenizer(parent)
-    route, selector = _load_heads(parent, model)
+    route, selector = _load_heads(parent, model, init=args.head_init, seed=2027)
     heads_before = _head_metrics(model, tokenizer, route, selector, eval_rows)
 
     before_train = _evaluate_conversations(
@@ -264,6 +279,7 @@ def main() -> int:
                 "train_rows": len(train_rows),
                 "eval_rows": len(eval_rows),
                 "head_steps": args.head_steps,
+                "head_init": args.head_init,
                 "train_inputs": [_identity(path) for path in args.data],
                 "eval_inputs": [_identity(path) for path in args.eval_data],
                 "before_train": before_train,
@@ -292,6 +308,8 @@ def main() -> int:
             "steps": args.steps,
             "batch_size": args.batch_size,
             "learning_rate": args.lr,
+            "head_steps": args.head_steps,
+            "head_init": args.head_init,
             "max_seq_len": args.max_seq_len,
             "seed": 2027,
             "device": args.device,

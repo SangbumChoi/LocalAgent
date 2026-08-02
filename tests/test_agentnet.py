@@ -41,7 +41,12 @@ def test_published_mixed_public_continuation_receipt_is_hash_bound_and_negative(
     receipt = json.loads(path.read_text(encoding="utf-8"))
     expected = receipt.pop("receipt_self_sha256")
     actual = hashlib.sha256(
-        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        json.dumps(
+            receipt,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
     ).hexdigest()
     assert actual == expected
     assert {item["dataset"] for item in receipt["source"]["datasets"]} == {
@@ -58,6 +63,56 @@ def test_published_mixed_public_continuation_receipt_is_hash_bound_and_negative(
     assert training["heads"]["after"]["selector_top1_accuracy"] == 0.0
     assert receipt["weight_transfer"]["compatibility"]["tokenizer_sha256_equal"] is True
     weight_path = Path("docs/paper/results/raw/m68-mixed-public-agent-weight-transfer-v1.json")
+    assert hashlib.sha256(weight_path.read_bytes()).hexdigest() == receipt["weight_transfer"]["report"]["sha256"]
+
+
+def test_published_mixed_head_adaptation_receipt_is_head_only_and_hash_bound() -> None:
+    path = Path("docs/paper/results/raw/m69-mixed-public-agent-head-adaptation-v1.json")
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    expected = receipt.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    assert receipt["configuration"]["head_steps"] == 800
+    assert receipt["training"]["heads"]["before"]["selector_top1_accuracy"] == 0.0
+    assert receipt["training"]["heads"]["after"]["selector_top1_accuracy"] == pytest.approx(
+        0.5783132530120482
+    )
+    groups = receipt["weight_transfer"]["groups"]
+    assert groups["embedding"]["relative_delta_l2"] == 0.0
+    assert groups["attention_or_mixer"]["relative_delta_l2"] == 0.0
+    assert groups["action_heads"]["relative_delta_l2"] > 0.8
+    weight_path = Path("docs/paper/results/raw/m69-mixed-public-agent-head-weight-transfer-v1.json")
+    assert hashlib.sha256(weight_path.read_bytes()).hexdigest() == receipt["weight_transfer"]["report"]["sha256"]
+
+
+def test_published_random_head_control_matches_parent_head_result() -> None:
+    path = Path("docs/paper/results/raw/m70-mixed-public-agent-random-head-control-v1.json")
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    expected = receipt.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(
+            receipt,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    assert receipt["configuration"]["head_init"] == "random"
+    assert receipt["training"]["heads"]["after"] == {
+        "rows": 167,
+        "tool_rows": 166,
+        "route_accuracy": pytest.approx(0.9940119760479041),
+        "selector_top1_accuracy": pytest.approx(0.5783132530120482),
+    }
+    assert receipt["matched_parent_head_control"]["after_selector_delta"] == 0.0
+    assert receipt["matched_parent_head_control"]["after_route_delta"] == 0.0
+    groups = receipt["weight_transfer"]["groups"]
+    assert groups["embedding"]["relative_delta_l2"] == 0.0
+    assert groups["action_heads"]["relative_delta_l2"] > 0.8
+    weight_path = Path("docs/paper/results/raw/m70-mixed-public-agent-random-head-weight-transfer-v1.json")
     assert hashlib.sha256(weight_path.read_bytes()).hexdigest() == receipt["weight_transfer"]["report"]["sha256"]
 
 

@@ -229,6 +229,40 @@ but do not prove transfer is better than a matched random control.  The run is n
 AgentNetBench or Mind2Web score, and it uses no screenshots, browser/desktop runtime, MCP server,
 emulator, or external account.
 
+### Mixed public action-head adaptation (m69)
+
+The [`m69 receipt`](paper/results/raw/m69-mixed-public-agent-head-adaptation-v1.json) isolates
+the action-head bottleneck found by m68.  It reuses the m68 mixed public continuation, performs
+one warm-up SFT step whose learning rate is zero at the first schedule position, then trains only
+the frozen-feature route and dense-selector probes for 800 steps at `5e-3`.  The public rows,
+source revisions, and held-out IDs are unchanged from m68.
+
+This controlled head update raises held-out route accuracy from `14.37%` to `99.40%` and dense
+selector top-1 from `0%` to `57.83%` over 166 tool decisions, while teacher-forced language
+metrics remain unchanged (`60.05%` token accuracy; `0/137` sequence exact).  The paired
+[`m69 weight report`](paper/results/raw/m69-mixed-public-agent-head-weight-transfer-v1.json)
+confirms `0%` movement in embeddings, attention/mixer, FFN, and normalization; movement is
+concentrated in the route/action-head group.  This supports a two-rate recipe—small backbone
+learning rate plus a separately trained candidate-conditioned selector—but it does not establish
+native closed-loop success or that head transfer beats a matched random head control.  Screenshots,
+OS/browser runtimes, MCP services, emulators, and external accounts were not used.
+
+### Matched random-head control (m70)
+
+The [`m70 receipt`](paper/results/raw/m70-mixed-public-agent-random-head-control-v1.json) repeats
+the m69 head schedule from the identical m68 backbone, public rows, seed, and 800-step budget, but
+initializes both route and dense-selector heads randomly.  It reaches the same held-out route
+accuracy (`99.40%`) and selector top-1 (`57.83%`) as the parent-head m69 arm; the after-training
+deltas are exactly zero.  The [`m70 weight report`](paper/results/raw/m70-mixed-public-agent-random-head-weight-transfer-v1.json)
+again shows zero movement in the shared backbone and movement only in the action-head group.
+
+This is the adoption insight: the compatible pretrained backbone is useful for the language
+continuation, but inherited action-head weights do not provide a measurable advantage after a
+matched frozen-feature retraining schedule.  The recommended WebGPU recipe is therefore a
+low-rate backbone continuation plus independently initialized, candidate-conditioned route and
+selector heads, followed by a native closed-loop validation.  m70 remains a bounded public-data
+diagnostic rather than an official benchmark or end-to-end browser/desktop result.
+
 ### AgentNet text-observation/action projection evaluation (m62)
 
 The retained eight-parent evaluation projection was then run through the actual LocalAgent
