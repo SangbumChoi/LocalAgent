@@ -7,6 +7,54 @@ import yaml
 
 from localagent.data.agentnet import normalize_agentnet_record, parse_pyautogui_actions
 from localagent.data.public_agent import build_public_agent_dataset
+from scripts.ingest_agentnet_text import parse_action, project
+
+
+def test_text_projection_maps_supported_actions_and_rejects_termination() -> None:
+    assert parse_action("pyautogui.write(message='hello')") == (
+        "type_text",
+        {"text": "hello"},
+    )
+    assert parse_action("pyautogui.moveTo(x=0.1, y=0.2)\npyautogui.dragTo(x=0.3, y=0.4)") == (
+        "drag",
+        {"source": "x=0.100000;y=0.200000", "dest": "x=0.300000;y=0.400000"},
+    )
+    assert parse_action("computer.terminate(status='success')") is None
+
+
+def test_text_projection_keeps_parent_records_disjoint(tmp_path: Path) -> None:
+    source = tmp_path / "agentnet.jsonl"
+    rows = [
+        {
+            "task_id": f"task-{index}",
+            "instruction": "Click the button.",
+            "traj": [
+                {
+                    "value": {
+                        "observation": "A button is visible.",
+                        "code": "pyautogui.click(x=0.1, y=0.2)",
+                    }
+                }
+            ],
+        }
+        for index in range(5)
+    ]
+    source.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+    train, evaluation, metadata = project(
+        source,
+        dataset="fixture/AgentNet",
+        revision="fixture-revision",
+        eval_fraction=0.4,
+        seed=7,
+        max_observation_chars=10,
+    )
+    train_ids = {row.meta["parent_record_id"] for row in train}
+    eval_ids = {row.meta["parent_record_id"] for row in evaluation}
+    assert train_ids.isdisjoint(eval_ids)
+    assert metadata["complete_parent_records"] == 5
+    assert metadata["train_rows"] == len(train)
+    assert metadata["eval_rows"] == len(evaluation)
+    assert "observation truncated" in train[0].messages[0].content
 
 
 def test_parse_agentnet_literal_pyautogui_sequence() -> None:

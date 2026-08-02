@@ -167,6 +167,31 @@ Route accuracy reached `66/66`, selector top-1 reached `55/63` (`87.30%`), and s
 remained `0/12`. This is stronger public-train evidence than m44, but it is still not an official
 Mind2Web test score, native browser success, or screenshot-grounding result.
 
+### Bounded public AgentNet computer-use continuation (m47)
+
+The public [OpenCUA AgentNet](https://huggingface.co/datasets/xlangai/AgentNet) Ubuntu trajectory
+file was acquired at revision `d76ee50a63fad81cfdbe576416757d7c2091ed50` using an explicit
+`0..8,388,607` byte range. The bounded prefix contains 40 complete parent tasks; a deterministic
+parent-disjoint split uses 32 tasks for training and eight for evaluation. The new
+[`ingest_agentnet_text.py`](../scripts/ingest_agentnet_text.py) adapter keeps task text and a
+bounded textual screen observation, maps click/double-click/drag/keyboard/type/scroll/cursor/wait
+actions into existing computer-use tools, and drops screenshots plus termination/triple-click
+markers. The acquisition and projection identities are in the
+[`m47 acquisition receipt`](paper/results/raw/m47-agentnet-acquisition-v1.json) and
+[`projection metadata`](paper/results/raw/m47-agentnet-projection-metadata-v1.json).
+
+Starting from the 10.52M BPE mobile-dispatch parent, 32 SFT updates on 513 projected train rows
+reduced the source-disjoint 133-row teacher-forced mean loss `3.7804 → 2.6121` and raised token
+accuracy `47.09% → 58.89%`. Sequence exactness remained `0/133`; route accuracy was `99.25% →
+100%`, and the frozen-feature selector top-1 diagnostic moved `5.26% → 12.03%`. This is a
+text-only desktop-action continuation, not an official AgentNet validation score, AgentNetBench,
+OSWorld, screenshot-grounding, or native desktop result. The paired
+[`m47 weight-transfer report`](paper/results/raw/m47-agentnet-weight-transfer-v1.json) found equal
+configuration/tokenizer and 51 compatible tensors: attention/mixer, FFN, and embedding movement
+was `0.29%`, `0.35%`, and `0.49%`, with action heads unchanged because this run intentionally
+isolated backbone SFT. The result supports warm-start compatibility, not a claim that transfer
+is optimal.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed
