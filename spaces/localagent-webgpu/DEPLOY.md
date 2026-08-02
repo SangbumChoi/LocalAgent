@@ -9,6 +9,12 @@ The verified deployable checkpoint is `runs/sft-webgpu-proxy-pilot-hybrid-seed20
 structured route head → dense selector → pointer-copy dispatch over the 50-tool surface. A public
 Hub URL is not claimed until the upload completes and is independently verified.
 
+The newer stateful-productivity low-rate child is also exportable and is the artifact bound by
+the `m57` WebGPU and `m58` HF-format receipts. It has the same 10,524,544-parameter
+`webgpu-10m-hybrid` backbone, but its 62-tool heads include the email/Notion/browser stateful
+probe. The receipts intentionally record local hashes only; generated ONNX and safetensors files
+remain outside Git and must be regenerated or uploaded by an authenticated maintainer.
+
 ## 0. Authenticate (once)
 ```bash
 hf auth login          # paste a token with write access  (or: export HF_TOKEN=hf_xxx)

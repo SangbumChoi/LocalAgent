@@ -1096,6 +1096,21 @@ This remains a synthetic local transfer ablation.  It reads no public benchmark 
 screenshots, emulator, MCP server, real email, or Notion account and must not be reported as an
 official benchmark score.
 
+### Local WebGPU and Hugging Face export receipts (m57–m58)
+
+The same m56 child was exported to a clean static-demo bundle and an independent Hugging Face
+format bundle.  The [`m57 receipt`](paper/results/raw/m57-stateful-webgpu-deploy-verification-v1.json)
+binds the 10,524,544-parameter checkpoint, tokenizer, eight generated inference artifacts, and
+their exporter manifest.  The fp32 and fp16 ONNX graphs pass the hard CPU parity gate (maximum
+fp32 logit difference `6.68e-6`; fp16 logit difference `7.36e-3`; fp16 argmax agreement `1.0`),
+and the clean static app contains all required files.  The [`m58 receipt`](paper/results/raw/m58-stateful-hf-local-export-v1.json)
+binds the local `model.safetensors`, serialized heads, tokenizer, config, and README hashes.
+
+These are local artifact and deployment checks, not native WebGPU capability measurements.  The
+Hub is not authenticated in this environment, so neither receipt claims a public model/Space URL
+or upload; a user-provided write token and repository namespace are still required.  No external
+email, Notion, browser, MCP, or desktop side effect was executed.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution

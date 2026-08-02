@@ -113,3 +113,19 @@ def test_published_lowrate_transfer_receipt_binds_all_three_arms() -> None:
     assert lowrate["weight_movement"]["backbone"] > 0.0
     assert lowrate["closed_loop"]["task_complete_rate"] == 0.2
     assert receipt["source"]["native_runtime_executed"] is False
+
+
+def test_published_lowrate_deployment_receipts_fail_closed_on_public_claims() -> None:
+    root = Path(__file__).parents[1] / "docs/paper/results/raw"
+    web = json.loads((root / "m57-stateful-webgpu-deploy-verification-v1.json").read_text())
+    hub = json.loads((root / "m58-stateful-hf-local-export-v1.json").read_text())
+    assert web["verified"] is True
+    assert web["parity_gate"]["passed"] is True
+    assert web["hub"] == {
+        "authenticated": False,
+        "uploaded": False,
+        "reason": "hf auth whoami reports no login; no public model or Space URL is claimed",
+    }
+    assert hub["export_verified_locally"] is True
+    assert hub["hub"]["uploaded"] is False
+    assert hub["parameter_count"] == 10524544
