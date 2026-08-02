@@ -100,6 +100,15 @@ head adaptation—not a universal tool-use head or native email/Notion/MCP capab
 promotion gate is a resettable native AndroidWorld/BrowserGym/OSWorld/ToolSandbox-style run with
 complete action and verifier logs.
 
+The m106–m108 native ToolSandbox replay is the required reality check for that head result.  Both
+the warm and random dispatch-head children execute the pinned simulator/verifier on five matched
+multi-turn scenarios and finish at `1/5` (`20%`), with no warm success-rate advantage.  Warm is
+slightly worse on the ambiguous contact-removal scenario (`0.0` vs `0.333` milestone similarity).
+Because this remains a bounded scripted-user run rather than the official split and model-based
+user simulator, it is negative evidence against promoting head transfer—not a claim of native
+ToolSandbox competence.  Keep the native receipt in the publication packet and retain the
+official-split requirement as a blocker.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

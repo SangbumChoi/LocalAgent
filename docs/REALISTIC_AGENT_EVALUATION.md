@@ -874,6 +874,25 @@ receipts are [`m103 warm`](paper/results/raw/m103-cross-surface-warm-head-v1.jso
 [`compare_cross_surface_heads.py`](../scripts/compare_cross_surface_heads.py).  Keep separate
 surface adapters/heads and require native closed-loop verification before publication.
 
+### Current native ToolSandbox head ablation (m106–m108)
+
+To connect the public cross-surface children to a real stateful tool environment, the warm m103
+and random m104 checkpoints were run through the pinned ToolSandbox simulator and milestone
+verifier on the same five multi-turn scenarios used by the earlier MCP transfer triad.  Both runs
+executed the environment and verifier with the bounded scripted user, completing `1/5` scenarios
+(`20%`) and reaching identical partial milestone scores on four scenarios.  The only difference
+was the ambiguous contact-removal case, where random reached `0.333` similarity and warm `0.0`.
+
+The matched [`m108 comparison`](paper/results/raw/m108-toolsandbox-native-head-ablation-v1.json)
+therefore finds no warm native advantage (`0.0` percentage-point success difference).  The
+[`m106 warm`](paper/results/raw/m106-toolsandbox-native-warm-v1.json) and
+[`m107 random`](paper/results/raw/m107-toolsandbox-native-random-v1.json) receipts bind the
+checkpoint hashes, ToolSandbox revision, runner hash, scenarios, and complete per-scenario
+verifier outputs.  This is stronger than a text-only projection, but it is still not the official
+ToolSandbox split: the upstream model-based user simulator, full scenario matrix, and optional
+RapidAPI tools were not executed.  It is negative evidence against promoting the dispatch-head
+transfer as a stateful capability.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
