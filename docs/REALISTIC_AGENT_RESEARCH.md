@@ -109,6 +109,12 @@ user simulator, it is negative evidence against promoting head transfer—not a 
 ToolSandbox competence.  Keep the native receipt in the publication packet and retain the
 official-split requirement as a blocker.
 
+The m109 export closes the artifact-side part of the WebGPU handoff for the warm child.  The
+10.52M BPE checkpoint, tokenizer, fp32/fp16 full and hidden-only graphs, and serialized dispatch
+heads all pass the exporter parity and clean static-app hash gates.  This is the bundle a hardware
+browser session should exercise next; it is not itself a hardware-throughput or public Hub/Space
+publication result.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

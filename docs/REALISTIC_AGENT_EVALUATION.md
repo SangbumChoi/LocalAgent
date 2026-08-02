@@ -893,6 +893,17 @@ ToolSandbox split: the upstream model-based user simulator, full scenario matrix
 RapidAPI tools were not executed.  It is negative evidence against promoting the dispatch-head
 transfer as a stateful capability.
 
+### Current warm-head WebGPU bundle (m109)
+
+The warm m103 checkpoint was exported as a fresh browser bundle with the 16K BPE tokenizer,
+full-logits and hidden-only action graphs, serialized heads, and dispatch metadata.  The exporter
+hard parity gate passed for fp32 and fp16 graphs (fp32 maximum hidden difference `5.47e-6`, fp16
+`4.50e-3`, argmax agreement `1.0`), and a clean temporary copy of the static app verified every
+manifest byte count and SHA-256.  The [`m109 receipt`](paper/results/raw/m109-webgpu-warm-head-deploy-v1.json)
+binds the bundle to checkpoint `d81771f6…`, the 10,524,544-parameter stage, and tokenizer
+`83654055…`.  This proves a reproducible local deploy artifact; it does not prove a hardware
+WebGPU adapter, throughput, native task success, or a public Hub/Space upload.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
