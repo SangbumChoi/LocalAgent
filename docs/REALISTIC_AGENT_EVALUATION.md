@@ -1910,6 +1910,25 @@ row-local tool exactness changes `50.78% → 49.22%`, argument exactness remains
 supports weight lineage and initialization choice, not official xLAM, native MCP/API, or WebGPU
 throughput claims.
 
+### Dynamic xLAM tool-catalog selector transfer (m138)
+
+The [`m138 receipt`](paper/results/raw/m138-xlam-dynamic-selector-transfer-v1.json) keeps the
+backbone frozen and trains the two-tower selector against the public derivative's row-local tool
+catalog.  This is necessary because the derivative contains 2,702 distinct training tool names
+and 2,840 names in the combined candidate union, rather than the fixed 63-tool browser/productivity
+pool used by the deployed bundle.  The 3,911 training rows and 500 eval rows are the normalized,
+globally slot-disjoint files from m137; 482 held-out rows with overlapping argument slots remain
+excluded.
+
+With a fixed 64-step, 256-dimensional selector probe, row-local closed-world tool top-1 improves
+from `55.8%` to `60.4%` on the held-out rows.  The global catalog top-1 is only `0%` to `2%`,
+which is the more deployment-relevant warning: a selector cannot reliably choose among thousands
+of arbitrary APIs from text alone.  The union also contains 194 train-time and 209 combined
+row-schema name conflicts, which are retained in the receipt rather than silently canonicalized.
+This is useful evidence for candidate retrieval and schema-conditioned dispatch, but it is not
+official Salesforce xLAM, generated argument exactness, live API execution, or a workshop-gate
+native score; the child is explicitly not promoted.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
