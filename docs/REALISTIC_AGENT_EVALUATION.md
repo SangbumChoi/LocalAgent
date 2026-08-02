@@ -42,19 +42,21 @@ PYTHONPATH=src python scripts/workshop_gate.py --strict
 ```
 
 The command without supplied receipts exits non-zero with nine blocking requirements.  Supplying
-the verified native WebGPU and full BrowserGym receipts reduces this to seven:
+the verified native WebGPU, full BrowserGym, and public-artifact receipts reduces this to six:
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
   --webgpu-receipt docs/paper/results/raw/m40-webgpu-native-capability-notion-v1.json \
   --native-receipt browsergym_miniwob=docs/paper/results/raw/m43-browsergym-native-adapter-full-model-eval-v1.json \
-  --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json
+  --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json \
+  --public-artifact-manifest docs/paper/results/raw/public-model-demo-manifest-v1.json
 ```
 
-The six remaining native benchmark receipts and the public artifact manifest are still absent.
-That is intentional:
+The six remaining native benchmark receipts are still absent.  The public artifact manifest now
+verifies the already-live 28.32M-parameter byte model and static WebGPU Space, but it does not
+prove native OS/emulator/MCP control or task success.  That is intentional:
 four train adapters and the tracked offline receipts are useful progress, but they do not prove
-native OS/emulator/MCP control or public deployment.  Once a native runner produces a receipt, it
+those native task outcomes.  Once a native runner produces a receipt, it
 can be supplied as `--native-receipt BENCHMARK_ID=PATH`; the receipt contract requires explicit
 environment execution, official split verification, task count, and success rate.  The gate is
 therefore an auditable workshop decision, not a claim that the current model has passed.
@@ -72,7 +74,12 @@ checkpoint now includes the recorded 16K BPE tokenizer, checkpoint/tokenizer has
 and `tool_head`, `ptr_head`, `route_head`, `dense_selector`, and `selector_proj`.  The
 [`m26 receipt`](paper/results/raw/m26-hf-local-export-v2.json) binds all five file hashes and marks
 `published: false`: this environment is not authenticated to Hugging Face, so no public model URL
-is claimed.
+is claimed.  That receipt describes the newer local 10.52M BPE export.  Separately, the older
+public `danelcsb/localagent-tiny-30m-byte` model and `danelcsb/localagent-webgpu` Space are live
+and hash-bound by [`public-model-demo-manifest-v1`](paper/results/raw/public-model-demo-manifest-v1.json).
+The public deployment is a 28.32M-parameter byte model; it must not be described as the m46 BPE
+continuation or as evidence of native Android, desktop-VM, MCP-server, email, or Notion task
+success.
 
 The first native checkpoint-in-loop browser probe is now recorded in the [`m29 receipt`](paper/results/raw/m29-browsergym-native-model-eval-v1.json).
 It executed the pinned BrowserGym/MiniWoB environment for all 240 episodes (60 task variants,
