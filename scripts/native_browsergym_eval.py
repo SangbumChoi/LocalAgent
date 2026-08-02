@@ -23,7 +23,7 @@ from typing import Any
 from localagent.agent.parser import extract_tool_calls
 from localagent.agent.runtime import Agent
 from localagent.agent.tools import ToolRegistry
-from localagent.agent.toolset import STANDARD_TOOLS
+from localagent.agent.toolset import REALISTIC_BROWSER_TOOLS, STANDARD_TOOLS
 from localagent.data.browsergym_capture import production_capture_plan
 from localagent.data.browsergym_prompts import (
     PRODUCTION_BROWSERGYM_REVISION,
@@ -115,7 +115,7 @@ def _model_prompt(observation: dict[str, Any]) -> str:
     )
 
 
-def _predict(agent: Agent, prompt: str) -> tuple[str, str | None, dict[str, Any]]:
+def _predict(agent: Agent, prompt: str, tools: list[Any]) -> tuple[str, str | None, dict[str, Any]]:
     """Run only the model decode, bypassing registry echo dispatch."""
 
     from localagent.agent.constrained import hybrid_decode
@@ -124,7 +124,7 @@ def _predict(agent: Agent, prompt: str) -> tuple[str, str | None, dict[str, Any]
         agent.model,
         agent.tokenizer,
         prompt,
-        list(agent.catalog.values()),
+        tools,
         selector=agent.selector,
         route_head=agent.route_head,
         ptr_head=agent.ptr_head,
@@ -164,19 +164,28 @@ def _browser_action(
     """Map a model tool call to a live BrowserGym action and report grounding success."""
 
     elements = _visible_elements(observation)
-    if tool in {"click", "double_click"}:
-        bid = _target_bid(arguments.get("target"), elements)
+    if tool in {"click", "double_click", "web_click"}:
+        target = arguments.get("target_id") if tool == "web_click" else arguments.get("target")
+        bid = _target_bid(target, elements)
         if bid is None:
             return "noop(0)", False
         action = "dblclick" if tool == "double_click" else "click"
         return f"{action}({bid!r})", True
-    if tool == "type_text":
-        focused = observation.get("focused_element_bid")
-        if not isinstance(focused, str) or not focused:
-            focused = next((e["bid"] for e in elements if e["role"] == "textbox"), None)
+    if tool in {"type_text", "web_type"}:
+        if tool == "web_type":
+            focused = _target_bid(arguments.get("target_id"), elements)
+        else:
+            focused = observation.get("focused_element_bid")
+            if not isinstance(focused, str) or not focused:
+                focused = next((e["bid"] for e in elements if e["role"] == "textbox"), None)
         if not focused:
             return "noop(0)", False
         return f"fill({focused!r}, {str(arguments.get('text', ''))!r})", True
+    if tool == "web_select":
+        bid = _target_bid(arguments.get("target_id"), elements)
+        if bid is None:
+            return "noop(0)", False
+        return f"select_option({bid!r}, {str(arguments.get('value', ''))!r})", True
     if tool == "key_press":
         key = str(arguments.get("key", "Enter"))
         focused = observation.get("focused_element_bid")
@@ -189,14 +198,22 @@ def _browser_action(
     return "noop(0)", False
 
 
-def _make_agent(checkpoint: Path) -> Agent:
+def _make_agent(checkpoint: Path, tools: list[Any]) -> Agent:
     registry = ToolRegistry()
-    for spec in STANDARD_TOOLS:
+    for spec in tools:
         registry.register(spec, lambda **kwargs: kwargs)
     return Agent.from_checkpoint(checkpoint, registry)
 
 
-def _run_episode(env: Any, agent: Agent, *, task: str, seed: int, max_steps: int) -> dict[str, Any]:
+def _run_episode(
+    env: Any,
+    agent: Agent,
+    *,
+    tools: list[Any],
+    task: str,
+    seed: int,
+    max_steps: int,
+) -> dict[str, Any]:
     observation, reset_info = env.reset(seed=seed)
     goal = str(observation.get("goal", ""))
     records: list[dict[str, Any]] = []
@@ -205,7 +222,7 @@ def _run_episode(env: Any, agent: Agent, *, task: str, seed: int, max_steps: int
     for step in range(max_steps):
         prompt = _model_prompt(observation)
         started = time.perf_counter()
-        raw, tool, arguments = _predict(agent, prompt)
+        raw, tool, arguments = _predict(agent, prompt, tools)
         action, grounded = _browser_action(tool, arguments, observation)
         observation, reward, terminated, truncated, info = env.step(action)
         elapsed_ms = (time.perf_counter() - started) * 1000.0
@@ -249,6 +266,12 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--limit", type=int, default=0, help="run only the first N pinned episodes")
     parser.add_argument("--max-steps", type=int, default=PRODUCTION_MAX_STEPS)
+    parser.add_argument(
+        "--tool-pool",
+        choices=("standard", "realistic_browser"),
+        default="standard",
+        help="tool vocabulary used by the checkpoint and native action adapter",
+    )
     args = parser.parse_args()
 
     for path in (args.browsergym_checkout, args.miniwob_checkout, args.browser_executable, args.browser_installation, args.checkpoint):
@@ -273,7 +296,8 @@ def main() -> int:
     action_mapping = HighLevelActionSet(subsets=["bid", "miniwob_all"], multiaction=False).to_python_code
     episodes = list(production_capture_plan())
     selected = episodes[: args.limit] if args.limit > 0 else episodes
-    agent = _make_agent(args.checkpoint)
+    tools = STANDARD_TOOLS if args.tool_pool == "standard" else REALISTIC_BROWSER_TOOLS
+    agent = _make_agent(args.checkpoint, tools)
     cases: list[dict[str, Any]] = []
     for index, episode in enumerate(selected, start=1):
         env = gym.make(
@@ -290,7 +314,14 @@ def main() -> int:
             max_episode_steps=args.max_steps,
         )
         try:
-            case = _run_episode(env, agent, task=episode.task_name, seed=episode.seed, max_steps=args.max_steps)
+            case = _run_episode(
+                env,
+                agent,
+                tools=tools,
+                task=episode.task_name,
+                seed=episode.seed,
+                max_steps=args.max_steps,
+            )
         finally:
             env.close()
         cases.append(case)
@@ -304,6 +335,15 @@ def main() -> int:
             "version": PRODUCTION_BROWSERGYM_VERSION,
         },
         "checkpoint": {"path": str(args.checkpoint), "sha256": _sha256(args.checkpoint)},
+        "tool_pool": args.tool_pool,
+        "tool_names": [spec.name for spec in tools],
+        "tool_pool_claim_boundary": (
+            "The realistic_browser pool is a vocabulary/dispatch diagnostic only: Mind2Web backend "
+            "node IDs are not MiniWoB live DOM IDs, so this run must not be interpreted as cross-site "
+            "grounding or Mind2Web-to-BrowserGym transfer."
+            if args.tool_pool == "realistic_browser"
+            else "Legacy standard tool vocabulary; no public Mind2Web transfer claim."
+        ),
         "claim_boundary": (
             "Native BrowserGym/MiniWoB checkpoint-in-the-loop evaluation over the pinned task plan. "
             "This is a text/accessibility-tree modality result, not a visual-agent result, WebArena "

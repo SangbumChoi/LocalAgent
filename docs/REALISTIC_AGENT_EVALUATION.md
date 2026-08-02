@@ -117,6 +117,30 @@ visual-agent, WebArena, real-account, or leaderboard score; the compact tracked 
 per-task and per-seed aggregates and hashes the full local case log.  The unchanged base
 checkpoint remains the m41 `0/240` baseline.
 
+### Public Mind2Web trajectory continuation (m44)
+
+To validate the public-data path independently of the older bounded `train_10` shard, the Hugging
+Face dataset-server `rows` endpoint was queried at the pinned Mind2Web revision with a bounded
+request for eight `train` records. Five records passed the positive-grounding and operation
+allowlist, yielding 20 normalized Conversation variants. Four parent records (16 rows) were used
+for continuation and one unseen parent (four rows) was held out; parent IDs and typed slot values
+were disjoint. The acquisition, filtered-source, and normalized-output hashes are in the
+[`m44 acquisition receipt`](paper/results/raw/m44-mind2web-acquisition-v1.json), while the
+training metrics and child checkpoint hash are in the [`m44 continuation report`](paper/results/raw/m44-mind2web-trajectory-continuation-v1.json).
+
+Starting from the 10.52M BPE WebGPU parent, 32 low-rate SFT updates plus 128 route/selector probe
+updates reduced held-out mean loss `2.2349 → 1.6979` and raised assistant-token accuracy
+`66.14% → 74.21%`. Sequence exactness remained `0/4`; the selector reached `7/11` tool
+decisions (`63.64%`) and route accuracy reached `34/34`. These are text-first held-out
+train-record metrics, not an official Mind2Web test score.
+
+The child was also exercised in a ten-episode pinned BrowserGym/MiniWoB canary using the explicit
+`realistic_browser` pool (`web_click`, `web_type`, `web_select`). The [`m45 receipt`](paper/results/raw/m45-browsergym-native-realistic-toolpool-canary-v1.json)
+records `0/10` success. This is a diagnostic only: Mind2Web backend-node IDs are not MiniWoB's
+live DOM IDs, so the canary does not measure cross-site grounding or justify an official BrowserGym
+score. The native runner defaults to the legacy `standard` pool and now exposes the realistic pool
+explicitly to prevent silent vocabulary mismatch.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed
