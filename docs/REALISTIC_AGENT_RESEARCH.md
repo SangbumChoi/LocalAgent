@@ -28,6 +28,23 @@ score includes the observation contract, reset state, action interface, environm
 verifier. A static conversation projection must be labelled as such even when it uses the original
 task text.
 
+### MobileGym and OSWorld-V2 source audit (m121)
+
+The [`m121 source-audit receipt`](paper/results/raw/m121-mobilegym-osworld-source-audit-v1.json)
+hash-pins two public benchmark contracts without converting either into training data.  The pinned
+[MobileGym](https://github.com/Purewhiter/mobilegym) revision describes 28 simulated mobile apps,
+416 parameterized templates, and a 256-task held-out test split (160 train templates by subtraction),
+with structured state snapshots, tap/type/swipe-style actions, deterministic state-diff judges, and
+an AnswerSheet protocol.  Its code is Apache-2.0, but the companion benchmark data is CC-BY-NC-4.0;
+the receipt therefore records the release pointer while leaving the approximately 1.9 GB archive
+out of the repository and out of SFT.
+
+The same receipt binds the active [OSWorld-V2](https://github.com/xlang-ai/OSWorld-V2) release
+`osworld-v2-2026.06.24`, its 108-task hash manifest, gated task and asset datasets, website/code
+tags, and provider image digest.  The gated task implementations, desktop VM, action logs, and
+verifier were not acquired here, so this is provenance and protocol evidence—not an OSWorld-V2
+score, desktop-control result, or justification for publishing benchmark-derived task text.
+
 The new mobile and MCP suites reinforce the same design requirement. iOSWorld's persistent identity
 and cross-app data make memory/state tracking first-class rather than an optional prompt feature;
 MobileSafetyBench makes confirmation, refusal, and prompt-injection handling measurable; and

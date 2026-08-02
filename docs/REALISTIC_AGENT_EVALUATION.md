@@ -1045,6 +1045,19 @@ were fixed.  This supports the adoption policy “reuse the pretrained body, use
 updates, and train surface-specific heads,” but it is not an official MCPMark score, native
 Playwright/MCP execution, verifier success, or real GitHub/Notion/Postgres activity.
 
+### MobileGym + OSWorld-V2 source audit (m121)
+
+The [`m121 receipt`](paper/results/raw/m121-mobilegym-osworld-source-audit-v1.json) adds a
+hash-pinned provenance pass for the two most relevant next native gates.  [MobileGym](https://github.com/Purewhiter/mobilegym)
+provides 28 simulated mobile apps, 416 parameterized templates, a 256-task held-out test split,
+structured reset/fork/diff state, and deterministic judges.  Its code is Apache-2.0 but its
+released benchmark data is CC-BY-NC-4.0, so the data archive is not copied into SFT or public
+artifacts.  [OSWorld-V2](https://github.com/xlang-ai/OSWorld-V2) is bound to the active
+`osworld-v2-2026.06.24` release with 108 tasks, gated task/assets, and a release-matched VM/image
+contract.  Neither native runner was available in this environment; the receipt is therefore a
+source/protocol audit with zero training rows and zero official scores, not a mobile or desktop
+capability result.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
