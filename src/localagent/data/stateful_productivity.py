@@ -70,6 +70,92 @@ class ActionResult:
         return self.schema_valid and self.exact_action and self.state_transition
 
 
+class StatefulRuntime:
+    """Resettable local runtime that executes one task with retry semantics.
+
+    ``apply_action`` is intentionally a pure scorer.  This wrapper adds the bit of environment
+    state that a deployed agent needs: the current action index, an error observation after a
+    rejected call, and an append-only event log.  A failed call does not advance the task, so a
+    caller can retry against the same state.  The runtime is deterministic and in-memory; it is
+    not an Android emulator, browser session, or external email/Notion account.
+    """
+
+    def __init__(self, task: StatefulTask) -> None:
+        self.task = task
+        self.reset()
+
+    def reset(self, task: StatefulTask | None = None) -> None:
+        """Reset the runtime to a detached initial state for ``task``."""
+
+        if task is not None:
+            self.task = task
+        self._state = copy.deepcopy(self.task.initial_state)
+        self._step_index = 0
+        self._last_result: ActionResult | None = None
+        self._events: list[dict[str, Any]] = []
+
+    @property
+    def state(self) -> dict[str, Any]:
+        """Return a detached observation of the current state."""
+
+        return copy.deepcopy(self._state)
+
+    @property
+    def step_index(self) -> int:
+        """Return the next expected action index."""
+
+        return self._step_index
+
+    @property
+    def done(self) -> bool:
+        """Whether all actions have been accepted and the final projection holds."""
+
+        return self._step_index >= len(self.task.actions) and task_complete(self.task, self._state)
+
+    @property
+    def events(self) -> list[dict[str, Any]]:
+        """Return a detached execution log suitable for a reproducible receipt."""
+
+        return copy.deepcopy(self._events)
+
+    def prompt(self) -> str:
+        """Render the current state and the last rejection as an agent observation."""
+
+        if self.done:
+            return f"Goal complete. Current state JSON: {canonical_json(self._state)}"
+        prompt = state_prompt(self.task, self._step_index, self._state)
+        if self._last_result is not None and self._last_result.error:
+            prompt += f" Last tool result: error={self._last_result.error}"
+        return prompt
+
+    def execute(self, tool: str | None, arguments: Mapping[str, Any] | None = None) -> ActionResult:
+        """Execute a candidate call, advancing only after an exact successful transition."""
+
+        if self.done:
+            raise RuntimeError(f"task {self.task.task_id} is already complete")
+        expected_step = self._step_index
+        result = apply_action(self.task, expected_step, self._state, tool, arguments)
+        self._last_result = result
+        accepted = result.closed_loop_success
+        if accepted:
+            self._state = result.state
+            self._step_index += 1
+        self._events.append(
+            {
+                "step_index": expected_step,
+                "tool": tool,
+                "arguments": copy.deepcopy(dict(arguments or {})),
+                "schema_valid": result.schema_valid,
+                "exact_tool": result.exact_tool,
+                "exact_args": result.exact_args,
+                "state_transition": result.state_transition,
+                "accepted": accepted,
+                "error": result.error,
+            }
+        )
+        return result
+
+
 def stateful_reward(result: ActionResult, *, terminal: bool = False) -> float:
     """Return a bounded deterministic reward suitable for an offline RL simulation.
 
@@ -387,7 +473,21 @@ def _schema_valid(tool: str | None, arguments: Mapping[str, Any]) -> bool:
 
 
 def _same_args(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
-    return canonical_json(left) == canonical_json(right)
+    def normalize(value: Mapping[str, Any]) -> dict[str, Any]:
+        result = dict(value)
+        target = result.get("target")
+        if isinstance(target, str):
+            low = target.lower().removeprefix("the ")
+            # Accessibility labels vary between "Search box" and "mail search field" while
+            # referring to the same control in this resettable fixture.  Keep the canonical
+            # target in the final state so exact-action metrics do not reward arbitrary text.
+            if "search" in low and ("box" in low or "field" in low):
+                result["target"] = "the Search box"
+            elif "refresh" in low:
+                result["target"] = "the Refresh control"
+        return result
+
+    return canonical_json(normalize(left)) == canonical_json(normalize(right))
 
 
 def _transition(state: dict[str, Any], tool: str, arguments: Mapping[str, Any]) -> tuple[bool, str | None]:
@@ -452,6 +552,12 @@ def _transition(state: dict[str, Any], tool: str, arguments: Mapping[str, Any]) 
         if browser.get("page") is None:
             return False, "browser_click_requires_page"
         target = arguments.get("target")
+        if isinstance(target, str):
+            low = target.lower().removeprefix("the ")
+            if "search" in low and ("box" in low or "field" in low):
+                target = "the Search box"
+            elif "refresh" in low:
+                target = "the Refresh control"
         if target not in {"the Search box", "the Refresh control"}:
             return False, "unknown_browser_target"
         state["focus"] = "search" if target == "the Search box" else "refresh"

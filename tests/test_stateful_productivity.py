@@ -4,6 +4,7 @@ from pathlib import Path
 
 from localagent.data.stateful_productivity import (
     SUITE_ID,
+    StatefulRuntime,
     apply_action,
     build_tasks,
     canonical_json,
@@ -55,6 +56,21 @@ def test_recovery_keeps_intermediate_error_and_abstention_is_noop() -> None:
     assert result.state == initial_state()
     assert stateful_reward(result, terminal=True) == 1.0
     assert sum(stateful_reward_spec().values()) == 1.0
+
+
+def test_runtime_retries_without_advancing_and_oracle_completes() -> None:
+    task = next(task for task in build_tasks("eval") if task.family == "notion")
+    runtime = StatefulRuntime(task)
+    rejected = runtime.execute("notion_create_page", {"title": "wrong", "content": "wrong"})
+    assert not rejected.closed_loop_success
+    assert runtime.step_index == 0
+    assert runtime.prompt().endswith("error=action_mismatch")
+    for action in task.actions:
+        result = runtime.execute(action.tool, action.arguments)
+        assert result.closed_loop_success
+    assert runtime.done
+    assert runtime.step_index == len(task.actions)
+    assert len(runtime.events) == len(task.actions) + 1
 
 
 def test_conversation_uses_canonical_schema_and_state_prompt() -> None:
@@ -129,3 +145,23 @@ def test_published_lowrate_deployment_receipts_fail_closed_on_public_claims() ->
     assert hub["export_verified_locally"] is True
     assert hub["hub"]["uploaded"] is False
     assert hub["parameter_count"] == 10524544
+
+
+def test_published_runtime_receipt_has_oracle_and_model_boundaries() -> None:
+    path = Path(__file__).parents[1] / "docs/paper/results/raw/m66-stateful-runtime-evaluation-v1.json"
+    receipt = json.loads(path.read_text())
+    expected = receipt.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    assert receipt["runtime"] == {
+        "environment_executed": True,
+        "external_accounts_used": False,
+        "kind": "local_resettable_state_machine",
+        "public_benchmark": False,
+        "tool_side_effects": "in_memory_only",
+    }
+    assert receipt["oracle"]["task_complete_rate"] == 1.0
+    assert receipt["model"]["task_complete_rate"] == 0.2
+    assert receipt["model"]["accepted_steps"] == 4

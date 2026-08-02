@@ -56,6 +56,23 @@ def test_boolean_and_message_slots_are_typed_and_grounded():
     )
 
 
+def test_stateful_app_url_and_semantic_targets_prefer_typed_spans():
+    from localagent.agent.constrained import _tool_bodies
+    from localagent.agent.mobile_toolset import mobile_tools
+
+    app = next(tool for tool in mobile_tools() if tool.name == "mobile_open_app")
+    click = next(tool for tool in TOOLS if tool.name == "click")
+    app_bodies = _tool_bodies(
+        "Goal: Create a Notion page. Next required action: Start the Notion application on the handset.",
+        app,
+    )
+    click_bodies = _tool_bodies(
+        "Goal: Search. Next required action: Select the mail search field.", click
+    )
+    assert any('"app_name":"Notion"' in body for body in app_bodies)
+    assert any('"target":"the mail search field"' in body for body in click_bodies)
+
+
 def test_hello_is_text_only_not_planner():
     # "hello to X" must NOT fire the planner's " to " trigger.
     cands = candidates("Say hello to Zara.", TOOLS)

@@ -48,6 +48,9 @@ ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", 
                "recipient"}
 PHONE_ARGS = {"phone", "phone_number", "telephone", "telephone_number", "mobile"}
 TEXT_ARGS = {"content", "message", "text", "body", "subject", "title", "note", "comment"}
+APP_ARGS = {"app_name"}
+TARGET_ARGS = {"target"}
+EMAIL_ARGS = {"to", "recipient"}
 
 
 def _boolean(prompt: str) -> list[bool]:
@@ -68,12 +71,62 @@ def _phone(prompt: str) -> list[str]:
     return [re.sub(r"[ ()-]", "", match.group(0))]
 
 
-def _text_arg(prompt: str) -> list[str]:
-    """Extract free-form message text after common generic delimiters."""
+def _text_arg(prompt: str, arg: str = "") -> list[str]:
+    """Extract a text slot from generic delimiters or field-labelled quoted values."""
     match = re.search(r"(?:saying|with message|message|text|content)\s*:\s*(.+)", prompt, re.I)
     if match:
         return [_strip(match.group(1))]
+    low = prompt.lower()
+    quoted = [value for left, right in re.findall(r"'([^']+)'|\"([^\"]+)\"", prompt)
+              for value in (left or right,)]
+    if arg in {"to", "recipient"} or "address field" in low or "recipient" in low:
+        email = re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", prompt)
+        if email:
+            return [email.group(0)]
+    labels = {
+        "subject": r"subject(?: field)?",
+        "title": r"title(?:d)?",
+        "body": r"body|message",
+        "content": r"content|body",
+    }
+    label = labels.get(arg)
+    if label:
+        match = re.search(label + r"[^'\"]*['\"]([^'\"]+)['\"]", prompt, re.I)
+        if match:
+            return [match.group(1)]
+    if arg in {"text", "message"}:
+        if "subject" in low and quoted:
+            return [quoted[0]]
+        if ("body" in low or "message field" in low) and quoted:
+            return [quoted[-1]]
     return []
+
+
+def _app_name(prompt: str) -> list[str]:
+    """Extract the application named after a generic launch/open/start instruction."""
+    match = re.search(
+        r"(?:launch|open|bring\s+up|start)\s+(?:the\s+)?([A-Z][A-Za-z0-9_.-]*)",
+        prompt,
+        re.I,
+    )
+    return [match.group(1)] if match else []
+
+
+def _target(prompt: str) -> list[str]:
+    """Extract a semantic UI target from click/select/tap wording."""
+    quoted = re.search(r"(?:click|select|tap)\s+['\"]([^'\"]+)['\"]", prompt, re.I)
+    if quoted:
+        value = quoted.group(1).strip()
+        return [value if value.lower().startswith("the ") else f"the {value}"]
+    match = re.search(
+        r"(?:click|select|tap)\s+(?:on\s+)?((?:the\s+)?[A-Za-z][A-Za-z ]*?)(?:\s+at\s+x=|\s+on\s+(?:the\s+)?(?:phone|android)|[.!?]|$)",
+        prompt,
+        re.I,
+    )
+    if not match:
+        return []
+    value = _strip(match.group(1))
+    return [value if value.lower().startswith("the ") else f"the {value}"]
 
 
 def _best_string(prompt: str, arg: str = "") -> str:
@@ -88,8 +141,20 @@ def _best_string(prompt: str, arg: str = "") -> str:
         values = _phone(prompt)
         if values:
             return values[0]
+    if arg in EMAIL_ARGS:
+        values = _text_arg(prompt, arg)
+        if values:
+            return values[0]
     if arg in TEXT_ARGS:
-        values = _text_arg(prompt)
+        values = _text_arg(prompt, arg)
+        if values:
+            return values[0]
+    if arg in APP_ARGS:
+        values = _app_name(prompt)
+        if values:
+            return values[0]
+    if arg in TARGET_ARGS:
+        values = _target(prompt)
         if values:
             return values[0]
     if arg in ENTITY_ARGS and caps:
@@ -143,17 +208,27 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
     elif name in PHONE_ARGS:
         opts = _phone(prompt)
     elif name in TEXT_ARGS:
-        opts = _text_arg(prompt)
-    elif ptr is not None and name in ptr[0].arg_idx:        # learned pointer/copy span
-        ph, feats_row, framed_ids, tok = ptr
-        s, e = ph.predict_span(feats_row, name)
-        opts = [tok.decode(framed_ids[s:e + 1])]
+        opts = _text_arg(prompt, name)
+    elif name in EMAIL_ARGS:
+        opts = _text_arg(prompt, name) or [_best_string(prompt, name)]
+    elif name in APP_ARGS:
+        opts = _app_name(prompt)
+    elif name in TARGET_ARGS:
+        opts = _target(prompt)
     elif fmt == "quoted":
-        opts = _quoted(prompt)
+        # Public trajectories frequently provide semantic labels without quote marks (for
+        # example, ``click the Search box``).  Keep the quoted extractor first, but fall back to
+        # the generic string heuristic instead of forcing a learned pointer to copy a malformed
+        # span that includes the state observation.
+        opts = _quoted(prompt) or [_best_string(prompt, name)]
     elif fmt == "path":
         opts = _path(prompt)
     elif fmt == "url":
         opts = _url(prompt)
+    elif ptr is not None and name in ptr[0].arg_idx:        # learned pointer/copy span
+        ph, feats_row, framed_ids, tok = ptr
+        s, e = ph.predict_span(feats_row, name)
+        opts = [tok.decode(framed_ids[s:e + 1])]
     elif schema.get("type") in ("integer", "number"):
         # cast to typed numbers so the canonical body matches the int/float target (not "5").
         cast = int if schema.get("type") == "integer" else float
@@ -280,7 +355,13 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
     if route_head is not None:
         from localagent.agent.routes import ROUTES
         if ROUTES[int(route_head(feats[-1]).argmax(-1))] == "text":
-            return _best(model, tok, score, _text_candidates(prompt) or ["I am LocalAgent."], device)
+            # Fail open for prompts that contain no recognized text intent.  A small route head
+            # can misclassify a long state-conditioned tool prompt as ``text``; turning that into
+            # an unconditional abstention makes retries impossible and hides the selector's
+            # useful tool prior.  Known greeting/identity/thanks intents still take the text path.
+            text_candidates = _text_candidates(prompt)
+            if text_candidates is not None:
+                return _best(model, tok, score, text_candidates, device)
     else:
         txt = _text_candidates(prompt)
         if txt is not None:

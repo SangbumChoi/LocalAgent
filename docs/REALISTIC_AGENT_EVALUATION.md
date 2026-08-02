@@ -1222,6 +1222,24 @@ separate head initialization, but it does not establish that transfer is better 
 random control.  The adoption decision therefore remains compatibility-positive and quality-claim
 negative until the same native task set is run with frozen, low-rate, and matched-random arms.
 
+### Resettable local productivity runtime (m66)
+
+The [`m66 receipt`](paper/results/raw/m66-stateful-runtime-evaluation-v1.json) closes a gap in the
+earlier fixed-step stateful probe.  [`StatefulRuntime`](../src/localagent/data/stateful_productivity.py)
+now keeps a current action index, rejects malformed or out-of-order calls without advancing the
+episode, exposes the rejection as the next observation, and records an append-only event log.  The
+receipt runs five held-out workflows—email send, Notion page creation, browser search, browser
+recovery, and abstention—through that retry-capable runtime.
+
+The oracle reaches `5/5` complete workflows and `16/16` accepted steps, validating the verifier and
+reset contract.  The 10.52M low-rate child accepts only `4/16` steps over 46 bounded attempts and
+completes `1/5` workflows (abstention only); it can open Gmail and navigate/click in the browser,
+but cannot finish the email, Notion, search, or recovery trajectories.  This is a useful negative
+deployment result: transfer and schema validity alone are not enough, and the dominant remaining
+failure is route/argument grounding under a long state-conditioned prompt.  The runtime is
+deterministic and in-memory, so m66 is not a public benchmark, native browser/emulator run, real
+email/Notion operation, or WebGPU hardware result.
+
 ### Local WebGPU and Hugging Face export receipts (m57–m58)
 
 The same m56 child was exported to a clean static-demo bundle and an independent Hugging Face
