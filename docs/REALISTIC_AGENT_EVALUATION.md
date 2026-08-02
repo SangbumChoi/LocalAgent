@@ -597,6 +597,25 @@ selection on unseen Notion/browser/database descriptions, while route classifica
 It is not MCPMark task success, pass@k, verifier success, or evidence that live accounts can be
 controlled; the official runner remains a workshop-gate requirement.
 
+### ToolSandbox public scenario metadata profile (m54)
+
+The pinned [Apple ToolSandbox](https://github.com/apple/ToolSandbox) source is now inventory-bound
+at commit `165848b9a78cead7ca7fe7c89c688b58e6501219`.  The dependency-free
+[`profile_toolsandbox_metadata.py`](../scripts/profile_toolsandbox_metadata.py) parses only the
+four public scenario modules with Python's AST; it does not import ToolSandbox or retain user
+prompts.  The receipt reports 129 unique base scenarios: 19 single-tool, 54 multiple-tool, 28
+multiple-user-turn, and 28 insufficient-information scenarios.  Literal source metadata names 32
+tools, 59 canonicalization tags, and 24 state-dependency tags.  The upstream `named_scenarios`
+augmentation policy expands each base definition into four distraction levels plus four schema
+scramble variants, or 1,032 source-level variants before runtime tool-similarity ranking.
+
+This is a public-source inventory, not a model score or training set.  The Apple Software License
+and `ACKNOWLEDGEMENTS` are preserved in the source manifest and require a separate redistribution
+review.  Native evaluation still requires the pinned simulator, state databases, user simulator,
+milestone verifiers, and complete upstream result coverage; no external API, tool, or account was
+used here.  The complete hash-bound receipt is
+[`m54`](paper/results/raw/m54-toolsandbox-metadata-v1.json).
+
 The public [Apple ToolSandbox](https://github.com/apple/ToolSandbox) is the next stateful
 productivity gate. Its scenarios model implicit tool dependencies, user simulation, messaging,
 canonicalization, distraction tools, and insufficient-information abstention; the upstream CLI

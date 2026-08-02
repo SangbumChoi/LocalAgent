@@ -32,3 +32,10 @@ def test_mcpmark_revision_matches_the_published_metadata_profile() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     entry = next(row for row in payload["entries"] if row["id"] == "mcpmark")
     assert entry["source_revision"] == "cd45b7f57923b9b3985467f5139927575f83141c"
+
+
+def test_toolsandbox_revision_matches_the_published_metadata_profile() -> None:
+    payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
+    entry = next(row for row in payload["entries"] if row["id"] == "toolsandbox")
+    assert entry["source_revision"] == "165848b9a78cead7ca7fe7c89c688b58e6501219"
+    assert entry["scale"].startswith("129_base_scenarios")

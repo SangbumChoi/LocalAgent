@@ -82,14 +82,14 @@ entries:
     name: Apple ToolSandbox
     source_url: https://github.com/apple/ToolSandbox
     license: source_repository_license_requires_audit
-    source_revision: pin_before_use
-    scale: stateful_conversational_scenarios
+    source_revision: 165848b9a78cead7ca7fe7c89c688b58e6501219
+    scale: 129_base_scenarios_and_1032_source_level_augmented_variants
     modalities: [multi_turn_dialogue, tool_schema, simulator_state, milestone_verifier]
     split_policy: evaluation_only; no static scenario labels in SFT
     runtime: ToolSandbox_simulator_and_user_simulator
     webgpu_projection: state-dependency and canonicalization rehearsal without external services
     metric: intermediate_and_final_milestone_success
-    notes: Designed for implicit state dependencies, canonicalization, insufficient information, and multi-turn tool use.
+    notes: AST metadata profile at the pinned commit reports 129 base scenarios across four families and 1032 source-level variants; prompts, verifiers, tools, and user simulation remain evaluation-only and the Apple Software License plus ACKNOWLEDGEMENTS require review before redistribution.
 
   - id: androidworld
     family: mobile
