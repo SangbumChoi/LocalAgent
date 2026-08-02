@@ -20,13 +20,25 @@ PTR_ARGS = ["city", "query", "goal", "term", "song", "topic",
             "path", "pattern", "command", "message", "task", "duration",
             "title", "recipient", "url", "content", "summary"]
 ARG_IDX = {a: i for i, a in enumerate(PTR_ARGS)}
+# Browser/mobile schemas use the same copy mechanism for DOM node identifiers and typed field
+# values.  This is deliberately a separate vocabulary: changing ``PTR_ARGS`` would invalidate
+# every existing checkpoint's pointer embedding shape.
+BROWSER_PTR_ARGS = [*PTR_ARGS, "target_id", "value"]
+BROWSER_ARG_IDX = {a: i for i, a in enumerate(BROWSER_PTR_ARGS)}
 
 
 class PointerHead(nn.Module):
     def __init__(self, d_model: int, args=PTR_ARGS):
         super().__init__()
-        self.args = args
-        self.arg_emb = nn.Embedding(len(args), d_model)
+        # Keep the legacy 17-argument vocabulary as the default, while allowing a checkpoint
+        # trained for a grounded UI schema to add arguments such as ``target_id`` and ``value``.
+        # The argument order is part of the checkpoint/export contract, so copy it instead of
+        # retaining a caller-owned mutable list.
+        self.args = tuple(args)
+        self.arg_idx = {name: index for index, name in enumerate(self.args)}
+        if len(self.arg_idx) != len(self.args):
+            raise ValueError("pointer argument names must be unique")
+        self.arg_emb = nn.Embedding(len(self.args), d_model)
         self.start = nn.Linear(d_model, d_model, bias=False)
         self.end = nn.Linear(d_model, d_model, bias=False)
 
@@ -40,7 +52,7 @@ class PointerHead(nn.Module):
     @torch.no_grad()
     def predict_span(self, feats_row: torch.Tensor, arg: str) -> tuple[int, int]:
         """feats_row (T,d) for a single prompt -> (start, end) byte indices, end >= start."""
-        i = torch.tensor(ARG_IDX[arg], device=feats_row.device)
+        i = torch.tensor(self.arg_idx[arg], device=feats_row.device)
         q = self.arg_emb(i)
         s = feats_row @ self.start(q)
         e = feats_row @ self.end(q)

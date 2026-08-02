@@ -28,7 +28,7 @@ import numpy as np
 import torch
 
 from localagent.agent.dense_selector import BoundSelector, DenseToolSelector
-from localagent.agent.pointer_head import ARG_IDX, PointerHead
+from localagent.agent.pointer_head import PointerHead
 from localagent.agent.routes import ROUTES, RouteHead, route_of
 from localagent.agent.toolset import STANDARD_TOOLS
 from localagent.model import LocalAgentLM, ModelConfig
@@ -206,7 +206,7 @@ def _pointer_scores_native(
     limit: int,
 ) -> tuple[np.ndarray, np.ndarray]:
     features = torch.from_numpy(np.ascontiguousarray(hidden[:limit]))
-    arg_index = torch.tensor(ARG_IDX[arg])
+    arg_index = torch.tensor(pointer_head.arg_idx[arg])
     with torch.no_grad():
         query = pointer_head.arg_emb(arg_index)
         start = features @ pointer_head.start(query)
@@ -456,7 +456,7 @@ def _runtime_policy(
     if selected_tool is not None:
         schema = tool_schemas[selected_tool]
         for arg in schema.get("properties", {}):
-            if arg not in ARG_IDX:
+            if arg not in pointer_heads_json["arg_idx"]:
                 continue
             if runtime == "native_pytorch_fp32":
                 start_scores, end_scores = _pointer_scores_native(
@@ -624,8 +624,10 @@ def build_structured_action_parity(
         raise ValueError("meta, dispatch, and native tool orders differ")
     if dispatch_heads["route_head"]["routes"] != list(ROUTES):
         raise ValueError("exported route order differs from native ROUTES")
-    if pointer_heads["arg_idx"] != ARG_IDX:
-        raise ValueError("exported pointer argument order differs from native ARG_IDX")
+    pointer_args = list(pointer_heads.get("args", []))
+    pointer_arg_idx = {name: index for index, name in enumerate(pointer_args)}
+    if pointer_heads["arg_idx"] != pointer_arg_idx:
+        raise ValueError("exported pointer argument order is not self-consistent")
     tool_schemas = {tool["name"]: tool["schema"] for tool in meta["tools"]}
 
     model = LocalAgentLM(cfg).eval()
@@ -644,7 +646,7 @@ def build_structured_action_parity(
         tool_specs,
         examples=checkpoint.get("examples"),
     )
-    pointer_head = PointerHead(cfg.d_model).eval()
+    pointer_head = PointerHead(cfg.d_model, args=pointer_args).eval()
     pointer_head.load_state_dict(checkpoint["ptr_head"])
     serialization_audit = _head_serialization_audit(
         checkpoint=checkpoint,

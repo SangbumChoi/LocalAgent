@@ -97,13 +97,12 @@ def _url(prompt: str) -> list[str]:
 def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None) -> list:
     """Candidate values for one argument. If a pointer head is given (`ptr`), string-typed args
     are filled by its learned copy span; otherwise schema/heuristic extractors are used."""
-    from localagent.agent.pointer_head import ARG_IDX
     fmt = schema.get("format")
     if "enum" in schema:
         opts = list(schema["enum"])
     elif fmt == "arithmetic" or "express" in name:
         opts = _arith(prompt)
-    elif ptr is not None and name in ARG_IDX:        # learned pointer/copy span
+    elif ptr is not None and name in ptr[0].arg_idx:        # learned pointer/copy span
         ph, feats_row, framed_ids, tok = ptr
         s, e = ph.predict_span(feats_row, name)
         opts = [tok.decode(framed_ids[s:e + 1])]

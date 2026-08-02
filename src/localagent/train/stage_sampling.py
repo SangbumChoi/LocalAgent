@@ -256,6 +256,7 @@ def prepare_sft_data(
     lr_schedule: str,
     max_seq_len: int,
     joint_tool_head: bool,
+    ptr_args: Sequence[str] | None = None,
     conversation_prompt_contract: str | None = None,
     decay_conversations: Sequence[Any] | None = None,
     decay_conversation_sources: Sequence[str] | None = None,
@@ -267,6 +268,15 @@ def prepare_sft_data(
     if max_seq_len < 2:
         raise ValueError("sft() max_seq_len must be at least 2")
     prompt_contract = assert_prompt_contract_tokenizer(tok, conversation_prompt_contract)
+    if ptr_args is None:
+        from localagent.agent.pointer_head import PTR_ARGS
+
+        ptr_args = tuple(PTR_ARGS)
+    else:
+        ptr_args = tuple(ptr_args)
+    ptr_arg_idx = {arg: index for index, arg in enumerate(ptr_args)}
+    if len(ptr_arg_idx) != len(ptr_args):
+        raise ValueError("pointer argument names must be unique")
     catalog_token_cache = (
         None if prompt_contract == LEGACY_CONVERSATION_PROMPT_CONTRACT else CatalogTokenCache(tok)
     )
@@ -387,14 +397,13 @@ def prepare_sft_data(
     if joint_tool_head:
         if not sample_rows:
             raise ValueError("joint tool/pointer heads need simple user -> assistant conversations")
-        from localagent.agent.pointer_head import ARG_IDX
-        from localagent.agent.tool_head import CLASSES, label_of
+        from localagent.agent.tool_head import CLASSES, canonical_tool_name, label_of
 
         mutable_head_items: list[SFTHeadItem] = []
 
         def ptr_of(arguments: Mapping[str, Any]) -> tuple[str | None, str | None]:
             for key, value in arguments.items():
-                if key in ARG_IDX and isinstance(value, str):
+                if key in ptr_arg_idx and isinstance(value, str):
                     return key, value
             return None, None
 
@@ -404,8 +413,8 @@ def prepare_sft_data(
                 if len(conjuncts) == len(sample.calls):
                     for conjunct, call in zip(conjuncts, sample.calls, strict=True):
                         label = (
-                            CLASSES.index(call["name"])
-                            if call["name"] in CLASSES
+                            CLASSES.index(canonical_tool_name(call["name"]))
+                            if canonical_tool_name(call["name"]) in CLASSES
                             else CLASSES.index("text")
                         )
                         pointer_arg, pointer_value = ptr_of(call["arguments"])
@@ -466,10 +475,15 @@ def prepare_sft_data(
                             f"assistant_message_index={index}, tokens={len(context_ids)}, "
                             f"max_seq_len={max_seq_len}"
                         )
-                label = CLASSES.index(call.name) if call.name in CLASSES else CLASSES.index("text")
+                canonical_name = canonical_tool_name(call.name)
+                label = (
+                    CLASSES.index(canonical_name)
+                    if canonical_name in CLASSES
+                    else CLASSES.index("text")
+                )
                 pointer_arg_index, gold_start, gold_end = -1, -1, -1
                 for key, value in call.arguments.items():
-                    if key not in ARG_IDX or not isinstance(value, str):
+                    if key not in ptr_arg_idx or not isinstance(value, str):
                         continue
                     if prompt_contract == LEGACY_CONVERSATION_PROMPT_CONTRACT:
                         contextual_ids, span = encode_with_value_span(
@@ -514,7 +528,7 @@ def prepare_sft_data(
                         )
                     if span is not None:
                         pointer_arg_index, gold_start, gold_end = (
-                            ARG_IDX[key],
+                            ptr_arg_idx[key],
                             span[0],
                             span[1],
                         )

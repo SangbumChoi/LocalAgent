@@ -31,9 +31,18 @@ CLASSES = ["get_weather", "calculator", "web_search", "planner",
            "list_processes", "docker_run",
            "text"]
 
+# Public browser datasets name grounded actions explicitly; the legacy 51-way classifier uses
+# the equivalent computer-use classes.  Keep this alias only for auxiliary head supervision —
+# exported dense dispatch still preserves the public ``web_*`` tool names.
+TOOL_ALIASES = {"web_click": "click", "web_type": "type_text", "web_select": "click"}
+
+
+def canonical_tool_name(name: str) -> str:
+    return TOOL_ALIASES.get(name, name)
+
 
 def label_of(sample) -> str:
-    return sample.ref_name if sample.kind == "tool" else "text"
+    return canonical_tool_name(sample.ref_name) if sample.kind == "tool" else "text"
 
 
 @torch.no_grad()

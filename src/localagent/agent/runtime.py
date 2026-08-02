@@ -120,7 +120,11 @@ class Agent:
         examples = ck.get("examples", {})
         ptr = None
         if ck.get("ptr_head"):
-            ptr = PointerHead(cfg.d_model)
+            ptr = (
+                PointerHead(cfg.d_model, args=ck["ptr_args"])
+                if ck.get("ptr_args")
+                else PointerHead(cfg.d_model)
+            )
             ptr.load_state_dict(ck["ptr_head"])
             ptr.eval()
         selector = route_head = None

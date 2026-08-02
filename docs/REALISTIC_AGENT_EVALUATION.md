@@ -154,6 +154,30 @@ official benchmark score, browser environment, or real account was executed.  Th
 therefore suitable for a controlled demo artifact, but it is not a publication-quality browser-agent
 result until the native and hardware gates in the workshop checklist pass.
 
+### Grounded DOM pointer continuation and WebGPU check (m33)
+
+The m32 result exposed a specific training-contract error: Mind2Web supplies positive/negative DOM
+Candidates and backend node IDs, but the text-first normalized rows did not carry that observation
+into the model context.  [`export_mind2web_grounded_rows.py`](../scripts/export_mind2web_grounded_rows.py)
+now emits a bounded, deterministic 12-candidate snapshot before each action, preserving the public
+revision, source-record split, and slot hashes.  The pointer head now supports a backward-compatible
+browser vocabulary (`target_id`, `value`) without changing legacy checkpoint shapes; public browser
+names are mapped only for auxiliary 51-way head supervision (`web_click` → `click`, etc.).
+
+ A 32-step continuation warm-started the m31 10.5M model and retained its route/dense heads.  On six
+held-out public-train decisions, exact pointer spans reached `3/6` (`50%`), but the fresh four-case
+explicit-Metal-3 WebGPU action suite remained `1/4` exact (`25%`): tool selection was `3/3`, the
+cancellation abstention was `1/1`, and all three web arguments copied a long candidate span starting
+at `target_id=2932` instead of the gold `target_id=170`.  Schema validity was `4/4`; harness TTFA was
+`18.65 ms` p50 and `19.385 ms` p95, with every case under 100 ms.  The full hash-bound receipt is
+[`m33`](paper/results/raw/m33-mind2web-grounded-dom-webgpu-v1.json).
+
+This is the desired realistic failure signal, not a success claim: compact DOM text alone does not
+yet teach a 10.5M model to rank the correct candidate under a held-out website.  The next required
+experiment is larger official-train coverage plus candidate-ranking/state-transition supervision,
+followed by native browser execution; the four-case train-derived suite must not be promoted to an
+official Mind2Web score.
+
 ### Offline normalized mobile action protocol
 
 [`src/localagent/eval/mobile.py`](../src/localagent/eval/mobile.py) now provides the common

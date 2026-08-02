@@ -64,6 +64,7 @@ from localagent.train.stage_sampling import (
     validate_sft_loss_normalization,
     validate_multi_turn_batch_size,
 )
+from localagent.agent.pointer_head import PTR_ARGS
 from localagent.train.stage_sampling import (
     add_row_accounting as _add_row_accounting,
 )
@@ -1131,6 +1132,7 @@ def sft(
     device="cpu",
     log=print,
     joint_tool_head=False,
+    ptr_args=None,
     aux_weight=1.0,
     ptr_weight=0.15,
     conversations=None,
@@ -1310,6 +1312,7 @@ def sft(
         lr_schedule=lr_schedule,
         max_seq_len=seq_limit,
         joint_tool_head=joint_tool_head,
+        ptr_args=ptr_args,
         conversation_prompt_contract=conversation_prompt_contract,
         decay_conversations=decay_conversations,
         decay_conversation_sources=decay_conversation_sources,
@@ -1391,7 +1394,7 @@ def sft(
         from localagent.agent.tool_head import ToolHead
 
         tool_head = ToolHead(model.cfg.d_model).to(device)
-        ptr_head = PointerHead(model.cfg.d_model).to(device)
+        ptr_head = PointerHead(model.cfg.d_model, args=ptr_args or PTR_ARGS).to(device)
         # Warm-start the heads from a prior checkpoint to CONTINUE-train (keep learned
         # selection/grounding and adapt to new data) instead of resetting them.
         if init_tool_head is not None:
@@ -1756,7 +1759,6 @@ def sft(
             kd = _topk_kd_loss(klogits, kd_cache, bi, Xk, mk, V_kd, kd_temperature, device)
             loss = loss + kd_weight * kd
         if joint_tool_head:
-            from localagent.agent.pointer_head import ARG_IDX
             from localagent.model.tokenizer import ASSISTANT, USER
 
             batch = [head_items[index] for index in selection.head_indices]
@@ -1789,7 +1791,7 @@ def sft(
                 rws.append(bi)
                 gs.append(span[0])
                 ge.append(span[1])
-                ai.append(ARG_IDX[parg])
+                ai.append(ptr_head.arg_idx[parg])
             if rws:
                 sub = feats[rws]  # (k,Tmax,d)
                 sl, el = ptr_head.logits(sub, torch.tensor(ai, device=device))

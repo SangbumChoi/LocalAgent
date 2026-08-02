@@ -121,11 +121,20 @@ def _heads_json(ck: dict) -> dict:
         end_logit[t]   = hidden[t] . (end_W   @ q)
     We export arg_emb, start_W, end_W raw; JS reproduces the two matvecs + einsum.
     """
-    from localagent.agent.pointer_head import ARG_IDX, PTR_ARGS
+    from localagent.agent.pointer_head import PTR_ARGS
     from localagent.agent.tool_head import CLASSES
 
     th = ck["tool_head"]
     ph = ck["ptr_head"]
+    ptr_args = list(ck.get("ptr_args", PTR_ARGS))
+    ptr_arg_idx = {arg: index for index, arg in enumerate(ptr_args)}
+    expected_rows = len(ptr_args)
+    actual_rows = int(ph["arg_emb.weight"].shape[0])
+    if actual_rows != expected_rows:
+        raise ValueError(
+            "checkpoint pointer argument metadata disagrees with embedding rows: "
+            f"args={expected_rows}, rows={actual_rows}"
+        )
     tool_w = th["fc.weight"].cpu().tolist()  # (22, d_model)
     tool_b = th["fc.bias"].cpu().tolist()  # (22,)
     stop_index = CLASSES.index("text")
@@ -146,8 +155,8 @@ def _heads_json(ck: dict) -> dict:
             # (matches PointerHead.logits: einsum('btd,bd->bt', feats, start(q)).)
             "start_W": _round_nested(ph["start.weight"].cpu().tolist()),  # (d_model, d_model)
             "end_W": _round_nested(ph["end.weight"].cpu().tolist()),  # (d_model, d_model)
-            "args": list(PTR_ARGS),
-            "arg_idx": dict(ARG_IDX),
+            "args": ptr_args,
+            "arg_idx": ptr_arg_idx,
             # decode rule JS must apply: start = argmax(start_logit);
             #   end_logit[:start] = -inf; end = argmax(end_logit); span is [start, end] inclusive.
         },
