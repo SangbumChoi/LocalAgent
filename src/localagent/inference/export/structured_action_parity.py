@@ -542,6 +542,7 @@ def build_structured_action_parity(
     target_input_tokens: int = 512,
     batch_size: int = 4,
     node_executable: str = "node",
+    tools=None,
 ) -> dict[str, Any]:
     """Build and hard-gate one complete structured-action export parity report."""
 
@@ -617,8 +618,9 @@ def build_structured_action_parity(
     dispatch_heads = _load_json(paths["dispatch_heads.json"])
     tool_names = [tool["name"] for tool in meta["tools"]]
     dispatch_names = dispatch_heads["dense_selector"]["tool_names"]
-    standard_names = [tool.name for tool in STANDARD_TOOLS]
-    if tool_names != dispatch_names or tool_names != standard_names:
+    tool_specs = STANDARD_TOOLS if tools is None else list(tools)
+    expected_names = [tool.name for tool in tool_specs]
+    if tool_names != dispatch_names or tool_names != expected_names:
         raise ValueError("meta, dispatch, and native tool orders differ")
     if dispatch_heads["route_head"]["routes"] != list(ROUTES):
         raise ValueError("exported route order differs from native ROUTES")
@@ -639,7 +641,7 @@ def build_structured_action_parity(
     selector_model.load_state_dict(selector_state)
     bound_selector = BoundSelector(
         selector_model,
-        STANDARD_TOOLS,
+        tool_specs,
         examples=checkpoint.get("examples"),
     )
     pointer_head = PointerHead(cfg.d_model).eval()

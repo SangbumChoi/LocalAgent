@@ -22,6 +22,14 @@ RESULT = (
     / "results"
     / "sft-structured-export-parity-seed2027.summary.json"
 )
+M32_RESULT = (
+    ROOT
+    / "docs"
+    / "paper"
+    / "results"
+    / "raw"
+    / "m32-webgpu-realistic-browser-tool-pool-v1.json"
+)
 
 
 def test_trailing_compute_materialization_preserves_natural_decision_boundary() -> None:
@@ -139,3 +147,22 @@ def test_tracked_seed2027_full_stack_export_parity_is_self_consistent() -> None:
     diagnostics = aggregate["runtime_diagnostics"]
     assert {row["exact_action"] for row in diagnostics.values()} == {16}
     assert {row["schema_valid"] for row in diagnostics.values()} == {20}
+
+
+def test_tracked_m32_realistic_browser_bundle_receipt_is_self_consistent() -> None:
+    payload = json.loads(M32_RESULT.read_text())
+    expected_hash = canonical_sha256(
+        {key: value for key, value in payload.items() if key != "summary_sha256"}
+    )
+
+    assert payload["summary_sha256"] == expected_hash
+    assert payload["status"] == "passed_export_and_structured_parity"
+    assert payload["tool_pool"]["count"] == 53
+    assert payload["tool_pool"]["names"][-3:] == ["web_click", "web_type", "web_select"]
+    assert payload["export"]["hard_parity"]["passed"] is True
+    parity = payload["structured_action_parity"]
+    assert parity["passed"] is True
+    assert parity["configured_cases"] == 20
+    assert parity["native_vs_onnx_fp32"]["final_normalized_action_exact"] == 20
+    assert parity["native_vs_onnx_fp16"]["final_normalized_action_exact"] == 20
+    assert parity["diagnostic_model_quality"]["tool_required_exact_action_accuracy"] == 0.0

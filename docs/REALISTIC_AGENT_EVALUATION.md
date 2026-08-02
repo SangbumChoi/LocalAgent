@@ -137,6 +137,23 @@ In the in-app browser, an explicit WebGPU session loaded the verified 10.5M bund
 versioned receipt is [`m11-webgpu-mind2web-bpe-child.json`](paper/results/raw/m11-webgpu-mind2web-bpe-child.json);
 no hardware throughput claim is made because timing was not collected in this run.
 
+### Realistic browser-tool WebGPU bundle (m32)
+
+The same held-out Mind2Web child was exported with the 53-tool
+[`REALISTIC_BROWSER_TOOLS`](../src/localagent/agent/toolset.py) pool, including `web_click`,
+`web_type`, and `web_select` while preserving the 10.5M backbone and the existing pointer-head
+shapes.  The model graph, hidden-only action graph, serialized heads, tokenizer, and tool metadata
+are hash-bound in the [`m32 receipt`](paper/results/raw/m32-webgpu-realistic-browser-tool-pool-v1.json).
+The fp32 and fp16 export gates passed; the JavaScript grounding bridge and native PyTorch agreed
+exactly with both ONNX variants on all 20 reused action cases (route, selected tool, grounded
+arguments, and normalized action).
+
+This closes an export-contract gap, not the capability gap.  The reused diagnostic suite has only
+`0/19` tool-required exact actions and `0%` tool-selection accuracy, and no hardware WebGPU timing,
+official benchmark score, browser environment, or real account was executed.  The bundle is
+therefore suitable for a controlled demo artifact, but it is not a publication-quality browser-agent
+result until the native and hardware gates in the workshop checklist pass.
+
 ### Offline normalized mobile action protocol
 
 [`src/localagent/eval/mobile.py`](../src/localagent/eval/mobile.py) now provides the common
