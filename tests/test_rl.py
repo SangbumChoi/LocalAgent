@@ -40,6 +40,7 @@ from localagent.train.rl import (
     _prompt_ids_for_policy,
     _rollout,
     _rollout_reward,
+    _stateful_productivity_reward,
     _token_logprobs,
     _valid_tool_call_format,
     grpo,
@@ -633,6 +634,40 @@ def test_format_reward_never_turns_honest_text_or_abstention_into_a_tool_reward(
         )
         == 0.0
     )
+
+
+def test_stateful_productivity_reward_shapes_strict_envelope_and_exact_transition() -> None:
+    sample = Sample(
+        category="stateful_productivity",
+        group="email",
+        prompt="Send the message",
+        kind="tool",
+        target='{"arguments":{"body":"Build is green","subject":"Weekly rollout","to":"maya@example.com"},"name":"email_send"}',
+        ref_name="email_send",
+        ref_args='{"body":"Build is green","subject":"Weekly rollout","to":"maya@example.com"}',
+    )
+    spec = ToolSpec(
+        name="email_send",
+        description="Send an email.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "body": {"type": "string"},
+                "subject": {"type": "string"},
+                "to": {"type": "string"},
+            },
+            "required": ["body", "subject", "to"],
+            "additionalProperties": False,
+        },
+    )
+    exact = (
+        '<tool_call>{"name":"email_send","arguments":{"body":"Build is green",'
+        '"subject":"Weekly rollout","to":"maya@example.com"}}</tool_call>'
+    )
+    unknown = '<tool_call>{"name":"unknown","arguments":{}}</tool_call>'
+    assert _stateful_productivity_reward(sample, exact, [spec]) == pytest.approx(1.0)
+    assert _stateful_productivity_reward(sample, unknown, [spec]) == pytest.approx(0.1)
+    assert _stateful_productivity_reward(sample, "malformed", [spec]) == 0.0
 
 
 def test_token_logprobs_exclude_prompt_and_include_sampled_eos() -> None:

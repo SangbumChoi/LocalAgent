@@ -165,3 +165,18 @@ def test_published_runtime_receipt_has_oracle_and_model_boundaries() -> None:
     assert receipt["oracle"]["task_complete_rate"] == 1.0
     assert receipt["model"]["task_complete_rate"] == 0.2
     assert receipt["model"]["accepted_steps"] == 4
+
+
+def test_published_stateful_grpo_receipt_records_real_updates_and_negative_accuracy() -> None:
+    path = Path(__file__).parents[1] / "docs/paper/results/raw/m67-stateful-productivity-grpo-v1.json"
+    receipt = json.loads(path.read_text())
+    expected = receipt.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert actual == expected
+    assert receipt["configuration"]["reward_environment"] == "stateful_productivity"
+    assert receipt["training"]["rl_accounting"]["informative_groups"] == 5
+    assert receipt["training"]["rl_accounting"]["realized_optimizer_updates"] == 4
+    assert receipt["training"]["exact_match_accuracy_post"] == 0.0
+    assert receipt["source"]["native_runtime_executed"] is False

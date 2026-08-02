@@ -1134,23 +1134,70 @@ def _rollout_reward(
     truncation_penalty: float = 0.05,
     tool_specs: Sequence[ToolSpec] | None = None,
     conversation_prompt_contract: str | None = None,
+    reward_environment: str = "canonical_toolcalls",
 ) -> float:
-    reward = float(
-        _correct_for_contract(
-            sample,
-            text,
-            conversation_prompt_contract=conversation_prompt_contract,
+    if reward_environment == "stateful_productivity":
+        reward = _stateful_productivity_reward(sample, text, tool_specs)
+    else:
+        if reward_environment != "canonical_toolcalls":
+            raise ValueError(f"unsupported RL reward environment: {reward_environment!r}")
+        reward = float(
+            _correct_for_contract(
+                sample,
+                text,
+                conversation_prompt_contract=conversation_prompt_contract,
+            )
         )
-    )
-    if sample.kind == "tool" and _valid_tool_call_format(
-        text,
-        tool_specs,
-        conversation_prompt_contract=conversation_prompt_contract,
-    ):
-        reward += format_weight
+        if sample.kind == "tool" and _valid_tool_call_format(
+            text,
+            tool_specs,
+            conversation_prompt_contract=conversation_prompt_contract,
+        ):
+            reward += format_weight
     if truncated:
         reward -= truncation_penalty
     return reward
+
+
+def _stateful_productivity_reward(sample, text: str, tool_specs: Sequence[ToolSpec] | None) -> float:
+    """Return shaped one-step reward for the deterministic local productivity fixture.
+
+    This is deliberately opt-in.  The normal RL stage keeps exact canonical-toolcall rewards;
+    this branch gives the local email/Notion/browser simulation enough schema/tool/argument signal
+    to produce informative GRPO groups before exact calls are learned.
+    """
+
+    if sample.kind != "tool":
+        return 1.0 if text == sample.target else 0.0
+    parsed = parse_tool_output(text)
+    calls = extract_tool_calls(text)
+    if not calls:
+        return 0.0
+    call = calls[0]
+    exact_tool = call.name == sample.ref_name
+    try:
+        expected_args = json.loads(sample.ref_args or "{}")
+    except json.JSONDecodeError:
+        expected_args = {}
+    exact_args = json.dumps(call.arguments, sort_keys=True, separators=(",", ":")) == json.dumps(
+        expected_args, sort_keys=True, separators=(",", ":")
+    )
+    registry = {spec.name: spec for spec in (tool_specs or ())}
+    spec = registry.get(call.name)
+    schema_valid = bool(spec and validate_arguments(call.arguments, spec.parameters or {}))
+    state_transition = exact_tool and exact_args
+    # Reserve a small term for a complete, strict envelope.  This is intentionally weaker than
+    # tool/argument/transition correctness so malformed or unknown calls cannot look successful,
+    # while still giving the policy a learnable distinction from plain malformed text.
+    envelope_valid = bool(parsed.format_valid and parsed.tool_syntax_present and parsed.calls)
+    return float(
+        0.10 * envelope_valid
+        + 0.10 * schema_valid
+        + 0.20 * exact_tool
+        + 0.20 * exact_args
+        + 0.25 * state_transition
+        + 0.15 * state_transition
+    )
 
 
 def _prompt_ids_for_policy(
@@ -1209,6 +1256,7 @@ def _evaluate_holdout(
     amp_dtype: torch.dtype = torch.float32,
     conversation_prompt_contract: str | None = None,
     catalog_cache: CatalogStringCache | None = None,
+    reward_environment: str = "canonical_toolcalls",
 ) -> dict:
     """Greedily score a frozen split; no sampling or training RNG is consumed."""
 
@@ -1293,6 +1341,7 @@ def _evaluate_holdout(
             truncation_penalty=truncation_penalty,
             tool_specs=specs,
             conversation_prompt_contract=prompt_contract,
+            reward_environment=reward_environment,
         )
         if reward_sample.kind == "tool":
             tool_rows += 1
@@ -1359,6 +1408,7 @@ def grpo(
     prompt_order: Sequence[int] | None = None,
     prompt_sampling_contract: Mapping[str, Any] | None = None,
     execution_rollout_step_limit: int | None = None,
+    reward_environment: str = "canonical_toolcalls",
 ):
     """Group-relative policy optimization against deterministic exact-target rewards.
 
@@ -1369,6 +1419,8 @@ def grpo(
     reward/prompt/data contract, parent policy, and execution environment.
     """
     prompt_contract = resolve_conversation_prompt_contract(conversation_prompt_contract)
+    if reward_environment not in {"canonical_toolcalls", "stateful_productivity"}:
+        raise ValueError(f"unsupported RL reward environment: {reward_environment!r}")
     if group_size < 2:
         raise ValueError("group_size must be >= 2")
     if policy_epochs < 1:
@@ -2047,6 +2099,7 @@ def grpo(
                     truncation_penalty=truncation_penalty,
                     tool_specs=specs,
                     conversation_prompt_contract=prompt_contract,
+                    reward_environment=reward_environment,
                 )
                 for text, truncated in zip(rollout_texts, rollout_truncated)
             ]
@@ -2279,9 +2332,10 @@ def run(
         raise ValueError(f"expected stage='rl', got {config.get('stage')!r}")
     environment = config.get("environment", {})
     environment_name = environment.get("name", "canonical_toolcalls")
-    if environment_name != "canonical_toolcalls":
+    if environment_name not in {"canonical_toolcalls", "stateful_productivity"}:
         raise NotImplementedError(
-            "TODO(phase-10): only deterministic canonical_toolcalls rewards are wired; "
+            "TODO(phase-10): only deterministic canonical_toolcalls and local stateful_productivity "
+            "rewards are wired; "
             f"requested {environment_name!r}"
         )
     if environment.get("learned_judge", False):
@@ -2850,6 +2904,7 @@ def run(
         prompt_order=prompt_order,
         prompt_sampling_contract=prompt_sampling_contract,
         execution_rollout_step_limit=_execution_rollout_step_limit,
+        reward_environment=environment_name,
     )
     training_checkpoint = torch.load(
         checkpoint_path,
@@ -2868,6 +2923,7 @@ def run(
         amp_dtype=dtype,
         conversation_prompt_contract=conversation_prompt_contract,
         catalog_cache=catalog_cache,
+        reward_environment=environment_name,
     )
     delta_keys = (
         "exact_match_accuracy",
@@ -2921,8 +2977,12 @@ def run(
         "structured_heads_available": False,
         "invalidated_structured_heads": invalidated_heads,
         "reward_contract": {
-            "environment": "canonical_toolcalls",
-            "correctness": "exact normalized tool AST; exact text match",
+            "environment": environment_name,
+            "correctness": (
+                "stateful schema/tool/argument/transition shaped reward"
+                if environment_name == "stateful_productivity"
+                else "exact normalized tool AST; exact text match"
+            ),
             "format_weight": format_weight,
             "format_validation": (
                 "registry name + argument schema when available; parsed AST fallback"

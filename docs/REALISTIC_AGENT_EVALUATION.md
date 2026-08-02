@@ -1240,6 +1240,26 @@ failure is route/argument grounding under a long state-conditioned prompt.  The 
 deterministic and in-memory, so m66 is not a public benchmark, native browser/emulator run, real
 email/Notion operation, or WebGPU hardware result.
 
+### Stateful productivity GRPO simulation (m67)
+
+The [`m67 receipt`](paper/results/raw/m67-stateful-productivity-grpo-v1.json) records the first
+actual RL update against the canonical local email, Notion, browser-search, recovery, and
+abstention surface.  The runner first performs a bounded 32-update state-conditioned SFT warm
+start, then executes four rollout steps with two samples per prompt.  The opt-in local reward is
+strictly shaped: a complete tool envelope contributes `0.10`, schema validity `0.10`, exact tool
+name `0.20`, exact arguments `0.20`, and the state-transition terms `0.25 + 0.15`.  The normal
+canonical-toolcall environment is unchanged; this shaping exists only to avoid a zero-gradient
+diagnostic when a small warm-start model has not yet learned the tool vocabulary.
+
+The run produced five informative groups out of 16 and four realized optimizer updates.  Its
+rollout reward distribution was 25 zero-reward and 7 strict-envelope-only rollouts (`0.1`); no
+exact rollout succeeded, and greedy held-out exact tool/text accuracy remained `0/16`.  This is
+therefore evidence that the RL plumbing and checkpoint lineage are live, not evidence of learned
+productivity capability.  The rows are deterministic local fixtures with in-memory side effects;
+no public benchmark text, emulator, browser, MCP service, real account, or native WebGPU runtime
+was used.  The next valid experiment is to acquire and hash an official split, then compare this
+shaped arm against canonical-reward and matched-random controls under the same task IDs.
+
 ### Local WebGPU and Hugging Face export receipts (m57–m58)
 
 The same m56 child was exported to a clean static-demo bundle and an independent Hugging Face
