@@ -1029,6 +1029,22 @@ does not start MCP services, launch Playwright, run a verifier, or report an off
 the global catalog includes held-out tool schemas, so this must not be read as vocabulary discovery
 or native browser competence.
 
+### MCPMark broad redacted SFT transfer (m120)
+
+The [m120 receipt](paper/results/raw/m120-mcpmark-broad-redacted-sft-transfer-v1.json) broadens the
+public trajectory experiment to ten hash-pinned MIT traces from the [MCPMark trajectory dataset](https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log): two filesystem, two Notion, two GitHub, two Postgres, and two Playwright tasks.  Filesystem/Notion/GitHub/Postgres rows provide 107 training calls; both Playwright rows (24 calls) are held out.  Tool outputs and assistant free text are fixed redaction markers, and no service is executed.
+
+| Arm | Held-out loss before→after | Held-out token accuracy before→after | Exact sequence after |
+| --- | ---: | ---: | ---: |
+| Warm pretrained body | 4.5228 → 4.3138 | 39.68% → 42.27% | 0% |
+| Matched random body | 9.8292 → 9.3376 | 0.69% → 3.12% | 0% |
+
+The warm arm is +39.15 percentage points over random after identical 32-step SFT.  Its aggregate
+backbone movement is 0.345% relative L2, compared with 102.06% for the random arm; action heads
+were fixed.  This supports the adoption policy “reuse the pretrained body, use low-rate backbone
+updates, and train surface-specific heads,” but it is not an official MCPMark score, native
+Playwright/MCP execution, verifier success, or real GitHub/Notion/Postgres activity.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

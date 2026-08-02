@@ -195,6 +195,16 @@ unseen browser catalog, but cannot make the exact first choice.  This supports r
 pretrained body for candidate retrieval and adding service/action adapters; it does not justify
 claiming native MCP success or a universal tool policy.
 
+The [`m120 broad redacted SFT receipt`](paper/results/raw/m120-mcpmark-broad-redacted-sft-transfer-v1.json)
+expands the same public trajectory method across five MCP services: filesystem, Notion, GitHub,
+Postgres, and Playwright.  Eight rows (107 calls) train and two Playwright rows (24 calls) remain
+held out.  After the same 32 CPU SFT steps, the warm 10.52M body reaches held-out token accuracy
+of 42.27% versus 3.12% for a matched random body, a +39.15-point transfer gap; exact sequence
+accuracy is still 0% in both arms.  The warm body moves only 0.345% aggregate relative L2
+(embedding 0.466%, mixer 0.181%, FFN 0.212%), while the random body moves 102.06% aggregate.
+This is stronger evidence for reusing pretrained representations and assigning larger rates to
+new heads, but it remains teacher-forced, redacted, and non-native.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
