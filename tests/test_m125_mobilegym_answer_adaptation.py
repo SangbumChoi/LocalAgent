@@ -76,3 +76,28 @@ def test_m126_pointer_adaptation_is_hash_bound_and_non_gating() -> None:
         assert arm["native_success_rate"] == 0.0
         assert arm["native_arguments_nonempty"] is True
         assert arm["weight_report"]["backbone_relative_delta_l2"] == 0.0
+
+
+def test_m127_notes_sweep_is_hash_bound_and_bounded() -> None:
+    receipt = json.loads(
+        Path("docs/paper/results/raw/m127-mobilegym-notes-sweep-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    self_hash = receipt.pop("receipt_self_sha256")
+    assert self_hash == _canonical_sha256(receipt)
+    assert receipt["benchmark_id"] == "mobilegym_notes_model_sweep"
+    assert receipt["native_receipt_eligible"] is False
+    assert receipt["official_split_verified"] is True
+    assert receipt["task_count"] == 5
+    assert receipt["max_steps"] == 2
+    assert receipt["success_rate"] == 0.0
+    assert len(receipt["tasks"]) == 5
+    assert {task["task_id"] for task in receipt["tasks"]} == {
+        "notes.CreateFolderAndMoveNote",
+        "notes.CreateNoteWithReminder",
+        "notes.DeleteAllCompletedTodos",
+        "notes.DeleteTodo",
+        "notes.ReadTodoText",
+    }
+    assert all(task["tools"] == ["mobile_submit_answer"] for task in receipt["tasks"])

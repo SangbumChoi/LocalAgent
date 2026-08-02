@@ -1131,6 +1131,21 @@ and action-head movement is `64.84%` for warm versus `104.77%` for random.  The 
 removes the empty-span symptom but does not solve multi-answer state grounding, so it is retained
 as a diagnostic and not promoted to a MobileGym or publication result.
 
+### MobileGym official Notes native sweep (m127)
+
+The [`m127 receipt`](paper/results/raw/m127-mobilegym-notes-sweep-v1.json) runs the pointer-
+adapted warm checkpoint against all five official Notes IDs in MobileGym's test split:
+create-folder/move, create-with-reminder, delete-completed, delete-one, and read-todo-text.
+The environment and deterministic state judges execute natively for every task, but the probe is
+intentionally capped at two model steps, so this is not the full benchmark protocol and remains
+non-gating.
+
+The result is `0/5` success.  Every task is routed to `mobile_submit_answer`, including the
+create/delete workflows that require app navigation and state transitions.  The two delete tasks
+reach judge progress `0.5` before the repeated answer action, while the create and read tasks make
+no judged progress.  This sweep establishes a broader routing failure: pointer supervision fixes
+the empty argument symptom, but the model still lacks state-conditioned mobile action selection.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59
