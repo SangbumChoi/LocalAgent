@@ -953,6 +953,16 @@ that a valid JSON call is not stateful task success.  The [`m113 receipt`](paper
 records the pinned source revision and explicitly excludes the simulator, user model, verifiers,
 official split, and external services.
 
+### EnterpriseOps-Gym public email retrieval ablation (m114)
+
+The m111 warm head was evaluated on 67 public EnterpriseOps-Gym email rows with 15-tool distractor
+pools, after dropping server configuration and SQL verifiers.  Warm retrieval reaches hit@1/3/5 of
+20.90/59.70/86.57%, while the matched random checkpoint reaches 13.43/47.76/76.12%.  The warm arm
+therefore beats random on all three retrieval depths, but trails the older m14 diagnostic at hit@1
+(26.87%).  The [`m114 receipt`](paper/results/raw/m114-enterpriseopsgym-email-retrieval-m111-ablation-v1.json)
+keeps this as an out-of-domain name-only diagnostic, not EnterpriseOps-Gym task success or real
+email execution.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

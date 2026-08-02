@@ -89,3 +89,17 @@ def test_enterprise_score_summary_is_deterministic_and_aggregate_only() -> None:
             "email": {"records": 2, "hit_at_1": 0.5, "hit_at_3": 1.0, "hit_at_5": 1.0}
         },
     }
+
+
+def test_m114_receipt_binds_warm_random_email_retrieval_and_claim_boundary() -> None:
+    receipt = json.loads(
+        Path(
+            "docs/paper/results/raw/m114-enterpriseopsgym-email-retrieval-m111-ablation-v1.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert receipt["dataset"]["official_split_verified"] is False
+    assert receipt["dataset"]["verifiers_dropped"] is True
+    assert receipt["dataset"]["oracle_rows"] == 67
+    assert receipt["warm"]["hit_at_1"] > receipt["random_control"]["hit_at_1"]
+    assert receipt["warm"]["hit_at_3"] > receipt["random_control"]["hit_at_3"]
+    assert receipt["warm"]["hit_at_5"] > receipt["random_control"]["hit_at_5"]

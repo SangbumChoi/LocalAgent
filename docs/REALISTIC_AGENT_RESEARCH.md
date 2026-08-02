@@ -138,6 +138,13 @@ because screenshots and coordinate/text grounding were deliberately not consumed
 negative transfer result: surface-specific selector routing helps the action-family contract, while
 pretrained initialization is not a universal advantage and does not replace a native desktop adapter.
 
+The [`m114 EnterpriseOps-Gym email receipt`](paper/results/raw/m114-enterpriseopsgym-email-retrieval-m111-ablation-v1.json)
+adds an out-of-domain productivity check using 67 public email rows and 15-tool distractor pools.
+The warm m111 head reaches hit@1/3/5 of 20.90/59.70/86.57%, versus 13.43/47.76/76.12% for the
+matched random control.  Warm transfer therefore helps retrieval relative to random on this
+surface, but it trails the older m14 diagnostic at hit@1 (26.87%) and does not establish database
+verifier, MCP execution, or real-email success.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
