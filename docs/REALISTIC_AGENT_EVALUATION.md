@@ -1058,6 +1058,16 @@ contract.  Neither native runner was available in this environment; the receipt 
 source/protocol audit with zero training rows and zero official scores, not a mobile or desktop
 capability result.
 
+### MobileGym official split profile (m122)
+
+The [`m122 receipt`](paper/results/raw/m122-mobilegym-source-split-profile-v1.json) extracts only
+the official split metadata from the pinned MobileGym source archive.  It verifies 160 train task
+IDs and 256 test task IDs with zero train/test overlap (416 unique tasks); the seven payment and
+fourteen high-risk IDs are recorded as overlapping safety subsets.  No task text, simulator state,
+or benchmark content enters the repository, and the profiler reports zero training rows and zero
+simulator/native scores.  The next valid experiment is a release-compliant simulator run using
+the test split, not SFT on the benchmark tasks.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

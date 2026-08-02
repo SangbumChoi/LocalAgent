@@ -45,6 +45,18 @@ tags, and provider image digest.  The gated task implementations, desktop VM, ac
 verifier were not acquired here, so this is provenance and protocol evidence—not an OSWorld-V2
 score, desktop-control result, or justification for publishing benchmark-derived task text.
 
+### MobileGym official split profile (m122)
+
+The [`m122 split-profile receipt`](paper/results/raw/m122-mobilegym-source-split-profile-v1.json)
+now verifies the exact split manifests from the hash-pinned MobileGym source archive without
+retaining task prompts.  `train.txt` contains 160 IDs and `test.txt` contains 256 IDs with no
+overlap, yielding all 416 unique benchmark tasks.  The separate seven-task payment and fourteen-
+task high-risk lists are safety subsets, not additional train/test rows; their overlap is recorded
+explicitly.  Family counts and split-file hashes are reproducible through
+[`profile_mobilegym_source.py`](../scripts/profile_mobilegym_source.py).  This establishes a clean
+evaluation boundary for the WebGPU model, but the CC-BY-NC-4.0 content, simulator state, judges,
+and screenshots remain outside training and no native score is claimed.
+
 The new mobile and MCP suites reinforce the same design requirement. iOSWorld's persistent identity
 and cross-app data make memory/state tracking first-class rather than an optional prompt feature;
 MobileSafetyBench makes confirmation, refusal, and prompt-injection handling measurable; and
