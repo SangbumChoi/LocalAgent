@@ -566,6 +566,21 @@ pixels were omitted, m35 must not be reported as AndroidControl visual grounding
 success, or WebGPU hardware throughput; a workshop claim still requires a vision-capable adapter
 and a native emulator run on the official evaluation split.
 
+### AndroidControl dispatch balance ablation (m36)
+
+The m35 split exposes a measurable train/test support gap: the 4,096-row train slice contains only
+42 `mobile_long_press` rows and no `mobile_navigate_home` rows, while the public test contains 125
+long-press and 29 home rows.  The dispatch runner now supports an explicit, hash-bound
+`--focus-tool`/`--focus-repeat` ablation that adds synthetic and state-conditioned views without
+touching the 904-row evaluation file.
+
+Oversampling both missing/rare actions by 32 repeats did not solve the gap: held-out selector
+top-1 fell from `46.24%` to `33.63%`, while both long-press and home remained `0%`.  The route head
+stayed at `100%`, and the frozen backbone did not move.  This negative result is retained because
+it rules out a tempting but overfit weighting fix; the next valid intervention is a licensed train
+split containing those actions or a separately hash-bound real-device continuation.  The complete
+comparison and head-movement audit are in the [`m36 receipt`](paper/results/raw/m36-androidcontrol-dispatch-balance-ablation-v1.json).
+
 ### Browser runtime receipt (local compatibility smoke)
 
 The exported fp32 bundle was then exercised in the existing browser harness with an explicit

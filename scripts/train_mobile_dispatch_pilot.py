@@ -531,6 +531,8 @@ def _train_probe(
     device: str,
     seed: int,
     probe_init: str,
+    focus_tools: set[str],
+    focus_repeat: int,
 ) -> tuple[RouteHead, DenseToolSelector, dict[str, list[str]]]:
     if probe_init not in {"parent_heads", "random"}:
         raise ValueError("probe_init must be 'parent_heads' or 'random'")
@@ -545,6 +547,14 @@ def _train_probe(
     productivity_augmented = productivity * 4
     synthetic_mobile_augmented = synthetic_mobile * 4
     trajectory_augmented = trajectory * 4
+    if focus_tools and focus_repeat:
+        # The public AndroidControl train split has no mobile_navigate_home rows and only a tiny
+        # long-press slice.  Add deterministic synthetic/state-conditioned views for explicitly
+        # requested actions, while keeping the public held-out file entirely outside optimization.
+        focused_synthetic = [sample for sample in synthetic_mobile if sample.ref_name in focus_tools]
+        focused_trajectory = [sample for sample in trajectory if sample.ref_name in focus_tools]
+        synthetic_mobile_augmented += focused_synthetic * focus_repeat
+        trajectory_augmented += focused_trajectory * focus_repeat
     pool = (
         standard
         + mobile_samples
@@ -682,9 +692,23 @@ def main() -> None:
         default="parent_heads",
         help="initialize route/selector probes from the parent checkpoint or a seeded reset",
     )
+    parser.add_argument(
+        "--focus-tool",
+        action="append",
+        default=[],
+        help="synthetic/state rows to oversample (repeat --focus-tool for multiple actions)",
+    )
+    parser.add_argument(
+        "--focus-repeat",
+        type=int,
+        default=0,
+        help="additional copies of focused synthetic/state rows; zero preserves the baseline",
+    )
     args = parser.parse_args()
     if args.steps < 1:
         raise ValueError("steps must be positive")
+    if args.focus_repeat < 0:
+        raise ValueError("focus-repeat must be non-negative")
 
     parent = torch.load(args.init, map_location="cpu")
     cfg = ModelConfig(**parent["cfg"])
@@ -707,6 +731,9 @@ def main() -> None:
         held_mobile = [item for item in mobile if item[1] in holdout_ids]
         split_mode = "deterministic_episode_tail"
     tools = list(STANDARD_TOOLS) + mobile_tools() + realistic_productivity_tools()
+    unknown_focus_tools = sorted(set(args.focus_tool) - {tool.name for tool in tools})
+    if unknown_focus_tools:
+        raise ValueError(f"unknown focus tool(s): {', '.join(unknown_focus_tools)}")
     productivity = _productivity_samples()
     productivity_train = productivity[:-4]
     productivity_holdout = productivity[-4:]
@@ -728,6 +755,8 @@ def main() -> None:
         device=args.device,
         seed=2027,
         probe_init=args.probe_init,
+        focus_tools=set(args.focus_tool),
+        focus_repeat=args.focus_repeat,
     )
     bound = BoundSelector(selector, tools, device=args.device, examples=examples)
     train_metrics = _score(
@@ -767,6 +796,8 @@ def main() -> None:
                 "external_eval_rows": len(held_mobile) if eval_rows else 0,
                 "steps": args.steps,
                 "probe_initialization": args.probe_init,
+                "focus_tools": sorted(set(args.focus_tool)),
+                "focus_repeat": args.focus_repeat,
                 "synthetic_mobile_rows": len(synthetic_mobile),
                 "synthetic_mobile_repeats": 4,
                 "state_conditioned_trajectory_rows": len(trajectory),
