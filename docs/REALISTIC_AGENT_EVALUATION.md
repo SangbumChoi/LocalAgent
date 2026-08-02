@@ -851,6 +851,29 @@ action heads, no native environment executes, and no real email, Notion, or MCP 
 claimed.  The adoption decision is to reuse the verified BPE parent as initialization while
 keeping surface-specific adapters and requiring native closed-loop evidence before merging them.
 
+### Cross-surface dispatch-head adaptation ablation (m103–m105)
+
+The m100/m101 continuation children were then given the same frozen-backbone route and dense
+selector probe: 200 cached-feature updates, batch size 128, learning rate `5e-3`, and head seed
+2029.  The probe expands the 1,041 evaluation conversations to 1,044 tool-routing decisions
+(904 mobile, 133 desktop, and seven browser).  The backbone and language-model action logits are
+unchanged; only the route/selector heads move, with action-head relative movement `0.709%` in
+both arms and zero movement in embedding, mixer, FFN, and normalization groups.
+
+Warm and random heads both reach `100%` route accuracy on mobile and desktop.  On the desktop
+tool rows they tie at `73.68%` selector top-1; on the seven-row browser slice, warm reaches
+`100%` selector top-1 versus random `33.33%`, while route accuracy is `85.71%` versus `100%`.
+Across all tool decisions, warm selector top-1 is `74.82%` versus random `71.94%` (`+2.88` pp),
+but aggregate route accuracy is `99.90%` versus `100%`.  This is therefore a surface-specific
+head result—not evidence that the pretrained backbone universally improves dispatch, and not an
+end-to-end mobile, browser, desktop, email, Notion, or MCP success result.  The reproducible
+receipts are [`m103 warm`](paper/results/raw/m103-cross-surface-warm-head-v1.json),
+[`m104 random`](paper/results/raw/m104-cross-surface-random-head-v1.json), and the matched
+[`m105 comparison`](paper/results/raw/m105-cross-surface-head-ablation-v1.json); the runners are
+[`train_cross_surface_dispatch_heads.py`](../scripts/train_cross_surface_dispatch_heads.py) and
+[`compare_cross_surface_heads.py`](../scripts/compare_cross_surface_heads.py).  Keep separate
+surface adapters/heads and require native closed-loop verification before publication.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

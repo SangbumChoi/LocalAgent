@@ -90,6 +90,16 @@ browser).  Because the warm arm still loses a little desktop/browser accuracy re
 pre-update baseline, this validates pretrained initialization but not a single universal adapter;
 native closed-loop and action-head ablations remain the promotion gate.
 
+The m103–m105 frozen-backbone dispatch-head triad closes the immediate action-head gap.  With
+identical 200-step cached-feature updates, warm and random heads both reach 100% route accuracy
+on mobile and desktop; desktop selector top-1 ties at 73.68%, while warm wins the tiny browser
+selector slice 100% to 33.33%.  The aggregate selector difference is only +2.88 points (74.82%
+vs 71.94%), and warm route accuracy is 99.90% vs random 100%.  Since the non-head tensors remain
+bitwise unchanged and the browser sample has only seven decisions, this supports surface-specific
+head adaptation—not a universal tool-use head or native email/Notion/MCP capability.  The next
+promotion gate is a resettable native AndroidWorld/BrowserGym/OSWorld/ToolSandbox-style run with
+complete action and verifier logs.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
