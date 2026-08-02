@@ -192,6 +192,13 @@ was `0.29%`, `0.35%`, and `0.49%`, with action heads unchanged because this run 
 isolated backbone SFT. The result supports warm-start compatibility, not a claim that transfer
 is optimal.
 
+The matched [`m48 transfer ablation`](paper/results/raw/m48-agentnet-weight-transfer-ablation-v1.json)
+uses the same rows, tokenizer, configuration, seed, 32 updates, and learning rate with a fresh
+backbone control. After continuation, the warm-start arm reached `58.89%` held-out token
+accuracy and mean loss `2.6121`, versus `21.19%` and `8.5930` for the fresh-backbone arm; both
+arms remained at `0/133` sequence exactness. This isolates a strong initialization effect in this
+bounded pilot, while leaving the no-transfer and native-runtime limitations explicit.
+
 ## Bounded public Mind2Web training continuation
 
 The public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) training split was streamed
