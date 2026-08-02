@@ -804,6 +804,15 @@ but lowers selector top-1/top-3 to `15.90%/55.23%`.  Relative backbone movement 
 arms, the decision is therefore mixed: retain the m46 initialization for browser work, but do not
 promote low-rate MCP adaptation or frozen transfer as a general tool-use weight policy.
 
+The three service-contract children were then run through the same five native scripted-user
+scenarios.  [`m97 low-rate`](paper/results/raw/m97-toolsandbox-native-interactive-mcp-lowrate-v1.json),
+[`m98 frozen`](paper/results/raw/m98-toolsandbox-native-interactive-mcp-frozen-v1.json), and
+[`m99 random`](paper/results/raw/m99-toolsandbox-native-interactive-mcp-random-v1.json) all complete
+only `1/5` (`20%`), with identical pinned ToolSandbox source and runner hashes.  This agrees with
+the proxy evidence: neither frozen transfer nor low-rate unfreezing improves stateful native
+ToolSandbox completion.  These receipts use a bounded scripted user; the official split,
+model-based user simulator, full scenario matrix, and optional RapidAPI tools were not run.
+
 ### MCPMark current-checkpoint routing proxy (m60)
 
 The same untouched pinned MCPMark descriptions were rerun with the m56 stateful child and the m59

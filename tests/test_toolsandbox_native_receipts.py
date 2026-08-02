@@ -72,3 +72,23 @@ def test_toolsandbox_native_hardening_receipts_bind_matched_partial_progress() -
             0.5,
         ]
         assert all(row["exception"] is None for row in receipt["scenarios"])
+
+
+def test_toolsandbox_native_mcp_transfer_triad_is_matched_and_negative() -> None:
+    root = Path(__file__).parents[1] / "docs/paper/results/raw"
+    receipts = [
+        json.loads((root / name).read_text())
+        for name in (
+            "m97-toolsandbox-native-interactive-mcp-lowrate-v1.json",
+            "m98-toolsandbox-native-interactive-mcp-frozen-v1.json",
+            "m99-toolsandbox-native-interactive-mcp-random-v1.json",
+        )
+    ]
+    assert len({receipt["source_revision"] for receipt in receipts}) == 1
+    assert len({receipt["runner"]["sha256"] for receipt in receipts}) == 1
+    assert len({tuple(row["scenario"] for row in receipt["scenarios"]) for receipt in receipts}) == 1
+    assert all(receipt["official_split_verified"] is False for receipt in receipts)
+    assert all(receipt["user_simulator_executed"] is False for receipt in receipts)
+    assert all(receipt["verifier_executed"] is True for receipt in receipts)
+    assert [receipt["success_count"] for receipt in receipts] == [1, 1, 1]
+    assert [receipt["success_rate"] for receipt in receipts] == [0.2, 0.2, 0.2]
