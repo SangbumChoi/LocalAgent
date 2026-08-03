@@ -34,6 +34,15 @@ action label, task-success, screenshot-grounding, or native browser/desktop resu
 [`m156 receipt`](paper/results/raw/m156-cua-gym-surface-probe-v1.json) and reproducible
 [`train_cua_gym_surface_probe.py`](../scripts/train_cua_gym_surface_probe.py).
 
+The m157 browser continuation uses the public [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web)
+train split, enriches each action with a bounded DOM-candidate snapshot, and holds out three whole
+parent records plus typed slot values.  After 64 matched updates, the warm pointer head reaches
+15/63 exact spans versus 0/63 for the matched random body; both begin at 0/63.  The warm body moves
+0.90% in embeddings, 0.50% in attention/mixer, and 0.55% in FFN, while the pointer/action heads
+move 46.40%.  The pointer vocabulary grows from 17 to 19 rows by design.  This is a small
+in-source action-replay diagnostic—not the official Mind2Web test score or native BrowserGym,
+email, Notion, MCP, or browser-account control.  See the [`m157 receipt`](paper/results/raw/m157-mind2web-grounded-transfer-v1.json).
+
 The recurring methodological point is that a benchmark is not just a prompt list. The authoritative
 score includes the observation contract, reset state, action interface, environment revision, and
 verifier. A static conversation projection must be labelled as such even when it uses the original

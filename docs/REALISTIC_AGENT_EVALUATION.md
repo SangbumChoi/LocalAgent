@@ -2139,3 +2139,22 @@ SFT updates at `1e-5` and `max_seq_len=2048`.  On the same normalized rows, mean
   `7.39e-06`, fp16 `6.08e-03`) and contains a 10.5M-parameter action graph suitable for the
   existing static WebGPU demo.  The child checkpoint and bundle are deliberately kept outside Git
   until a full held-out/runtime evaluation receipt exists.
+
+### Public Mind2Web DOM-grounded pointer transfer (m157)
+
+The [`m157 receipt`](paper/results/raw/m157-mind2web-grounded-transfer-v1.json) is the first
+action-level browser continuation in this refresh that keeps the original public DOM candidates
+instead of only task text.  It uses the CC-BY-4.0 Mind2Web train split at revision
+`17ece8eb89862368edc0cc806acee6fca5163474`, with 9 parent records / 219 actions for training and
+3 disjoint parent records / 63 actions for an in-source holdout; typed slot values are disjoint as
+well.  The [grounding adapter](../scripts/export_mind2web_grounded_rows.py) caps each candidate
+snapshot at 12 elements and the [trainer](../scripts/train_grounded_mind2web.py) expands the
+pointer vocabulary from 17 to 19 rows.
+
+The warm m142 arm starts at `0/63` exact spans and reaches `15/63` (`23.81%`) after 64 updates;
+the matched random arm remains `0/63`.  The weight audit records warm relative movement of `0.90%`
+embedding, `0.50%` attention/mixer, `0.55%` FFN, `0.019%` normalization, and `46.40%` action
+heads.  This is useful evidence for the requested adoption recipe—reuse the body, give the new
+grounding head the larger rate—but the holdout is small and in-source.  It is not the official
+Mind2Web test score, BrowserGym/WebArena success, screenshot-grounded control, or a real browser,
+email, Notion, MCP, or external-account side effect.

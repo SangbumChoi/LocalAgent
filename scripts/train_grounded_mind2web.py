@@ -131,6 +131,10 @@ def _pointer_metrics(
         value = str(arguments[pointer_arg])
         ids = tokenizer.encode(f"{USER}{sample.prompt}{ASSISTANT}")
         value_ids = tokenizer.encode(value)
+        # Match inference/model context semantics.  Grounded DOM snapshots can make a single
+        # history longer than the model's RoPE table; left truncation preserves the latest action
+        # context and must happen before computing the gold span.
+        ids = ids[-model.cfg.max_seq_len :]
         gold = gold_span(ids, value_ids)
         if gold is None:
             continue
@@ -168,6 +172,11 @@ def main() -> int:
     tokenizer = load_tokenizer(tokenizer_meta.get("kind", "byte"), tokenizer_meta.get("path"))
     train_samples = _head_samples(train_rows)
     eval_samples = _head_samples(eval_rows)
+    # The warm pointer vocabulary is not identical to the legacy parent vocabulary.  Copy the
+    # compatible rows before measuring the baseline, exactly as the SFT initialization does below.
+    warm_ptr = PointerHead(cfg.d_model, args=BROWSER_PTR_ARGS)
+    warm_ptr.load_state_dict(_warm_pointer(parent, cfg.d_model))
+    eval_pointer_before = _pointer_metrics(model, warm_ptr, tokenizer, eval_samples)
     _, tool_head, ptr_head, metrics = sft(
         model,
         train_samples,
@@ -218,6 +227,7 @@ def main() -> int:
         "rows": {"train_conversations": len(train_rows), "eval_conversations": len(eval_rows), "train_decisions": len(train_samples), "eval_decisions": len(eval_samples)},
         "hyperparameters": {"steps": args.steps, "batch_size": args.batch_size, "learning_rate": args.lr, "device": args.device},
         "pointer_args": list(BROWSER_PTR_ARGS),
+        "before": eval_pointer_before,
         "after": after,
         "claim_boundary": "Public Mind2Web train-record-disjoint DOM-enriched continuation; no official Mind2Web test score, emulator/browser task success, or external-account claim.",
     }
