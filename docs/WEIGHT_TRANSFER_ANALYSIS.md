@@ -126,6 +126,15 @@ token transfer but degraded native browser grounding; it is not evidence for ado
 as the deployment checkpoint.  The [`m144 receipt`](paper/results/raw/m144-browsergym-native-current-checkpoint-v1.json)
 binds the raw trace and keeps the checkpoint unpromoted.
 
+The m146 native MobileGym evaluation applies that same m142 child to all 256 official test tasks
+with the pinned simulator and state-diff judge.  It reaches `13/256` (`5.08%`) with zero runtime
+errors, matching the older m133 checkpoint's aggregate score, but it emits `mobile_submit_answer`
+on 215 tasks and no tool on the remaining 41 under the two-step text-projection protocol.  Thus the five-surface
+continuation preserves held-out token transfer without improving state-conditioned mobile
+grounding; the checkpoint remains unpromoted.  The receipt is official-split eligible for the
+native contract, but it is explicitly non-visual and does not establish Android emulator or
+screenshot-grounding quality: [`m146 receipt`](paper/results/raw/m146-mobilegym-native-current-checkpoint-v1.json).
+
 The AgentNet/OpenCUA adapter is deliberately outside this weight-transfer series.  Its 12-action
 official sample is parsed into evaluation-only coordinate tools, so it changes no checkpoint
 weights and cannot be counted as a training gain.  A screenshot/accessibility grounding bridge

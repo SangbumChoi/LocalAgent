@@ -62,8 +62,9 @@ to seven:
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
   --webgpu-receipt docs/paper/results/raw/m40-webgpu-native-capability-notion-v1.json \
-  --native-receipt browsergym_miniwob=docs/paper/results/raw/m43-browsergym-native-adapter-full-model-eval-v1.json \
-  --native-receipt mobilegym=docs/paper/results/raw/m133-mobilegym-native-text-eval-v1.json \
+  --native-receipt browsergym_miniwob=docs/paper/results/raw/m144-browsergym-native-current-checkpoint-v1.json \
+  --native-receipt mobilegym=docs/paper/results/raw/m146-mobilegym-native-current-checkpoint-v1.json \
+  --native-receipt toolsandbox=docs/paper/results/raw/m143-toolsandbox-native-base-transfer-audit-v1.json \
   --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json \
   --public-artifact-manifest docs/paper/results/raw/public-model-demo-manifest-v1.json
 ```
@@ -2003,6 +2004,24 @@ adapter checkpoint reached `5/240` (`2.08%`) on the same pinned plan, so m144 is
 native UI grounding after the five-surface continuation.  The receipt retains only per-episode
 aggregates in Git and hashes the raw trace; it does not claim visual grounding, WebArena, real
 email/Notion accounts, Android control, or WebGPU hardware quality.
+
+### Current m142 native MobileGym evaluation (m146)
+
+The [`m146 receipt`](paper/results/raw/m146-mobilegym-native-current-checkpoint-v1.json) runs the
+same current five-surface m142 child over all `256` official MobileGym test tasks at the pinned
+simulator revision.  Every task completed with zero runtime or judge errors, but only `13/256`
+(`5.08%`) passed under the two-step, selector-top-1 protocol.  Weather (`4/9`), clock (`3/9`),
+SMS (`1/3`), and Tencent Meeting (`1/9`) are the only non-zero suites; account, notes, map, and
+the cross-app suites remain at zero.  The model emitted `mobile_submit_answer` on `215` tasks and
+returned no tool on the remaining `41`; all 13 successes came from the answer tool, making the
+remaining state-conditioned action-collapse failure explicit.
+
+This is an official-split native simulator result with a bounded **text projection** only:
+screenshots and visual encoders were not used, so it is not an Android emulator score, visual
+grounding result, or long-horizon mobile-agent claim.  The result matches the earlier m133
+`13/256` score but uses the current m142 checkpoint; it therefore does not justify replacing the
+deployment checkpoint or claiming a transfer win.  The strict gate accepts the receipt contract,
+while the seven independent Android/desktop/tool-server requirements remain open.
 
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
