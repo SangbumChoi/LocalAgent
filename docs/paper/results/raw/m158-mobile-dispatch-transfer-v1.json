@@ -10,7 +10,7 @@
   "decision": "diagnostic_only",
   "kind": "localagent_realistic_mobile_dispatch_transfer_receipt",
   "native_canary": {
-    "claim_boundary": "Native MobileGym simulator and official state-diff judge over the complete public test split using a bounded DOM/text observation projection. This is not a visual mobile-agent score, Android emulator result, or claim of screenshot grounding.",
+    "claim_boundary": "Bounded native MobileGym simulator canary over selected official test IDs using a DOM/text observation projection; this is not the full official test split, a visual mobile-agent score, or an Android emulator result.",
     "environment_executed": true,
     "errors": [],
     "failed_tasks": 19,
@@ -51,7 +51,7 @@
       "path": "docs/paper/results/raw/m135-mobile-action-focus-canary-v1.json",
       "sha256": "ca28294a60d327df05bf9d53ca4a6c63854722557d94dc7694ae6ab7fd1d6142"
     },
-    "run": null,
+    "run": {},
     "success_rate": 0.05,
     "task_count": null,
     "tool_counts": {
@@ -59,7 +59,7 @@
     },
     "vision_used": false
   },
-  "receipt_self_sha256": "03f2940d4e9f832af80d5789fec714bf759f4d98450171bc5a0f85c75b4885d2",
+  "receipt_self_sha256": "b84f9f9a9513f7b59f05a05a7834c9d505cdf0c93f700771335701c2e1bade9e",
   "schema_version": 1,
   "source": {
     "dataset": "AndroidControl / Android-in-the-Wild (AITW) public projection",

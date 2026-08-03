@@ -29,6 +29,14 @@ def _load(path: Path) -> dict[str, Any]:
 
 
 def _native_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    run = payload.get("run") or {}
+    claim_boundary = payload.get("claim_boundary")
+    if run.get("full_official_test_split") is False:
+        claim_boundary = (
+            "Bounded native MobileGym simulator canary over selected official test IDs using a "
+            "DOM/text observation projection; this is not the full official test split, a visual "
+            "mobile-agent score, or an Android emulator result."
+        )
     return {
         "receipt": {
             "path": payload.get("_path"),
@@ -42,11 +50,11 @@ def _native_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "failed_tasks": payload.get("failed_tasks"),
         "success_rate": payload.get("success_rate"),
         "errors": payload.get("errors"),
-        "run": payload.get("run"),
+        "run": run,
         "observation_mode": payload.get("observation_mode"),
         "vision_used": payload.get("vision_used"),
         "tool_counts": payload.get("tool_counts"),
-        "claim_boundary": payload.get("claim_boundary"),
+        "claim_boundary": claim_boundary,
     }
 
 
