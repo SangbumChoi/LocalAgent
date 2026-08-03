@@ -364,6 +364,25 @@ accuracy is still 0% in both arms.  The warm body moves only 0.345% aggregate re
 This is stronger evidence for reusing pretrained representations and assigning larger rates to
 new heads, but it remains teacher-forced, redacted, and non-native.
 
+### MCPMark state-summary trajectory transfer (m213)
+
+The [`m213 receipt`](paper/results/raw/m213-mcpmark-state-summary-transfer-v1.json) tests whether
+the fixed tool-result marker was hiding the state signal needed for recovery.  A new
+[`normalize_mcpmark_state_trajectory.py`](../scripts/normalize_mcpmark_state_trajectory.py) keeps
+only a deterministic result status (`ok`/`error`), coarse shape/content types, bounded character
+counts, a page-state boolean, and a short digest.  It retains no result text, URLs, document
+content, identifiers, or assistant free text.  The split is whole-trajectory disjoint: eight
+filesystem/Notion/GitHub/Postgres rows train and two Playwright rows remain held out.
+
+After 64 matched CPU continuation updates, the warm 10.52M body rises from `38.01%` to `41.46%`
+held-out assistant-token accuracy, versus `0.79%` to `15.63%` for the random body.  Warm movement
+is small (embedding `0.887%`, mixer `0.319%`, FFN `0.374%`, normalization `0.013%`) and action
+heads remain unchanged; exact sequence accuracy is `0%` for both.  A frozen global selector still
+gets `0/24` top-1 decisions on the unseen Playwright service for both arms.  This makes the state
+summary a better provenance-safe training primitive than a fixed marker, but not yet a transferable
+MCP policy.  The children are not exported or adopted, and no MCP server, browser, verifier, or
+official split was executed.
+
 ### Direct m180 WebGPU child comparison (m193)
 
 The [`m193 receipt`](paper/results/raw/m193-current-m180-webgpu-browser-fresh-realistic-actions-v1.json)
