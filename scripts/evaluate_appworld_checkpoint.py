@@ -2,10 +2,12 @@
 """Run a bounded AppWorld evaluation of a LocalAgent checkpoint.
 
 AppWorld is an optional external dependency.  The selected tasks must be from its train/dev
-splits, where ground-truth verifiers are available in the public data bundle.  This adapter
-deliberately does not translate LocalAgent's compact tool vocabulary into AppWorld Python/API
-calls: a zero-action result is therefore a native checkpoint baseline and an explicit interface
-gap, not a claimed AppWorld agent score.  The receipt keeps task text out of committed artifacts.
+splits, where ground-truth verifiers are available in the public data bundle.  By default this
+runner does not translate LocalAgent's compact tool vocabulary into AppWorld Python/API calls: a
+zero-action result is therefore a native checkpoint baseline and an explicit interface gap.  The
+optional API-step adapter accepts only one literal AST call with fixture credentials; it is a
+bounded diagnostic, not a claimed AppWorld agent score.  The receipt keeps task text out of
+committed artifacts.
 
 Example (with AppWorld installed in an isolated environment)::
 
@@ -20,6 +22,7 @@ Example (with AppWorld installed in an isolated environment)::
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.metadata
 import json
@@ -89,6 +92,133 @@ def _tracker_summary(tracker: Any) -> dict[str, Any]:
     }
 
 
+def _parse_appworld_api_code(code: str) -> tuple[str, str, dict[str, Any]] | None:
+    """Parse one safe ``apis.<app>.<api>(literal_kwargs)`` action from model code."""
+
+    try:
+        tree = ast.parse(code, mode="exec")
+    except SyntaxError:
+        return None
+    if len(tree.body) != 1 or not isinstance(tree.body[0], ast.Expr):
+        return None
+    call = tree.body[0].value
+    if not isinstance(call, ast.Call) or call.args or call.keywords and any(
+        keyword.arg is None for keyword in call.keywords
+    ):
+        return None
+    func = call.func
+    if not isinstance(func, ast.Attribute) or not isinstance(func.value, ast.Attribute):
+        return None
+    if not isinstance(func.value.value, ast.Name) or func.value.value.id != "apis":
+        return None
+    arguments: dict[str, Any] = {}
+    try:
+        for keyword in call.keywords:
+            assert keyword.arg is not None
+            arguments[keyword.arg] = ast.literal_eval(keyword.value)
+    except (AssertionError, ValueError, TypeError):
+        return None
+    return func.value.attr, func.attr, arguments
+
+
+def _schema_ground_appworld_api_step(model: Any, tokenizer: Any, world: Any, prompt: str) -> str | None:
+    """Rank bounded API-schema candidates with the checkpoint instead of free-generating code."""
+
+    from localagent.agent.constrained import _best
+    from localagent.model.tokenizer import TOOL_CALL_CLOSE, TOOL_CALL_OPEN
+
+    stopwords = {
+        "a", "an", "and", "all", "across", "are", "as", "at", "be", "for", "from", "give",
+        "have", "how", "i", "in", "is", "it", "list", "me", "my", "of", "on", "or", "the",
+        "this", "to", "what", "which", "with", "your",
+    }
+    prompt_tokens = {
+        token
+        for token in re.findall(r"[a-z0-9]+", prompt.lower())
+        if token not in stopwords
+    }
+    quoted = [value for left, right in re.findall(r"'([^']+)'|\"([^\"]+)\"", prompt)
+              for value in (left or right,)]
+    proper_nouns = re.findall(r"\b[A-Z][a-z]+\b", prompt)
+    ranked: list[tuple[float, str]] = []
+    for app, docs in world.task.api_docs.items():
+        if app in {"admin", "api_docs", "supervisor"}:
+            continue
+        for api, doc in docs.items():
+            if api in {"login", "logout", "signup", "verify_account", "reset_password"}:
+                continue
+            description = str(doc.get("description", ""))
+            api_tokens = set(re.findall(r"[a-z0-9]+", f"{api} {description}".lower()))
+            overlap = prompt_tokens & api_tokens
+            score = float(2 * len(overlap))
+            if app.lower() in prompt.lower():
+                score += 3.0
+            if not overlap:
+                continue
+            params = doc.get("parameters", [])
+            arguments: dict[str, Any] = {}
+            viable = True
+            for parameter in params:
+                name = str(parameter.get("name", ""))
+                if not name or name == "access_token":
+                    continue
+                default = parameter.get("default")
+                if name == "page_index" and default == 0:
+                    arguments[name] = 0
+                elif name in {"query", "search_query"} and (quoted or proper_nouns):
+                    arguments[name] = quoted[0] if quoted else proper_nouns[0]
+                elif parameter.get("required") and default is None:
+                    viable = False
+                    break
+            if viable:
+                args = ", ".join(f"{key}={repr(arguments[key])}" for key in sorted(arguments))
+                code = f"apis.{app}.{api}({args})"
+                ranked.append((score, code))
+    if not ranked:
+        return None
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    candidates = [
+        f"{TOOL_CALL_OPEN}{json.dumps({'name': 'run_python', 'arguments': {'code': code}}, separators=(',', ':'), sort_keys=True)}{TOOL_CALL_CLOSE}"
+        for _, code in ranked[:24]
+    ]
+    selected = _best(model, tokenizer, prompt, candidates, "cpu")
+    try:
+        parsed = json.loads(selected[len(TOOL_CALL_OPEN):-len(TOOL_CALL_CLOSE)])
+        code = parsed["arguments"]["code"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return None
+    return code if isinstance(code, str) else None
+
+
+def _appworld_execute_api_step(world: Any, app: str, api: str, arguments: dict[str, Any]) -> tuple[Any, int]:
+    """Execute one parsed API step with credentials sourced only from the resettable fixture."""
+
+    if app in {"admin", "api_docs", "supervisor"} or api in {"login", "logout"}:
+        raise ValueError("bootstrap/admin AppWorld API actions are not model-replayable")
+    if app not in world.apis or api not in world.apis[app]:
+        raise ValueError(f"unknown AppWorld API action: {app}.{api}")
+    request_count_before = len(world.requester.request_tracker.requests)
+    profile = world.apis.supervisor.show_profile()
+    passwords = world.apis.supervisor.show_account_passwords()
+    password_by_app = {str(item["account_name"]): item["password"] for item in passwords}
+    from appworld.common.misc import get_login_by
+
+    login_by = get_login_by(app)
+    if login_by is None or login_by not in profile or app not in password_by_app:
+        raise ValueError(f"fixture has no supported login bootstrap for AppWorld app {app!r}")
+    login_result = world.apis[app].login(
+        username=profile[login_by],
+        password=password_by_app[app],
+    )
+    token = login_result.get("access_token") if isinstance(login_result, dict) else None
+    if not isinstance(token, str) or not token:
+        raise ValueError(f"AppWorld login did not return an access token for {app!r}")
+    call_arguments = dict(arguments)
+    call_arguments.setdefault("access_token", token)
+    response = world.apis[app][api](**call_arguments)
+    return response, len(world.requester.request_tracker.requests) - request_count_before
+
+
 def _verify_runner_contract(*, AppWorld: Any, task_id: str, experiment_name: str) -> dict[str, Any]:
     """Run one bundled ground-truth solution to prove the native verifier is live."""
 
@@ -120,6 +250,8 @@ def evaluate(
     selector_first: bool = False,
     retrieve_k: int = 10,
     replay_run_python: bool = False,
+    replay_appworld_api_step: bool = False,
+    schema_ground_appworld_api_step: bool = False,
 ) -> dict[str, Any]:
     try:
         appworld_version = importlib.metadata.version("appworld")
@@ -149,6 +281,8 @@ def evaluate(
 
     if retrieve_k < 1:
         raise ValueError("retrieve_k must be positive")
+    if replay_run_python and replay_appworld_api_step:
+        raise ValueError("replay_run_python and replay_appworld_api_step are mutually exclusive")
     calls: list[dict[str, Any]] = []
     agent = Agent.from_checkpoint(
         checkpoint,
@@ -169,6 +303,9 @@ def evaluate(
         replay_error: str | None = None
         action_replayed = False
         native_api_calls = 0
+        native_action_api_calls = 0
+        native_bootstrap_api_calls = 0
+        translated_code: str | None = None
         with AppWorld(
             task_id=task_id,
             experiment_name=experiment_name,
@@ -190,6 +327,30 @@ def evaluate(
                     requests = getattr(tracker_obj, "requests", None)
                     if requests is not None:
                         native_api_calls = len(requests)
+            elif replay_appworld_api_step and selected and selected["name"] == "run_python":
+                code = selected["arguments"].get("code")
+                if schema_ground_appworld_api_step:
+                    translated_code = _schema_ground_appworld_api_step(
+                        agent.model, agent.tokenizer, world, instruction
+                    )
+                    if translated_code is not None:
+                        code = translated_code
+                parsed = _parse_appworld_api_code(code) if isinstance(code, str) else None
+                if parsed is not None:
+                    app, api, arguments = parsed
+                    try:
+                        response, native_api_calls = _appworld_execute_api_step(
+                            world, app, api, arguments
+                        )
+                        replay_response = json.dumps(
+                            response, ensure_ascii=False, sort_keys=True, default=str
+                        )
+                        action_replayed = True
+                        native_action_api_calls = 1
+                        native_bootstrap_api_calls = max(0, native_api_calls - 1)
+                    except Exception as error:  # keep malformed/API failures in the receipt
+                        replay_error = repr(error)
+                        native_api_calls = len(world.requester.request_tracker.requests)
             tracker = world.evaluate()
             tracker_summary = _tracker_summary(tracker)
         selected = calls[0] if calls else None
@@ -208,12 +369,17 @@ def evaluate(
             ),
             "action_replayed": action_replayed,
             "native_api_calls": native_api_calls,
+            "native_action_api_calls": native_action_api_calls,
+            "native_bootstrap_api_calls": native_bootstrap_api_calls,
+            "schema_translation_applied": translated_code is not None,
             "evaluation": tracker_summary,
         }
         if replay_response is not None:
             record["replay_response"] = _text_hash(replay_response)
         if replay_error is not None:
             record["replay_error"] = _text_hash(replay_error)
+        if translated_code is not None:
+            record["translated_code"] = _text_hash(translated_code)
         task_records.append(
             record
         )
@@ -237,10 +403,18 @@ def evaluate(
         "configuration": {
             "experiment_name": experiment_name,
             "tasks": task_ids,
-            "action_translation": "appworld_run_python" if replay_run_python else "disabled",
+            "action_translation": (
+                "appworld_api_step"
+                if replay_appworld_api_step
+                else "appworld_run_python"
+                if replay_run_python
+                else "disabled"
+            ),
             "selector_first": selector_first,
             "retrieve_k": retrieve_k,
             "replay_run_python": replay_run_python,
+            "replay_appworld_api_step": replay_appworld_api_step,
+            "schema_ground_appworld_api_step": schema_ground_appworld_api_step,
             "max_interactions": 1,
         },
         "environment": {
@@ -258,13 +432,21 @@ def evaluate(
             / len(task_records),
             "action_replayed": sum(int(item["action_replayed"]) for item in task_records),
             "native_api_calls": sum(item["native_api_calls"] for item in task_records),
+            "native_action_api_calls": sum(item["native_action_api_calls"] for item in task_records),
+            "native_bootstrap_api_calls": sum(
+                item["native_bootstrap_api_calls"] for item in task_records
+            ),
         },
         "claim_boundary": (
-            "Native AppWorld reset/evaluation of the current LocalAgent checkpoint only. When replay "
-            "is enabled, only a model-emitted run_python code string is executed in the isolated "
-            "AppWorld environment; this is an adapter diagnostic, not an AppWorld leaderboard "
-            "result, AppWorld-UL result, or evidence of email/SMS/Spotify task success."
-            if replay_run_python
+            "Native AppWorld reset/evaluation of the current LocalAgent checkpoint only. When API-step "
+            "replay is enabled, a strict AST parser accepts at most one literal "
+            "apis.<app>.<api>(...) call and injects credentials from the resettable fixture. An "
+            "optional schema-grounding mode ranks API-schema candidates with the checkpoint rather "
+            "than free-generating code; when "
+            "run_python replay is enabled, the model code is executed directly. Both are adapter "
+            "diagnostics, not an AppWorld leaderboard result, AppWorld-UL result, or evidence of "
+            "email/SMS/Spotify task success."
+            if replay_run_python or replay_appworld_api_step
             else "Native AppWorld reset/evaluation of the current LocalAgent checkpoint only. The "
             "model emits LocalAgent tool syntax, while AppWorld expects Python/API actions; no "
             "action was translated or replayed. The score is a zero-action interface baseline, not "
@@ -305,6 +487,16 @@ def main() -> int:
         action="store_true",
         help="execute captured run_python code in AppWorld and count native API calls",
     )
+    parser.add_argument(
+        "--replay-appworld-api-step",
+        action="store_true",
+        help="parse one safe apis.<app>.<api>(literal kwargs) step and execute it natively",
+    )
+    parser.add_argument(
+        "--schema-ground-appworld-api-step",
+        action="store_true",
+        help="rank public AppWorld API-schema candidates with the model before AST replay",
+    )
     args = parser.parse_args()
     result = evaluate(
         checkpoint=args.checkpoint,
@@ -315,6 +507,8 @@ def main() -> int:
         selector_first=args.selector_first,
         retrieve_k=args.retrieve_k,
         replay_run_python=args.replay_run_python,
+        replay_appworld_api_step=args.replay_appworld_api_step,
+        schema_ground_appworld_api_step=args.schema_ground_appworld_api_step,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0

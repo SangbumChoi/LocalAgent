@@ -860,6 +860,33 @@ the tiny model still does not emit executable API programs.  The adapter is ther
 for WebGPU or presented as an AppWorld leaderboard score; the next required step is schema-aware
 program synthesis/repair plus native multi-interaction evaluation.
 
+### AppWorld first-action API-step adapter (m247–m251)
+
+To test whether the interface gap was only the multi-thousand-token program length, the public
+train/dev ground-truth traces were reduced to their first non-bootstrap API call.  The
+[`m247 train manifest`](paper/results/raw/m247-appworld-action-train-manifest-v1.json) contains 24
+train tasks and the disjoint [`m247 dev manifest`](paper/results/raw/m247-appworld-action-dev-manifest-v1.json)
+contains 12 dev tasks.  Credentials and bootstrap calls are excluded; the raw `Conversation`
+JSONL remains outside Git and the manifests bind only task/source/action hashes.
+
+Warm continuation ([`m247 report`](paper/results/raw/m247-appworld-action-step-sft-v1.json)) raises
+held-out assistant-token accuracy from `51.38%` to `82.21%`, but sequence exactness remains `0/12`.
+The standard 51-tool route and selector were already `100%` before and after training.  The paired
+[`m251 weight report`](paper/results/raw/m251-appworld-action-step-weight-transfer-v1.json) shows
+action heads frozen (`0%` movement), with embedding `2.12%`, attention/mixer `0.83%`, FFN `1.05%`,
+and normalization `0.055%` relative movement.  These are teacher-forced and lineage measurements,
+not executable-agent accuracy.
+
+The native diagnostic adds a strict AST parser that accepts only one literal
+`apis.<app>.<api>(...)` call and injects credentials from the resettable AppWorld fixture.  A
+schema-grounded candidate mode ([`m250 receipt`](paper/results/raw/m250-appworld-action-step-schema-native-dev-v1.json))
+replayed all 12 bounded calls and made 12 real action API requests (48 requests including 36
+authentication/bootstrap requests), but the one-step verifier score was `0/12`.  The model-ranked
+valid candidates were often the wrong API for the instruction; this proves isolated execution and
+the parser/credential boundary, not action selection, full trajectories, AppWorld-UL, or email/SMS/
+Spotify task success.  Learned free-form `run_python` code is still not used by the constrained
+decoder, so this adapter is not promoted to WebGPU.
+
 The refreshed [`m246 strict gate`](paper/results/raw/m246-workshop-gate-appworld-adapter-v1.json)
 remains `ready: false` with nine missing official native receipts (AndroidWorld,
 MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and
