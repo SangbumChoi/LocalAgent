@@ -44,8 +44,8 @@ in-source action-replay diagnostic—not the official Mind2Web test score or nat
 email, Notion, MCP, or browser-account control.  See the [`m157 receipt`](paper/results/raw/m157-mind2web-grounded-transfer-v1.json).
 
 The m158 mobile continuation returns to the current m142 parent and uses a public AndroidControl/AITW
-train projection with a disjoint 904-row evaluation file.  Focused oversampling raises the offline
-selector to `41.26%` top-1 with `100%` routing and `25%` exact pointer spans, while the inherited
+train projection with a disjoint 904-row evaluation file.  Focused oversampling produces an offline
+selector score of `41.26%` top-1 with `100%` routing and `25%` exact pointer spans, while the inherited
 body is unchanged and only action heads move substantially (`124.77%` relative ΔL2).  A pinned
 MobileGym first-20-task canary reaches `1/20` (`5%`), exactly matching the parent same-range result.
 This cleanly separates offline action-format learning from state-conditioned simulator transfer;
