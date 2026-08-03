@@ -1,6 +1,6 @@
 # Realistic agent evaluation research memo
 
-Status: protocol refresh on 2026-08-02. This memo records the public benchmark methods that
+Status: protocol refresh on 2026-08-03. This memo records the public benchmark methods that
 matter for a sub-100M text-first WebGPU agent. It is a source and protocol guide, not a claim that
 the repository has completed every benchmark.
 
@@ -29,6 +29,42 @@ the repository has completed every benchmark.
 | Enterprise email/tools | [EnterpriseOps-Gym](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym) exposes large tool catalogs and stateful SQL-verifier workflows across enterprise domains. | Name/schema retrieval is a useful failure profile; task success requires the containerized MCP servers and SQL verifiers. |
 | Verifiable computer-use training | [CUA-Gym](https://huggingface.co/datasets/xlangai/CUA-Gym) publishes a CC-BY-4.0 task table with 10,910 desktop/web/cross-app instructions and executable setup/reward artifacts. | Its metadata table has one `train` split and no official held-out evaluation split; use it for coverage and sandboxed RLVR only after task-identity holdout, artifact review, and a disposable runtime. The current receipt intentionally consumes metadata only. |
 | Public desktop trajectory archives | [OSWorld 2.0 trajectories](https://huggingface.co/datasets/xlangai/osworld2.0-trajectory) and [OSWorld-Verified trajectories](https://huggingface.co/datasets/xlangai/ubuntu_osworld_verified_trajs) provide large model-run packages. | They are evaluation/provenance sources until task identity and split leakage are resolved; archive screenshots and verifier outputs are not silently admitted to WebGPU SFT, and native OSWorld evidence still needs the release-matched VM. |
+
+### Official-source audit and admission boundary (m208)
+
+The [`m208 receipt`](paper/results/raw/m208-realistic-evaluation-source-audit-v1.json) freezes the
+current research inventory against the 40-row canonical catalog and 21-row supplemental registry.
+It cross-checks the official contracts for AndroidWorld, AndroidControl/AITW, MobileSafetyBench,
+iOSWorld, AppAgent, BrowserGym, Mind2Web, WebBench/BU Bench, OSWorld, AgentNet, GroundCUA/UI-TARS,
+ToolSandbox, MCPMark, EnterpriseOps-Gym, and MobileGym.  The audit makes the deployment boundary
+explicit: only AndroidControl, AITW, xLAM function calling, and the public Mind2Web train partition
+are currently train-eligible; benchmark task text, screenshots, emulator/VM assets, credentials,
+MCP state, and verifier outputs remain evaluation-only.
+
+This matters for the requested email, Notion, browser, and computer-use scenarios.  MCPMark and
+EnterpriseOps-Gym require isolated service state and independent verification; iOSWorld and
+MobileSafetyBench require seeded mobile runtimes plus safety/personalization metrics; BrowserGym and
+OSWorld require release-matched browser/VM execution.  A compact WebGPU text projection may measure
+route, retrieval, grounding, schema validity, abstention, and action history, but the receipt does
+not convert those proxies into native or leaderboard scores.
+
+### Matched multi-surface continuation and native bridge (m209–m211)
+
+The [`m211 receipt`](paper/results/raw/m211-multisurface-continuation-native-bridge-v1.json) trains
+one matched 64-step continuation over 4,752 public rows from AndroidControl, AgentNet, Mind2Web,
+and the ToolSandbox AST projection, with 1,069 source-disjoint held-out rows.  The warm child rises
+from `64.31%` to `72.30%` aggregate assistant-token accuracy, while the random-backbone control
+rises from effectively `0%` to `46.55%`.  Warm movement remains small (embedding `0.97%`,
+mixer `0.29%`, FFN `0.38%`, normalization `0.02%`) and the action heads move `0%`; exact sequence
+accuracy remains `0%` for both arms.  The gains are therefore representation-transfer evidence,
+not complete tool policy learning.
+
+The native bridge is unchanged: both children complete `1/5` bounded interactive ToolSandbox
+scenarios.  Random improves one ambiguous-contact similarity from `0.0` to `0.3333`, but neither
+arm gains a new fully verified task.  The warm child is retained as a compatibility diagnostic,
+not exported or adopted.  Reliable WebGPU email/Notion/browser control still requires jointly
+training the runtime-aligned route, candidate selector, argument grounding, and state/action-history
+policy, followed by native closed-loop verification.
 
 The m156 follow-up probe uses only CUA-Gym's public instruction field and its metadata `platform`
 label (`desktop`, `web`, or `cross_app`) on a deterministic task-ID holdout.  A frozen m142 warm
