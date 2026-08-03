@@ -25,6 +25,15 @@ the repository has completed every benchmark.
 | Verifiable computer-use training | [CUA-Gym](https://huggingface.co/datasets/xlangai/CUA-Gym) publishes a CC-BY-4.0 task table with 10,910 desktop/web/cross-app instructions and executable setup/reward artifacts. | Its metadata table has one `train` split and no official held-out evaluation split; use it for coverage and sandboxed RLVR only after task-identity holdout, artifact review, and a disposable runtime. The current receipt intentionally consumes metadata only. |
 | Public desktop trajectory archives | [OSWorld 2.0 trajectories](https://huggingface.co/datasets/xlangai/osworld2.0-trajectory) and [OSWorld-Verified trajectories](https://huggingface.co/datasets/xlangai/ubuntu_osworld_verified_trajs) provide large model-run packages. | They are evaluation/provenance sources until task identity and split leakage are resolved; archive screenshots and verifier outputs are not silently admitted to WebGPU SFT, and native OSWorld evidence still needs the release-matched VM. |
 
+The m156 follow-up probe uses only CUA-Gym's public instruction field and its metadata `platform`
+label (`desktop`, `web`, or `cross_app`) on a deterministic task-ID holdout.  A frozen m142 warm
+checkpoint reaches 81.37% surface accuracy versus 77.87% for the matched random control, with
+exactly zero backbone movement because only a new linear probe is trained.  This is evidence that
+the warm representation carries a small amount of broad deployment-surface signal; it is not an
+action label, task-success, screenshot-grounding, or native browser/desktop result.  See the
+[`m156 receipt`](paper/results/raw/m156-cua-gym-surface-probe-v1.json) and reproducible
+[`train_cua_gym_surface_probe.py`](../scripts/train_cua_gym_surface_probe.py).
+
 The recurring methodological point is that a benchmark is not just a prompt list. The authoritative
 score includes the observation contract, reset state, action interface, environment revision, and
 verifier. A static conversation projection must be labelled as such even when it uses the original
