@@ -1775,7 +1775,11 @@ function productivityLexicalSelect(query, dispatch = DISPATCH) {
   // obvious email/Notion side-effect request from being routed to an unrelated timer/URL tool
   // when the tiny model is out of distribution.  The caller still validates the selected schema
   // and the demo never touches an external account.
-  const emailTool = names.has("email_send") ? "email_send" : names.has("send_email") ? "send_email" : null;
+  // Prefer the canonical public schema when both it and a legacy mobile alias are present.  The
+  // metadata intentionally carries both names for compatibility, but evaluation and downstream
+  // adapters use `send_email`/`notion_write`; selecting the alias here changes the argument shape
+  // (`to`/`subject`/`body` versus `recipient`) and makes an otherwise valid action look wrong.
+  const emailTool = names.has("send_email") ? "send_email" : names.has("email_send") ? "email_send" : null;
   if (
     emailTool &&
     /\b(?:email|e-mail|mail)\b/.test(low) &&
@@ -1793,7 +1797,7 @@ function productivityLexicalSelect(query, dispatch = DISPATCH) {
     /\b(?:notion|save|note|page)\b/.test(low) &&
     (names.has("notion_create_page") || names.has("notion_write"))
   ) {
-    const name = names.has("notion_create_page") ? "notion_create_page" : "notion_write";
+    const name = names.has("notion_write") ? "notion_write" : "notion_create_page";
     return {
       name,
       route: "app_action",

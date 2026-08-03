@@ -425,6 +425,28 @@ benchmark receipts plus a public model/demo manifest.  The local browser result 
 for AndroidWorld, MobileGym, iOSWorld, BrowserGym, OSWorld, AgentNet, ToolSandbox, MCPMark, or
 EnterpriseOps-Gym execution.
 
+### Canonical productivity schema boundary (m216)
+
+The [`m216 receipt`](paper/results/raw/m216-webgpu-native-canonical-productivity-v1.json) reruns
+the same native Chromium harness after fixing a duplicate-tool precedence bug in the demo runtime.
+The bundle metadata contains both the public `send_email`/`notion_write` schemas and legacy
+`email_send`/`notion_create_page` mobile aliases.  The guard now prefers the public names and falls
+back to an alias only when a canonical entry is absent, so argument grounding uses `recipient` and
+`content` rather than the legacy `to`/`subject`/`body` or page shape.
+
+On the same Apple Metal adapter, all three bounded prompts are now schema-exact (`3/3`, 30/30 per
+case), with p50 latency `5.1 ms` and an action-input throughput proxy of about `1,918 tokens/s`.
+This is a contract/adapter correction, not a learned-quality improvement: email and Notion still
+use explicit intent guards, no external account is touched, and closed-loop success remains zero.
+The strict workshop gate therefore remains unchanged; native benchmark receipts and a public
+model/demo manifest are still required.
+
+The [`m217 gate`](paper/results/raw/m217-workshop-gate-native-canonical-v1.json) binds this
+canonical receipt directly: the WebGPU and m25 weight-ablation checks pass, but the gate still has
+the same twelve blockers (eleven official native benchmark receipts and the public model/demo
+manifest).  The alias fix therefore improves contract observability without changing the
+publication decision.
+
 ### Frozen dispatch repair control (m194)
 
 The [`m194 receipt`](paper/results/raw/m194-current-m180-dispatch-repair-v1.json) tests whether the
