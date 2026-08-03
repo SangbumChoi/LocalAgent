@@ -1855,6 +1855,18 @@ heads.  The export is locally hash-verified and self-contained, but it is not a 
 download URL: `hf auth whoami` is unauthenticated and no upload is claimed.  This bundle keeps the
 generic deployment catalog; the AgentNet surface selector remains a separate diagnostic artifact.
 
+### Current m180 WebGPU export and clean bundle verification (m184)
+
+The [`m184 receipt`](paper/results/raw/m184-current-m180-webgpu-export-v1.json) exports the same
+checkpoint to full-logits and hidden-only ONNX graphs, fp16 counterparts, tokenizer, generic
+dispatch heads, and metadata.  All four graphs pass the hard CPU parity gate; fp32 logits drift is
+`8.11e-6`, fp16 logits drift is `3.96e-3`, and fp16 argmax agreement is `100%`.  The clean static
+app copy verifies every artifact hash and the manifest with no blockers.
+
+This establishes a reproducible WebGPU-shaped artifact for the current child, not physical GPU
+placement, useful browser-agent quality, native benchmark success, or a public Hub URL.  The model
+and Space remain unpublished until authenticated upload and independent hosted verification.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:
