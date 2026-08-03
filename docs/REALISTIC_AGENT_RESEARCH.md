@@ -400,6 +400,31 @@ retain the m180 body for compatibility experiments, but not promote it as a brow
 until a catalog-aware action head, argument grounding, and native closed-loop evidence all improve
 together.
 
+### Native WebGPU capability and latency receipt (m214)
+
+The [`m214 receipt`](paper/results/raw/m214-webgpu-native-capability-current-bundle-v1.json) is the
+first current-workspace browser receipt that proves the requested provider path rather than merely
+loading a page.  Chromium reports `navigator.gpu`, exposes an Apple Metal adapter
+(`vendor=apple; architecture=metal-3`), and ONNX Runtime Web `1.27.0` runs the fp16 action graph
+with `requested_provider=["webgpu"]` and no provider retry.  The clean eight-artifact bundle and
+its parity manifest verify before dispatch.
+
+Across three bounded local prompts and 30 measured repetitions per prompt, p50 latency is `7.2 ms`
+and the action-input throughput proxy is about `1,389 tokens/s`; the conservative graph-plus-host-
+tensor estimate is `20.5 MB`.  Quality is separate: URL opening is exact in `30/30` trials, while
+the email request selects `email_send` instead of the expected `send_email` and the Notion request
+selects `notion_create_page` instead of `notion_write`.  Thus native WebGPU capability and speed
+pass, but realistic email/Notion action quality is `1/3` and closed-loop success is zero.  No real
+email, browser navigation, or Notion account was touched, and this single Apple Metal run is not a
+cross-device throughput claim or a publication-quality agent score.
+
+The [`m215 gate`](paper/results/raw/m215-workshop-gate-native-webgpu-v1.json) confirms the scope of
+this result: the WebGPU capability/latency requirement and the existing matched transfer ablation
+now pass the strict checker.  Readiness is still false with twelve blockers—eleven official native
+benchmark receipts plus a public model/demo manifest.  The local browser result cannot substitute
+for AndroidWorld, MobileGym, iOSWorld, BrowserGym, OSWorld, AgentNet, ToolSandbox, MCPMark, or
+EnterpriseOps-Gym execution.
+
 ### Frozen dispatch repair control (m194)
 
 The [`m194 receipt`](paper/results/raw/m194-current-m180-dispatch-repair-v1.json) tests whether the
