@@ -622,6 +622,11 @@ def export_web(
     ).hexdigest()
     cfg = ModelConfig(**{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__})
     tokenizer = _load_web_tokenizer(cfg, tokenizer_path)
+    # A tokenizer with the right vocabulary size can still assign completely different IDs.  The
+    # model's recorded tokenizer hash is therefore part of the deployment contract, not merely
+    # metadata.  Refuse to emit any bundle when an explicit BPE asset does not match it.
+    if cfg.vocab_size != 256:
+        _checkpoint_tokenizer_provenance(ck, cfg, tokenizer_path=tokenizer_path)
     os.makedirs(out_dir, exist_ok=True)
     # A failed re-export must not leave a previously published manifest beside new, unchecked bytes.
     stale_manifest = os.path.join(out_dir, "bundle-manifest.json")

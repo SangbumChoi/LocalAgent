@@ -59,6 +59,11 @@ window.__localAgentMobileLexicalGuardEnabled = MOBILE_LEXICAL_GUARD;
 // Diagnostic-only switch: production/demo URLs keep this guard enabled by default.  A native
 // control run can disable it to measure the learned selector rather than the explicit URL safety
 // adapter; no external navigation is ever executed by the capability harness.
+const PRODUCTIVITY_LEXICAL_GUARD = (() => {
+  const value = new URLSearchParams(window.location.search).get("productivity_guard");
+  return value !== "0" && value !== "false" && value !== "off";
+})();
+window.__localAgentProductivityLexicalGuardEnabled = PRODUCTIVITY_LEXICAL_GUARD;
 const URL_LEXICAL_GUARD = (() => {
   const value = new URLSearchParams(window.location.search).get("url_guard");
   return value !== "0" && value !== "false" && value !== "off";
@@ -1977,7 +1982,7 @@ function dispatchSelect(
       selection_policy: "compound_search_first_step_guard",
     };
   }
-  if (requestedSelector === "dense") {
+  if (PRODUCTIVITY_LEXICAL_GUARD && requestedSelector === "dense") {
     const productivity = productivityLexicalSelect(query, dispatch);
     if (productivity) return productivity;
   }

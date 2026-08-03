@@ -279,3 +279,42 @@ process.stdout.write(JSON.stringify({ email, notion, compound }));
         "selection_policy": "productivity_notion_intent_guard",
     }
     assert payload["compound"]["selection_policy"] == "compound_search_first_step_guard"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_productivity_guard_can_be_disabled_for_learned_selector_control():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "?productivity_guard=0" } };
+const { dispatchSelect } = require(process.argv[1]);
+const dispatch = {
+  route_head: {
+    weight: [[0], [1], [0], [0], [0]], bias: [0, 0, 0, 0, 0],
+    routes: ["text", "app_action", "web_search", "computer_use", "filesystem"], stop_index: 0,
+  },
+  dense_selector: {
+    q_proj_weight: [[1]], q_proj_bias: [0], proj: 1,
+    tool_matrix: [[1], [0]], tool_names: ["set_timer", "send_email"], normalize_query: true,
+  },
+};
+const selected = dispatchSelect(
+  { data: new Float32Array([1]), dims: [1, 1, 1] },
+  1,
+  "Email Dana the quarterly report",
+  dispatch,
+);
+process.stdout.write(JSON.stringify(selected));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {
+        "name": "set_timer",
+        "route": "app_action",
+        "conf": 1,
+        "isStop": False,
+        "selection_policy": "dense_selector",
+        "candidate_count": 2,
+    }

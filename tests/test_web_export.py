@@ -420,6 +420,50 @@ def test_web_export_bundles_validated_bpe_tokenizer(tmp_path):
         ).hexdigest()
 
 
+def test_web_export_rejects_bpe_tokenizer_hash_mismatch(tmp_path):
+    from localagent.inference.export.to_onnx import export_web
+
+    tokenizer, tokenizer_path = _make_bpe(tmp_path)
+    mismatched_path = tmp_path / "mismatched-tokenizer.json"
+    # Preserve a valid tokenizer while changing only its byte identity.  The exporter must check
+    # the recorded hash rather than accepting any same-vocabulary file.
+    mismatched_path.write_text(tokenizer_path.read_text() + "\n")
+    cfg = ModelConfig(
+        vocab_size=tokenizer.vocab_size,
+        d_model=64,
+        n_layers=2,
+        n_heads=4,
+        n_kv_heads=2,
+        ffn_hidden=128,
+        max_seq_len=64,
+        name="bpe-mismatch",
+    )
+    model = LocalAgentLM(cfg).eval()
+    checkpoint = tmp_path / "bpe-mismatch.pt"
+    torch.save(
+        {
+            "cfg": cfg.__dict__,
+            "state_dict": model.state_dict(),
+            "tokenizer": {
+                "kind": "bpe",
+                "path": str(tokenizer_path),
+                "sha256": hashlib.sha256(tokenizer_path.read_bytes()).hexdigest(),
+            },
+        },
+        checkpoint,
+    )
+
+    with pytest.raises(ValueError, match="tokenizer artifact SHA-256"):
+        export_web(
+            str(checkpoint),
+            str(tmp_path / "mismatch-web"),
+            fp16=False,
+            check=False,
+            action_only=True,
+            tokenizer_path=str(mismatched_path),
+        )
+
+
 def test_web_export_rejects_mismatched_bpe_tokenizer(tmp_path):
     from localagent.inference.export.to_onnx import export_web
 

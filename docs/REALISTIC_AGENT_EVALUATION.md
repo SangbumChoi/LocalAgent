@@ -2732,6 +2732,20 @@ structured actions, p50 `7.5 ms`, and about `1,379 tokens/s`; no external action
 The result confirms that the current WebGPU demo's email success depends on the explicit guard,
 and that email argument/schema grounding remains a release blocker.
 
+### Tokenizer-bound native WebGPU rerun (m270)
+
+The [`m270 receipt`](paper/results/raw/m270-webgpu-native-tokenizer-bound-v1.json) re-exports the
+repaired child with the BPE tokenizer recorded by the checkpoint (`836540…`) and exercises the
+same Chromium/WebGPU/Apple Metal-3 harness.  The exporter now fails closed when a supplied BPE
+file has the wrong SHA-256, preventing a same-vocabulary tokenizer from silently changing token
+IDs.  With the matching tokenizer, the learned dense selector produces exact email, URL, and
+Notion structured actions on `90/90` local repetitions; p50 latency is `7.85 ms` and the
+conservative action-graph estimate is `20.46 MB`.
+
+This is a corrected local deployment receipt, not a replacement for the official MobileGym or
+BrowserGym results: no external side effect ran, `closed_loop_success` is `0`, and the nine
+native publication blockers listed by m266 remain unresolved.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the
