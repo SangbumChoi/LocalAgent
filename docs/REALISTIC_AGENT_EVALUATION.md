@@ -2180,3 +2180,20 @@ the state-diff judge, a five-step cap, and a DOM/text observation projection.  I
 (`5%`) with no runtime or judge errors, exactly matching the parent m135 canary on the same range;
 the child emits `mobile_submit_answer` on 13 tasks.  This is a bounded native canary, not the full
 MobileGym score, an Android emulator result, screenshot grounding, or a publication-gate pass.
+
+### Current-parent MCPMark redacted-trajectory transfer (m159)
+
+The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the
+public [MCPMark trajectory-log](https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log)
+comparison from the current m142 parent.  The input is pinned to revision
+`e50578f0ab904d8e6a7c576c387c1e76ae482c89`; eight rows train and two parent records remain held
+out.  Tool outputs and assistant free text are replaced with fixed redaction markers, so no live
+service state or verifier result is admitted to SFT.
+
+The warm child improves held-out assistant-token accuracy from `39.38%` to `43.18%`; the matched
+random-backbone arm reaches `3.12%` after the same 32 updates, a `+40.06` point warm-start gap.
+Both arms remain at `0/2` exact sequences.  Warm relative movement is `0.46%` embedding,
+`0.18%` mixer, `0.21%` FFN, and `0.008%` normalization, while the random arm moves the backbone
+by roughly `79%–123%` per group.  This strengthens the weight-adoption recommendation—reuse the
+verified body with a low rate and isolate service/action adapters—but is still not native MCPMark,
+Notion, email, browser, or external-account success.

@@ -52,6 +52,15 @@ This cleanly separates offline action-format learning from state-conditioned sim
 it is not the full MobileGym score, Android emulator/screenshot grounding, or a browser/email/Notion
 side-effect claim.  See the [`m158 receipt`](paper/results/raw/m158-mobile-dispatch-transfer-v1.json).
 
+The m159 MCPMark continuation repeats the public trajectory-log comparison from the current m142
+parent.  Eight redacted filesystem, Notion, GitHub, Postgres, and Playwright rows train and two
+parent-disjoint Playwright rows remain held out.  Warm initialization improves held-out assistant
+token accuracy from `39.38%` to `43.18%`; a matched random backbone reaches only `3.12%` after the
+same 32 updates, a `+40.06` point gap.  Both arms remain at `0%` exact multi-turn sequence
+accuracy.  Warm movement stays below `0.5%` in each inherited backbone group, supporting the
+low-rate body/high-rate adapter recipe while rejecting any claim of native MCP, email, Notion, or
+browser side effects.  See the [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json).
+
 The recurring methodological point is that a benchmark is not just a prompt list. The authoritative
 score includes the observation contract, reset state, action interface, environment revision, and
 verifier. A static conversation projection must be labelled as such even when it uses the original
