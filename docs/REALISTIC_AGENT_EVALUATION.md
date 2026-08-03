@@ -1693,6 +1693,24 @@ browser workflow completes end-to-end; the result is a transfer diagnostic only.
 arm moves the backbone by relative L2 `0.159%` overall (`0.0447%` embedding, `0.350%` FFN,
 `0.338%` mixer), supporting conservative backbone reuse but not capability promotion.
 
+### Exported current-child WebGPU replay (m162)
+
+The m161 low-rate child was exported into a clean temporary WebGPU bundle and checked by the
+exporter’s hash-bound fp32/fp16 graph parity gate.  The fp32 graph stayed within `7.63e-6` logits
+and `6.08e-6` hidden max error; the fp16 graph stayed within `5.19e-3` logits and `4.14e-3`
+hidden error, with argmax agreement `1.0`.  The deployment verifier found every required artifact
+and no static-bundle blocker.  In the in-app browser with an explicit `backend=webgpu`, the same
+three local synthetic trajectories produced `5/13` exact actions (`38.46%`), `12/13` schema-valid
+actions (`92.31%`), and `0/3` complete workflows; the email path failed at body entry, Notion at
+page creation, and browser at the first URL action.  This is bound in the [`m162 receipt`](paper/results/raw/m162-stateful-export-browser-v1.json).
+
+The reused 20-case offline structured-action parity diagnostic also exposed a publication blocker:
+fp16 pointer-score drift peaked at `1.16097`, above the hard `1.0` threshold, even though route,
+tool, grounded-argument, and final normalized-action decisions matched the fp32 reference.  We
+retain this as a diagnostic failure rather than relaxing the threshold.  The result is not a native
+AndroidWorld/BrowserGym/OSWorld/MCPMark score and does not establish real email, Notion, or browser
+control.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:
