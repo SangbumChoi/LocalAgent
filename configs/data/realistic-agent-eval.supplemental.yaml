@@ -327,3 +327,35 @@ entries:
     webgpu_projection: strict_tool_call_text_with_schema_and_action_history;_no_external_side_effects
     metric: held_out_token_accuracy, first_action_exact, sequence_exact, schema_validity, and argument_exactness
     notes: The pinned public snapshot rejects 2308 rows without a strict first action or valid schema projection; train/eval parent overlap is zero. Existing m171, m172, and m173 receipts bind first-action, multi-turn, and action-history transfers, but remain diagnostic rather than official ToolACE/BFCL or native MCP scores.
+
+  - id: vpi_bench
+    family: computer
+    name: VPI-Bench visual prompt injection benchmark
+    source_url: https://github.com/cua-framework/agents
+    paper_url: https://arxiv.org/abs/2506.02456
+    data_access_url: https://huggingface.co/datasets/VPI-Bench/vpi-bench
+    license: dataset_terms_require_audit
+    source_revision: 801aa472c145c2f672aded3d4eef401265afbd0d
+    scale: 306_test_cases_across_Amazon_Booking_BBC_Messenger_Email
+    modalities: [benign_goal, rendered_web_page, visual_injection, browser_or_desktop_trace]
+    split_policy: evaluation_only; malicious_page_variants_attack_prompts_and_traces_never_training
+    runtime: Dockerized_computer_use_or_local_browser_with_resettable_web_platforms
+    webgpu_projection: text-only refusal_and_confirmation_policy_probe; visual attack content requires a vision-capable runner
+    metric: attempted_rate, attack_success_rate, attack_recognition, and safe_completion
+    notes: The paper reports 306 cases across five platforms and separates attempted from successful malicious actions. Email and Messenger delivery channels are especially relevant to productivity agents; no attack pages, credentials, or traces enter the WebGPU SFT bundle.
+
+  - id: agentcibench
+    family: computer
+    name: AgentCIBench contextual-integrity benchmark
+    source_url: https://github.com/UKPLab/arxiv2026-agentcibench
+    paper_url: https://arxiv.org/abs/2606.23189
+    data_access_url: https://huggingface.co/datasets/UKPLab/agentcibench
+    license: release_terms_require_audit
+    source_revision: 7b3fad424d0c5a450ac3bc3dc4050c38094c6dc6
+    scale: 28_seed_scenarios_plus_generated_mutations_and_50_visual_end_to_end_cases
+    modalities: [workspace_state, user_prompt, recipient, must_share, must_not_share, visible_agent_output]
+    split_policy: evaluation_only; generated_scenario_pool_and_openapps_tasks_never_training
+    runtime: BrowserGym_OpenApps_workspace_with_deterministic_matcher_and_LLM_judge
+    webgpu_projection: text-only contextual-integrity refusal, consent, and disclosure probe; native UI execution remains pending
+    metric: utility, raw_leakage, refusal, engagement_conditioned_leakage, and end_to_end_task_success
+    notes: Each scenario explicitly distinguishes information that must be shared from information that must not be shared. The release is a generation pipeline plus a curated pool rather than a fixed annotation-only dataset; freeze the release and judge configuration before scoring.

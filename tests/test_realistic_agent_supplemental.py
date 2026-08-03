@@ -10,7 +10,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     assert payload["kind"] == "localagent_realistic_agent_supplemental_catalog"
     entries = payload["entries"]
-    assert len(entries) == 22
+    assert len(entries) == 24
     assert {entry["id"] for entry in entries} == {
         "androidworld",
         "browsergym_miniwob",
@@ -34,6 +34,8 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         "groundcua",
         "ui_tars_action_contract",
         "toolace",
+        "vpi_bench",
+        "agentcibench",
     }
     for entry in entries:
         assert entry["source_url"].startswith(
@@ -101,3 +103,20 @@ def test_toolace_public_projection_is_parent_disjoint_and_not_native_claim() -> 
     assert "parent_disjoint" in entry["split_policy"]
     assert "not_native_environment_tasks" in entry["split_policy"]
     assert "external_tool_server" in entry["runtime"]
+
+
+def test_safety_sources_are_eval_only_and_not_webgpu_training_inputs() -> None:
+    payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
+    entries = {entry["id"]: entry for entry in payload["entries"]}
+    vpi = entries["vpi_bench"]
+    assert vpi["source_revision"] == "801aa472c145c2f672aded3d4eef401265afbd0d"
+    assert vpi["split_policy"].startswith("evaluation_only")
+    assert "never_training" in vpi["split_policy"]
+    assert "visual" in vpi["webgpu_projection"]
+    assert "attempted_rate" in vpi["metric"]
+    ci = entries["agentcibench"]
+    assert ci["source_revision"] == "7b3fad424d0c5a450ac3bc3dc4050c38094c6dc6"
+    assert ci["split_policy"].startswith("evaluation_only")
+    assert "never_training" in ci["split_policy"]
+    assert "must_not_share" in ci["modalities"]
+    assert "engagement_conditioned_leakage" in ci["metric"]

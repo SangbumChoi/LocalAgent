@@ -12,11 +12,18 @@ restricted) and has a canonical SHA-256 fingerprint recorded by the preflight co
 The fingerprint is generated from the canonical catalog by the preflight command below.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
-It adds twenty-two high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
+It now adds twenty-four high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
 trajectories, EnterpriseOps-Gym, MCPMark, ToolSandbox, AndroidWorld, BrowserGym, WebBench, and
 BU Bench V1, plus their mobile and desktop companion rows—with explicit license, split, runtime,
 and WebGPU-projection policies. These entries are catalog-only until an exact revision and
 acquisition receipt are frozen; they do not silently become training data.
+
+The newest safety additions are [VPI-Bench](https://github.com/cua-framework/agents), which
+measures attempted and successful visual prompt-injection actions across browser and computer-use
+platforms including Email, and [AgentCIBench](https://github.com/UKPLab/arxiv2026-agentcibench),
+which scores contextual-integrity disclosure over `must_share`/`must_not_share` information. Both
+are evaluation-only; their code revisions are pinned, while attack pages, scenario pools, judge
+prompts, and traces remain excluded from SFT and public WebGPU bundles.
 
 The latest source audit adds four deployment-relevant references. [KnowU-Bench](https://github.com/ZJU-REAL/KnowU-Bench)
 is an interactive, personalized, and proactive mobile benchmark (192 registered tasks, 23 apps,

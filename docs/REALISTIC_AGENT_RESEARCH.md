@@ -11,6 +11,8 @@ the repository has completed every benchmark.
 | Mobile UI | [AndroidWorld](https://github.com/google-research/android_world) runs resettable Android emulator tasks with accessibility/screenshot observations and durable task rewards. | Accessibility-tree/text protocol tests are useful for routing; an Android emulator, ADB, official task set, and reward logs are required for a native score. |
 | Personalized mobile UI | [iOSWorld](https://iosworld.io/) provides 133 tasks over 26 interconnected iOS apps with persistent seeded user identity and an optional MCP server. | Treat identity, cross-app state, and MCP-vs-GUI as separate axes; a WebGPU text projection cannot claim native iOS control or personalization. |
 | Mobile safety | [MobileSafetyBench](https://mobilesafetybench.github.io/) evaluates Android-device safety, harmful side effects, and indirect prompt injection in messaging/banking-style tasks. | Run a dedicated refusal/confirmation/safe-side-effect gate before enabling email, messaging, settings, or payment tools. |
+| Visual prompt-injection safety | [VPI-Bench](https://github.com/cua-framework/agents) reports 306 dynamic cases across Amazon, Booking, BBC, Messenger, and Email, separating attempted from successful malicious actions. | Keep attack pages and traces evaluation-only; a text-only WebGPU model can measure refusal/confirmation policy but cannot claim visual robustness without a vision-capable runner. |
+| Contextual-integrity safety | [AgentCIBench](https://github.com/UKPLab/arxiv2026-agentcibench) uses state/prompt/recipient/`must_share`/`must_not_share` scenarios and engagement-conditioned leakage. | Add disclosure restraint and consent metrics alongside task success; generated scenario pools and judge configuration must be release-pinned. |
 | Curated mobile control | [AndroidControl-Curated](https://github.com/batechworks/AndroidControl_Curated) purifies AndroidControl task ambiguity and reports a matched curated split. | Compare original and curated tasks with identical identities/seeds; do not mix the curated benchmark's evaluation rows into SFT. |
 | Dynamic mobile device control | [AndroidLab](https://github.com/MadeAgents/mobile-use/tree/main/benchmark/android_lab) is an emulator/ADB benchmark surfaced by MobileUse, with patched Clock/Settings tasks and a release-dependent AndroidLab submodule. | Freeze the submodule revision, task manifest, Docker/AVD image, and license before using it as a score; a text-only WebGPU projection cannot claim screenshot or emulator success. |
 | Personalized/proactive mobile | [KnowU-Bench](https://github.com/ZJU-REAL/KnowU-Bench) reports 192 registered tasks over 23 apps, with hidden profiles, exposed behavioral logs, and an online user simulator for clarification and consent. | Treat preference acquisition, intervention calibration, and consent as separate metrics; Docker/KVM and API-backed user simulation are required for a native result. |
@@ -674,6 +676,19 @@ write (`0` closed-loop completions).  No credentials or external side effects we
 result is retained as a public regression and publication-boundary check, not promoted to browser,
 email, Notion, MCP, or official benchmark evidence; updating the Space requires authenticated HF
 upload followed by public hash and behavior re-verification.
+
+### Current EnterpriseOps-Gym email retrieval (m225)
+
+The [`m225 receipt`](paper/results/raw/m225-enterpriseopsgym-current-checkpoint-email-retrieval-v1.json)
+evaluates the current 10.52M-parameter m194 warm dispatch-repair checkpoint on the pinned public
+EnterpriseOps-Gym email slice: 67 oracle rows paired with the same 67 `plus_15_tools` candidates
+used by m114.  Name-only retrieval reaches Hit@1/3/5 of `49.25%/85.07%/95.52%`, compared with
+`20.90%/59.70%/86.57%` for m114 (`+28.36/+25.37/+8.96` percentage points).  The repair froze
+the backbone (`0%` relative movement) and moved the dense selector by `148.87%`, identifying a
+head-only contract adaptation rather than evidence that the pretrained body is superior.
+Because verifiers, server configuration, and execution were removed, the result is useful for
+email-tool retrieval but cannot be promoted to EnterpriseOps-Gym, MCP, real-email, or WebGPU
+closed-loop success.
 
 ## Publication checklist
 
