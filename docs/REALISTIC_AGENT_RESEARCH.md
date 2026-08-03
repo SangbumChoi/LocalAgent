@@ -812,6 +812,22 @@ pretrained weights help the local reward signal but are not adopted for WebGPU d
 control is still a deterministic local simulation, not public benchmark or native environment
 evidence.
 
+### AppWorld native checkpoint probe (m241)
+
+The [`m241 receipt`](paper/results/raw/m241-appworld-current-checkpoint-native-probe-v1.json)
+adds the first resettable stateful-app runtime to this evidence chain.  An isolated AppWorld
+`0.2.0.dev0` installation was unpacked from the public runner's Git-LFS bundles, its data version
+`0.2.0` was downloaded, and the runner's own end-to-end verifier passed `1/1` task.  The current
+10.52M BPE checkpoint was then evaluated on six public train tasks spanning SimpleNote, phone
+messaging, and Venmo.  Every task reset and ran its ground-truth verifier, but native success was
+`0/6`: the model emitted no AppWorld API action (two prompts were misrouted to `write_clipboard`,
+four returned text), and no action was replayed.
+
+This is stronger than a local fixture because the state database and verifier are real AppWorld
+artifacts, but it is deliberately a zero-action interface baseline.  LocalAgent's compact tool
+syntax still needs a schema-aware AppWorld API translator before an end-to-end agent score is
+meaningful; m241 is not AppWorld-UL, email/SMS success, or a promotion signal.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
