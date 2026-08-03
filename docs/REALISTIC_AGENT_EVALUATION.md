@@ -2320,6 +2320,25 @@ low-rate transferred-body recommendation, but it remains a teacher-forced diagno
 official AgentNet, Mind2Web, AndroidControl, or MCPMark score, native Android/desktop/browser/MCP
 execution, screenshot grounding, or a real email/Notion side effect.
 
+### Current-child WebGPU browser smoke (m169)
+
+The [`m169 receipt`](paper/results/raw/m169-current-child-webgpu-browser-smoke-v1.json)
+exercises the m168 warm child after a fresh export through the static browser harness.  The
+bundle verifier finds every generated artifact, the manifest hashes match, and the fp32/fp16
+PyTorch-to-ONNX parity gates pass (fp32 logits max error `8.58e-6`; fp16 logits max error
+`5.42e-3`).  The action-only fp16 graph is `21.43 MB`; the model remains `10,524,544`
+parameters and the checkpoint is pinned by SHA-256.
+
+In the Codex in-app Browser, an explicit single-provider WebGPU session loads and completes
+eight one-step semantic DOM loops.  Schema validity is `8/8` and exact action/argument,
+state-transition, and closed-loop success are each `2/8` (`25%`).  Harness TTFA p50 is
+`8.4 ms` and closed-loop p50 is `33.3 ms`; `type_text` and `open_url` are the two successful
+cases.  This is a deployment and runtime smoke diagnostic only: the fixture uses text-only
+prompts, synthetic untrusted events, local semantic targets, no screenshots, no multi-step
+planning, and no external navigation.  It is not a BrowserGym/MiniWoB score, native
+Android/desktop/MCP execution, trusted browser control, or real email/Notion side effect.
+The bundle is not uploaded because Hugging Face authentication is still not configured.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the
