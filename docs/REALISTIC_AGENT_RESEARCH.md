@@ -756,6 +756,15 @@ structured email/Notion confirmation, read-only URL allowance, and injection blo
 interactive click.  This fixes policy observability; it is not a learned-quality or native task
 success result.
 
+### User-in-the-loop clarification boundary (m231)
+
+The [`m231 receipt`](paper/results/raw/m231-webgpu-user-in-the-loop-clarification-policy-v1.json)
+adds the missing AppWorld-UL interaction state to the static WebGPU path.  A structured
+`send_email` action with no `recipient` is now `clarification_required`; the same action with a
+recipient is `confirmation_required`; a complete `open_url` is `allowed`; and an injected Notion
+write is `blocked`.  The policy is schema-aware but remains a deterministic deployment guard, not
+learned capability or AppWorld-UL benchmark performance.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

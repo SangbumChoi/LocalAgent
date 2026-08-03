@@ -1787,6 +1787,7 @@ const DESTRUCTIVE_TOOLS = new Set([
   "purchase", "submit_form",
 ]);
 const SAFETY_POLICY_VERSION = "side_effect_confirmation_v1";
+const INTERACTION_POLICY_VERSION = "user_in_the_loop_v1";
 
 function safetyText(value) {
   return typeof value === "string" ? value : "";
@@ -1805,6 +1806,27 @@ function promptInjectionIndicators(text) {
     .filter(Boolean);
 }
 
+function actionToolSpec(actionName, options = {}) {
+  if (options.toolSpec && typeof options.toolSpec === "object") return options.toolSpec;
+  if (!Array.isArray(META?.tools)) return null;
+  return META.tools.find((tool) => tool?.name === actionName) || null;
+}
+
+function missingRequiredActionArguments(actionName, actionOrTool, options = {}) {
+  const hasActionArgs = actionOrTool && typeof actionOrTool === "object" &&
+    Object.prototype.hasOwnProperty.call(actionOrTool, "args");
+  const hasOptionArgs = Object.prototype.hasOwnProperty.call(options, "args");
+  if (!hasActionArgs && !hasOptionArgs) return [];
+  const spec = actionToolSpec(actionName, options);
+  const required = Array.isArray(spec?.schema?.required) ? spec.schema.required : [];
+  if (!required.length) return [];
+  const args = hasOptionArgs ? options.args : actionOrTool.args;
+  return required.filter((name) => {
+    const value = args && typeof args === "object" ? args[name] : null;
+    return value == null || (typeof value === "string" && !value.trim());
+  });
+}
+
 function actionSafetyPolicy(actionOrTool, request = "", options = {}) {
   const tool = typeof actionOrTool === "string"
     ? actionOrTool
@@ -1818,6 +1840,7 @@ function actionSafetyPolicy(actionOrTool, request = "", options = {}) {
   const indicators = promptInjectionIndicators(context);
   const sideEffect = SIDE_EFFECT_TOOLS.has(actionName) || INTERACTIVE_TOOLS.has(actionName);
   const destructive = DESTRUCTIVE_TOOLS.has(actionName);
+  const missingArguments = missingRequiredActionArguments(actionName, actionOrTool, options);
   if (indicators.length && sideEffect) {
     return {
       policy_version: SAFETY_POLICY_VERSION,
@@ -1826,6 +1849,19 @@ function actionSafetyPolicy(actionOrTool, request = "", options = {}) {
       requires_confirmation: false,
       tool: actionName,
       reason: "prompt_injection_or_secret_exfiltration_signal",
+      indicators,
+    };
+  }
+  if (missingArguments.length) {
+    return {
+      policy_version: SAFETY_POLICY_VERSION,
+      interaction_policy_version: INTERACTION_POLICY_VERSION,
+      status: "clarification_required",
+      severity: "medium",
+      requires_confirmation: false,
+      tool: actionName,
+      reason: "missing_required_action_arguments",
+      missing_arguments: missingArguments,
       indicators,
     };
   }
@@ -2796,6 +2832,8 @@ async function planRollout(query, maxSteps = 4) {
       if (resultText) args = { ...(args || {}), content: resultText };
     }
     const safety = actionSafetyPolicy(sel.name, query, {
+      args,
+      toolSpec: (META?.tools || []).find((tool) => tool?.name === sel.name),
       untrustedText: steps.at(-1)?.response || "",
     });
     const s3 = performance.now();
@@ -2862,6 +2900,8 @@ function renderCall(step, idx) {
     notice.className = `safety-notice ${step.safety.status}`;
     const label = step.safety.status === "blocked"
       ? "Blocked by safety policy"
+      : step.safety.status === "clarification_required"
+        ? "Clarification required before tool call"
       : step.safety.status === "confirmation_required"
         ? "Confirmation required before external side effect"
         : "Read-only action";
@@ -2890,8 +2930,10 @@ async function run() {
       res.appendChild(t);
     } else {
       const out = await callOnce(query);
-      out.safety = actionSafetyPolicy(out, query);
-      if (out.safety.status === "blocked") out.args = null;
+      out.safety = actionSafetyPolicy(out, query, { args: out.args });
+      if (out.safety.status === "blocked" || out.safety.status === "clarification_required") {
+        out.args = null;
+      }
       res.innerHTML = "";
       res.appendChild(renderCall(out));
       const t = document.createElement("div");

@@ -96,3 +96,26 @@ process.stdout.write(JSON.stringify(actionSafetyPolicy(
     assert payload["status"] == "confirmation_required"
     assert payload["requires_confirmation"] is True
     assert payload["tool"] == "send_email"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_webgpu_safety_policy_requires_clarification_for_missing_required_argument() -> None:
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { actionSafetyPolicy } = require(process.argv[1]);
+process.stdout.write(JSON.stringify(actionSafetyPolicy(
+  {tool: "send_email", args: {}},
+  "Send the report",
+  {toolSpec: {name: "send_email", schema: {required: ["recipient"]}}}
+)));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "clarification_required"
+    assert payload["interaction_policy_version"] == "user_in_the_loop_v1"
+    assert payload["missing_arguments"] == ["recipient"]
