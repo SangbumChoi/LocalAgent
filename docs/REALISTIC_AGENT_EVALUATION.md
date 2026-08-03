@@ -2761,6 +2761,29 @@ milestone verifiers, official split, and external services were not executed.  I
 not an official ToolSandbox score, an MCPMark score, or native WebGPU capability evidence, and it
 does not close the ToolSandbox publication blocker.
 
+### Public mobile/desktop continuation and warm-vs-random weight audit (m273)
+
+The [`m273 receipt`](paper/results/raw/m273-cross-surface-public-weight-transfer-v1.json) records
+a source-bound continuation over the public [AndroidControl](https://github.com/google-research/google-research/tree/master/android_control)
+mirror and the public [OpenCUA AgentNet](https://github.com/xlang-ai/OpenCUA) text projection.
+The deterministic bounded slice uses `512` training rows per source and `32` held-out rows per
+source, with the AndroidControl official train/test boundary preserved and AgentNet parent
+trajectories kept source-disjoint.
+
+Starting from the current tokenizer-compatible checkpoint, 16 SFT updates improve held-out
+teacher-forced token accuracy from `51.81%` to `55.44%` (`3.772` to `3.077` mean loss); AndroidControl
+rises `60.91%`→`65.44%`, and AgentNet rises `45.88%`→`48.92%`.  The matched random-backbone control
+reaches only `0.53%` held-out token accuracy after the same updates.  Warm shared-backbone movement
+is small (`0.11%` attention/mixer, `0.14%` FFN, `0.18%` embedding relative L2), while the random
+control moves by `77.88%`, `87.79%`, and `119.72%` respectively.  This supports adopting compatible
+pretrained weights with lower backbone learning rates, but it is not proof that transfer is
+optimal.
+
+The bounded four-action AgentNet control remains `0/1` successful trajectories for both warm and
+random children.  Screenshots were not used, and neither Android emulators nor desktop runtimes
+were launched; this is training/weight-transfer evidence, not an official AndroidControl,
+AgentNetBench, OSWorld, or native WebGPU score.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the

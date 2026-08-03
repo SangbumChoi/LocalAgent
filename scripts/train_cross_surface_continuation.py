@@ -118,7 +118,13 @@ def _evaluate_by_source(
     }
 
 
-def _load_labeled_groups(values: Iterable[tuple[str, Path]]) -> list[tuple[str, Path, list[Conversation]]]:
+def _load_labeled_groups(
+    values: Iterable[tuple[str, Path]],
+    *,
+    max_rows: int = 0,
+) -> list[tuple[str, Path, list[Conversation]]]:
+    if max_rows < 0:
+        raise ValueError("max_rows must be nonnegative")
     groups: list[tuple[str, Path, list[Conversation]]] = []
     labels: set[str] = set()
     for label, path in values:
@@ -126,6 +132,8 @@ def _load_labeled_groups(values: Iterable[tuple[str, Path]]) -> list[tuple[str, 
             raise ValueError(f"duplicate source label: {label!r}")
         labels.add(label)
         rows = _load_rows([path])
+        if max_rows:
+            rows = rows[:max_rows]
         groups.append((label, path, rows))
     if not groups:
         raise ValueError("at least one labeled source is required")
@@ -149,6 +157,18 @@ def main() -> int:
     parser.add_argument("--backbone-init", choices=("parent", "random"), default="parent")
     parser.add_argument("--random-backbone-seed", type=int, default=2028)
     parser.add_argument("--steps", type=int, default=32)
+    parser.add_argument(
+        "--max-train-rows",
+        type=int,
+        default=0,
+        help="deterministically cap rows per training source (0 keeps the full source)",
+    )
+    parser.add_argument(
+        "--max-eval-rows",
+        type=int,
+        default=0,
+        help="deterministically cap rows per evaluation source (0 keeps the full source)",
+    )
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1.0e-5)
     parser.add_argument("--max-seq-len", type=int, default=2048)
@@ -156,11 +176,19 @@ def main() -> int:
     args = parser.parse_args()
     if args.output.exists() or args.report.exists():
         raise SystemExit("refusing to overwrite continuation outputs")
-    if args.steps < 1 or args.batch_size < 1 or args.lr <= 0:
-        raise SystemExit("steps and batch-size must be positive; lr must be positive")
+    if (
+        args.steps < 1
+        or args.batch_size < 1
+        or args.lr <= 0
+        or args.max_train_rows < 0
+        or args.max_eval_rows < 0
+    ):
+        raise SystemExit(
+            "steps and batch-size must be positive; lr and row caps must be nonnegative/positive"
+        )
 
-    train_groups = _load_labeled_groups(args.train_data)
-    eval_groups = _load_labeled_groups(args.eval_data)
+    train_groups = _load_labeled_groups(args.train_data, max_rows=args.max_train_rows)
+    eval_groups = _load_labeled_groups(args.eval_data, max_rows=args.max_eval_rows)
     references = dict(args.source_reference)
     expected_labels = {label for label, _path, _rows in train_groups} | {
         label for label, _path, _rows in eval_groups
@@ -270,6 +298,8 @@ def main() -> int:
             "backbone_init": args.backbone_init,
             "random_backbone_seed": args.random_backbone_seed,
             "device": args.device,
+            "max_train_rows_per_source": args.max_train_rows,
+            "max_eval_rows_per_source": args.max_eval_rows,
         },
         "before": {"train": before_all, "eval": before_eval, "eval_by_source": before_by_source},
         "after": {"train": after_all, "eval": after_eval, "eval_by_source": after_by_source},

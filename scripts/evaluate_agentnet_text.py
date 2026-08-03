@@ -216,7 +216,10 @@ def evaluate(
     report_path: Path,
     device: str = "cpu",
     max_parents: int = 0,
+    max_rows: int = 0,
 ) -> dict[str, Any]:
+    if max_rows < 0:
+        raise ValueError("max_rows must be nonnegative")
     rows = _load_rows(eval_data)
     grouped: dict[str, list[Conversation]] = defaultdict(list)
     for row in rows:
@@ -228,6 +231,16 @@ def evaluate(
         if max_parents < 1:
             raise ValueError("max_parents must be positive")
         parent_items = parent_items[:max_parents]
+    if max_rows:
+        bounded_items: list[tuple[str, list[Conversation]]] = []
+        remaining = max_rows
+        for parent_id, parent_rows in parent_items:
+            if remaining <= 0:
+                break
+            selected = parent_rows[:remaining]
+            bounded_items.append((parent_id, selected))
+            remaining -= len(selected)
+        parent_items = bounded_items
 
     agent = Agent.from_checkpoint(checkpoint, _registry())
     prediction_records: list[dict[str, Any]] = []
@@ -279,6 +292,7 @@ def evaluate(
         "checkpoint": _identity(checkpoint),
         "projection": _identity(eval_data),
         "rows": {"projected_actions": len(rows), "parents": len(parent_items)},
+        "bounds": {"max_parents": max_parents, "max_rows": max_rows},
         "predictions": _identity(predictions_path),
         "ground_truth": _identity(ground_truth_path),
         "overall": aggregate["overall"],
@@ -304,6 +318,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--max-parents", type=int, default=0)
+    parser.add_argument("--max-rows", type=int, default=0)
     args = parser.parse_args()
     if args.predictions.exists() or args.report.exists():
         raise SystemExit("refusing to overwrite AgentNet evaluation outputs")
@@ -314,6 +329,7 @@ def main() -> int:
         report_path=args.report,
         device=args.device,
         max_parents=args.max_parents,
+        max_rows=args.max_rows,
     )
     print(json.dumps({"overall": report["overall"], "completeness": report["completeness"]}, sort_keys=True))
     return 0
