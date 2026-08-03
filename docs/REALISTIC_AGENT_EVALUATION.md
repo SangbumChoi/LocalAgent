@@ -116,6 +116,16 @@ the known 51-class width (50 standard tools plus abstention); unknown head width
 metadata-free.  The bundle is locally verified but still unpublished because Hugging Face
 authentication is absent.
 
+The static WebGPU bundle was then exercised in the Codex in-app browser with the explicit
+`?backend=webgpu` path.  The [`m165 receipt`](paper/results/raw/m165-webgpu-browser-smoke-v1.json)
+binds the fetched graph, tokenizer, heads, metadata, checkpoint, manifest, and parity hashes before
+the session is created.  The single-provider session was created successfully; the eight-case
+synthetic DOM smoke measured model p50 `10.25 ms`, closed-loop p50 `33.3 ms`, schema validity
+`87.5%`, and end-to-end DOM success `2/8` (`25%`).  This is a local deployment diagnostic only:
+it is not the current m164 child, an official BrowserGym/MiniWob score, visual grounding, trusted
+browser/OS control, or a public Hugging Face upload.  ORT Web does not expose per-node placement,
+so the receipt records placement and fallback as unknown.
+
 The first native checkpoint-in-loop browser probe is now recorded in the [`m29 receipt`](paper/results/raw/m29-browsergym-native-model-eval-v1.json).
 It executed the pinned BrowserGym/MiniWoB environment for all 240 episodes (60 task variants,
 four fixed seeds) with live accessibility-tree observations.  This is a real environment result,
