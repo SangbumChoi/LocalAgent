@@ -165,6 +165,15 @@ it is not the current m164 child, an official BrowserGym/MiniWob score, visual g
 browser/OS control, or a public Hugging Face upload.  ORT Web does not expose per-node placement,
 so the receipt records placement and fallback as unknown.
 
+The currently public legacy Space was separately checked as a black box in [`m224`](paper/results/raw/m224-public-space-black-box-realistic-prompts-v1.json).
+It is HTTP 200, running, and WebGPU-labelled, but its 10,986-byte `app.js` is an older byte-level
+artifact rather than the current 10,524,544-parameter BPE bundle.  URL opening routed to
+`open_url` (`1/1`), while `Email Dana the quarterly report` routed to `set_reminder` (`0/1`);
+Search→Notion emitted a single `notion_write` proxy without executing or verifying either step.
+No credentials or side effects were used.  This is a regression/publication-boundary receipt, not
+an official browser, email, Notion, or MCP score, and the current bundle still requires an
+authenticated Hugging Face upload and public re-fetch verification.
+
 The first native checkpoint-in-loop browser probe is now recorded in the [`m29 receipt`](paper/results/raw/m29-browsergym-native-model-eval-v1.json).
 It executed the pinned BrowserGym/MiniWoB environment for all 240 episodes (60 task variants,
 four fixed seeds) with live accessibility-tree observations.  This is a real environment result,

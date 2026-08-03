@@ -660,6 +660,21 @@ The warm child is therefore not exported or adopted.  The remaining blocker is e
 history plus argument/action-head learning under the simulator's milestone verifier, not another
 catalog-only probe.
 
+### Public Space black-box regression (m224)
+
+The [`m224 receipt`](paper/results/raw/m224-public-space-black-box-realistic-prompts-v1.json)
+records a fresh in-app-browser inspection of the public
+[`danelcsb/localagent-webgpu`](https://huggingface.co/spaces/danelcsb/localagent-webgpu) Space.
+The page is live (`HTTP 200`, `Running`, `WEBGPU`) but serves an older 10,986-byte `app.js`; a
+manifest probe returns `Entry not found`, so this is not the current 10.52M BPE workspace bundle.
+The explicit URL prompt selects `open_url` (`1/1`, 47 ms).  The realistic email prompt selects
+`set_reminder` instead of `send_email`/`email_send` (`0/1`, 37 ms), and the compound Search→Notion
+prompt emits one `notion_write` proxy without a verified search result, state transition, or final
+write (`0` closed-loop completions).  No credentials or external side effects were used.  The
+result is retained as a public regression and publication-boundary check, not promoted to browser,
+email, Notion, MCP, or official benchmark evidence; updating the Space requires authenticated HF
+upload followed by public hash and behavior re-verification.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
