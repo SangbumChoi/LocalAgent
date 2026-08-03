@@ -2630,3 +2630,35 @@ Both arms remain at `0/2` exact sequences.  Warm relative movement is `0.46%` em
 by roughly `79%–123%` per group.  This strengthens the weight-adoption recommendation—reuse the
 verified body with a low rate and isolate service/action adapters—but is still not native MCPMark,
 Notion, email, browser, or external-account success.
+
+### Current browser-context child WebGPU export (m261)
+
+The [`m261 receipt`](paper/results/raw/m261-webgpu-export-current-browser-context-v1.json)
+exports the same checkpoint into four ONNX graphs (`model`, `model.fp16`, `action_model`, and
+`action_model.fp16`) plus tokenizer, heads, dispatch metadata, and a schema-3 bundle manifest.
+All four graphs pass the exporter’s hard CPU parity gate: fp32 logits max absolute error is
+`7.15e-6`, fp16 logits max absolute error is `6.05e-3`, and fp16 logits argmax agreement is
+`100%`; the action-only hidden graph also passes (`4.35e-6` fp32 / `4.59e-3` fp16).
+
+This is the exact current-checkpoint WebGPU artifact identity, not a performance or quality claim.
+The receipt keeps `native_webgpu_provider_verified` and `public_space_uploaded` false: no browser
+hardware session, throughput measurement, public Space revision, or external email/Notion/browser
+side effect has been attached to this export.  The older checked-in static bundle and public
+legacy Space manifest must not be conflated with this current browser-context child.
+
+### Current browser-context child Hugging Face-format export (m260)
+
+The [`m260 receipt`](paper/results/raw/m260-hf-local-export-current-browser-context-v1.json)
+binds a fresh export of `runs/sft-webgpu-browser-context-adapter-20260802/latest.pt` (SHA-256
+`bc1aca…`, `10,524,544` parameters).  The bundle contains `model.safetensors` (`42,101,904`
+bytes), a BPE tokenizer (`1,134,224` bytes), `config.json`, the model card, and serialized agent
+heads for the full `63`-tool catalog.  Reconstructing `LocalAgentLM` from `config.json` and loading
+the safetensors succeeds with `40` tensors and no missing or unexpected keys.  This verifies the
+local interchange bundle, not its behavior.
+
+`hf auth whoami` reports no login, so `published`, `uploaded`, and `hub_url` remain false/null.
+The receipt deliberately records that the checkpoint's pointer-argument metadata is empty and
+that no Hub URL, hosted inference endpoint, native benchmark score, or external side effect is
+claimed.  A maintainer must authenticate and choose a repository namespace before this exact
+bundle can be uploaded; after upload, the Hub files and revision still need independent hash
+verification before calling the model public.
