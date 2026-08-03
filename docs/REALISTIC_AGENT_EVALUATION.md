@@ -2646,6 +2646,35 @@ hardware session, throughput measurement, public Space revision, or external ema
 side effect has been attached to this export.  The older checked-in static bundle and public
 legacy Space manifest must not be conflated with this current browser-context child.
 
+### Current browser-context child MobileGym official evaluation (m262)
+
+The [`m262 receipt`](paper/results/raw/m262-mobilegym-native-current-browser-context-v1.json)
+is the first current-checkpoint run over the complete pinned MobileGym public test split.  The
+unchanged simulator, task lifecycle, native action handlers, and upstream state-diff judge execute
+all `256/256` test IDs with zero environment or judge errors.  The source revision, train/test
+split hashes, task-ID hash, checkpoint SHA-256 (`bc1aca…`), and a SHA-256 of the full task-level
+receipt are recorded; only aggregate/task-result hashes are committed.
+
+At the disclosed two-step cap, the current text/DOM-projection policy passes `1/256` (`0.39%`).
+The only non-zero suite is `crossapp_life` (`1/29`); account, notes, browser-like app flows, and
+the remaining suites are `0`.  The dominant trace pattern is `mobile_press_enter` (`110` calls)
+and `mobile_input_text` (`146` calls), showing that the current policy collapses toward generic
+input/submit actions instead of state-specific navigation.  This is valid native MobileGym
+evidence, but it is not visual screenshot grounding, Android-emulator performance, or evidence
+that email/Notion/browser actions are ready for deployment.
+
+### Workshop gate after current MobileGym receipt (m263)
+
+The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the
+current m262 native result with the current m261 export, the existing transfer/no-transfer
+ablation, the public artifact manifest, and the 40-row realistic-evaluation catalog.  It now
+accepts MobileGym as a current official native receipt, and the catalog, weight, and artifact
+checks pass as well.  The gate remains `ready: false` with eleven explicit blockers: AndroidWorld,
+MobileSafetyBench, iOSWorld, BrowserGym/MiniWob, OSWorld, OSWorld-V2, AgentNet, ToolSandbox,
+MCPMark, EnterpriseOps-Gym, and a native WebGPU hardware capability/latency receipt for the
+current checkpoint.  This is the current publication decision; no synthetic or older-checkpoint
+result is silently substituted for those requirements.
+
 ### Current browser-context child Hugging Face-format export (m260)
 
 The [`m260 receipt`](paper/results/raw/m260-hf-local-export-current-browser-context-v1.json)
