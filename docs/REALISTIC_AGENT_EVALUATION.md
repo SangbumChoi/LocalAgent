@@ -12,11 +12,21 @@ restricted) and has a canonical SHA-256 fingerprint recorded by the preflight co
 The fingerprint is generated from the canonical catalog by the preflight command below.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
-It adds seventeen high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
+It adds twenty-one high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
 trajectories, EnterpriseOps-Gym, MCPMark, ToolSandbox, AndroidWorld, BrowserGym, WebBench, and
 BU Bench V1, plus their mobile and desktop companion rows—with explicit license, split, runtime,
 and WebGPU-projection policies. These entries are catalog-only until an exact revision and
 acquisition receipt are frozen; they do not silently become training data.
+
+The latest source audit adds four deployment-relevant references. [KnowU-Bench](https://github.com/ZJU-REAL/KnowU-Bench)
+is an interactive, personalized, and proactive mobile benchmark (192 registered tasks, 23 apps,
+hidden profiles, exposed behavioral logs, and an online user simulator). [AppAgent](https://github.com/TencentQQGYLab/AppAgent)
+provides a smartphone-agent evaluation release built around tap/swipe actions and Android
+emulators. [GroundCUA](https://github.com/ServiceNow/GroundCUA) contributes dense desktop element
+grounding annotations (screenshots and boxes), while [UI-TARS](https://github.com/bytedance/UI-TARS)
+defines a useful computer/mobile/grounding action contract. All four are evaluation or protocol
+references here: their screenshot assets, hidden profiles, app packages, and benchmark task text
+are not admitted to the text-only WebGPU SFT bundle.
 
 The browser audit now includes [WebBench](https://github.com/Halluminate/WebBench), which covers
 realistic live-site READ/CREATE/UPDATE/DELETE/file workflows, and [BU Bench V1](https://github.com/browser-use/benchmark),

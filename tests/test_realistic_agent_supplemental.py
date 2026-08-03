@@ -10,7 +10,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     assert payload["kind"] == "localagent_realistic_agent_supplemental_catalog"
     entries = payload["entries"]
-    assert len(entries) == 17
+    assert len(entries) == 21
     assert {entry["id"] for entry in entries} == {
         "androidworld",
         "browsergym_miniwob",
@@ -29,6 +29,10 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         "cua_gym",
         "osworld_verified_trajectories",
         "androidlab",
+        "knowu_bench",
+        "appagent_benchmark",
+        "groundcua",
+        "ui_tars_action_contract",
     }
     for entry in entries:
         assert entry["source_url"].startswith(
@@ -74,3 +78,15 @@ def test_cua_gym_and_osworld_trajectory_sources_are_not_silently_trainable() -> 
     assert osworld["license"] == "MIT"
     assert osworld["source_revision"] == "8413d635f654c1f95a17f8813f52f2b1b450c566"
     assert osworld["split_policy"].startswith("evaluation_only")
+
+
+def test_new_mobile_and_grounding_sources_fail_closed_until_released() -> None:
+    payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
+    entries = {entry["id"]: entry for entry in payload["entries"]}
+    assert entries["knowu_bench"]["source_revision"] == "pin-before-use"
+    assert "hidden_profiles" in entries["knowu_bench"]["split_policy"]
+    assert entries["appagent_benchmark"]["source_revision"] == "pin-before-use"
+    assert entries["groundcua"]["source_revision"] == "pin-before-use"
+    assert "dataset_terms" in entries["groundcua"]["split_policy"]
+    assert "screenshots" in entries["groundcua"]["notes"]
+    assert entries["ui_tars_action_contract"]["source_revision"] == "pin-before-use"
