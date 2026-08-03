@@ -50,12 +50,32 @@ class PointerHead(nn.Module):
         return s, e
 
     @torch.no_grad()
-    def predict_span(self, feats_row: torch.Tensor, arg: str) -> tuple[int, int]:
-        """feats_row (T,d) for a single prompt -> (start, end) byte indices, end >= start."""
+    def predict_span(
+        self,
+        feats_row: torch.Tensor,
+        arg: str,
+        span_bounds: tuple[int, int] | None = None,
+    ) -> tuple[int, int]:
+        """Return a span, optionally restricted to an allowed ``[start, end]`` interval.
+
+        The bounds keep a pointer head conditioned on a serialized tool catalog from copying
+        schema prose or tool names instead of values in the user/tool-history grounding text.
+        The default remains unrestricted for legacy callers and export parity.
+        """
         i = torch.tensor(self.arg_idx[arg], device=feats_row.device)
         q = self.arg_emb(i)
         s = feats_row @ self.start(q)
         e = feats_row @ self.end(q)
+        if span_bounds is not None:
+            lo, hi = span_bounds
+            if not (0 <= lo <= hi < feats_row.shape[0]):
+                raise ValueError("pointer span bounds must be within the feature sequence")
+            s = s.clone()
+            e = e.clone()
+            s[:lo] = -1e9
+            s[hi + 1 :] = -1e9
+            e[:lo] = -1e9
+            e[hi + 1 :] = -1e9
         start = int(s.argmax())
         e = e.clone()
         e[:start] = -1e9                                # end must not precede start

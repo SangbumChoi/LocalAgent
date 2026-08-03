@@ -174,3 +174,24 @@ def test_hybrid_grounding_prompt_does_not_copy_serialized_catalog_text():
     )
     assert "alice@example.com" in output
     assert "catalog_only_noise" not in output
+
+
+def test_pointer_span_bounds_exclude_serialized_catalog_prefix():
+    import torch
+
+    from localagent.agent.constrained import _grounding_span
+    from localagent.agent.pointer_head import PointerHead
+    from localagent.model.tokenizer import ASSISTANT, load_tokenizer
+
+    tok = load_tokenizer("byte")
+    catalog = "<|tool_catalog|>schema prose alice@example.com</|tool_catalog|>"
+    grounding = "<|user|>Send mail to bob@example.com"
+    ids = tok.encode(catalog + grounding + ASSISTANT)
+    bounds = _grounding_span(ids, tok, grounding)
+    assert bounds is not None
+    lo, hi = bounds
+    assert tok.decode(ids[lo : hi + 1]) == grounding
+
+    pointer = PointerHead(8, args=["recipient"])
+    start, end = pointer.predict_span(torch.randn(len(ids), 8), "recipient", span_bounds=bounds)
+    assert lo <= start <= end <= hi

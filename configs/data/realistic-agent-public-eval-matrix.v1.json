@@ -325,7 +325,7 @@
       "primary_metric": "Held-out teacher-forced and free-run tool/argument/sequence diagnostics plus history-turn and prose-omission audits; official ToolACE/BFCL scores remain external.",
       "split_rule": "Use only the pinned source bytes; the current split is source-record and normalized-prompt disjoint and is not an upstream official split.",
       "local_status": "measured",
-      "notes": "m171 first-action accepted 8,993/11,300; m172 full history and m173 action-history accepted 8,992/11,300, with m173 retaining 1,357 tool responses and omitting 1,806 assistant prose turns."
+      "notes": "m171 first-action accepted 8,993/11,300; m172 full history and m173 action-history accepted 8,992/11,300, with m173 retaining 1,357 tool responses and omitting 1,806 assistant prose turns. m176 catalog-aware selector and m177 dynamic-pointer probes are measured with matched random controls but are not adopted when warm transfer loses the control or fails to improve free-run exactness."
     },
     {
       "id": "appworld",

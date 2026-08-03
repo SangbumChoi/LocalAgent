@@ -25,7 +25,7 @@ import torch
 import torch.nn.functional as F
 
 from localagent.data.schema import ToolSpec
-from localagent.model.tokenizer import TOOL_CALL_CLOSE, TOOL_CALL_OPEN
+from localagent.model.tokenizer import ASSISTANT, TOOL_CALL_CLOSE, TOOL_CALL_OPEN
 
 MAX_COMBOS = 60
 # Generic English prepositions that introduce a slot value ("weather IN Paris", "search FOR X",
@@ -268,8 +268,9 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
     elif fmt == "url":
         opts = _url(prompt)
     elif ptr is not None and name in ptr[0].arg_idx:        # learned pointer/copy span
-        ph, feats_row, framed_ids, tok = ptr
-        s, e = ph.predict_span(feats_row, name)
+        ph, feats_row, framed_ids, tok = ptr[:4]
+        span_bounds = ptr[4] if len(ptr) > 4 else None
+        s, e = ph.predict_span(feats_row, name, span_bounds=span_bounds)
         opts = [tok.decode(framed_ids[s:e + 1])]
     elif schema.get("type") in ("integer", "number"):
         # cast to typed numbers so the canonical body matches the int/float target (not "5").
@@ -388,6 +389,24 @@ def _ctx_feats(model, tok, ctx: str, device):
     return feats[0], ids
 
 
+def _grounding_span(ids: list[int], tok, grounding: str) -> tuple[int, int] | None:
+    """Locate the grounding suffix inside a catalog-framed context for pointer masking."""
+    grounding_ids = tok.encode(grounding)
+    if not grounding_ids:
+        return None
+    assistant_ids = tok.encode(ASSISTANT)
+    suffix_end = len(ids) - len(assistant_ids)
+    suffix_start = suffix_end - len(grounding_ids)
+    if suffix_start >= 0 and ids[suffix_start:suffix_end] == grounding_ids:
+        return suffix_start, suffix_end - 1
+    # Boundary-aware tokenizers can differ at concatenation points; use the last occurrence as a
+    # conservative fallback, which still avoids the catalog prefix in normal prompts.
+    for start in range(len(ids) - len(grounding_ids), -1, -1):
+        if ids[start : start + len(grounding_ids)] == grounding_ids:
+            return start, start + len(grounding_ids) - 1
+    return None
+
+
 def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", *,
                   retriever=None, route_head=None, ptr_head=None, selector=None, top_m=1, k=8,
                   framed=False, blocked_candidates: set[str] | None = None,
@@ -445,7 +464,8 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
     if ptr_head is not None:
         if feats is None:
             feats, ids = _ctx_feats(model, tok, ctx, device)
-        ptr = (ptr_head, feats, ids, tok)
+        bounds = _grounding_span(ids, tok, grounding) if grounding_prompt is not None else None
+        ptr = (ptr_head, feats, ids, tok, bounds) if bounds is not None else (ptr_head, feats, ids, tok)
     # 3. rank every candidate's grounded body; _best picks the tool AND args jointly
     bodies = []
     for t in use:

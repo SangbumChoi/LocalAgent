@@ -2409,6 +2409,40 @@ This is the required warning against promoting teacher-forced `49.99%` action-to
 autonomous capability: selector/routing and grounded argument behavior still require substantial
 work before email, Notion, browser, or MCP execution can be claimed.
 
+### Current-child ToolACE catalog-aware selector transfer (m176)
+
+The [`m176 selector receipt`](paper/results/raw/m176-current-child-toolace-action-history-selector-transfer-v1.json)
+trains the dense two-tower selector on the exact catalog-plus-action-history context used by the
+WebGPU path.  It evaluates `113` held-out actions from the same source-disjoint `256/64` ToolACE
+projection, with `4.52` candidates per action on average.  The inherited selector is `21.24%`
+top-1 and `73.45%` top-3; warm selector retraining reaches `29.20%` top-1 and `76.11%` top-3,
+but the matched random-backbone selector reaches `32.74%` top-1 and `76.11%` top-3.  The warm
+selector moves substantially (`124.05%` query tower and `204.11%` tool tower), so movement alone
+is not evidence of useful transfer.
+
+The paired [`m176 free-run receipt`](paper/results/raw/m176-current-child-toolace-action-history-selector-free-run-v1.json)
+improves tool-name exactness from `10.0%` to `16.67%` and whole-episode exactness from `0%` to
+`6.25%`, but full action exactness remains `3.33%` and schema-validity falls to `53.33%`.  Because
+the warm selector does not beat the matched random control on candidate ranking, it is not adopted
+as representation evidence; the free-run increase is retained as a bounded dispatch diagnostic,
+not an official ToolACE/BFCL result or native browser/email/Notion/MCP success.
+
+### Current-child ToolACE dynamic pointer transfer (m177)
+
+The [`m177 pointer receipt`](paper/results/raw/m177-current-child-toolace-action-history-pointer-transfer-v1.json)
+expands the pointer vocabulary to `96` argument names observed in the training projection and
+trains only on `182` train / `63` held-out string spans that occur verbatim in the catalog/history
+context.  Warm decoded-value exactness is `9.68%` on the covered held-out spans, above the inherited
+`0%` but below the matched random-backbone `19.35%`; covered-span rate is only `49.21%`, so this is
+not a general argument solution.
+
+The paired [`m177 free-run receipt`](paper/results/raw/m177-current-child-toolace-action-history-pointer-free-run-v1.json)
+remains at `3.33%` full action exactness and `3.33%` argument exactness (`13.33%` tool-name exact).
+During this probe the pointer path was also hardened so a serialized catalog cannot be copied as an
+argument candidate; the allowed pointer interval is now the grounding suffix, while tool-result
+history remains available for stateful copying.  The warm pointer is not adopted: it loses to the
+matched random control on direct span transfer and does not improve the free-run score.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the

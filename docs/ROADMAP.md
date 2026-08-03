@@ -63,6 +63,8 @@ Stubs reference these phase numbers in their `TODO(phase-N)` markers.
 - [x] ToolACE-format importer: byte-pinned Apache-2.0 snapshot, strict first-action and opt-in
       multi-turn/action-history projections, explicit prose-omission accounting,
       prompt/parent-disjoint held-out splits, and matched warm/random transfer receipts.
+- [x] ToolACE WebGPU-shaped dispatch probes: catalog-aware selector and dynamic pointer transfer
+      arms, matched random controls, free-run replay, and catalog-bound pointer grounding.
 - Exit: a few-thousand-sample rule-audited agent dataset on disk, with executed-environment
   verification required before any stronger claim.
 
