@@ -356,6 +356,31 @@ are held out.  Warm routing reaches 99.61% versus 99.42% for random, but warm se
 not adopted and no export is requested.  This is evidence for measuring head transfer separately
 from backbone reuse, not evidence of native browser, mobile, MCP, visual, or real-account control.
 
+### Unguarded m194 WebGPU comparison (m195)
+
+The [`m195 receipt`](paper/results/raw/m195-current-m194-webgpu-browser-unguarded-v1.json) exports
+the m194 warm head with hard PyTorch↔ONNX parity and runs the exact prompt set used by m193 through
+the unguarded comparison shell.  After explicit catalog aliases (`notion_write`→`notion_create_page`
+and `send_email`→`email_send`), tool-family routing rises from the m180 parent's `1/9` to `5/9`.
+Strict action exactness stays at `1/9`, however: URL opening is correct, while search, click, email,
+Notion, and calendar arguments remain incomplete or contain tokenizer markers.  The search→Notion
+planner emits the right two tool families but still fails strict arguments, and the file/test/commit
+planner abstains (`0/2` complete trajectories).  This isolates the next required work: argument
+copy/grounding and state-conditioned planning, not another route-head-only update.  The temporary
+export is therefore not promoted or published.
+
+### Public DOM grounding control (m196)
+
+The [`m196 receipt`](paper/results/raw/m196-m194-grounded-mind2web-vocab-fix-v1.json) also fixes a
+pipeline bug exposed by current checkpoints: m194 carries a 23-row stateful pointer vocabulary,
+while the older Mind2Web trainer assumed 17 legacy rows.  The migration now copies embeddings by
+declared argument name and appends `target_id`/`value`, yielding a 25-row compatible head.  A
+32-step continuation over 219 public train decisions and 63 disjoint eval decisions still gives
+`0/63` exact pointer spans before and after.  The body moves only 0.274%/0.422%/0.507% in
+embedding/mixer/FFN groups, while pointer and tool heads move more.  The result confirms that
+argument grounding needs aligned span supervision and an explicit DOM/action contract; more
+route-head training will not solve it.  The child is not exported or adopted.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

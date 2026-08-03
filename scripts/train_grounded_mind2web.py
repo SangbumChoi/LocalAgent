@@ -100,14 +100,52 @@ def _head_samples(rows: list[Conversation]) -> list[Sample]:
     return samples
 
 
-def _warm_pointer(parent: dict[str, Any], d_model: int) -> dict[str, torch.Tensor]:
-    legacy = PointerHead(d_model)
-    legacy.load_state_dict(parent["ptr_head"])
-    browser = PointerHead(d_model, args=BROWSER_PTR_ARGS)
-    state = browser.state_dict()
-    state["arg_emb.weight"][: len(PTR_ARGS)] = legacy.state_dict()["arg_emb.weight"]
-    browser.load_state_dict(state)
-    return browser.state_dict()
+def _pointer_args(parent: dict[str, Any]) -> list[str]:
+    """Return a parent-compatible vocabulary with the browser grounding rows appended."""
+
+    parent_state = parent["ptr_head"]
+    rows = int(parent_state["arg_emb.weight"].shape[0])
+    declared = parent.get("ptr_args")
+    if isinstance(declared, list) and len(declared) == rows:
+        source_args = [str(name) for name in declared]
+    elif rows == len(PTR_ARGS):
+        source_args = list(PTR_ARGS)
+    elif rows == len(BROWSER_PTR_ARGS):
+        source_args = list(BROWSER_PTR_ARGS)
+    else:
+        raise ValueError(f"cannot infer parent pointer vocabulary for {rows} rows")
+    result = list(source_args)
+    for name in BROWSER_PTR_ARGS:
+        if name not in result:
+            result.append(name)
+    return result
+
+
+def _warm_pointer(
+    parent: dict[str, Any], d_model: int, pointer_args: list[str]
+) -> dict[str, torch.Tensor]:
+    """Migrate any compatible parent pointer vocabulary by argument name."""
+
+    parent_state = parent["ptr_head"]
+    rows = int(parent_state["arg_emb.weight"].shape[0])
+    declared = parent.get("ptr_args")
+    if isinstance(declared, list) and len(declared) == rows:
+        source_args = [str(name) for name in declared]
+    elif rows == len(PTR_ARGS):
+        source_args = list(PTR_ARGS)
+    elif rows == len(BROWSER_PTR_ARGS):
+        source_args = list(BROWSER_PTR_ARGS)
+    else:
+        raise ValueError(f"cannot infer parent pointer vocabulary for {rows} rows")
+    target = PointerHead(d_model, args=pointer_args)
+    target_state = target.state_dict()
+    target_state["start.weight"] = parent_state["start.weight"]
+    target_state["end.weight"] = parent_state["end.weight"]
+    for source_index, name in enumerate(source_args):
+        if name in target.arg_idx:
+            target_state["arg_emb.weight"][target.arg_idx[name]] = parent_state["arg_emb.weight"][source_index]
+    target.load_state_dict(target_state)
+    return target.state_dict()
 
 
 def _pointer_metrics(
@@ -172,10 +210,10 @@ def main() -> int:
     tokenizer = load_tokenizer(tokenizer_meta.get("kind", "byte"), tokenizer_meta.get("path"))
     train_samples = _head_samples(train_rows)
     eval_samples = _head_samples(eval_rows)
-    # The warm pointer vocabulary is not identical to the legacy parent vocabulary.  Copy the
-    # compatible rows before measuring the baseline, exactly as the SFT initialization does below.
-    warm_ptr = PointerHead(cfg.d_model, args=BROWSER_PTR_ARGS)
-    warm_ptr.load_state_dict(_warm_pointer(parent, cfg.d_model))
+    pointer_args = _pointer_args(parent)
+    # Preserve stateful/productivity rows from current parents and add browser target/value rows.
+    warm_ptr = PointerHead(cfg.d_model, args=pointer_args)
+    warm_ptr.load_state_dict(_warm_pointer(parent, cfg.d_model, pointer_args))
     eval_pointer_before = _pointer_metrics(model, warm_ptr, tokenizer, eval_samples)
     _, tool_head, ptr_head, metrics = sft(
         model,
@@ -189,9 +227,9 @@ def main() -> int:
         device=args.device,
         max_seq_len=min(1024, cfg.max_seq_len),
         joint_tool_head=True,
-        ptr_args=BROWSER_PTR_ARGS,
+        ptr_args=pointer_args,
         init_tool_head=parent.get("tool_head"),
-        init_ptr_head=_warm_pointer(parent, cfg.d_model),
+        init_ptr_head=_warm_pointer(parent, cfg.d_model, pointer_args),
         ptr_weight=1.0,
         log=print,
         return_metrics=True,
@@ -203,7 +241,7 @@ def main() -> int:
         "state_dict": model.state_dict(),
         "tool_head": tool_head.state_dict(),
         "ptr_head": ptr_head.state_dict(),
-        "ptr_args": list(BROWSER_PTR_ARGS),
+        "ptr_args": pointer_args,
         "route_head": parent.get("route_head"),
         "dense_selector": parent.get("dense_selector"),
         "selector_proj": parent.get("selector_proj"),
@@ -226,7 +264,7 @@ def main() -> int:
         "eval_inputs": [_identity(path) for path in args.eval],
         "rows": {"train_conversations": len(train_rows), "eval_conversations": len(eval_rows), "train_decisions": len(train_samples), "eval_decisions": len(eval_samples)},
         "hyperparameters": {"steps": args.steps, "batch_size": args.batch_size, "learning_rate": args.lr, "device": args.device},
-        "pointer_args": list(BROWSER_PTR_ARGS),
+        "pointer_args": pointer_args,
         "before": eval_pointer_before,
         "after": after,
         "claim_boundary": "Public Mind2Web train-record-disjoint DOM-enriched continuation; no official Mind2Web test score, emulator/browser task success, or external-account claim.",
