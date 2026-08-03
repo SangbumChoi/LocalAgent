@@ -117,6 +117,20 @@ async function manifestIdentity() {
   };
 }
 
+function checkpointIdentity() {
+  const manifest = BUNDLE_MANIFEST || {};
+  return {
+    source: "bundle-manifest.json",
+    sha256: manifest.checkpoint_sha256 || null,
+    stage: manifest.checkpoint_stage || null,
+    step: Number.isInteger(manifest.checkpoint_step) ? manifest.checkpoint_step : null,
+    config_name: manifest.config_name || null,
+    parameters: Number.isInteger(manifest.model_parameters)
+      ? manifest.model_parameters
+      : (Number.isInteger(META?.model_parameters) ? META.model_parameters : null),
+  };
+}
+
 async function runDispatchProbe(query) {
   const measured = [];
   let last = null;
@@ -215,11 +229,7 @@ async function runCapabilityReceipt() {
       user_agent: navigator.userAgent,
       elapsed_ms: performance.now() - started,
     },
-    checkpoint: {
-      source: "runs/sft-webgpu-proxy-pilot-hybrid-seed2027/latest.pt",
-      parameters: 10524544,
-      sha256: "79387105de75d332413262e8d8ddb847b6cc13bc03f5e4df3c81663d9897aef1",
-    },
+    checkpoint: checkpointIdentity(),
     claim_boundary: "Native browser WebGPU adapter and action-graph dispatch receipt. The calls are local predictions only: no real email, browser navigation, or Notion account was touched; closed_loop_success is therefore zero.",
   };
   return payload;

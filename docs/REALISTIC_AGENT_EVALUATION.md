@@ -2677,6 +2677,34 @@ capability/latency.  The BrowserGym receipt reports `5/240` success (`2.08%`) fo
 checkpoint; it is still text/accessibility-tree evidence, not visual grounding or real-account
 email/Notion control.
 
+### Current browser-context child native WebGPU capability (m265)
+
+The [`m265 receipt`](paper/results/raw/m265-webgpu-native-current-browser-context-v1.json)
+closes the current-checkpoint hardware-runtime evidence gap.  A real Chromium page was launched
+with an explicit `webgpu` provider request and no WASM retry; `navigator.gpu.requestAdapter()`
+reported `vendor=apple; architecture=metal-3`, and the action graph was the manifest-bound
+`bc1aca…` checkpoint export (`action_model.fp16.onnx`, SHA-256 `8856dca…`).  The three bounded
+email, URL, and Notion cases each produced a schema-valid exact action on all `30/30` measured
+repetitions after three warmups.
+
+The p50 end-to-end dispatch latency is `7.4 ms`, the action-input throughput estimate is about
+`1,391 tokens/s`, and the conservative graph-plus-host-tensor estimate is `20.46 MB`.  This is
+native WebGPU capability/performance evidence only: the two productivity routes are explicit
+intent guards, the calls are local predictions, no email/browser/Notion account was touched, and
+`closed_loop_success` is `0`.  It must not be presented as learned benchmark accuracy or a
+cross-device throughput guarantee.
+
+### Workshop gate after current native WebGPU receipt (m266)
+
+The [`m266 gate`](paper/results/raw/m266-workshop-gate-current-mobile-browser-webgpu-v1.json)
+replaces the m261 export placeholder with the manifest-bound m265 native Chromium receipt.  The
+gate now passes `webgpu:native_capability_and_latency` together with the current MobileGym and
+BrowserGym/MiniWoB receipts, catalog, transfer/no-transfer ablation, and public-artifact manifest.
+`ready` remains `false` with nine independent native requirements blocked: AndroidWorld,
+MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and
+EnterpriseOps-Gym.  These require their real environments, official splits, and task rewards;
+the local WebGPU capability receipt cannot substitute for them.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the
