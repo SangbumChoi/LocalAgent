@@ -519,6 +519,22 @@ do browser and recovery completion.  This is a useful cross-surface regression s
 backbone preserves more valid transitions—but it is deliberately not presented as real email,
 Notion, MCP, browser, or WebGPU control.
 
+### AgentNet continuation to MCPMark service-routing bridge (m223)
+
+The [`m223 receipt`](paper/results/raw/m223-agentnet-continuation-mcpmark-routing-bridge-v1.json)
+reruns the current m221 warm child and matched random control on the pinned public
+[MCPMark](https://github.com/eval-sys/mcpmark) standard (169 rows) and easy (70 rows) task-description
+manifests.  This is the closest available public proxy for the requested Notion, filesystem,
+GitHub, Postgres, and browser tool families while the native MCP services are unavailable.
+
+Warm routing reaches `19.53%` on standard and `22.86%` on easy, versus `22.49%` and `18.57%`
+for random.  The warm standard breakdown is informative rather than strong: Notion is `10/28`
+(`35.71%`) and Playwright is `23/25` (`92%`), while filesystem, GitHub, and Postgres are `0/30`,
+`0/23`, and `0/63`.  Selector top-1 remains `0%` for the warm arm.  The mixed result supports
+retaining a compatible warm body for service-grounded continuation, but does not justify native
+MCP, real-account email/Notion, or WebGPU productivity claims.  MCP servers, credentials, state
+transitions, verifiers, and pass@k were not run, and the task text was not retained for training.
+
 ### Frozen dispatch repair control (m194)
 
 The [`m194 receipt`](paper/results/raw/m194-current-m180-dispatch-repair-v1.json) tests whether the

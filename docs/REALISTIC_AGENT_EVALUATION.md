@@ -118,6 +118,15 @@ fixture.  Warm accepts 5/16 state transitions versus 1/16 random, but both compl
 abstention task (1/5); email and Notion completion remain zero.  The oracle reaches 16/16 and 5/5,
 so this is a valid fixture regression signal, not real-account or native benchmark evidence.
 
+The [`m223 MCPMark bridge`](paper/results/raw/m223-agentnet-continuation-mcpmark-routing-bridge-v1.json)
+reruns both m221 children on the pinned public MCPMark task-description manifests: 169 standard
+rows and 70 easy rows covering filesystem, GitHub, Notion, Playwright, and Postgres.  Warm routing
+is 19.53% standard / 22.86% easy versus 22.49% / 18.57% for random.  Warm standard routing is
+concentrated in Notion (35.71%) and Playwright (92%), with filesystem, GitHub, and Postgres all at
+0%; warm selector top-1 is 0%.  This is a public service-family routing proxy only.  No MCP server,
+credential, verifier, pass@k aggregation, browser state, email/Notion side effect, or official
+MCPMark score is claimed, and the task text was not used for training.
+
 The actual SFT checkpoint has also been exercised through the local deployment path with
 [`scripts/deploy_smoke.py`](../scripts/deploy_smoke.py).  The pinned
 [`m24 receipt`](paper/results/raw/m24-local-deployment-smoke-v1.json) records 10 realistic prompts
