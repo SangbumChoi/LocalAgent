@@ -88,6 +88,23 @@ tags, and provider image digest.  The gated task implementations, desktop VM, ac
 verifier were not acquired here, so this is provenance and protocol evidence—not an OSWorld-V2
 score, desktop-control result, or justification for publishing benchmark-derived task text.
 
+### Mobile/GUI source audit (m163)
+
+The [`m163 source-audit receipt`](paper/results/raw/m163-mobile-grounding-source-audit-v1.json)
+binds current source revisions and aggregate contracts for KnowU-Bench, AppAgent, GroundCUA, and
+UI-TARS.  The audit keeps their task text, hidden profiles, screenshots, annotations, APKs, and
+model traces out of the repository.  KnowU-Bench is the most important addition for realistic
+personal assistance: preference inference, clarification, proactive intervention, consent, and
+silence are evaluated separately from ordinary GUI execution.  AppAgent supplies a small
+45-task/9-app smartphone gate, while GroundCUA is a vision-only grounding resource and UI-TARS
+supplies a useful mobile/desktop action vocabulary.
+
+This is deliberately stronger provenance but not a capability result: the receipt has no native
+emulator/desktop runs, no WebGPU run, no training rows, and no official scores.  For the current
+text-first model, use only compact state/action contract projections; screenshot grounding,
+hidden-profile reasoning, and APK interaction require their release-matched runtimes and
+additional model inputs.
+
 ### MobileGym official split profile (m122)
 
 The [`m122 split-profile receipt`](paper/results/raw/m122-mobilegym-source-split-profile-v1.json)

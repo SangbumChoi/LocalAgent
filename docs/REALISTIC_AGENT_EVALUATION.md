@@ -1721,6 +1721,24 @@ retain this as a diagnostic failure rather than relaxing the threshold.  The res
 AndroidWorld/BrowserGym/OSWorld/MCPMark score and does not establish real email, Notion, or browser
 control.
 
+### Public mobile/GUI source audit (m163)
+
+The [`m163 receipt`](paper/results/raw/m163-mobile-grounding-source-audit-v1.json) hash-pins the
+current public source revisions for four deployment-relevant references without copying their
+benchmark payloads.  KnowU-Bench reports `192` registered tasks over `23` apps, split into `42`
+general, `86` personalized, and `64` proactive tasks, with hidden profiles, exposed behavioral
+logs, and an online user simulator.  AppAgent's public test manifest contains `45` smartphone
+tasks over `9` Android apps.  GroundCUA reports `56K` screenshots and at least `3.56M` human-
+verified element annotations across `87` desktop applications.  UI-TARS documents separate
+computer-use, mobile-use, and grounding modes, including `long_press`, `open_app`, `press_home`,
+and `press_back`.
+
+The receipt retains only source README/license/manifest hashes and these aggregate contract fields.
+It records `0` training rows, `0` native runs, `0` WebGPU runs, and `0` official scores.  The
+appropriate next step is native, release-matched evaluation with Android/desktop runtimes and
+visual encoders where required; converting these source summaries into SFT would violate the
+evaluation-only boundary.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:

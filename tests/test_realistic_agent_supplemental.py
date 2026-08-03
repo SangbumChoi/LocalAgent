@@ -83,10 +83,10 @@ def test_cua_gym_and_osworld_trajectory_sources_are_not_silently_trainable() -> 
 def test_new_mobile_and_grounding_sources_fail_closed_until_released() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     entries = {entry["id"]: entry for entry in payload["entries"]}
-    assert entries["knowu_bench"]["source_revision"] == "pin-before-use"
+    assert entries["knowu_bench"]["source_revision"] == "c03a825991ede13add6631f2ed19b90755930dc6"
     assert "hidden_profiles" in entries["knowu_bench"]["split_policy"]
-    assert entries["appagent_benchmark"]["source_revision"] == "pin-before-use"
-    assert entries["groundcua"]["source_revision"] == "pin-before-use"
+    assert entries["appagent_benchmark"]["source_revision"] == "2c1900422caf6f9e94e96d5dd984b530e5a5fbf8"
+    assert entries["groundcua"]["source_revision"] == "94cba61693d6258c7100f7016a299b84b1bb7732"
     assert "dataset_terms" in entries["groundcua"]["split_policy"]
     assert "screenshots" in entries["groundcua"]["notes"]
-    assert entries["ui_tars_action_contract"]["source_revision"] == "pin-before-use"
+    assert entries["ui_tars_action_contract"]["source_revision"] == "582f3a7ea5d285ee8ed9e2e84048d1ab01453c49"

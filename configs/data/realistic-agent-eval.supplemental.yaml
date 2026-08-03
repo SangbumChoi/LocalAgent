@@ -259,14 +259,14 @@ entries:
     source_url: https://github.com/ZJU-REAL/KnowU-Bench
     paper_url: https://arxiv.org/abs/2604.08455
     license: Apache-2.0_code; benchmark_assets_and_app_terms_require_audit
-    source_revision: pin-before-use
+    source_revision: c03a825991ede13add6631f2ed19b90755930dc6
     scale: 192_registered_tasks;_23_apps;_42_general_86_personalized_64_proactive;_94_agent_user_interaction
     modalities: [goal, screenshot, behavioral_history, hidden_profile, mobile_action, user_simulator]
     split_policy: evaluation_only; hidden_profiles_logs_user_simulator_and_task_definitions_never_training
     runtime: Dockerized_Android_emulator_with_KVM_and_online_user_simulator
     webgpu_projection: preference_inference_clarification_consent_and_abstention_over_compact_text_state
     metric: preference_acquisition, proactive_intervention_calibration, consent_respect, and task_success
-    notes: The official checkout reports 192 tasks over 23 apps, with hidden profiles and exposed timestamped logs; native evaluation requires Docker/KVM and API-backed agent and user-simulator endpoints. The current Python registry references 17 app identifiers, so the exact release and assets must be pinned before scoring.
+    notes: The pinned checkout reports 192 tasks over 23 apps, with hidden profiles and exposed timestamped logs; native evaluation requires Docker/KVM and API-backed agent and user-simulator endpoints. The current Python registry references 17 app identifiers, so benchmark assets and the container image still require a release-matched pin before scoring.
 
   - id: appagent_benchmark
     family: mobile
@@ -274,29 +274,29 @@ entries:
     source_url: https://github.com/TencentQQGYLab/AppAgent
     paper_url: https://arxiv.org/abs/2312.13771
     license: MIT_code; benchmark_assets_and_app_apks_require_audit
-    source_revision: pin-before-use
-    scale: release_dependent_smartphone_benchmark;_evaluation_release_pinned_by_upstream
+    source_revision: 2c1900422caf6f9e94e96d5dd984b530e5a5fbf8
+    scale: 45_tasks_across_9_android_apps
     modalities: [goal, screenshot, app_documentation, gesture, emulator_state]
     split_policy: evaluation_only; benchmark_tasks_and_app_artifacts_never_training
     runtime: Android_Studio_emulator_or_physical_android_device
     webgpu_projection: action_vocabulary_and_documentation_retrieval_only; visual_grounding_requires_an_image_encoder
     metric: smartphone_task_success, action_accuracy, and multi_step_completion
-    notes: The upstream project released the benchmark used in its evaluation and supports tap/swipe-style actions plus exploration- or demonstration-derived app documentation. The public repository does not expose a stable task-count manifest in its README; record the exact benchmark release, APK hashes, and device image before any score.
+    notes: The pinned public test manifest contains 45 tasks across nine Android apps; the project supports tap/swipe-style actions plus exploration- or demonstration-derived app documentation. Record the exact benchmark release, APK hashes, and device image before any score.
 
   - id: groundcua
     family: computer
     name: GroundCUA desktop grounding dataset
     source_url: https://github.com/ServiceNow/GroundCUA
     paper_url: https://arxiv.org/abs/2511.07332
-    license: Apache-2.0_code; dataset_terms_and_research_use_restrictions_require_audit
-    source_revision: pin-before-use
+    license: Apache-2.0_code_from_pyproject; dataset_terms_and_research_use_restrictions_require_audit
+    source_revision: 94cba61693d6258c7100f7016a299b84b1bb7732
     scale: 56000_screenshots;_3560000_plus_human_verified_element_annotations;_10000_plus_tasks;_87_apps
     modalities: [instruction, screenshot, desktop_element_box, ui_category, application_context]
     split_policy: evaluation_only_until_dataset_terms_and_train_test_manifest_are_frozen
     runtime: offline_image_grounding_or_release_matched_desktop_benchmark
     webgpu_projection: text-only element-category and candidate-ranking probe; screenshots require a visual encoder
     metric: element_grounding_accuracy, small_target_accuracy, and cross_platform_generalization
-    notes: The official project describes 56K annotated screenshots and 3.56M+ annotations across 87 desktop applications, with 700K training datapoints and five grounding benchmarks. The code repository is Apache-2.0, but dataset terms and research-use restrictions must be separately reviewed; no screenshots or annotations enter the text-first WebGPU bundle.
+    notes: The official project describes 56K annotated screenshots and 3.56M+ annotations across 87 desktop applications, with 700K training datapoints and five grounding benchmarks. The code repository declares Apache-2.0 in pyproject metadata, but dataset terms and research-use restrictions must be separately reviewed; no screenshots or annotations enter the text-first WebGPU bundle.
 
   - id: ui_tars_action_contract
     family: computer
@@ -304,7 +304,7 @@ entries:
     source_url: https://github.com/bytedance/UI-TARS
     paper_url: https://arxiv.org/abs/2501.12326
     license: Apache-2.0
-    source_revision: pin-before-use
+    source_revision: 582f3a7ea5d285ee8ed9e2e84048d1ab01453c49
     scale: release_dependent_gui_benchmarks_and_action_templates
     modalities: [instruction, screenshot, action_trace, coordinate, keyboard, mobile_navigation]
     split_policy: evaluation_only; upstream benchmark tasks_and_model_traces_never_training
