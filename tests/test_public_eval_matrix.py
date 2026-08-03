@@ -41,6 +41,8 @@ def test_public_matrix_covers_the_realistic_modalities() -> None:
     assert {row["id"] for row in entries_by_family(matrix, "mobile")} >= {
         "androidworld",
         "mobilegym",
+        "mobile_safety_bench",
+        "iosworld",
         "mobileworld",
         "mobile_agent_bench",
     }
