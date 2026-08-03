@@ -1027,6 +1027,27 @@ valuable interface diagnosis: routing can be learned, while API-name and argumen
 still fail.  This is resettable native execution evidence, not an AppWorld leaderboard score or a
 reason to ship the head adapter to WebGPU.
 
+### Longer AppWorld action-code SFT and deployment transfer (m280)
+
+The [`m280 SFT report`](paper/results/raw/m280-appworld-long-sft-v1.json) extends the same public,
+source-disjoint AppWorld first-action projection to 256 body updates.  Held-out assistant-token
+accuracy reaches `96.64%`, mean loss falls to `0.6915`, and teacher-forced sequence exactness reaches
+`9/12` (`75%`) on the 12-row dev projection.  This is a real improvement over m278, but the native
+[`run_python` receipt`](paper/results/raw/m280-appworld-long-native-runpython-v1.json) emits no
+replayable action on the same prompts, demonstrating a sharp teacher-forcing/free-run gap.
+
+Combining the m280 body with the m279 route/selector heads gives a second native control.  The
+[`combined native receipt`](paper/results/raw/m280-appworld-long-heads-native-v1.json) executes all
+`12/12` bounded API calls in resettable AppWorld fixtures (`48` requests, including `36` bootstrap
+requests), but no complete task verifier passes.  The source-bound [`first-action exactness receipt`](paper/results/raw/m280-appworld-first-action-exactness-v1.json)
+compares the translated code hashes with the public dev projection and finds `0/12` exact codes.
+The body-only [`weight audit`](paper/results/raw/m280-appworld-long-weight-v1.json) shows relative
+movement of `3.579%` in the embedding, `1.405%` in attention/mixer, `1.814%` in the FFN, and
+`0.108%` in normalization; the combined [`head audit`](paper/results/raw/m280-appworld-long-heads-weight-v1.json)
+adds the expected `65.93%` action-head movement.  The adoption conclusion is unchanged: longer
+SFT improves representation and teacher-forced code likelihood, but schema-grounded free-run
+execution and multi-step task completion remain open.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

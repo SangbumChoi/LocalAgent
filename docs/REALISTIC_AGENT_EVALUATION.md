@@ -2922,3 +2922,22 @@ and `27` credential/bootstrap requests.  None of the 12 task verifiers pass.  Th
 three requirements: head routing is learnable, native API execution is live, and API/schema grounding
 is still missing.  It is not an official AppWorld score, an external-account result, or evidence that
 the model is ready for WebGPU productivity control.
+
+### Longer AppWorld action-code SFT and free-run/native controls (m280)
+
+The [`m280 SFT report`](paper/results/raw/m280-appworld-long-sft-v1.json) trains 256 updates on
+24 public AppWorld train rows and evaluates 12 disjoint dev rows.  Held-out token accuracy rises to
+`96.64%` and teacher-forced sequence exactness reaches `9/12` (`75%`).  However, the unconstrained
+[`run_python native receipt`](paper/results/raw/m280-appworld-long-native-runpython-v1.json) emits
+no replayable action on the same dev prompts.  This is a direct warning that assistant-token loss
+and sequence accuracy do not establish a deployable tool policy.
+
+For a controlled routing comparison, the m280 body is paired with the m279 selector heads.  The
+[`combined native receipt`](paper/results/raw/m280-appworld-long-heads-native-v1.json) replays
+`12/12` bounded API calls in isolated AppWorld fixtures, but full verifier success remains `0/12`.
+The independent [`first-action exactness receipt`](paper/results/raw/m280-appworld-first-action-exactness-v1.json)
+finds `0/12` exact translated API-code matches against the public dev projection.  The paired body
+and combined weight reports show low-rate body movement (embedding `3.579%`, attention/mixer
+`1.405%`, FFN `1.814%`, normalization `0.108%`) and the expected `65.93%` action-head movement.
+This closes the experiment's diagnosis: routing and native execution are measurable, but exact API
+schema grounding and multi-step stateful success are not yet learned.
