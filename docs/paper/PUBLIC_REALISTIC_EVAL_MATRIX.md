@@ -1,6 +1,6 @@
 # Public realistic-agent evaluation matrix
 
-Status: source discovery and split policy refreshed on 2026-08-03. This is the reference map for
+Status: source discovery and split policy refreshed on 2026-08-04. This is the reference map for
 the WebGPU agent; it is not a claim that every suite has been executed. The machine-readable
 source of truth is [`realistic-agent-public-eval-matrix.v1.json`](../../configs/data/realistic-agent-public-eval-matrix.v1.json).
 The source-method and native-vs-projection protocol is summarized in the
@@ -33,7 +33,7 @@ hash, tokenizer hash, runtime versions, task IDs, seeds, and complete action/ter
 | Mobile | [Android in the Wild](https://github.com/google-research/google-research/tree/master/android_in_the_wild) | Large visual/gesture mobile episodes | Train official task/app/platform train split only | Instruction + text screen projection | Adapter ready; no emulator score |
 | Mobile | [AndroidWorld](https://github.com/google-research/android_world) | 116 tasks, 20 apps, dynamic emulator rewards | Eval-only runtime | Accessibility tree + goal | Metadata inventory; emulator pending |
 | Mobile | [MobileGym](https://github.com/Purewhiter/mobilegym) | 28 simulated apps, 416 parameterized tasks, deterministic judges | Eval-only until release/license pin | Structured JSON state + goal | Not started |
-| Mobile | [MobileSafetyBench](https://github.com/jylee425/mobilesafetybench) | 100 Android-emulator tasks spanning helpfulness, safety, and indirect prompt injection | Eval-only; safety prompts, emulator snapshots, APKs, and attack variants stay out of SFT | Goal + compact image/text state + refusal/confirmation policy | Source pinned; native emulator pending |
+| Mobile | [MobileSafetyBench](https://mobilesafetybench.github.io/) | Release-dependent: pinned paper/repository contract reports 100 tasks; current project page reports 250 (200 daily + 50 injection) | Eval-only; select one release and keep safety prompts, emulator snapshots, APKs, and attack variants out of SFT | Goal + compact image/text state + refusal/confirmation policy | Scope discrepancy recorded; native emulator pending |
 | Mobile | [iOSWorld](https://github.com/ljang0/iOSWorld) | 133 tasks across 26 seeded iOS apps, including multi-app and memory/personalization workflows | Eval-only; seeded identity, apps, task files, and rubrics stay out of SFT | Compact identity/state + MCP schema; visual phone control requires an encoder | Source pinned; iOS Simulator pending |
 | Mobile | [MobileWorld](https://github.com/Tongyi-MAI/MobileWorld) | 201 long-horizon agent-user/MCP tasks across 20 apps | Eval-only until release split pin | State text + explicit tools | Not started |
 | Mobile | [MobileAgentBench](https://mobileagentbench.github.io/) | 100 tasks across 10 open-source apps | Eval-only | Goal + accessibility/text projection | Not started |
@@ -55,6 +55,7 @@ hash, tokenizer hash, runtime versions, task IDs, seeds, and complete action/ter
 | Tool API | [τ-Bench](https://github.com/sierra-research/tau2-bench) | Policy-following user-agent-tool conversations | Eval-only | Text multi-turn tool loop | Not started |
 | Terminal | [TUA-Bench](https://tuabench.ai/) | Deterministic general-purpose terminal tasks | Eval-only | Command/tool schema projection | Not started |
 | Tool API | [BFCL](https://github.com/ShishirPatil/gorilla) | Stateless schema, argument, parallel-call, and abstention control | Eval-only checker; prompt denylist for corpus | Compact function catalog | Provenance/audit adapters |
+| Tool API | [BFCL V4 agentic](https://gorilla.cs.berkeley.edu/leaderboard) | Multi-turn, agentic web search, memory management, and format sensitivity in addition to AST calls | Eval-only; freeze the upstream release/checker and do not expose live-service traces | Stateful tool schema and abstention diagnostic; no live search/memory claim | Current categories audited; official runtime pending |
 
 ## What is actually trainable now
 

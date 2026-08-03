@@ -87,7 +87,7 @@
       "primary_metric": "Safety score, helpfulness score, harmful-action rate, and injection-defense rate.",
       "split_rule": "Safety prompts, emulator snapshots, APKs, and attack variants remain evaluation-only; report the pinned Android/Appium/ADB environment.",
       "local_status": "manifest_audited_native_pending",
-      "notes": "The pinned source/paper contract reports 100 tasks: 50 helpfulness, 42 safety-scored, and 8 indirect prompt-injection tasks across six operational areas."
+      "notes": "The pinned source/paper contract reports 100 tasks: 50 helpfulness, 42 safety-scored, and 8 indirect prompt-injection tasks across six operational areas. The current project page reports a separate 250-task scope (200 daily plus 50 injection); select and hash one release before scoring rather than combining counts."
     },
     {
       "id": "iosworld",
@@ -428,6 +428,23 @@
       "split_rule": "Prompt-only denylist for corpus exclusion; official gold/checker remains evaluation-only.",
       "local_status": "metadata_only",
       "notes": "BFCL is a function-calling control, not a browser/mobile benchmark; it isolates schema/argument competence."
+    },
+    {
+      "id": "bfcl_v4_agentic",
+      "family": "tool_api",
+      "name": "Berkeley Function Calling Leaderboard V4 agentic categories",
+      "source_url": "https://gorilla.cs.berkeley.edu/leaderboard",
+      "paper_url": "https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-calling-leaderboard",
+      "source_revision": "release-required-before-score",
+      "license": "Apache-2.0",
+      "access_status": "public_runtime",
+      "train_policy": "eval_only",
+      "modalities": ["user_message", "function_schema", "multi_turn_history", "web_search", "memory_state"],
+      "webgpu_projection": "Stateful tool-schema, abstention, and format-sensitivity diagnostics; live search, memory stores, and external APIs require the official runtime.",
+      "primary_metric": "Official BFCL V4 AST/execution metrics for multi-turn, agentic web-search, memory-management, and format-sensitivity categories.",
+      "split_rule": "Freeze the upstream BFCL release and official checker; never train on evaluation prompts, live-service traces, or gold responses.",
+      "local_status": "metadata_only",
+      "notes": "This row separates the current V4 agentic categories from the pinned stateless prompt-only BFCL rows already used for decontamination."
     }
   ]
 }

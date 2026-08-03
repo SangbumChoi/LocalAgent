@@ -57,6 +57,11 @@ def test_public_matrix_covers_the_realistic_modalities() -> None:
         "tau_bench",
         "toolace",
     }
+    agentic_bfcl = next(row for row in matrix["entries"] if row["id"] == "bfcl_v4_agentic")
+    assert agentic_bfcl["train_policy"] == "eval_only"
+    assert "web_search" in agentic_bfcl["modalities"]
+    assert "memory_state" in agentic_bfcl["modalities"]
+    assert agentic_bfcl["source_revision"] == "release-required-before-score"
 
 
 def test_public_matrix_rejects_ambiguous_training_rows() -> None:

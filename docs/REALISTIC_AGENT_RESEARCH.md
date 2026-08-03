@@ -35,7 +35,7 @@ the repository has completed every benchmark.
 ### Official-source audit and admission boundary (m208)
 
 The [`m208 receipt`](paper/results/raw/m208-realistic-evaluation-source-audit-v1.json) freezes the
-historical research inventory against the 40-row canonical catalog and 21-row supplemental registry.
+historical research inventory against the 40-row canonical catalog and 24-row supplemental registry.
 It cross-checks the official contracts for AndroidWorld, AndroidControl/AITW, MobileSafetyBench,
 iOSWorld, AppAgent, BrowserGym, Mind2Web, WebBench/BU Bench, OSWorld, AgentNet, GroundCUA/UI-TARS,
 ToolSandbox, MCPMark, EnterpriseOps-Gym, and MobileGym.  The audit makes the deployment boundary
@@ -700,6 +700,26 @@ secret-exfiltration indicators in the request or untrusted observation are block
 audit is pure JavaScript (`side_effect_confirmation_v1`), changes no learned weights, and executes
 no external effects.  It is a deployment safety contract, not a VPI-Bench, AgentCIBench,
 MobileSafetyBench, or native task-success score.
+
+### Current public-release reconciliation (m228)
+
+The [`m228 receipt`](paper/results/raw/m228-current-public-release-audit-v1.json) rechecked the
+authoritative public pages before extending the evaluation plan.  BFCL V4 now documents separate
+agentic web-search, memory-management, multi-turn, and format-sensitivity categories in addition
+to the older AST call suites; these are evaluation-only because they require the upstream checker,
+live search, or stateful memory runtime.  iOSWorld's public release explicitly includes 26 apps,
+133 personalized/cross-app tasks, and an optional MCP server, so it is a native identity/state
+benchmark rather than a screenshot-only action set.  OSWorld-V2 requires the exact
+`osworld-v2-2026.06.24` release across code, gated task classes/assets, mocked websites, and
+provider image; floating `main` is not comparable.
+
+The audit also found a release-scope discrepancy that must remain visible: the current
+[MobileSafetyBench project page](https://mobilesafetybench.github.io/) describes 250 tasks (200
+daily scenarios plus 50 injection scenarios), while the pinned paper/repository contract used by
+the earlier m178/m179 receipts describes a 100-task suite (50 helpfulness, 42 safety, 8 injection).
+Those counts are not additive or interchangeable.  Before a native safety score, one release must
+be selected and its task manifest, APKs, emulator, and verifier hash-bound.  No m228 rows entered
+training and no runtime was executed.
 
 ## Publication checklist
 
