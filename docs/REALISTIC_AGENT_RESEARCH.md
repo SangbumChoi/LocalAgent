@@ -472,6 +472,23 @@ adoption conclusion is therefore narrow and reproducible: keep the pretrained bo
 ToolACE continuation, but do not promote the tool heads or call the result native MCP, BFCL,
 mobile, browser, desktop, email, or Notion capability.
 
+### Current AgentNet text-action evaluation and matched control (m220)
+
+The [`m220 receipt`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json) runs
+the current m180 WebGPU-compatible child and a matched random-backbone control through the pinned
+public [AgentNet](https://huggingface.co/datasets/xlangai/AgentNet) text projection.  The held-out
+projection contains `133` action rows from `8` unseen Ubuntu parent trajectories, with screenshots
+and desktop state deliberately excluded.  Both arms cover every expected parent ID, so the score is
+not a missing-prediction artifact.
+
+The warm arm predicts the correct first action *type* on all eight parents (`100%` versus `12.5%`
+for random, `+87.5` percentage points), but both arms remain at `0%` exact trajectories and
+effectively zero coordinate/text action score.  The existing tensor audit finds `51` compatible
+shared tensors, tokenizer equality, and warm embedding/attention/FFN relative movement of only
+`0.449%`/`0.223%`/`0.273%`.  This supports retaining the pretrained body as an initialization
+candidate, not adopting it as a computer-use solution: visual grounding plus native AgentNetBench
+or desktop execution is still required.
+
 ### Frozen dispatch repair control (m194)
 
 The [`m194 receipt`](paper/results/raw/m194-current-m180-dispatch-repair-v1.json) tests whether the

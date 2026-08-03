@@ -12,7 +12,7 @@ restricted) and has a canonical SHA-256 fingerprint recorded by the preflight co
 The fingerprint is generated from the canonical catalog by the preflight command below.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
-It adds twenty-one high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
+It adds twenty-two high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
 trajectories, EnterpriseOps-Gym, MCPMark, ToolSandbox, AndroidWorld, BrowserGym, WebBench, and
 BU Bench V1, plus their mobile and desktop companion rows—with explicit license, split, runtime,
 and WebGPU-projection policies. These entries are catalog-only until an exact revision and
@@ -34,6 +34,11 @@ which combines 100 encrypted tasks from WebBench, Mind2Web 2, BrowseComp, GAIA, 
 challenges. Both remain evaluation-only here: live credentials and encrypted/decrypted task text
 are excluded from SFT, model bundles, and public task artifacts. The WebGPU projection is limited
 to DOM/action safety and routing diagnostics, not a live-browser or leaderboard claim.
+
+The pinned [ToolACE](https://huggingface.co/datasets/Team-ACE/ToolACE) snapshot is also registered
+as a supplemental public source.  Its strict first-action, multi-turn, and action-history
+projections are useful for tool-call continuation, but remain offline diagnostics rather than
+native MCP/BFCL or side-effectful productivity evaluation.
 
 Run the read-only readiness report before acquiring or evaluating anything:
 
@@ -92,6 +97,13 @@ The current canonical receipt is joined in [`m218`](paper/results/raw/m218-works
 MobileGym and BrowserGym/MiniWoB are accepted as official-split native evidence, while the
 ToolSandbox diagnostic remains blocked for missing official-split verification.  This is the
 authoritative nine-blocker state; older gate receipts are retained for historical comparison.
+
+The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
+It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
+against a matched random-backbone control.  Warm first-action type coverage is 100% versus 12.5%
+random, but both arms have 0% exact trajectories and effectively zero coordinate/text action score;
+screenshots and desktop state were not consumed.  This is evidence for retaining the compatible
+pretrained body as a candidate initialization, not a native desktop or visual-grounding result.
 
 The actual SFT checkpoint has also been exercised through the local deployment path with
 [`scripts/deploy_smoke.py`](../scripts/deploy_smoke.py).  The pinned
