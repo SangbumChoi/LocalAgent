@@ -2257,6 +2257,22 @@ the state-diff judge, a five-step cap, and a DOM/text observation projection.  I
 the child emits `mobile_submit_answer` on 13 tasks.  This is a bounded native canary, not the full
 MobileGym score, an Android emulator result, screenshot grounding, or a publication-gate pass.
 
+### Current-child AndroidControl/AITW continuation and weight audit (m166)
+
+The [`m166 receipt`](paper/results/raw/m166-androidcontrol-current-transfer-v1.json) continues the
+current `10,524,544`-parameter BPE child for 64 CPU updates on 4,096 rows from the public
+AndroidControl/AITW text-and-accessibility train projection.  The 904-row public test projection
+was held out from optimization; both projections omit screenshots by construction.  Assistant-token
+accuracy on the held-out projection rises from `59.38%` to `69.67%` and mean loss falls from
+`2.849` to `2.041`, while exact sequence accuracy remains `0%`.
+
+The paired weight audit in the [`m166 receipt`](paper/results/raw/m166-androidcontrol-current-transfer-v1.json)
+finds no config, shape, or tokenizer mismatch across 51 shared tensors.  Relative movement is
+`0.95%` in embeddings, `0.30%` in attention/mixer, `0.39%` in FFN, `0.018%` in normalization, and
+`0%` in the inherited action heads.  This supports reusing the compatible backbone with a smaller
+learning rate for transfer, but it does not establish optimality, visual grounding, emulator reward,
+AndroidWorld/MobileGym success, or a public leaderboard score.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the
