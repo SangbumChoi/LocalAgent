@@ -1681,6 +1681,18 @@ This remains a synthetic local transfer ablation.  It reads no public benchmark 
 screenshots, emulator, MCP server, real email, or Notion account and must not be reported as an
 official benchmark score.
 
+### Current-checkpoint stateful transfer rerun (m161)
+
+To avoid treating the older m56 parent as the deployment baseline, the same five-workflow,
+16-decision state machine was rerun from the current `runs/sft-webgpu-proxy-pilot-hybrid-seed2027`
+checkpoint.  The tracked [`m161 receipt`](paper/results/raw/m161-stateful-productivity-current-transfer-v1.json)
+binds the current parent and child hashes, train/eval task hashes, all three transfer arms, and
+the report identity.  Frozen and low-rate-unfrozen pretrained arms each reach `5/16` closed-loop
+steps (`31.25%`), while the matched random arm reaches `1/16` (`6.25%`).  No email, Notion, or
+browser workflow completes end-to-end; the result is a transfer diagnostic only.  The low-rate
+arm moves the backbone by relative L2 `0.159%` overall (`0.0447%` embedding, `0.350%` FFN,
+`0.338%` mixer), supporting conservative backbone reuse but not capability promotion.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:
