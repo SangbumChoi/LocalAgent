@@ -135,6 +135,15 @@ grounding; the checkpoint remains unpromoted.  The receipt is official-split eli
 native contract, but it is explicitly non-visual and does not establish Android emulator or
 screenshot-grounding quality: [`m146 receipt`](paper/results/raw/m146-mobilegym-native-current-checkpoint-v1.json).
 
+The m148 browser-context adapter is a matched negative transfer follow-up.  Starting from the
+m142 child, 300 low-rate synthetic accessibility-contract updates plus 1,000 route/selector probe
+updates improve the ten-row offline contract from `70% → 100%` route, `10% → 70%` tool, and
+`10% → 20%` exact arguments.  A ten-episode pinned native BrowserGym canary nevertheless stays
+at `0/10`, with zero grounded actions and 100 no-ops.  Its 51 shared tensors remain compatible,
+but backbone movement rises to `24.76%` embedding, `3.20%` attention/mixer, and `4.51%` FFN
+relative L2 (action heads `78.11%`).  This is evidence that the synthetic observation contract is
+not sufficient for live DOM grounding, not a reason to promote the adapter: [`m148 weight audit`](paper/results/raw/m148-browser-context-m142-weight-transfer-v1.json).
+
 The AgentNet/OpenCUA adapter is deliberately outside this weight-transfer series.  Its 12-action
 official sample is parsed into evaluation-only coordinate tools, so it changes no checkpoint
 weights and cannot be counted as a training gain.  A screenshot/accessibility grounding bridge

@@ -2023,6 +2023,28 @@ grounding result, or long-horizon mobile-agent claim.  The result matches the ea
 deployment checkpoint or claiming a transfer win.  The strict gate accepts the receipt contract,
 while the seven independent Android/desktop/tool-server requirements remain open.
 
+### Train-only browser-context adapter from m142 (m148)
+
+The [`m148 adapter report`](paper/results/raw/m148-browser-context-adapter-m142-v1.json) tests
+whether the current five-surface child can recover the live accessibility-tree contract without
+reading BrowserGym data.  It reuses only the 589 synthetic computer-use rows in
+`data/synth/agent_sft.jsonl`, projects quoted element names deterministically, and evaluates ten
+disjoint synthetic rows.  Route accuracy improves `70% → 100%`, tool accuracy `10% → 70%`, and
+exact arguments `10% → 20%` after 300 low-rate backbone updates plus 1,000 frozen-feature head
+updates.
+
+The native [`m148 canary receipt`](paper/results/raw/m148-browsergym-native-adapter-canary-v1.json)
+then runs that child in ten pinned BrowserGym/MiniWoB episodes.  It reaches `0/10`, with zero
+grounded actions and 100 no-op steps; model outputs alternate among `move_cursor`, `open_app`, and
+abstention, but none match the live accessibility candidates.  This is not an official split
+score and the full run was intentionally not promoted after the bounded canary failed.
+
+The paired [`m148 weight audit`](paper/results/raw/m148-browser-context-m142-weight-transfer-v1.json)
+finds all 51 tensors compatible and tokenizer-identical, but relative movement of 24.76% in the
+embedding group, 3.20% in attention/mixer, 4.51% in FFN, and 78.11% in action heads.  The result
+supports the diagnosis that offline contract fitting alone does not restore native grounding;
+the m142 child and m148 adapter remain unpromoted.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
