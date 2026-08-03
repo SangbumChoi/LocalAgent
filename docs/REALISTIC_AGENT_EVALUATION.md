@@ -1968,6 +1968,26 @@ versus `0.78%`/`1.56%` for unrestricted dense selection; row-local retrieval rem
 upper-bound diagnostic and exact arguments remain `0%`.  This confirms the retrieval safety fix but
 also shows that the five-surface continuation did not improve general function-calling quality.
 
+### ToolSandbox native base-scenario transfer audit (m143)
+
+The [`m143 receipt`](paper/results/raw/m143-toolsandbox-native-base-transfer-audit-v1.json)
+executes the current five-surface warm child and a matched random-backbone control inside the
+pinned Apple ToolSandbox simulator and upstream milestone verifier.  It covers all `129` public
+base/no-distraction scenarios (the source expands these to `1,032` augmented variants) in a fixed
+sorted order.  The warm child and random control each complete all `129` simulator runs without
+environment exceptions and both reach `28/129` exact verifier successes (`21.71%`); the aggregate
+native difference is therefore `0` points, with six per-scenario outcome changes.
+
+This is stronger native evidence than the earlier three- or five-task smokes, but it remains a
+diagnostic rather than an official ToolSandbox result.  The adapter uses a deterministic one-step
+scripted user, so multi-tool and multi-user-turn scenarios are intentionally truncated; the
+upstream model-based user simulator, official split declaration, full augmented matrix, optional
+RapidAPI tools, MCP servers, and external accounts were not executed.  The receipt therefore keeps
+`official_split_verified: false` and `native_official_gate_eligible: false`, and the checkpoint is
+not promoted.  The matched random result also cautions against reading this one-step score as a
+weight-transfer quality win; the separate m142 held-out token audit is the evidence for warm-start
+initialization, not this native base-scenario aggregate.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution

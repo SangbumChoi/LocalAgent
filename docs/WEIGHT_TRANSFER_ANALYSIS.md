@@ -110,6 +110,14 @@ are unchanged.  This is a stronger cross-surface
 compatibility/transfer audit, not evidence for a universal agent head or native tool execution;
 the full source hashes and decision boundary are in the [`m142 receipt`](paper/results/raw/m142-five-surface-public-continuation-v1.json).
 
+The follow-up m143 native ToolSandbox audit applies the same warm child and matched random
+control to all 129 public base scenarios under the pinned simulator and milestone verifier.  Both
+arms score `28/129` (`21.71%`) under the deterministic one-step scripted-user protocol, so this
+native diagnostic shows no aggregate warm-start advantage.  It is still useful as a negative
+control: native execution can run without exceptions, but the current transfer does not establish
+stateful tool-use quality, and the run is not official-split eligible because the model-based user
+simulator and full augmented matrix were not executed.  See the [`m143 receipt`](paper/results/raw/m143-toolsandbox-native-base-transfer-audit-v1.json).
+
 The AgentNet/OpenCUA adapter is deliberately outside this weight-transfer series.  Its 12-action
 official sample is parsed into evaluation-only coordinate tools, so it changes no checkpoint
 weights and cannot be counted as a training gain.  A screenshot/accessibility grounding bridge
