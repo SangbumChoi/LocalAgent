@@ -2746,6 +2746,21 @@ This is a corrected local deployment receipt, not a replacement for the official
 BrowserGym results: no external side effect ran, `closed_loop_success` is `0`, and the nine
 native publication blockers listed by m266 remain unresolved.
 
+### Current checkpoint ToolSandbox projection control (m272)
+
+The [`m272 receipt`](paper/results/raw/m272-toolsandbox-current-checkpoint-text-projection-v1.json)
+runs the current `10,524,544`-parameter browser-context checkpoint against a pinned, public
+Apple ToolSandbox AST/text projection.  On `20` rows and `25` candidate tools, row-local
+retrieval routes `55%` of calls exactly, grounds all arguments exactly on `30%`, and produces a
+schema-valid call on `95%` of rows.  The category breakdown exposes the stateful weakness:
+`STATE_DEPENDENCY` tool exactness is only `25%`, versus `64.29%` for the larger
+`CANONICALIZATION` slice.
+
+This is an offline projection diagnostic: the upstream ToolSandbox simulator, model-based user,
+milestone verifiers, official split, and external services were not executed.  It is therefore
+not an official ToolSandbox score, an MCPMark score, or native WebGPU capability evidence, and it
+does not close the ToolSandbox publication blocker.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the
