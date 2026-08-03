@@ -328,6 +328,23 @@ accuracy is still 0% in both arms.  The warm body moves only 0.345% aggregate re
 This is stronger evidence for reusing pretrained representations and assigning larger rates to
 new heads, but it remains teacher-forced, redacted, and non-native.
 
+### Direct m180 WebGPU child comparison (m193)
+
+The [`m193 receipt`](paper/results/raw/m193-current-m180-webgpu-browser-fresh-realistic-actions-v1.json)
+closes a provenance gap by exercising the separately exported `108276…` m180 child itself rather
+than the workspace's older `9bba…` bundle.  The browser reports `WEBGPU` and model-ready status,
+but the same twelve realistic prompts used for the workspace smoke produce only `1/9` exact tools
+on unambiguous single-step requests and `0/2` exact planner trajectories.  The sole exact tool is
+an explicit URL open; email and Notion requests still select `open_url` with malformed URL-shaped
+arguments.  The run has no external side effects and uses no public benchmark rows.
+
+This comparison is the clearest current separation between transfer and deployment quality:
+teacher-forced public continuations can improve token accuracy and route loss while the actual
+WebGPU action contract remains unusable for productivity and multi-step control.  The policy is to
+retain the m180 body for compatibility experiments, but not promote it as a browser/mobile agent
+until a catalog-aware action head, argument grounding, and native closed-loop evidence all improve
+together.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
