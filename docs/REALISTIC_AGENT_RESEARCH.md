@@ -887,7 +887,23 @@ the parser/credential boundary, not action selection, full trajectories, AppWorl
 Spotify task success.  Learned free-form `run_python` code is still not used by the constrained
 decoder, so this adapter is not promoted to WebGPU.
 
-The refreshed [`m246 strict gate`](paper/results/raw/m246-workshop-gate-appworld-adapter-v1.json)
+### τ-Bench native mock-domain probe (m252)
+
+The current public [tau2-bench](https://github.com/sierra-research/tau2-bench) checkout is pinned
+to `363133ada1936491fb5bcec33cd62c3518a99f65` (v1.0.1).  Its repository is MIT-licensed, but the
+benchmark task/user-simulator protocol remains evaluation-only here.  The [`m252 receipt`](paper/results/raw/m252-tau2-mock-native-v1.json)
+hashes the source, ten public mock-base tasks, split metadata, policy, and reset database without
+retaining task text or tool outputs.  An oracle replay passes the independent tau2 environment
+contract (`1.0`), proving the native verifier is live.
+
+The current 10.52M WebGPU checkpoint was then exposed to the real mock-domain tool schemas for one
+agent turn per task.  It emitted `0/10` tool calls, `0/10` exact first actions, and `0/10` bounded
+native successes.  This is a useful negative result: the checkpoint can load and the environment
+can execute, but the learned LocalAgent catalog/route contract does not transfer to tau2's unseen
+customer-service tool names.  It is not a complete tau2 score, retail/telecom result, user-simulator
+run, or WebGPU adoption signal.
+
+The refreshed [`m253 strict gate`](paper/results/raw/m253-workshop-gate-tau2-catalog-refresh-v1.json)
 remains `ready: false` with nine missing official native receipts (AndroidWorld,
 MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and
 EnterpriseOps-Gym).  AppWorld adapter diagnostics do not substitute for those contracts, and the

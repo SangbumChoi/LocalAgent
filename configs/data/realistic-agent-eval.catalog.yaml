@@ -459,7 +459,7 @@ entries:
       evidence: https://github.com/sierra-research/tau2-bench
     scale:
       kind: benchmark
-      domains: 2
+      domains: 5
       historical_trajectory_sets: 2
     observation:
       modalities: [text, tool_schema, user_simulator]
@@ -467,12 +467,13 @@ entries:
     action:
       modalities: [tool_call, multi_turn_dialogue]
       formats: [JSON]
-    domains: [airline, retail, banking]
+    domains: [mock, airline, retail, telecom, banking_knowledge]
     train_policy: eval_only
     integration:
-      status: trajectory_adapter_pending
+      status: native_mock_diagnostic
       target_adapter: tau_episode_v1
       source_split_policy: official_latest_tasks
+      current_source_revision: 363133ada1936491fb5bcec33cd62c3518a99f65
     webgpu_projection:
       status: native
       recommended_observation: compact_policy_and_tool_schema
@@ -480,7 +481,7 @@ entries:
     contamination:
       split: official_eval
       rule: historical trajectories may inform protocol tests but benchmark task prompts remain eval-only
-    notes: Interactive user-agent-tool evaluation; the current repository is tau2-bench and its README directs new work to tau3-bench. Keep the original tau-bench paper citation for historical comparability.
+    notes: Interactive user-agent-tool evaluation; m252 pins the current tau2-bench v1.0.1 checkout and runs only the resettable mock domain as a one-turn diagnostic. The complete base split, user simulator, retail/telecom domains, and leaderboard submission protocol remain pending. Keep the original tau-bench paper citation for historical comparability.
 
   - id: toolsandbox
     family: tool_api

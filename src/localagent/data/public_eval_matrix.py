@@ -23,6 +23,7 @@ _STATUSES = frozenset(
         "measured",
         "metadata_only",
         "manifest_audited_native_pending",
+        "native_mock_diagnostic",
         "adapter_ready",
         "runtime_pending",
         "not_started",

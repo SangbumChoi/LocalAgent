@@ -402,7 +402,7 @@
       "name": "τ-Bench",
       "source_url": "https://github.com/sierra-research/tau2-bench",
       "paper_url": "https://arxiv.org/abs/2406.12045",
-      "source_revision": "release-required-before-score",
+      "source_revision": "363133ada1936491fb5bcec33cd62c3518a99f65",
       "license": "MIT_code_and_domain-terms-review",
       "access_status": "terms_review",
       "train_policy": "eval_only",
@@ -410,8 +410,8 @@
       "webgpu_projection": "Text-only multi-turn tool use with explicit user correction and policy checks.",
       "primary_metric": "Task reward, policy adherence, and tool-agent-user interaction success.",
       "split_rule": "Domain policies, task prompts, and user simulator traces remain evaluation-only.",
-      "local_status": "not_started",
-      "notes": "The official repository supports mock, airline, retail, telecom, and banking-knowledge domains plus text/voice modes."
+      "local_status": "native_mock_diagnostic",
+      "notes": "Pinned tau2-bench v1.0.1 source and resettable mock domain are exercised by m252 for an oracle verifier contract plus a one-turn LocalAgent probe; the complete base split, user simulator, retail/telecom runs, and leaderboard protocol remain unexecuted."
     },
     {
       "id": "tua_bench",
