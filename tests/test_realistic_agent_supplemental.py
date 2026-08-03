@@ -10,7 +10,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     assert payload["kind"] == "localagent_realistic_agent_supplemental_catalog"
     entries = payload["entries"]
-    assert len(entries) == 16
+    assert len(entries) == 17
     assert {entry["id"] for entry in entries} == {
         "androidworld",
         "browsergym_miniwob",
@@ -28,6 +28,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         "bu_bench_v1",
         "cua_gym",
         "osworld_verified_trajectories",
+        "androidlab",
     }
     for entry in entries:
         assert entry["source_url"].startswith(

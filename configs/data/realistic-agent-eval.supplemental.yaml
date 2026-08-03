@@ -237,3 +237,18 @@ entries:
     webgpu_projection: text/action-history diagnostics only; screenshot grounding and native desktop score require the VM
     metric: execution_success_and_verified_task_completion
     notes: The public Hub repository is MIT-tagged but is a collection of model-run packages rather than a declared train split; no archive or screenshot is admitted to SFT by this audit.
+
+  - id: androidlab
+    family: mobile
+    name: AndroidLab
+    source_url: https://github.com/MadeAgents/mobile-use/tree/main/benchmark/android_lab
+    project_url: https://github.com/MadeAgents/mobile-use
+    license: MIT_for_MobileUse; AndroidLab_submodule_terms_require_audit
+    source_revision: pin-before-use
+    scale: dynamic_android_device_tasks; exact_task_count_release_dependent
+    modalities: [goal, screenshot, accessibility_tree, emulator_state, adb_action]
+    split_policy: evaluation_only_until_androidlab_submodule_revision_and_task_split_are_frozen
+    runtime: Android_emulator_or_Docker_AVD_with_ADB
+    webgpu_projection: accessibility/text action bridge only; screenshot grounding requires a visual encoder
+    metric: task_success_and_step_efficiency_on_dynamic_android_scenarios
+    notes: MobileUse documents AndroidLab as a separate benchmark with a fetched submodule, patched Clock/Settings tasks, and a Docker/Linux x86_64 recommendation; no task data or emulator result is admitted here until the submodule license and release manifest are pinned.
