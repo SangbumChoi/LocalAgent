@@ -506,6 +506,19 @@ finds `51` compatible tensors, equal tokenizers, and warm embedding/attention/FF
 visual/action-grounded continuation, while refusing to promote this text-only training result to
 native desktop or AgentNetBench capability.
 
+### AgentNet continuation to local productivity bridge (m222)
+
+The [`m222 receipt`](paper/results/raw/m222-agentnet-continuation-stateful-productivity-bridge-v1.json)
+checks whether the m221 computer-use continuation preserves the requested email, Notion, browser,
+and recovery contract.  The resettable in-memory fixture has `63` tools and `5` workflows; its
+oracle reaches `16/16` accepted steps and `5/5` complete tasks, confirming the verifier itself.
+
+The warm child accepts `5/16` model steps versus `1/16` for the matched random child, but both
+complete only the abstention workflow (`1/5`).  Warm email and Notion completion remain `0/1`, as
+do browser and recovery completion.  This is a useful cross-surface regression signal—the warm
+backbone preserves more valid transitions—but it is deliberately not presented as real email,
+Notion, MCP, browser, or WebGPU control.
+
 ### Frozen dispatch repair control (m194)
 
 The [`m194 receipt`](paper/results/raw/m194-current-m180-dispatch-repair-v1.json) tests whether the

@@ -112,6 +112,12 @@ matched random backbone.  Warm held-out token accuracy rises 55.80% → 67.00% a
 Neither child reaches an exact trajectory or meaningful coordinate/text action score, so the
 result supports warm-weight reuse for future visual/action-grounded training only.
 
+The cross-surface [`m222 bridge`](paper/results/raw/m222-agentnet-continuation-stateful-productivity-bridge-v1.json)
+then runs the warm and random children through the local resettable email/Notion/browser/recovery
+fixture.  Warm accepts 5/16 state transitions versus 1/16 random, but both complete only the
+abstention task (1/5); email and Notion completion remain zero.  The oracle reaches 16/16 and 5/5,
+so this is a valid fixture regression signal, not real-account or native benchmark evidence.
+
 The actual SFT checkpoint has also been exercised through the local deployment path with
 [`scripts/deploy_smoke.py`](../scripts/deploy_smoke.py).  The pinned
 [`m24 receipt`](paper/results/raw/m24-local-deployment-smoke-v1.json) records 10 realistic prompts
