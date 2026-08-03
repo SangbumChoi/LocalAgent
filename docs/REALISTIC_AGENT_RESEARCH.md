@@ -447,6 +447,16 @@ the same twelve blockers (eleven official native benchmark receipts and the publ
 manifest).  The alias fix therefore improves contract observability without changing the
 publication decision.
 
+### Current native evidence join (m218)
+
+The [`m218 gate`](paper/results/raw/m218-workshop-gate-current-canonical-native-v1.json) binds
+the canonical m216 WebGPU receipt to two existing official-split native evaluations: MobileGym
+(`256` tasks, `13/256` success) and BrowserGym/MiniWoW (`240` episodes, `0/240` success).  It also
+binds the live public model/demo manifest and the m25 transfer/no-transfer ablation.  The gate
+now has nine blockers rather than twelve.  ToolSandbox is deliberately still blocked because its
+129-scenario audit does not verify the official split; this prevents a local simulator result from
+being promoted to a benchmark claim.
+
 ### Frozen dispatch repair control (m194)
 
 The [`m194 receipt`](paper/results/raw/m194-current-m180-dispatch-repair-v1.json) tests whether the

@@ -88,6 +88,11 @@ can be supplied as `--native-receipt BENCHMARK_ID=PATH`; the receipt contract re
 environment execution, official split verification, task count, and success rate.  The gate is
 therefore an auditable workshop decision, not a claim that the current model has passed.
 
+The current canonical receipt is joined in [`m218`](paper/results/raw/m218-workshop-gate-current-canonical-native-v1.json):
+MobileGym and BrowserGym/MiniWoB are accepted as official-split native evidence, while the
+ToolSandbox diagnostic remains blocked for missing official-split verification.  This is the
+authoritative nine-blocker state; older gate receipts are retained for historical comparison.
+
 The actual SFT checkpoint has also been exercised through the local deployment path with
 [`scripts/deploy_smoke.py`](../scripts/deploy_smoke.py).  The pinned
 [`m24 receipt`](paper/results/raw/m24-local-deployment-smoke-v1.json) records 10 realistic prompts
