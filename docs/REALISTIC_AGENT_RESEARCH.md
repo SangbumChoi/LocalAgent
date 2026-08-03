@@ -921,6 +921,21 @@ reusing the compatible body while replacing or recalibrating the selector for un
 does not prove that the browser child is a better initialization, nor does it justify publishing a
 tau2, email, Notion, or WebGPU task-success score.
 
+### τ-Bench bounded airline/retail/telecom probes (m259)
+
+The new [`m259 domain receipts`](paper/results/raw/m259-tau2-airline-m46-retriever-k1-v1.json)
+cover eight base tasks each from the public airline (`50` total tasks), retail (`114`), and
+telecom (`114`) domains using the same reset-per-task native runner.  A stable gold trajectory
+contract passes in all three domains; the telecom contract uses a read-only network-state task
+rather than the stateful airplane-mode case whose response sequence is not deterministic under
+this isolated constructor.
+
+The m46 checkpoint with the zero-training schema retriever (`k=1`) emits calls on all three
+domains, but reaches `0/8` bounded native successes in each.  These are realistic customer-service
+and telecom-schema negatives with no external accounts, network services, screenshots, or retained
+task text.  They are bounded domain diagnostics, not complete tau2 domain/user-simulator or
+leaderboard scores.
+
 The refreshed [`m253 strict gate`](paper/results/raw/m253-workshop-gate-tau2-catalog-refresh-v1.json)
 remains `ready: false` with nine missing official native receipts (AndroidWorld,
 MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and
