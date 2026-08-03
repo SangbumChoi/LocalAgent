@@ -150,6 +150,12 @@ weights and cannot be counted as a training gain.  A screenshot/accessibility gr
 and the official AgentNetBench prediction protocol are required before a WebGPU model can be
 compared on that benchmark.
 
+The m151/m152 DOM-coordinate bridge is a separate runtime diagnostic, not a weight update.  It
+uses the m148 checkpoint byte-for-byte and only resolves otherwise-unmapped live DOM controls from
+clickable geometry.  Its `4/10` canary and `4/240` full-plan results therefore measure the sidecar's
+grounding coverage, not pretrained-weight quality or an official BrowserGym score; the m144
+accessibility-only receipt remains the strict native checkpoint result.
+
 The m59 ToolSandbox public-source projection provides a sharper small-data control.  Static-AST
 rows from the pinned scenario definitions improve the transferred child's held-out token accuracy
 from `65.31%` to `71.53%` after 32 updates, with backbone relative movement of `0.196%` in

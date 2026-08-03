@@ -9,6 +9,7 @@ _MODULE = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_MODULE)
 _model_prompt = _MODULE._model_prompt
 _browser_action = _MODULE._browser_action
+_dom_coordinate_candidates = _MODULE._dom_coordinate_candidates
 
 
 def test_native_browsergym_prompt_matches_train_only_adapter_contract() -> None:
@@ -37,3 +38,38 @@ def test_realistic_browser_tools_map_grounded_ids_to_high_level_actions() -> Non
         "select_option('s1', 'Work')",
         True,
     )
+
+
+def test_coordinate_fallback_reads_only_clickable_dom_geometry() -> None:
+    observation = {
+        "goal": "Click Send",
+        "axtree_object": {"nodes": []},
+        "dom_object": {
+            "documents": [
+                {
+                    "strings": ["", "", "Send"],
+                    "nodes": {
+                        "parentIndex": [-1, 0],
+                        "nodeType": [1, 3],
+                        "nodeValue": [-1, 2],
+                        "backendNodeId": [10, 11],
+                        "attributes": [[], []],
+                        "isClickable": {"index": [0]},
+                    },
+                    "layout": {"nodeIndex": [0], "bounds": [[20, 30, 10, 20]]},
+                }
+            ]
+        },
+    }
+    candidates = _dom_coordinate_candidates(observation, device_pixel_ratio=2.0, screenshot_scale=1.5)
+    assert candidates == [{"name": "Send", "x": 18.75, "y": 30.0}]
+    prompt = _model_prompt(observation, candidates)
+    assert '[coord-0] text: "Send"' in prompt
+    assert _browser_action(
+        "move_cursor",
+        {"target": "Send"},
+        observation,
+        coordinate_fallback=True,
+        device_pixel_ratio=2.0,
+        screenshot_scale=1.5,
+    ) == ("mouse_click(18.750, 30.000)", True)

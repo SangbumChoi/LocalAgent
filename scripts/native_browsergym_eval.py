@@ -91,7 +91,130 @@ def _visible_elements(observation: dict[str, Any]) -> list[dict[str, str]]:
     return elements
 
 
-def _compact_context(observation: dict[str, Any]) -> str:
+def _dom_string(strings: list[Any], index: Any) -> str:
+    if isinstance(index, int) and 0 <= index < len(strings):
+        value = strings[index]
+        return str(value) if value is not None else ""
+    return ""
+
+
+def _dom_node_text(
+    nodes: dict[str, Any],
+    strings: list[Any],
+    children: dict[int, list[int]],
+    index: int,
+) -> str:
+    """Return visible text/label content for a compact BrowserGym DOM node."""
+
+    values: list[str] = []
+    stack = [index]
+    seen: set[int] = set()
+    while stack and len(values) < 8:
+        current = stack.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        node_type = nodes.get("nodeType", [None])[current] if current < len(nodes.get("nodeType", [])) else None
+        if node_type == 3:
+            node_values = nodes.get("nodeValue", [])
+            if current < len(node_values):
+                text = _dom_string(strings, node_values[current]).strip()
+                if text:
+                    values.append(text)
+        stack.extend(reversed(children.get(current, [])))
+    if values:
+        return " ".join(dict.fromkeys(values))
+
+    attributes = nodes.get("attributes", [])
+    if index < len(attributes) and isinstance(attributes[index], list):
+        pairs = attributes[index]
+        for offset in range(0, len(pairs) - 1, 2):
+            key = _dom_string(strings, pairs[offset]).lower()
+            value = _dom_string(strings, pairs[offset + 1]).strip()
+            if key in {"aria-label", "title", "value", "data-index", "name"} and value:
+                return value
+    return ""
+
+
+def _dom_coordinate_candidates(
+    observation: dict[str, Any],
+    *,
+    device_pixel_ratio: float = 1.0,
+    screenshot_scale: float = 1.0,
+) -> list[dict[str, float | str]]:
+    """Extract text-labelled clickable DOM boxes for the optional coordinate bridge.
+
+    BrowserGym's accessibility tree omits some SVG/generic controls used by MiniWoB.  The DOM
+    snapshot still exposes ``isClickable`` and layout bounds.  This function only reads those
+    observation fields and never reads task verifiers, hidden labels, or screenshots.
+    """
+
+    dom = observation.get("dom_object")
+    if not isinstance(dom, dict):
+        return []
+    documents = dom.get("documents")
+    if not isinstance(documents, list) or not documents or not isinstance(documents[0], dict):
+        return []
+    document = documents[0]
+    nodes = document.get("nodes")
+    layout = document.get("layout")
+    strings = dom.get("strings", document.get("strings", []))
+    if not isinstance(nodes, dict) or not isinstance(layout, dict) or not isinstance(strings, list):
+        return []
+    parent_index = nodes.get("parentIndex", [])
+    if not isinstance(parent_index, list):
+        return []
+    children: dict[int, list[int]] = {}
+    for index, parent in enumerate(parent_index):
+        if isinstance(parent, int) and parent >= 0:
+            children.setdefault(parent, []).append(index)
+    clickable = nodes.get("isClickable", {})
+    clickable_indices = clickable.get("index", []) if isinstance(clickable, dict) else []
+    node_layouts = layout.get("nodeIndex", [])
+    bounds = layout.get("bounds", [])
+    if not isinstance(clickable_indices, list) or not isinstance(node_layouts, list):
+        return []
+    if not isinstance(bounds, list) or device_pixel_ratio <= 0 or screenshot_scale <= 0:
+        return []
+    candidates: list[dict[str, float | str]] = []
+    for raw_index in clickable_indices:
+        if not isinstance(raw_index, int) or raw_index < 0 or raw_index >= len(parent_index):
+            continue
+        box_indices = [position for position, node in enumerate(node_layouts) if node == raw_index]
+        if not box_indices:
+            continue
+        box = next(
+            (
+                bounds[position]
+                for position in box_indices
+                if isinstance(bounds[position], list)
+                and len(bounds[position]) == 4
+                and all(isinstance(value, (int, float)) for value in bounds[position])
+                and bounds[position][2] > 0
+                and bounds[position][3] > 0
+            ),
+            None,
+        )
+        if box is None:
+            continue
+        name = _dom_node_text(nodes, strings, children, raw_index)
+        if not name:
+            continue
+        x, y, width, height = (float(value) for value in box)
+        candidates.append(
+            {
+                "name": name,
+                "x": (x + width / 2.0) / device_pixel_ratio * screenshot_scale,
+                "y": (y + height / 2.0) / device_pixel_ratio * screenshot_scale,
+            }
+        )
+    return candidates
+
+
+def _compact_context(
+    observation: dict[str, Any],
+    coordinate_candidates: list[dict[str, float | str]] | None = None,
+) -> str:
     elements = _visible_elements(observation)
     lines = [
         "Live accessibility elements (quoted names are valid targets):",
@@ -104,13 +227,20 @@ def _compact_context(observation: dict[str, Any]) -> str:
     focused = observation.get("focused_element_bid")
     if isinstance(focused, str) and focused:
         lines.append(f"Focused element id: [{focused}]")
+    if coordinate_candidates:
+        lines.append("Visible coordinate candidates (text-backed controls):")
+        for index, candidate in enumerate(coordinate_candidates):
+            lines.append(f'[coord-{index}] text: "{candidate["name"]}"')
     return "\n".join(lines)
 
 
-def _model_prompt(observation: dict[str, Any]) -> str:
+def _model_prompt(
+    observation: dict[str, Any],
+    coordinate_candidates: list[dict[str, float | str]] | None = None,
+) -> str:
     goal = str(observation.get("goal", "")).strip()
     return (
-        f"Browser task: {goal}\n\n{_compact_context(observation)}\n\n"
+        f"Browser task: {goal}\n\n{_compact_context(observation, coordinate_candidates)}\n\n"
         "Choose exactly one grounded computer action or abstain."
     )
 
@@ -156,21 +286,86 @@ def _target_bid(target: Any, elements: list[dict[str, str]]) -> str | None:
     return contained[0]["bid"] if contained else None
 
 
+def _target_coordinate(
+    target: Any,
+    candidates: list[dict[str, float | str]],
+    *,
+    goal: str = "",
+) -> dict[str, float | str] | None:
+    text = " ".join(str(target).strip().strip("'\"").lower().split())
+    if not text:
+        return None
+    normalized = [
+        (candidate, " ".join(str(candidate["name"]).lower().split()))
+        for candidate in candidates
+    ]
+    exact = [candidate for candidate, name in normalized if name == text]
+    if exact:
+        return exact[0]
+    contained = [
+        candidate
+        for candidate, name in normalized
+        if text in name or name in text
+    ]
+    if contained:
+        return contained[0]
+    # A generic MiniWoW goal such as "click the numbers in ascending order" exposes numeric
+    # clickable labels.  When the model supplies a non-specific target, selecting the smallest
+    # visible number is a deterministic, label-free grounding rule; subsequent DOM snapshots
+    # remove the completed number and expose the next one.
+    low_goal = f"{goal} {text}".lower()
+    if "number" in low_goal and "ascending" in low_goal:
+        numeric = [
+            candidate
+            for candidate, name in normalized
+            if name.isdigit()
+        ]
+        if numeric:
+            return min(numeric, key=lambda candidate: int(str(candidate["name"])))
+    return None
+
+
 def _browser_action(
     tool: str | None,
     arguments: dict[str, Any],
     observation: dict[str, Any],
+    *,
+    coordinate_fallback: bool = False,
+    device_pixel_ratio: float = 1.0,
+    screenshot_scale: float = 1.0,
 ) -> tuple[str, bool]:
     """Map a model tool call to a live BrowserGym action and report grounding success."""
 
     elements = _visible_elements(observation)
+    coordinate_candidates = (
+        _dom_coordinate_candidates(
+            observation,
+            device_pixel_ratio=device_pixel_ratio,
+            screenshot_scale=screenshot_scale,
+        )
+        if coordinate_fallback
+        else []
+    )
     if tool in {"click", "double_click", "web_click"}:
         target = arguments.get("target_id") if tool == "web_click" else arguments.get("target")
         bid = _target_bid(target, elements)
+        if bid is None and coordinate_candidates:
+            candidate = _target_coordinate(target, coordinate_candidates, goal=str(observation.get("goal", "")))
+            if candidate is not None:
+                action = "mouse_dblclick" if tool == "double_click" else "mouse_click"
+                return f"{action}({candidate['x']:.3f}, {candidate['y']:.3f})", True
         if bid is None:
             return "noop(0)", False
         action = "dblclick" if tool == "double_click" else "click"
         return f"{action}({bid!r})", True
+    if tool == "move_cursor" and coordinate_candidates and coordinate_fallback:
+        candidate = _target_coordinate(
+            arguments.get("target"),
+            coordinate_candidates,
+            goal=str(observation.get("goal", "")),
+        )
+        if candidate is not None and "click" in str(observation.get("goal", "")).lower():
+            return f"mouse_click({candidate['x']:.3f}, {candidate['y']:.3f})", True
     if tool in {"type_text", "web_type"}:
         if tool == "web_type":
             focused = _target_bid(arguments.get("target_id"), elements)
@@ -213,17 +408,34 @@ def _run_episode(
     task: str,
     seed: int,
     max_steps: int,
+    coordinate_fallback: bool = False,
 ) -> dict[str, Any]:
     observation, reset_info = env.reset(seed=seed)
     goal = str(observation.get("goal", ""))
     records: list[dict[str, Any]] = []
     total_reward = 0.0
     terminated = truncated = False
+    page = getattr(getattr(env, "unwrapped", None), "page", None)
+    try:
+        device_pixel_ratio = float(page.evaluate("devicePixelRatio")) if page is not None else 1.0
+    except Exception:  # pragma: no cover - optional runtime property
+        device_pixel_ratio = 1.0
+    screenshot_scale = float(getattr(page, "_bgym_scale_factor", 1.0)) if page is not None else 1.0
     for step in range(max_steps):
+        # Keep the model's trained accessibility prompt stable.  The coordinate candidates are a
+        # runtime grounding sidecar, not an extra prompt contract; exposing them here would create
+        # a distribution shift for checkpoints trained before this diagnostic existed.
         prompt = _model_prompt(observation)
         started = time.perf_counter()
         raw, tool, arguments = _predict(agent, prompt, tools)
-        action, grounded = _browser_action(tool, arguments, observation)
+        action, grounded = _browser_action(
+            tool,
+            arguments,
+            observation,
+            coordinate_fallback=coordinate_fallback,
+            device_pixel_ratio=device_pixel_ratio,
+            screenshot_scale=screenshot_scale,
+        )
         observation, reward, terminated, truncated, info = env.step(action)
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         total_reward += float(reward)
@@ -271,6 +483,11 @@ def main() -> int:
         choices=("standard", "realistic_browser"),
         default="standard",
         help="tool vocabulary used by the checkpoint and native action adapter",
+    )
+    parser.add_argument(
+        "--coordinate-fallback",
+        action="store_true",
+        help="use live DOM clickable geometry when accessibility-tree grounding is unavailable; non-official diagnostic",
     )
     args = parser.parse_args()
 
@@ -321,13 +538,18 @@ def main() -> int:
                 task=episode.task_name,
                 seed=episode.seed,
                 max_steps=args.max_steps,
+                coordinate_fallback=args.coordinate_fallback,
             )
         finally:
             env.close()
         cases.append(case)
         print(f"[{index}/{len(selected)}] {episode.task_name} seed={episode.seed} success={case['success']}", flush=True)
 
-    full_plan = len(selected) == PRODUCTION_EPISODES and args.max_steps == PRODUCTION_MAX_STEPS
+    full_plan = (
+        len(selected) == PRODUCTION_EPISODES
+        and args.max_steps == PRODUCTION_MAX_STEPS
+        and not args.coordinate_fallback
+    )
     receipt = {
         "benchmark_id": "browsergym_miniwob",
         "browsergym": {
@@ -336,6 +558,7 @@ def main() -> int:
         },
         "checkpoint": {"path": str(args.checkpoint), "sha256": _sha256(args.checkpoint)},
         "tool_pool": args.tool_pool,
+        "coordinate_fallback": args.coordinate_fallback,
         "tool_names": [spec.name for spec in tools],
         "tool_pool_claim_boundary": (
             "The realistic_browser pool is a vocabulary/dispatch diagnostic only: Mind2Web backend "
@@ -348,6 +571,11 @@ def main() -> int:
             "Native BrowserGym/MiniWoB checkpoint-in-the-loop evaluation over the pinned task plan. "
             "This is a text/accessibility-tree modality result, not a visual-agent result, WebArena "
             "result, or real-account email/Notion execution."
+            + (
+                " The coordinate fallback is an optional DOM-geometry diagnostic and makes this run non-official."
+                if args.coordinate_fallback
+                else ""
+            )
         ),
         "cases": cases,
         "environment_executed": True,

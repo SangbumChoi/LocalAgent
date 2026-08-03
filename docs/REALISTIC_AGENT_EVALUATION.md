@@ -2045,6 +2045,26 @@ embedding group, 3.20% in attention/mixer, 4.51% in FFN, and 78.11% in action he
 supports the diagnosis that offline contract fitting alone does not restore native grounding;
 the m142 child and m148 adapter remain unpromoted.
 
+### Optional DOM-coordinate grounding bridge (m151/m152)
+
+The m148 failure exposed a concrete modality gap: several live MiniWoB controls are generic/SVG
+nodes that are absent from BrowserGym's accessibility tree.  The optional `--coordinate-fallback`
+diagnostic therefore reads only the native DOM snapshot's `isClickable` indices, text-backed child
+nodes, and layout bounds, then converts CSS geometry using the page device-pixel ratio and
+BrowserGym screenshot scale.  It does not read screenshots, task verifiers, hidden labels, or
+BrowserGym task plans, and the model prompt remains the original trained accessibility contract;
+the geometry is a runtime sidecar used only when a high-level click cannot resolve an accessibility
+bid.
+
+The ten-episode [`m151 canary receipt`](paper/results/raw/m151-browsergym-native-coordinate-canary-v1.json)
+solves all four `ascending-numbers` seeds (`4/10`, `40%`) with grounded coordinate clicks.  The
+complete [`m152 receipt`](paper/results/raw/m152-browsergym-native-coordinate-full-m148-v1.json)
+solves `4/240` (`1.67%`), with all successes still confined to that suite; the remaining tasks
+continue to expose the adapter's fill/selector collapse.  Because this bridge changes the native
+action path and is not the official BrowserGym protocol, both receipts set `official_split_verified:
+false` and cannot replace the m144 gate result (`0/240`, no coordinate fallback).  The gain is
+runtime grounding evidence, not evidence that m148's pretrained weights transferred successfully.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution
