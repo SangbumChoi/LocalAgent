@@ -487,6 +487,25 @@ state-history format, then train route, selector, and argument/action heads join
 closed-loop replay.  This result is diagnostic transfer evidence, not an official ToolSandbox score
 or WebGPU productivity claim.
 
+### ToolSandbox runtime ToolSpec alignment and native bridge (m212)
+
+The [`m212 receipt`](paper/results/raw/m212-toolsandbox-runtime-heads-native-bridge-v1.json) closes
+the candidate-catalog mismatch without overstating the result.  A pinned Apple ToolSandbox checkout
+enumerates 1,032 named scenarios; the projection calls the same
+`ExecutionContext.get_available_tools(scrambling_allowed=False)` path used by the native runner and
+serializes the exact OpenAI-style ToolSpecs.  It retains 105 train and 20 eval rows, dropping two
+static rows whose target is intentionally unavailable in the runtime context.  The projection still
+has no simulator state or action history, and no upstream user simulator or official split is run.
+
+Joint frozen-backbone route/selector training raises the warm row-local selector from `5%` to `70%`
+top-1 (`100%` top-3) and route-to-`app_action` from `5%` to `100%`.  The matched random control reaches
+`80%` selector top-1 and the same `100%` route score, so the offline result does not demonstrate
+pretrained-weight advantage.  More importantly, the corrected native bridge now passes the loaded
+selector into decoding, yet warm and random children both remain at `1/5` (`20%`) native success.
+The warm child is therefore not exported or adopted.  The remaining blocker is explicit state/action
+history plus argument/action-head learning under the simulator's milestone verifier, not another
+catalog-only probe.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

@@ -182,6 +182,7 @@ def _load_roles(
                 device="cpu",
                 retriever=ToolRetriever(specs),
                 route_head=self._agent.route_head,
+                selector=self._agent.selector,
                 ptr_head=self._agent.ptr_head,
                 top_m=1,
                 blocked_candidates=self._blocked_candidates,
