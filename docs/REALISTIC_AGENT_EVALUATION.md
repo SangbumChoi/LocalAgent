@@ -2720,6 +2720,18 @@ same failure seen in the native browser/mobile runs: candidate retrieval can rou
 argument grounding and state-conditioned selection are not yet reliable.  It is first-call-only,
 with no live API calls, side effects, official xLAM score, or native-environment claim.
 
+### Native learned-selector control with guards disabled (m268)
+
+The [`m268 receipt`](paper/results/raw/m268-webgpu-native-current-unguarded-retrieval-v1.json)
+uses the same current checkpoint and Apple Metal-3 WebGPU runtime, but disables both lexical
+productivity and URL guards while selecting through the retrieval sidecar.  This is the more
+honest learned-control measurement: URL and Notion are exact on `30/30` repetitions each, while
+the email request is routed to `type_text` with `{text: "Dana the quarterly report"}` on all
+`30/30` repetitions instead of `send_email` with a recipient.  The aggregate is `2/3` local
+structured actions, p50 `7.5 ms`, and about `1,379 tokens/s`; no external action was executed.
+The result confirms that the current WebGPU demo's email success depends on the explicit guard,
+and that email argument/schema grounding remains a release blocker.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the

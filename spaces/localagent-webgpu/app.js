@@ -56,6 +56,14 @@ const MOBILE_LEXICAL_GUARD = (() => {
   return value !== "0" && value !== "false" && value !== "off";
 })();
 window.__localAgentMobileLexicalGuardEnabled = MOBILE_LEXICAL_GUARD;
+// Diagnostic-only switch: production/demo URLs keep this guard enabled by default.  A native
+// control run can disable it to measure the learned selector rather than the explicit URL safety
+// adapter; no external navigation is ever executed by the capability harness.
+const URL_LEXICAL_GUARD = (() => {
+  const value = new URLSearchParams(window.location.search).get("url_guard");
+  return value !== "0" && value !== "false" && value !== "off";
+})();
+window.__localAgentUrlLexicalGuardEnabled = URL_LEXICAL_GUARD;
 const REQUESTED_SELECTOR = new URLSearchParams(window.location.search).get("selector") || "dense";
 
 function sessionOptions(provider) {
@@ -1944,7 +1952,7 @@ function dispatchSelect(
   // lexical safety adapter ahead of the learned heads so an OOD URL cannot become a side-effecting
   // GUI click; the receipt records this policy separately from learned selector accuracy.
   const urlTool = dispatch?.dense_selector?.tool_names?.includes("open_url");
-  if (urlTool && /\b(?:open|go to|navigate to|visit|pull up)\s+https?:\/\//i.test(String(query))) {
+  if (URL_LEXICAL_GUARD && urlTool && /\b(?:open|go to|navigate to|visit|pull up)\s+https?:\/\//i.test(String(query))) {
     return {
       name: "open_url",
       route: "web_search",
