@@ -58,6 +58,10 @@ TEXT_ARGS = {"content", "message", "text", "body", "subject", "title", "note", "
 APP_ARGS = {"app_name"}
 TARGET_ARGS = {"target"}
 EMAIL_ARGS = {"to", "recipient"}
+ID_ARGS = {"id", "identifier", "task_id", "user_id", "notification_id", "event_id"}
+_IDENTIFIER = re.compile(
+    r"\b(?:[A-Za-z][A-Za-z0-9-]*_[A-Za-z0-9][A-Za-z0-9_-]*|[0-9a-f]{8}-[0-9a-f-]{27,})\b"
+)
 
 
 def _boolean(prompt: str) -> list[bool]:
@@ -78,6 +82,18 @@ def _phone(prompt: str) -> list[str]:
     if not matches:
         matches = re.findall(r"(?<![A-Za-z0-9])\d{7,}(?![A-Za-z0-9])", prompt)
     return [re.sub(r"[ ()-]", "", matches[0])] if matches else []
+
+
+def _identifier(prompt: str, arg: str = "") -> list[str]:
+    """Extract a structured identifier instead of copying an entire instruction sentence."""
+
+    stem = arg[:-3] if arg.endswith("_id") else ""
+    values = _IDENTIFIER.findall(prompt)
+    if stem:
+        scoped = [value for value in values if value.lower().startswith(f"{stem.lower()}_")]
+        if scoped:
+            return scoped
+    return values
 
 
 def _text_arg(prompt: str, arg: str = "") -> list[str]:
@@ -117,6 +133,8 @@ def _text_arg(prompt: str, arg: str = "") -> list[str]:
             return [quoted[-1]]
         if quoted:
             return [quoted[-1]]
+    if arg in {"title", "subject", "label"} and quoted:
+        return [quoted[0]]
     return []
 
 
@@ -169,6 +187,10 @@ def _best_string(prompt: str, arg: str = "") -> str:
     tails = [t for t in tails if t]
     if arg in PHONE_ARGS:
         values = _phone(prompt)
+        if values:
+            return values[0]
+    if arg in ID_ARGS or arg.endswith("_id"):
+        values = _identifier(prompt, arg)
         if values:
             return values[0]
     if arg in EMAIL_ARGS:
@@ -249,6 +271,8 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         opts = _boolean(prompt)
     elif name in PHONE_ARGS:
         opts = _phone(prompt)
+    elif name in ID_ARGS or name.endswith("_id"):
+        opts = _identifier(prompt, name)
     elif name in TEXT_ARGS:
         opts = _text_arg(prompt, name)
     elif name in EMAIL_ARGS:

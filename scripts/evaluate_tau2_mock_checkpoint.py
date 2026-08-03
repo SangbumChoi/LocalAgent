@@ -168,6 +168,8 @@ def evaluate(
     report: Path,
     source_revision: str,
     retrieve_k: int = 50,
+    selector_mode: str = "checkpoint",
+    selector_first: bool = True,
 ) -> dict[str, Any]:
     if not checkpoint.is_file():
         raise FileNotFoundError(checkpoint)
@@ -203,12 +205,20 @@ def evaluate(
     initial_environment = get_environment()
     state: dict[str, Any] = {"environment": initial_environment, "calls": []}
     registry = _tool_registry(state, initial_environment)
+    if selector_mode not in {"checkpoint", "retriever"}:
+        raise ValueError(f"unsupported selector mode: {selector_mode!r}")
     agent = Agent.from_checkpoint(
         checkpoint,
         registry,
-        selector_first=True,
+        selector_first=selector_first,
         retrieve_k=max(1, retrieve_k),
     )
+    if selector_mode == "retriever":
+        # A learned selector is trained over the public LocalAgent catalog.  For an unseen
+        # benchmark schema, compare it with the zero-training name/description retriever instead
+        # of silently treating the learned closed-world prior as generalization.
+        agent.selector = None
+        agent.route_head = None
 
     # A full public reference trajectory proves the resettable native evaluator without using
     # model output.  It is kept only as aggregate metrics in the receipt.
@@ -300,7 +310,8 @@ def evaluate(
             "max_agent_turns": 1,
             "user_simulator": False,
             "retrieve_k": retrieve_k,
-            "selector_first": True,
+            "selector_first": selector_first,
+            "selector_mode": selector_mode,
         },
         "environment": {
             "native_runtime_executed": True,
@@ -355,6 +366,18 @@ def main() -> int:
     parser.add_argument("--max-tasks", type=int, default=10)
     parser.add_argument("--source-revision", required=True)
     parser.add_argument("--retrieve-k", type=int, default=50)
+    parser.add_argument(
+        "--selector-mode",
+        choices=("checkpoint", "retriever"),
+        default="checkpoint",
+        help="use the checkpoint selector or the zero-training schema retriever",
+    )
+    parser.add_argument(
+        "--selector-first",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="emit the first selected grounded body instead of model-ranking candidates",
+    )
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
     if args.task_ids:
@@ -372,6 +395,8 @@ def main() -> int:
         report=args.report,
         source_revision=args.source_revision,
         retrieve_k=args.retrieve_k,
+        selector_mode=args.selector_mode,
+        selector_first=args.selector_first,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0

@@ -56,6 +56,30 @@ def test_boolean_and_message_slots_are_typed_and_grounded():
     )
 
 
+def test_identifier_slots_do_not_copy_the_entire_instruction():
+    from localagent.agent.constrained import _tool_bodies
+    from localagent.data.schema import ToolSpec
+
+    update = ToolSpec(
+        name="update_task_status",
+        description="Update a task.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string"},
+                "status": {"type": "string", "enum": ["pending", "completed"]},
+            },
+            "required": ["task_id", "status"],
+        },
+    )
+    bodies = _tool_bodies(
+        "Mark the existing task task_1 as completed.",
+        update,
+    )
+    assert any('"task_id":"task_1"' in body for body in bodies)
+    assert all("Mark the existing task" not in body for body in bodies)
+
+
 def test_phone_grounding_prefers_explicit_number_over_uuid_digits():
     from localagent.agent.constrained import _phone
 

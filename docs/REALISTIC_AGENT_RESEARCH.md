@@ -903,6 +903,24 @@ can execute, but the learned LocalAgent catalog/route contract does not transfer
 customer-service tool names.  It is not a complete tau2 score, retail/telecom result, user-simulator
 run, or WebGPU adoption signal.
 
+### τ-Bench selector/grounding ablation (m258)
+
+The follow-up [`m258 ablation`](paper/results/raw/m258-tau2-checkpoint-ablation-v1.json) keeps the
+same ten resettable mock tasks and compares three inference arms.  The m46 public Mind2Web child
+with its learned selector reaches `0/10` bounded successes; the browser-context child reaches
+`2/10`; replacing the closed-world selector with the zero-training schema retriever (`k=1`) reaches
+`3/10` on the same source.  The gain is not a benchmark claim: it isolates a deployment failure in
+which the learned selector collapses onto `get_users` for unseen tau2 schemas.  A generic schema
+grounding fix now extracts structured identifiers such as `task_1`/`user_1` and quoted titles instead
+of copying an entire instruction as an argument.
+
+The matched m46→browser tensor audit finds identical configuration/tokenizer and `51` shared
+tensors.  Relative movement is largest in the action heads (`71.45%`) and embedding (`24.04%`),
+with attention/mixer (`3.20%`), FFN (`4.51%`), and normalization (`0.72%`) moving less.  This supports
+reusing the compatible body while replacing or recalibrating the selector for unseen schemas; it
+does not prove that the browser child is a better initialization, nor does it justify publishing a
+tau2, email, Notion, or WebGPU task-success score.
+
 The refreshed [`m253 strict gate`](paper/results/raw/m253-workshop-gate-tau2-catalog-refresh-v1.json)
 remains `ready: false` with nine missing official native receipts (AndroidWorld,
 MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and
