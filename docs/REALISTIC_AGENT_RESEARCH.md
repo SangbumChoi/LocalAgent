@@ -33,7 +33,7 @@ the repository has completed every benchmark.
 ### Official-source audit and admission boundary (m208)
 
 The [`m208 receipt`](paper/results/raw/m208-realistic-evaluation-source-audit-v1.json) freezes the
-current research inventory against the 40-row canonical catalog and 21-row supplemental registry.
+historical research inventory against the 40-row canonical catalog and 21-row supplemental registry.
 It cross-checks the official contracts for AndroidWorld, AndroidControl/AITW, MobileSafetyBench,
 iOSWorld, AppAgent, BrowserGym, Mind2Web, WebBench/BU Bench, OSWorld, AgentNet, GroundCUA/UI-TARS,
 ToolSandbox, MCPMark, EnterpriseOps-Gym, and MobileGym.  The audit makes the deployment boundary
@@ -456,6 +456,21 @@ binds the live public model/demo manifest and the m25 transfer/no-transfer ablat
 now has nine blockers rather than twelve.  ToolSandbox is deliberately still blocked because its
 129-scenario audit does not verify the official split; this prevents a local simulator result from
 being promoted to a benchmark claim.
+
+### ToolACE public source and transfer audit (m219)
+
+The [`m219 receipt`](paper/results/raw/m219-toolace-public-source-transfer-audit-v1.json) adds
+Team-ACE/ToolACE to the supplemental source registry.  The pinned Apache-2.0 snapshot contains
+`11,300` raw rows; the strict projection accepts `8,993`, with `8,044` train parent records and
+`949` eval parent records, zero parent overlap, and zero prompt overlap.  Rows that lack a strict
+first action or valid schema are rejected rather than silently converted into supervision.
+
+Three matched current-child transfer receipts cover first-action, full multi-turn, and
+action-history projections.  Warm-start token accuracy beats the matched random backbone by
+`17.37–49.48` percentage points, while warm sequence exactness remains `0%` in every arm.  The
+adoption conclusion is therefore narrow and reproducible: keep the pretrained body for further
+ToolACE continuation, but do not promote the tool heads or call the result native MCP, BFCL,
+mobile, browser, desktop, email, or Notion capability.
 
 ### Frozen dispatch repair control (m194)
 

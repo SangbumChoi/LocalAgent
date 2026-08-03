@@ -312,3 +312,18 @@ entries:
     webgpu_projection: schema and action-vocabulary compatibility probe; coordinate/screenshot grounding requires a visual encoder
     metric: action_validity, grounding_accuracy, episode_success, and latency
     notes: The official prompt contract separates computer-use, mobile-use, and grounding modes and includes long_press, open_app, press_home, and press_back. This row records the protocol source rather than claiming that UI-TARS benchmark payloads are available or that a text-only WebGPU model has visual GUI capability.
+
+  - id: toolace
+    family: tool_api
+    name: ToolACE function-calling dataset
+    source_url: https://huggingface.co/datasets/Team-ACE/ToolACE
+    paper_url: https://arxiv.org/abs/2409.00920
+    license: Apache-2.0
+    source_revision: 6bda777c88d21e5a204703c1ee45597a8fa4f734
+    scale: 11300_raw_rows;_8993_strict_action_rows;_8044_train_parent_records;_949_eval_parent_records
+    modalities: [instruction, tool_schema, assistant_action, tool_response, conversation]
+    split_policy: public_parent_disjoint_train_eval;_benchmark_function_calling_rows_are_not_native_environment_tasks
+    runtime: offline_conversation_projection;_no_external_tool_server_or_account
+    webgpu_projection: strict_tool_call_text_with_schema_and_action_history;_no_external_side_effects
+    metric: held_out_token_accuracy, first_action_exact, sequence_exact, schema_validity, and argument_exactness
+    notes: The pinned public snapshot rejects 2308 rows without a strict first action or valid schema projection; train/eval parent overlap is zero. Existing m171, m172, and m173 receipts bind first-action, multi-turn, and action-history transfers, but remain diagnostic rather than official ToolACE/BFCL or native MCP scores.

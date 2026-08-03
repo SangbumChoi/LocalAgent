@@ -10,7 +10,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     assert payload["kind"] == "localagent_realistic_agent_supplemental_catalog"
     entries = payload["entries"]
-    assert len(entries) == 21
+    assert len(entries) == 22
     assert {entry["id"] for entry in entries} == {
         "androidworld",
         "browsergym_miniwob",
@@ -33,6 +33,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         "appagent_benchmark",
         "groundcua",
         "ui_tars_action_contract",
+        "toolace",
     }
     for entry in entries:
         assert entry["source_url"].startswith(
@@ -90,3 +91,13 @@ def test_new_mobile_and_grounding_sources_fail_closed_until_released() -> None:
     assert "dataset_terms" in entries["groundcua"]["split_policy"]
     assert "screenshots" in entries["groundcua"]["notes"]
     assert entries["ui_tars_action_contract"]["source_revision"] == "582f3a7ea5d285ee8ed9e2e84048d1ab01453c49"
+
+
+def test_toolace_public_projection_is_parent_disjoint_and_not_native_claim() -> None:
+    payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
+    entry = next(row for row in payload["entries"] if row["id"] == "toolace")
+    assert entry["source_revision"] == "6bda777c88d21e5a204703c1ee45597a8fa4f734"
+    assert entry["license"] == "Apache-2.0"
+    assert "parent_disjoint" in entry["split_policy"]
+    assert "not_native_environment_tasks" in entry["split_policy"]
+    assert "external_tool_server" in entry["runtime"]
