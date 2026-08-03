@@ -2784,6 +2784,21 @@ random children.  Screenshots were not used, and neither Android emulators nor d
 were launched; this is training/weight-transfer evidence, not an official AndroidControl,
 AgentNetBench, OSWorld, or native WebGPU score.
 
+### Current MCPMark service-routing control (m274)
+
+The [`m274 receipt`](paper/results/raw/m274-mcpmark-current-service-routing-v1.json) evaluates the
+current checkpoint and both m273 children against the pinned public MCPMark standard descriptions
+(`169` rows) plus the current checkpoint's easy suite (`70` rows).  The current checkpoint routes
+`25/169` standard rows (`14.79%`) and `10/70` easy rows (`14.29%`).  Its service profile is sharply
+surface-specific: Playwright routes `25/25`, while filesystem, GitHub, Notion, and Postgres all
+route `0` rows; the easy Notion slice is also `0/10`.
+
+The warm m273 child preserves `25/169` routing and the random control falls to `10/169` (`5.92%`),
+but neither child improves Notion routing.  This isolates service-family/schema retrieval as a
+deployment blocker for the requested Notion and stateful-tool workflows.  MCP servers, isolated
+state, verifiers, user simulation, credentials, and external side effects were not run, so this
+remains a routing proxy rather than an official MCPMark result or native WebGPU capability claim.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the
