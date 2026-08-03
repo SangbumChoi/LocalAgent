@@ -1846,6 +1846,15 @@ canary: it is not the complete 256-task MobileGym result, visual grounding, or A
 evidence.  The next required comparison is a complete split run with the current child and the
 same release-matched runtime.
 
+### Current m180 Hugging Face-format export (m183)
+
+The [`m183 receipt`](paper/results/raw/m183-hf-local-export-current-m180-v1.json) binds a fresh
+local export of the current m180 child: `10,524,544` parameters, a `42,101,904`-byte
+`model.safetensors`, a `1,134,224`-byte BPE tokenizer, and serialized 63-tool/23-pointer dispatch
+heads.  The export is locally hash-verified and self-contained, but it is not a Hub repository or
+download URL: `hf auth whoami` is unauthenticated and no upload is claimed.  This bundle keeps the
+generic deployment catalog; the AgentNet surface selector remains a separate diagnostic artifact.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:
