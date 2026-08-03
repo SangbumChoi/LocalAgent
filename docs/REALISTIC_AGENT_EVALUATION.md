@@ -1943,6 +1943,31 @@ row-local upper-bound diagnostic remains `50.78%`, and first-argument exactness 
 this is an efficiency and safety correction—not a quality promotion.  The checkpoint remains
 unpromoted, and the result is not official xLAM, live API execution, or native WebGPU evidence.
 
+### Five-surface public continuation and transfer audit (m142)
+
+The [`m142 receipt`](paper/results/raw/m142-five-surface-public-continuation-v1.json) extends the
+same 10.5M BPE parent across five public projections: AndroidControl, AgentNet, Mind2Web,
+ToolSandbox source metadata, and redacted MCPMark traces.  It uses 4,746 train rows and 1,064
+source-disjoint evaluation rows for 48 low-rate CPU updates.  Aggregate held-out assistant-token
+accuracy rises `61.15% → 68.65%` and mean loss falls `2.468 → 2.157`; the per-source deltas are
+`+9.51` Android, `+0.80` AgentNet, `+0.61` Mind2Web, `+0.24` ToolSandbox, and `−0.16` MCPMark
+percentage points.  Exact assistant-sequence accuracy remains `0%` on every source.
+
+The transfer audit finds identical configuration/tokenizer and 51 shared tensors.  Relative
+backbone movement is `0.255%` attention/mixer, `0.325%` FFN, `0.742%` embedding, and `0.016%`
+normalization; action heads remain unchanged.  This supports low-rate reuse as a controlled
+initialization experiment: the matched random-backbone control reaches `39.68%` aggregate token
+accuracy, so the warm-minus-random gap is `+28.97` points under the same schedule.  The MCPMark
+regression and zero exact sequences still keep the child unpromoted.  The rows are
+text/accessibility projections only: no native emulator, desktop VM,
+BrowserGym, MCP server, screenshot grounding, or external account was executed.
+
+On the separate 128-row public xLAM-derived first-call diagnostic, the child reaches `7.03%`
+first-tool exactness and `12.50%` schema validity through the deployment-shaped retrieval path,
+versus `0.78%`/`1.56%` for unrestricted dense selection; row-local retrieval remains a `50.78%`
+upper-bound diagnostic and exact arguments remain `0%`.  This confirms the retrieval safety fix but
+also shows that the five-surface continuation did not improve general function-calling quality.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution

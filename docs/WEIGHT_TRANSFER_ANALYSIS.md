@@ -98,6 +98,18 @@ optimization prior, but does not support adopting it as evidence of stateful exe
 [`m56 receipt`](paper/results/raw/m56-stateful-productivity-transfer-ablation-v1.json) and
 [`low-rate trainer`](../scripts/train_stateful_productivity_lowrate_probe.py).
 
+The m142 five-surface continuation repeats the low-rate transfer measurement after adding public
+AndroidControl, AgentNet, Mind2Web, ToolSandbox, and redacted MCPMark projections to one
+source-disjoint mixture.  The 10.5M BPE parent is configuration- and tokenizer-identical to the
+child; the 48-update child improves aggregate held-out assistant-token accuracy from `61.15%` to
+`68.65%`, but exact sequences remain `0%` and MCPMark falls slightly (`26.47% → 26.31%`).
+The matched random-backbone control reaches only `39.68%` aggregate token accuracy under the
+same schedule, a warm-minus-random gap of `+28.97` points.  Backbone relative movement remains
+small (embedding `0.742%`, FFN `0.325%`, mixer `0.255%`, normalization `0.016%`) and action heads
+are unchanged.  This is a stronger cross-surface
+compatibility/transfer audit, not evidence for a universal agent head or native tool execution;
+the full source hashes and decision boundary are in the [`m142 receipt`](paper/results/raw/m142-five-surface-public-continuation-v1.json).
+
 The AgentNet/OpenCUA adapter is deliberately outside this weight-transfer series.  Its 12-action
 official sample is parsed into evaluation-only coordinate tools, so it changes no checkpoint
 weights and cannot be counted as a training gain.  A screenshot/accessibility grounding bridge
