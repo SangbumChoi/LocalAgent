@@ -770,6 +770,32 @@ recipient is `confirmation_required`; a complete `open_url` is `allowed`; and an
 write is `blocked`.  The policy is schema-aware but remains a deterministic deployment guard, not
 learned capability or AppWorld-UL benchmark performance.
 
+### Stateful productivity GRPO child and weight preservation (m234–m235)
+
+The [`m234 receipt`](paper/results/raw/m234-stateful-productivity-grpo-head-preserved-v1.json)
+is a fresh pure-PyTorch continuation from the current 10.52M Mind2Web-adapted BPE child.  It
+builds 16 source-disjoint local training decisions over email, Notion, browser search/recovery,
+and abstention, runs a 32-update SFT prelude plus four GRPO rollout updates, and preserves the
+five deployment-head containers (`tool_head`, `ptr_head`, `route_head`, `dense_selector`, and
+`selector_proj`) as frozen tensors in the child checkpoint.  Mean shaped reward improves from
+`0.0375` to `0.1125`, but held-out exact tool/text accuracy remains `0%`; the result is therefore
+an RL-pipeline and reward-signal diagnostic, not a capability claim.
+
+The [`m235 weight audit`](paper/results/raw/m235-stateful-productivity-rl-weight-transfer-v1.json)
+confirms identical model configuration, shapes, and tokenizer identity.  Frozen action heads move
+by `0%` relative ΔL2; the LM embedding moves `4.69%`, attention/mixer `1.40%`, FFN `1.74%`, and
+normalization `0.10%`.  This makes the adoption decision explicit: retain the compatible backbone
+and frozen heads only as a lineage-preserving checkpoint, and do not promote it to WebGPU or an
+official benchmark until a matched no-transfer arm improves held-out exactness and a native state
+verifier succeeds.  The earlier run that silently dropped auxiliary heads is superseded by this
+head-preserving path and remains unadopted.
+
+The [`m236 deployment smoke`](paper/results/raw/m236-stateful-productivity-rl-deployment-smoke-v1.json)
+confirms that the preserved-head child is loadable by the actual LocalAgent runtime, but its
+10-case echo-stub dispatch is only `1/10` exact.  It therefore regresses the older local parent on
+this smoke and is explicitly not exported or promoted; preserving tensors fixes checkpoint
+integrity, not policy quality.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

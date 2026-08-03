@@ -36,6 +36,16 @@ from localagent.train.sft import sft
 from localagent.train.stage_data import canonical_sha256
 
 
+_DEPLOYMENT_HEADS = (
+    "tool_head",
+    "ptr_head",
+    "route_head",
+    "dense_selector",
+    "selector_proj",
+    "value_head",
+)
+
+
 def _sha256(path: Path) -> tuple[int, str]:
     digest = hashlib.sha256()
     size = 0
@@ -248,6 +258,37 @@ def _summary(metrics: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _preserve_deployment_heads(parent: Path, child: Path) -> list[str]:
+    """Carry frozen action heads through an LM-only RL checkpoint.
+
+    The GRPO loop optimizes the language-model state dict, while deployment uses auxiliary
+    tool/route/pointer/selector heads stored beside it.  ``run_rl`` intentionally writes only the
+    optimized model state, so copy compatible parent heads back before the receipt is assembled.
+    This keeps the child loadable by the WebGPU agent and makes the heads' frozen status explicit.
+    """
+
+    import torch
+
+    parent_checkpoint = torch.load(parent, map_location="cpu", weights_only=False)
+    child_checkpoint = torch.load(child, map_location="cpu", weights_only=False)
+    if not isinstance(parent_checkpoint, dict) or not isinstance(child_checkpoint, dict):
+        raise TypeError("RL checkpoint and parent checkpoint must be mappings")
+    preserved: list[str] = []
+    for name in _DEPLOYMENT_HEADS:
+        value = parent_checkpoint.get(name)
+        if value is None or name in child_checkpoint:
+            continue
+        child_checkpoint[name] = copy.deepcopy(value)
+        preserved.append(name)
+    child_checkpoint["stateful_productivity_rl"] = {
+        "deployment_heads": preserved,
+        "deployment_heads_trainable": False,
+        "deployment_heads_source": str(parent),
+    }
+    torch.save(child_checkpoint, child)
+    return preserved
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--parent", type=Path, required=True)
@@ -309,6 +350,7 @@ def main() -> int:
     run_rl(str(config_path))
     metrics_path = out_dir / "metrics.json"
     checkpoint_path = out_dir / "latest.pt"
+    preserved_heads = _preserve_deployment_heads(sft_parent, checkpoint_path)
     metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
     original_parent_bytes, original_parent_sha = _sha256(args.parent)
     parent_bytes, parent_sha = _sha256(sft_parent)
@@ -342,6 +384,8 @@ def main() -> int:
             "sft": sft_training,
             "model_config": config["model_config"],
             "reward_environment": config["environment"]["name"],
+            "deployment_heads_preserved": preserved_heads,
+            "deployment_heads_trainable": False,
         },
         "training": _summary(metrics),
         "output": {
