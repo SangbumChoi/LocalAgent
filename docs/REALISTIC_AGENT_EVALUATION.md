@@ -1792,6 +1792,27 @@ fetched to a temporary audit directory, their task text was not copied into Git 
 simulator, seeded profile, APK, or official verifier was executed.  This is stronger split and
 provenance evidence, not a mobile benchmark score.
 
+### Current-child mixed mobile/computer continuation and matched random control (m180)
+
+The [`m180 receipt`](paper/results/raw/m180-current-child-mixed-public-continuation-v1.json)
+records a bounded continuation from the current AndroidControl-adapted child over source-pinned
+public AgentNet and Mind2Web projections: `549` train rows and `145` held-out rows, with
+source-disjoint AgentNet parent records and Mind2Web tasks/typed pointer slots.  After `32` CPU
+updates at learning rate `1e-5`, held-out assistant-token accuracy improves from `51.99%` to
+`58.06%` and mean loss falls from `3.438` to `2.662`; route accuracy rises from `9.55%` to
+`35.18%`.  A matched random-backbone control reaches only `12.93%` token accuracy and `1.01%`
+route accuracy after the same updates, so the warm-start gap is real for this teacher-forced
+projection rather than an artifact of the optimizer alone.
+
+The result remains diagnostic.  Both arms have `0/145` sequence exactness, action heads are
+unchanged, and the fixed browser tool catalog does not cover the AgentNet/Mind2Web action names,
+making the reported selector top-1 values uninterpretable.  Weight audits find compatible
+configuration/tokenizer and `51` shared tensors, with warm-start relative movement of `0.449%`
+embedding, `0.223%` attention/mixer, and `0.273%` FFN (random control: `0.554%`, `0.210%`, and
+`0.278%`).  This supports retaining the transferred representation for further surface-specific
+experiments, not publishing a universal transfer claim or asserting native browser, desktop,
+mobile, email, Notion, MCP, or WebGPU control.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:
