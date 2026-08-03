@@ -2705,6 +2705,21 @@ MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark
 EnterpriseOps-Gym.  These require their real environments, official splits, and task rewards;
 the local WebGPU capability receipt cannot substitute for them.
 
+### Current browser-context child xLAM public derivative evaluation (m267)
+
+The [`m267 receipt`](paper/results/raw/m267-xlam-current-browser-context-v1.json) adds a
+current-checkpoint, public-data tool-use control.  It evaluates 128 source-disjoint rows from a
+1,000-row Apache-2.0 derivative shard of xLAM Function Calling, with the exact checkpoint hash,
+source JSONL hash, and evaluator hash recorded.  The original Salesforce dataset is gated and its
+official split is not authenticated or verified here, so this is explicitly a derivative result.
+
+Row-local retrieval reaches `50.78%` first-tool exactness, but only `1.56%` first-argument
+exactness.  The deployment-shaped runtime retrieval-plus-selector path falls to `11.72%` tool
+exactness and `14.06%` schema validity; global selector exactness is `0.78%`.  This isolates the
+same failure seen in the native browser/mobile runs: candidate retrieval can route a tool, while
+argument grounding and state-conditioned selection are not yet reliable.  It is first-call-only,
+with no live API calls, side effects, official xLAM score, or native-environment claim.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the
