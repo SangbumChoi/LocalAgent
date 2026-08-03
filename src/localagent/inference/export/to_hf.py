@@ -168,6 +168,51 @@ def _weight_loading(repo_id: str, weight_file: str) -> str:
     )
 
 
+def _dispatch_metadata(checkpoint: Mapping[str, object]) -> dict[str, object]:
+    """Return serialized dispatch metadata, inferring the standard pool when safe.
+
+    Some continuation checkpoints predate the optional ``dispatch_tool_pool`` field but still
+    contain the complete action heads and a 51-class tool head (50 standard tools plus abstention).
+    In that narrowly identifiable case the runtime pool is the same 63-name standard/mobile/
+    productivity catalog used by the WebGPU exporter.  Unknown head widths remain metadata-free
+    rather than being guessed.
+    """
+
+    dispatch_pool = checkpoint.get("dispatch_tool_pool")
+    inferred = False
+    if not isinstance(dispatch_pool, list):
+        tool_head = checkpoint.get("tool_head")
+        bias = tool_head.get("fc.bias") if isinstance(tool_head, Mapping) else None
+        width = getattr(bias, "shape", ())[0] if getattr(bias, "shape", ()) else None
+        if width == 51:
+            from localagent.agent.mobile_toolset import mobile_tools, realistic_productivity_tools
+            from localagent.agent.toolset import STANDARD_TOOLS
+
+            dispatch_pool = [
+                tool.name
+                for tool in [*STANDARD_TOOLS, *mobile_tools(), *realistic_productivity_tools()]
+            ]
+            inferred = True
+
+    if not isinstance(dispatch_pool, list):
+        return {}
+    metadata: dict[str, object] = {
+        "tool_pool": [str(name) for name in dispatch_pool],
+        "ptr_args": [str(name) for name in checkpoint.get("ptr_args", [])]
+        if isinstance(checkpoint.get("ptr_args", []), list)
+        else [],
+        "examples": checkpoint.get("examples", {})
+        if isinstance(checkpoint.get("examples", {}), Mapping)
+        else {},
+        "retrieval_examples": checkpoint.get("retrieval_examples", {})
+        if isinstance(checkpoint.get("retrieval_examples", {}), Mapping)
+        else {},
+    }
+    if inferred:
+        metadata["provenance"] = "inferred_standard_tool_pool_from_51_class_tool_head"
+    return metadata
+
+
 def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: str | None = None,
               private: bool = True, push: bool = False) -> str:
     checkpoint_path = Path(checkpoint).resolve()
@@ -178,21 +223,7 @@ def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: 
     out_path.mkdir(parents=True, exist_ok=True)
     tokenizer = _tokenizer_bundle(ck, checkpoint_path, out_path)
 
-    dispatch_pool = ck.get("dispatch_tool_pool")
-    dispatch_metadata = {}
-    if isinstance(dispatch_pool, list):
-        dispatch_metadata = {
-            "tool_pool": [str(name) for name in dispatch_pool],
-            "ptr_args": [str(name) for name in ck.get("ptr_args", [])]
-            if isinstance(ck.get("ptr_args", []), list)
-            else [],
-            "examples": ck.get("examples", {}) if isinstance(ck.get("examples", {}), Mapping) else {},
-            "retrieval_examples": (
-                ck.get("retrieval_examples", {})
-                if isinstance(ck.get("retrieval_examples", {}), Mapping)
-                else {}
-            ),
-        }
+    dispatch_metadata = _dispatch_metadata(ck)
     config = {
         "model_type": "localagent",
         "architecture": f"LocalAgentLM ({tokenizer['label']} GQA+RoPE+SwiGLU)",

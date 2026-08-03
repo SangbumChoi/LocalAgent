@@ -108,6 +108,14 @@ The public deployment is a 28.32M-parameter byte model; it must not be described
 continuation or as evidence of native Android, desktop-VM, MCP-server, email, or Notion task
 success.
 
+The current stateful-child checkpoint was exported again in the [`m164 receipt`](paper/results/raw/m164-hf-local-export-current-v1.json).
+This bundle is `10,524,544` parameters with a `42.10 MB` safetensors file, the recorded 16K BPE
+tokenizer, all five action-head groups, `63` inferred runtime tools, and `23` pointer arguments.
+The inference is schema-guarded: it is enabled only for a legacy checkpoint whose tool head has
+the known 51-class width (50 standard tools plus abstention); unknown head widths remain
+metadata-free.  The bundle is locally verified but still unpublished because Hugging Face
+authentication is absent.
+
 The first native checkpoint-in-loop browser probe is now recorded in the [`m29 receipt`](paper/results/raw/m29-browsergym-native-model-eval-v1.json).
 It executed the pinned BrowserGym/MiniWoB environment for all 240 episodes (60 task variants,
 four fixed seeds) with live accessibility-tree observations.  This is a real environment result,

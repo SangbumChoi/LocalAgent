@@ -1,4 +1,5 @@
 import json
+import hashlib
 from pathlib import Path
 
 
@@ -41,3 +42,30 @@ def test_m131_mobile_export_binds_dispatch_metadata_without_claiming_upload() ->
         "reason": "hf auth whoami reports no login; upload requires a user-provided Hugging Face token and repository",
     }
     assert payload["bundle"]["agent_heads.bin"]["bytes"] == 10137222
+
+
+def test_m164_current_child_hf_export_is_complete_but_unpublished() -> None:
+    path = Path("docs/paper/results/raw/m164-hf-local-export-current-v1.json")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    body = dict(payload)
+    expected = body.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert expected == actual
+    assert payload["checkpoint"]["parameters"] == 10524544
+    assert payload["bundle"]["export_verified_locally"] is True
+    assert payload["dispatch_metadata"] == {
+        "tool_count": 63,
+        "pointer_argument_count": 23,
+        "provenance": "inferred_standard_tool_pool_from_51_class_tool_head",
+        "model_card_reports_tools": 63,
+        "heads_included": True,
+    }
+    assert payload["publication"] == {
+        "published": False,
+        "hub_url": None,
+        "authenticated": False,
+        "uploaded": False,
+        "reason": "hf auth whoami reports no login; upload requires a user-provided Hugging Face token and repository",
+    }

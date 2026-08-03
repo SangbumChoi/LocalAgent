@@ -85,3 +85,29 @@ def test_hf_bpe_bundle_is_self_contained_and_exports_dispatch_heads(tmp_path):
     assert config["agent"]["tool_pool"] == ["mobile_click", "mobile_submit_answer"]
     assert config["agent"]["ptr_args"] == ["message"]
     assert "2 tools" in Path(out, "README.md").read_text(encoding="utf-8")
+
+
+def test_hf_export_infers_standard_dispatch_pool_from_legacy_head_schema(tmp_path):
+    cfg = ModelConfig(vocab_size=256, d_model=64, embed_dim=32, n_layers=2, n_loops=1,
+                      n_heads=4, n_kv_heads=2, ffn_hidden=128, max_seq_len=64, name="legacy")
+    checkpoint = tmp_path / "legacy.pt"
+    torch.save(
+        {
+            "cfg": cfg.__dict__,
+            "state_dict": LocalAgentLM(cfg).state_dict(),
+            "tool_head": {"fc.weight": torch.ones(51, 64), "fc.bias": torch.ones(51)},
+            "ptr_head": {"arg_emb.weight": torch.ones(2, 64)},
+            "ptr_args": ["text", "url"],
+            "examples": {"mobile_click": ["tap the button"]},
+        },
+        checkpoint,
+    )
+
+    out = export_hf(str(checkpoint), str(tmp_path / "hf-legacy"), push=False)
+    config = json.loads(Path(out, "config.json").read_text(encoding="utf-8"))
+    heads = torch.load(Path(out, "agent_heads.bin"), map_location="cpu", weights_only=True)
+    assert len(config["agent"]["tool_pool"]) == 63
+    assert config["agent"]["ptr_args"] == ["text", "url"]
+    assert config["agent"]["provenance"] == "inferred_standard_tool_pool_from_51_class_tool_head"
+    assert heads["tool_pool"] == config["agent"]["tool_pool"]
+    assert "63 tools" in Path(out, "README.md").read_text(encoding="utf-8")
