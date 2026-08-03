@@ -965,6 +965,25 @@ normalization `0.035%`). The adoption decision is unchanged: retain the compatib
 an initialization candidate, and do not ship this RL child until service-schema grounding and
 native closed-loop success improve against a matched no-transfer control.
 
+### Current ToolACE action-history continuation and free-run control (m277)
+
+The [`m277 transfer receipt`](paper/results/raw/m277-toolace-action-history-transfer-v1.json)
+extends the current checkpoint audit to the pinned public [Team-ACE/ToolACE](https://huggingface.co/datasets/Team-ACE/ToolACE)
+action-history projection.  The run uses `256` source-record-disjoint training rows and `64`
+held-out rows from revision `6bda777c88d21e5a204703c1ee45597a8fa4f734`, with the tool-response and
+non-action prose boundary recorded by the adapter manifest.  Warm continuation preserves compatible
+weights and lowers held-out mean loss from `4.655` to `4.250`; random-backbone control remains near
+chance (`9.781` to `9.474`).  Warm held-out token accuracy is `47.30%` versus `0.17%` for random,
+but both arms remain at `0%` teacher-forced sequence exactness.
+
+The stricter [`warm free-run receipt`](paper/results/raw/m277-toolace-action-history-warm-v1.json)
+finds `20%` tool-name exactness, `0%` argument exactness, and `0%` complete action-history episodes
+over 16 held-out rows.  The matched [`random free-run receipt`](paper/results/raw/m277-toolace-action-history-random-v1.json)
+finds `16.67%` tool-name exactness and `3.33%` step exactness, so the random control wins this tiny
+free-run slice despite its much worse teacher-forced loss.  This is a useful deployment warning:
+backbone reuse is clearly valuable for representation learning, but it is not sufficient to adopt
+the current tool heads or claim reliable multi-turn tool execution.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
