@@ -22,7 +22,7 @@ import torch
 from localagent.agent.dense_selector import BoundSelector, DenseToolSelector, train_dense_selector
 from localagent.agent.routes import ROUTES, RouteHead, route_of, train_route_head
 from localagent.agent.tool_head import _feat
-from localagent.agent.toolset import REALISTIC_BROWSER_TOOLS
+from localagent.agent.toolset import REALISTIC_BROWSER_TOOLS, STANDARD_TOOLS
 from localagent.data.schema import Conversation
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.model.tokenizer import load_tokenizer
@@ -111,6 +111,7 @@ def _load_heads(
     parent: dict[str, Any],
     model: LocalAgentLM,
     *,
+    selector_tools,
     init: str = "parent",
     seed: int = 2027,
 ) -> tuple[RouteHead, BoundSelector]:
@@ -133,7 +134,7 @@ def _load_heads(
         selector.load_state_dict(selector_state)
     route.eval()
     selector.eval()
-    return route, BoundSelector(selector, REALISTIC_BROWSER_TOOLS, examples=parent.get("examples", {}))
+    return route, BoundSelector(selector, selector_tools, examples=parent.get("examples", {}))
 
 
 def _head_metrics(
@@ -184,6 +185,12 @@ def main() -> int:
     parser.add_argument("--steps", type=int, default=32)
     parser.add_argument("--head-steps", type=int, default=0)
     parser.add_argument("--head-init", choices=("parent", "random"), default="parent")
+    parser.add_argument(
+        "--selector-pool",
+        choices=("realistic", "standard"),
+        default="realistic",
+        help="tool pool used to train/bind the dense selector; keep it identical to runtime tools",
+    )
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1.0e-5)
     parser.add_argument("--max-seq-len", type=int, default=2048)
@@ -204,7 +211,14 @@ def main() -> int:
     model = LocalAgentLM(config)
     model.load_state_dict(parent["state_dict"])
     tokenizer = _checkpoint_tokenizer(parent)
-    route, selector = _load_heads(parent, model, init=args.head_init, seed=2027)
+    selector_tools = STANDARD_TOOLS if args.selector_pool == "standard" else REALISTIC_BROWSER_TOOLS
+    route, selector = _load_heads(
+        parent,
+        model,
+        selector_tools=selector_tools,
+        init=args.head_init,
+        seed=2027,
+    )
     heads_before = _head_metrics(model, tokenizer, route, selector, eval_rows)
 
     before_train = _evaluate_conversations(
@@ -249,7 +263,7 @@ def main() -> int:
             model,
             decisions,
             tokenizer,
-            REALISTIC_BROWSER_TOOLS,
+            selector_tools,
             steps=args.head_steps,
             batch_size=128,
             device=args.device,
@@ -259,7 +273,7 @@ def main() -> int:
         )
         selector = BoundSelector(
             selector_model,
-            REALISTIC_BROWSER_TOOLS,
+            selector_tools,
             examples=parent.get("examples", {}),
         )
     heads_after = _head_metrics(model, tokenizer, route, selector, eval_rows)
@@ -280,6 +294,7 @@ def main() -> int:
                 "eval_rows": len(eval_rows),
                 "head_steps": args.head_steps,
                 "head_init": args.head_init,
+                "selector_pool": args.selector_pool,
                 "train_inputs": [_identity(path) for path in args.data],
                 "eval_inputs": [_identity(path) for path in args.eval_data],
                 "before_train": before_train,
@@ -310,6 +325,7 @@ def main() -> int:
             "learning_rate": args.lr,
             "head_steps": args.head_steps,
             "head_init": args.head_init,
+            "selector_pool": args.selector_pool,
             "max_seq_len": args.max_seq_len,
             "seed": 2027,
             "device": args.device,

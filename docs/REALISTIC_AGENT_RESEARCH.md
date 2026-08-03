@@ -828,6 +828,45 @@ artifacts, but it is deliberately a zero-action interface baseline.  LocalAgent'
 syntax still needs a schema-aware AppWorld API translator before an end-to-end agent score is
 meaningful; m241 is not AppWorld-UL, email/SMS success, or a promotion signal.
 
+### AppWorld `run_python` adapter and native replay (m242–m245)
+
+The [`m242 train manifest`](paper/results/raw/m242-appworld-train-manifest-v1.json) and
+[`m242 dev manifest`](paper/results/raw/m242-appworld-dev-manifest-v1.json) normalize 24 public
+AppWorld train tasks and 12 disjoint public dev tasks into the canonical `Conversation` format.
+The ground-truth programs are represented as the existing `run_python` tool; no protected test
+split or raw solution text is committed.  This is a deliberately narrow adapter for AppWorld's
+executable Python/API contract, not a claim that a text-only tool vocabulary is already an
+AppWorld policy.
+
+Warm SFT continuation from the current 10.52M BPE checkpoint ([`m242 report`](paper/results/raw/m242-appworld-runpython-sft-v1.json))
+raises held-out assistant-token accuracy from `10.21%` to `21.60%` and lowers mean loss from
+`6.645` to `5.821` on the 12 dev rows, while sequence exactness remains `0/12`.  The separate
+[`m243 weight report`](paper/results/raw/m243-appworld-runpython-weight-transfer-v1.json)
+shows compatible config/tokenizer/shapes, frozen action-head movement of `0%`, and small shared
+backbone movement (embedding `0.57%`, attention/mixer `0.32%`, FFN `0.38%`).  These are weight-lineage
+and teacher-forcing measurements, not native task success.
+
+The [`m244 head adapter`](paper/results/raw/m244-appworld-runpython-head-adapter-v1.json)
+trains only the route and dense selector for 256 steps against the exact 51-tool standard pool;
+route and selector top-1 both move from `0%` to `100%` on the disjoint dev rows.  Runtime retrieval
+was explicitly widened to all 51 tools because a top-10 retriever can otherwise hide
+`run_python`, even when the selector ranks it correctly.
+
+Finally, [`m245 native replay`](paper/results/raw/m245-appworld-runpython-native-dev-v1.json)
+captures and executes the model's selected `run_python` call on those 12 resettable AppWorld dev
+tasks.  All 12 calls were replayed, but they made `0` AppWorld API requests and passed `0/12`
+verifiers.  The result is the required negative capability boundary: routing is learnable, while
+the tiny model still does not emit executable API programs.  The adapter is therefore not adopted
+for WebGPU or presented as an AppWorld leaderboard score; the next required step is schema-aware
+program synthesis/repair plus native multi-interaction evaluation.
+
+The refreshed [`m246 strict gate`](paper/results/raw/m246-workshop-gate-appworld-adapter-v1.json)
+remains `ready: false` with nine missing official native receipts (AndroidWorld,
+MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and
+EnterpriseOps-Gym).  AppWorld adapter diagnostics do not substitute for those contracts, and the
+existing public model/demo manifest is still the older authenticated artifact rather than this
+new child checkpoint.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

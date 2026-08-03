@@ -53,15 +53,23 @@ def _task_ids(root: Path, split: str) -> set[str]:
     return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
 
 
-def _registry():
+def _registry(capture: list[dict[str, Any]] | None = None):
     from localagent.agent.tools import ToolRegistry
     from localagent.agent.toolset import STANDARD_TOOLS
 
     registry = ToolRegistry()
     for tool in STANDARD_TOOLS:
+        def _fn(name: str):
+            def dispatch(**kwargs):
+                if capture is not None:
+                    capture.append({"name": name, "arguments": kwargs})
+                return {"ok": name, "args": kwargs}
+
+            return dispatch
+
         registry.register(
             tool,
-            (lambda name: (lambda **kwargs: {"ok": name, "args": kwargs}))(tool.name),
+            _fn(tool.name),
         )
     return registry
 
@@ -103,7 +111,15 @@ def _verify_runner_contract(*, AppWorld: Any, task_id: str, experiment_name: str
 
 
 def evaluate(
-    *, checkpoint: Path, root: Path, task_ids: list[str], report: Path, experiment_name: str
+    *,
+    checkpoint: Path,
+    root: Path,
+    task_ids: list[str],
+    report: Path,
+    experiment_name: str,
+    selector_first: bool = False,
+    retrieve_k: int = 10,
+    replay_run_python: bool = False,
 ) -> dict[str, Any]:
     try:
         appworld_version = importlib.metadata.version("appworld")
@@ -131,7 +147,15 @@ def evaluate(
         if not (root / "data" / "tasks" / task_id / "specs.json").is_file():
             raise FileNotFoundError(f"AppWorld task specs not found for {task_id!r}")
 
-    agent = Agent.from_checkpoint(checkpoint, _registry())
+    if retrieve_k < 1:
+        raise ValueError("retrieve_k must be positive")
+    calls: list[dict[str, Any]] = []
+    agent = Agent.from_checkpoint(
+        checkpoint,
+        _registry(calls),
+        selector_first=selector_first,
+        retrieve_k=retrieve_k,
+    )
     contract_verification = _verify_runner_contract(
         AppWorld=AppWorld, task_id=task_ids[0], experiment_name=experiment_name
     )
@@ -140,6 +164,11 @@ def evaluate(
         task_spec_path = root / "data" / "tasks" / task_id / "specs.json"
         task_spec = json.loads(task_spec_path.read_text(encoding="utf-8"))
         instruction = str(task_spec["instruction"])
+        calls.clear()
+        replay_response: str | None = None
+        replay_error: str | None = None
+        action_replayed = False
+        native_api_calls = 0
         with AppWorld(
             task_id=task_id,
             experiment_name=experiment_name,
@@ -148,20 +177,45 @@ def evaluate(
             max_interactions=1,
         ) as world:
             output = agent.chat(instruction)
+            selected = calls[0] if calls else None
+            if replay_run_python and selected and selected["name"] == "run_python":
+                code = selected["arguments"].get("code")
+                if isinstance(code, str) and code.strip():
+                    action_replayed = True
+                    try:
+                        replay_response = world.execute(code)
+                    except Exception as error:  # AppWorld should report failures, but stay fail-closed.
+                        replay_error = repr(error)
+                    tracker_obj = getattr(getattr(world, "requester", None), "request_tracker", None)
+                    requests = getattr(tracker_obj, "requests", None)
+                    if requests is not None:
+                        native_api_calls = len(requests)
             tracker = world.evaluate()
             tracker_summary = _tracker_summary(tracker)
+        selected = calls[0] if calls else None
         match = _TOOL_RE.search(output)
+        predicted_tool = selected["name"] if selected else (match.group(1) if match else None)
+        record = {
+            "task_id": task_id,
+            "task_spec": _sha256(task_spec_path),
+            "instruction": _text_hash(instruction),
+            "model_output": _text_hash(output),
+            "predicted_tool": predicted_tool,
+            "predicted_arguments": (
+                _text_hash(json.dumps(selected["arguments"], sort_keys=True, separators=(",", ":")))
+                if selected
+                else None
+            ),
+            "action_replayed": action_replayed,
+            "native_api_calls": native_api_calls,
+            "evaluation": tracker_summary,
+        }
+        if replay_response is not None:
+            record["replay_response"] = _text_hash(replay_response)
+        if replay_error is not None:
+            record["replay_error"] = _text_hash(replay_error)
         task_records.append(
-            {
-                "task_id": task_id,
-                "task_spec": _sha256(task_spec_path),
-                "instruction": _text_hash(instruction),
-                "model_output": _text_hash(output),
-                "predicted_tool": match.group(1) if match else None,
-                "action_replayed": False,
-                "native_api_calls": 0,
-                "evaluation": tracker_summary,
-            }
+            record
         )
 
     result = {
@@ -183,7 +237,10 @@ def evaluate(
         "configuration": {
             "experiment_name": experiment_name,
             "tasks": task_ids,
-            "action_translation": "disabled",
+            "action_translation": "appworld_run_python" if replay_run_python else "disabled",
+            "selector_first": selector_first,
+            "retrieve_k": retrieve_k,
+            "replay_run_python": replay_run_python,
             "max_interactions": 1,
         },
         "environment": {
@@ -199,14 +256,20 @@ def evaluate(
             "native_successes": sum(int(item["evaluation"]["success"]) for item in task_records),
             "native_success_rate": sum(int(item["evaluation"]["success"]) for item in task_records)
             / len(task_records),
-            "action_replayed": 0,
-            "native_api_calls": 0,
+            "action_replayed": sum(int(item["action_replayed"]) for item in task_records),
+            "native_api_calls": sum(item["native_api_calls"] for item in task_records),
         },
         "claim_boundary": (
-            "Native AppWorld reset/evaluation of the current LocalAgent checkpoint only. The model "
-            "emits LocalAgent tool syntax, while AppWorld expects Python/API actions; no action was "
-            "translated or replayed. The score is a zero-action interface baseline, not an AppWorld "
-            "leaderboard result, AppWorld-UL result, or evidence of email/SMS/Spotify task success."
+            "Native AppWorld reset/evaluation of the current LocalAgent checkpoint only. When replay "
+            "is enabled, only a model-emitted run_python code string is executed in the isolated "
+            "AppWorld environment; this is an adapter diagnostic, not an AppWorld leaderboard "
+            "result, AppWorld-UL result, or evidence of email/SMS/Spotify task success."
+            if replay_run_python
+            else "Native AppWorld reset/evaluation of the current LocalAgent checkpoint only. The "
+            "model emits LocalAgent tool syntax, while AppWorld expects Python/API actions; no "
+            "action was translated or replayed. The score is a zero-action interface baseline, not "
+            "an AppWorld leaderboard result, AppWorld-UL result, or evidence of email/SMS/Spotify "
+            "task success."
         ),
     }
     result["receipt_self_sha256"] = hashlib.sha256(
@@ -226,6 +289,22 @@ def main() -> int:
     parser.add_argument("--task", dest="tasks", action="append", required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--experiment-name", default="localagent_appworld_native_probe")
+    parser.add_argument(
+        "--selector-first",
+        action="store_true",
+        help="use the dense selector's top tool directly instead of model candidate scoring",
+    )
+    parser.add_argument(
+        "--retrieve-k",
+        type=int,
+        default=10,
+        help="retriever candidate count; use the full runtime tool pool for selector adapters",
+    )
+    parser.add_argument(
+        "--replay-run-python",
+        action="store_true",
+        help="execute captured run_python code in AppWorld and count native API calls",
+    )
     args = parser.parse_args()
     result = evaluate(
         checkpoint=args.checkpoint,
@@ -233,6 +312,9 @@ def main() -> int:
         task_ids=args.tasks,
         report=args.report,
         experiment_name=args.experiment_name,
+        selector_first=args.selector_first,
+        retrieve_k=args.retrieve_k,
+        replay_run_python=args.replay_run_python,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
