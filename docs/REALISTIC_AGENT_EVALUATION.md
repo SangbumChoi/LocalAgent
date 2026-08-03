@@ -2663,6 +2663,20 @@ input/submit actions instead of state-specific navigation.  This is valid native
 evidence, but it is not visual screenshot grounding, Android-emulator performance, or evidence
 that email/Notion/browser actions are ready for deployment.
 
+### Workshop gate after current MobileGym + BrowserGym receipts (m264)
+
+The [`m264 gate`](paper/results/raw/m264-workshop-gate-current-mobile-browser-v1.json) adds the
+existing full BrowserGym/MiniWoB receipt to m263.  Its checkpoint hash is the same current
+browser-context child (`bc1aca…`), and the pinned 240-episode, 60-variant, four-seed plan is
+official-split verified.  The gate therefore passes both browser and mobile native requirements,
+along with the catalog, transfer/no-transfer, and public-artifact checks.
+
+`ready` remains false with ten blockers: AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld,
+OSWorld-V2, AgentNet, ToolSandbox, MCPMark, EnterpriseOps-Gym, and current native WebGPU
+capability/latency.  The BrowserGym receipt reports `5/240` success (`2.08%`) for the current
+checkpoint; it is still text/accessibility-tree evidence, not visual grounding or real-account
+email/Notion control.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the
