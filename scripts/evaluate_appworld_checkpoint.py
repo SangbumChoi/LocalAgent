@@ -121,7 +121,13 @@ def _parse_appworld_api_code(code: str) -> tuple[str, str, dict[str, Any]] | Non
     return func.value.attr, func.attr, arguments
 
 
-def _schema_ground_appworld_api_step(model: Any, tokenizer: Any, world: Any, prompt: str) -> str | None:
+def _schema_ground_appworld_api_step(
+    model: Any,
+    tokenizer: Any,
+    world: Any,
+    prompt: str,
+    api_head: Any | None = None,
+) -> str | None:
     """Rank bounded API-schema candidates with the checkpoint instead of free-generating code."""
 
     from localagent.agent.constrained import _best
@@ -140,6 +146,21 @@ def _schema_ground_appworld_api_step(model: Any, tokenizer: Any, world: Any, pro
     quoted = [value for left, right in re.findall(r"'([^']+)'|\"([^\"]+)\"", prompt)
               for value in (left or right,)]
     proper_nouns = re.findall(r"\b[A-Z][a-z]+\b", prompt)
+    selected_label: str | None = None
+    observed_fields: set[str] = set()
+    if api_head is not None:
+        if hasattr(api_head, "predict"):
+            selected_label = str(api_head.predict(prompt))
+            observed_fields = set(getattr(api_head, "argument_fields", {}).get(selected_label, ()))
+        else:
+            import torch
+
+            from localagent.agent.tool_head import _feat
+
+            with torch.no_grad():
+                feature = _feat(model, tokenizer, prompt, "cpu", framed=False).unsqueeze(0)
+                selected_index = int(api_head(feature).argmax(-1).item())
+            selected_label = api_head.classes[selected_index]
     ranked: list[tuple[float, str]] = []
     for app, docs in world.task.api_docs.items():
         if app in {"admin", "api_docs", "supervisor"}:
@@ -147,13 +168,15 @@ def _schema_ground_appworld_api_step(model: Any, tokenizer: Any, world: Any, pro
         for api, doc in docs.items():
             if api in {"login", "logout", "signup", "verify_account", "reset_password"}:
                 continue
+            if selected_label is not None and selected_label != f"{app}.{api}":
+                continue
             description = str(doc.get("description", ""))
             api_tokens = set(re.findall(r"[a-z0-9]+", f"{api} {description}".lower()))
             overlap = prompt_tokens & api_tokens
             score = float(2 * len(overlap))
             if app.lower() in prompt.lower():
                 score += 3.0
-            if not overlap:
+            if not overlap and selected_label is None:
                 continue
             params = doc.get("parameters", [])
             arguments: dict[str, Any] = {}
@@ -165,8 +188,12 @@ def _schema_ground_appworld_api_step(model: Any, tokenizer: Any, world: Any, pro
                 default = parameter.get("default")
                 if name == "page_index" and default == 0:
                     arguments[name] = 0
-                elif name in {"query", "search_query"} and (quoted or proper_nouns):
-                    arguments[name] = quoted[0] if quoted else proper_nouns[0]
+                elif (
+                    name in {"query", "search_query"}
+                    and (parameter.get("required") or name in observed_fields)
+                    and (proper_nouns or quoted)
+                ):
+                    arguments[name] = proper_nouns[0] if proper_nouns else quoted[0]
                 elif parameter.get("required") and default is None:
                     viable = False
                     break
@@ -252,6 +279,7 @@ def evaluate(
     replay_run_python: bool = False,
     replay_appworld_api_step: bool = False,
     schema_ground_appworld_api_step: bool = False,
+    appworld_api_head: Path | None = None,
 ) -> dict[str, Any]:
     try:
         appworld_version = importlib.metadata.version("appworld")
@@ -263,6 +291,7 @@ def evaluate(
 
     from appworld import AppWorld, update_root
     from localagent.agent.runtime import Agent
+    from localagent.eval.appworld_api_head import load_appworld_api_head
 
     root = root.resolve()
     resolved_root = Path(update_root(str(root))).resolve()
@@ -289,6 +318,11 @@ def evaluate(
         _registry(calls),
         selector_first=selector_first,
         retrieve_k=retrieve_k,
+    )
+    api_head = (
+        load_appworld_api_head(appworld_api_head, d_model=agent.model.cfg.d_model)
+        if appworld_api_head is not None
+        else None
     )
     contract_verification = _verify_runner_contract(
         AppWorld=AppWorld, task_id=task_ids[0], experiment_name=experiment_name
@@ -331,7 +365,7 @@ def evaluate(
                 code = selected["arguments"].get("code")
                 if schema_ground_appworld_api_step:
                     translated_code = _schema_ground_appworld_api_step(
-                        agent.model, agent.tokenizer, world, instruction
+                        agent.model, agent.tokenizer, world, instruction, api_head=api_head
                     )
                     if translated_code is not None:
                         code = translated_code
@@ -372,6 +406,7 @@ def evaluate(
             "native_action_api_calls": native_action_api_calls,
             "native_bootstrap_api_calls": native_bootstrap_api_calls,
             "schema_translation_applied": translated_code is not None,
+            "appworld_api_head_applied": api_head is not None,
             "evaluation": tracker_summary,
         }
         if replay_response is not None:
@@ -415,6 +450,7 @@ def evaluate(
             "replay_run_python": replay_run_python,
             "replay_appworld_api_step": replay_appworld_api_step,
             "schema_ground_appworld_api_step": schema_ground_appworld_api_step,
+            "appworld_api_head": str(appworld_api_head) if appworld_api_head else None,
             "max_interactions": 1,
         },
         "environment": {
@@ -497,6 +533,11 @@ def main() -> int:
         action="store_true",
         help="rank public AppWorld API-schema candidates with the model before AST replay",
     )
+    parser.add_argument(
+        "--appworld-api-head",
+        type=Path,
+        help="optional frozen-body app.api head used to restrict schema grounding",
+    )
     args = parser.parse_args()
     result = evaluate(
         checkpoint=args.checkpoint,
@@ -509,6 +550,7 @@ def main() -> int:
         replay_run_python=args.replay_run_python,
         replay_appworld_api_step=args.replay_appworld_api_step,
         schema_ground_appworld_api_step=args.schema_ground_appworld_api_step,
+        appworld_api_head=args.appworld_api_head,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0

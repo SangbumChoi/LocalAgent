@@ -2941,3 +2941,19 @@ and combined weight reports show low-rate body movement (embedding `3.579%`, att
 `1.405%`, FFN `1.814%`, normalization `0.108%`) and the expected `65.93%` action-head movement.
 This closes the experiment's diagnosis: routing and native execution are measurable, but exact API
 schema grounding and multi-step stateful success are not yet learned.
+
+### Public-train AppWorld schema retriever control (m281)
+
+The [m281 learned API-head report](paper/results/raw/m281-appworld-api-head-training-v1.json)
+is a matched frozen-feature control: it reaches 6/12 held-out API labels and is not promoted.
+The [m281 lexical retriever report](paper/results/raw/m281-appworld-api-retriever-v1.json)
+uses only public train prompt examples, has learned_weights=false, and reaches 12/12 API-label
+accuracy on the disjoint 12-row dev projection.
+
+The existing native runner now accepts this sidecar only to restrict schema candidates and derive
+argument fields observed in train traces. The [m281 native receipt](paper/results/raw/m281-appworld-retriever-native-v1.json)
+records 12/12 resettable native API calls (48 total requests, 36 bootstrap) and the
+[m281 first-action exactness receipt](paper/results/raw/m281-appworld-first-action-exactness-v1.json)
+records 12/12 exact translated-code hashes. The independent AppWorld verifiers still report 0/12,
+because the adapter executes exactly one action per task; this is first-action schema and execution
+evidence, not a complete trajectory, leaderboard result, or external-account claim.

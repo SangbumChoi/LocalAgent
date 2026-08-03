@@ -1048,6 +1048,25 @@ adds the expected `65.93%` action-head movement.  The adoption conclusion is unc
 SFT improves representation and teacher-forced code likelihood, but schema-grounded free-run
 execution and multi-step task completion remain open.
 
+### Public-train AppWorld schema retriever control (m281)
+
+The [m281 learned API-head report](paper/results/raw/m281-appworld-api-head-training-v1.json)
+trains a five-class frozen-feature app.api head from the same public train rows. It reaches only
+6/12 on disjoint dev prompts, so it is retained as a negative control rather than adopted.
+The separate [m281 retriever report](paper/results/raw/m281-appworld-api-retriever-v1.json)
+uses char-ngram nearest-neighbor examples from the public train projection; it has no learned model
+weights and reaches 12/12 API-label accuracy on the same dev rows.
+
+The retriever is wired into the strict evaluator as a schema-candidate restriction, with argument
+fields learned only from the train traces (optional query is not hallucinated for unrelated APIs).
+The [m281 native receipt](paper/results/raw/m281-appworld-retriever-native-v1.json) replays
+12/12 one-step calls (48 requests including 36 fixture bootstrap requests), and the
+source-bound [m281 first-action receipt](paper/results/raw/m281-appworld-first-action-exactness-v1.json)
+matches all 12/12 translated code hashes against the public dev projection. Full task verifier
+success remains 0/12: these tasks require multi-step programs, so this result establishes exact
+first-action schema grounding and isolated execution, not complete AppWorld success or WebGPU
+productivity readiness.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
