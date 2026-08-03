@@ -403,6 +403,13 @@ diagnostic smoke: the scripted user ends after the first response, multi-tool an
 are truncated, and the official split/model-based user simulator/full scenario matrix were not
 executed.  It therefore does not establish native MCP, email, Notion, or publication-gate success.
 
+The follow-up [`m200 comparison receipt`](paper/results/raw/m200-toolsandbox-native-current-base-v1.json)
+runs all 129 base/no-distraction scenario names used by the prior m143 transfer audit with the
+m194 checkpoint.  The current child reproduces the baseline exactly: `28/129` success (`21.71%`),
+mean similarity `0.2921`, and zero per-scenario wins or losses.  This is a useful negative result:
+the m194 route/selector repair did not change native ToolSandbox behavior under the one-step
+protocol, so it is not promoted.  The same official-split/user-simulator boundary still applies.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
