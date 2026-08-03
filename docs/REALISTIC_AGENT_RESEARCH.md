@@ -733,7 +733,12 @@ tools, MCP server state, and SQL/database-state verifiers.  These are the closes
 Notion-adjacent stateful contracts in the current matrix, but no server or account is attached here.
 
 AppWorld-UL adds the missing user-interaction dimension: 516 tasks require clarification,
-confirmation, or handling an infeasible instruction.  This maps directly to the deployment policy:
+confirmation, or handling an infeasible instruction.  Its official page links the public
+[Apache-2.0 AppWorld runner](https://github.com/StonyBrookNLP/appworld), whose documented
+installation (`pip install appworld`, `appworld install`, `appworld download data`) and resettable
+`AppWorld(...).evaluate()` loop establish an executable base contract.  The UL-specific task assets
+and knowledge-bounded user-simulator release are not separately pinned on that page, so this is
+runner evidence rather than a native UL score.  This maps directly to the deployment policy:
 the model must distinguish an allowed read, a confirmation-required write, a clarification request,
 and a blocked action before calling a tool.  τ³-Bench adds knowledge-grounded policy/tool use and
 full-duplex voice, while TUA-Bench covers 120 general terminal tasks including email management and

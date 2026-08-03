@@ -42,6 +42,10 @@ def test_m229_productivity_contracts_are_hash_pinned_and_eval_only() -> None:
         "confirmation",
         "infeasible_request_handling",
     }
+    assert appworld_ul["code_url"] == "https://github.com/StonyBrookNLP/appworld"
+    assert appworld_ul["code_contract"]["linked_from_official_ul_page"] is True
+    assert appworld_ul["code_contract"]["license"] == "Apache-2.0"
+    assert "UL-specific task assets" in appworld_ul["code_contract"]["release_caveat"]
 
     tau3 = sources["tau3_bench"]
     assert tau3["task_contract"]["knowledge_base_documents"] == 698

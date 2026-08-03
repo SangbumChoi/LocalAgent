@@ -47,6 +47,7 @@
       "name": "AppWorld-UL",
       "project_url": "https://appworld.dev/appworld-ul/",
       "paper_url": "https://arxiv.org/abs/2607.20536",
+      "code_url": "https://github.com/StonyBrookNLP/appworld",
       "source_revision": "release-required-before-score",
       "task_contract": {
         "tasks": 516,
@@ -54,6 +55,13 @@
         "interaction_types": ["clarification", "confirmation", "infeasible_request_handling"],
         "user_simulation": "LLM user simulator with explicit knowledge boundaries",
         "reported_metrics": ["task_success", "scenario_success", "compositional_breakdown"]
+      },
+      "code_contract": {
+        "linked_from_official_ul_page": true,
+        "license": "Apache-2.0",
+        "installation": ["pip install appworld", "appworld install", "appworld download data"],
+        "execution": "resettable AppWorld(task_id=..., experiment_name=...) with world.evaluate()",
+        "release_caveat": "The linked repository is the base AppWorld runner; UL-specific task assets and user-simulator release must be pinned before scoring."
       },
       "webgpu_projection": "This is the closest public contract for the deployment safety boundary: emit a clarification or confirmation request when required, abstain/reject infeasible actions, and only then select a state-changing tool.",
       "training_rows_admitted": 0,
@@ -101,5 +109,5 @@
     "weight_adoption_rule": "Do not adopt a warm checkpoint from improved retrieval or token accuracy alone. Require matched random and no-transfer arms, per-group tensor movement, and native state-verifier success on the same release.",
     "deployment_rule": "A WebGPU action may be emitted only after the interaction policy classifies it as allowed, confirmation-required, clarification-required, or blocked; the static demo executes none of these external effects."
   },
-  "receipt_self_sha256": "87fdd256ce757c9a28abff6ad9f8c8df2efa32605030eb319d5cb30cb6e03d44"
+  "receipt_self_sha256": "97aac87e8a9cf6003705ef59d72d92cb64369ab810effb81beabba9a281c7ffb"
 }
