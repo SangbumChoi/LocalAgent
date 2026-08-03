@@ -2273,6 +2273,26 @@ finds no config, shape, or tokenizer mismatch across 51 shared tensors.  Relativ
 learning rate for transfer, but it does not establish optimality, visual grounding, emulator reward,
 AndroidWorld/MobileGym success, or a public leaderboard score.
 
+### Current-child MCPMark redacted-trajectory transfer (m167)
+
+The [`m167 receipt`](paper/results/raw/m167-mcpmark-current-transfer-v1.json) continues the current
+m166 AndroidControl-adapted child on the public MIT-licensed
+[MCPMark trajectory-log](https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log) at
+revision `e50578f0ab904d8e6a7c576c387c1e76ae482c89`.  Eight parent records train and two
+source-disjoint parent records remain held out.  Tool outputs and assistant free text are fixed
+redaction markers, and visual input is omitted; neither an MCP server nor a verifier is started.
+
+With 32 matched updates, the warm current-child arm improves held-out assistant-token accuracy
+from `41.28%` to `43.18%`; the random-backbone arm improves from `0.69%` to `4.72%`.  The warm
+minus random after-training gap is `+38.46` percentage points, while exact sequence accuracy is
+`0%` for both arms.  Warm relative movement is approximately `0.52%` embedding, `0.26%`
+attention/mixer, `0.30%` FFN, and `0.011%` normalization, versus roughly `123.53%`, `77.88%`,
+`87.81%`, and `7.91%` for the random arm.  The matched compatibility audit finds 51 shared
+tensors with equal tokenizer and no config or shape mismatches.  This supports the low-rate
+verified-backbone transfer recipe, but it is diagnostic only—not an official MCPMark score, live
+MCP/server/verifier execution, native browser or desktop success, screenshot grounding, or a real
+Notion/email side effect.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the
