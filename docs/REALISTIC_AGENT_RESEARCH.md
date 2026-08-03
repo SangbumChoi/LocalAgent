@@ -943,6 +943,28 @@ EnterpriseOps-Gym).  AppWorld adapter diagnostics do not substitute for those co
 existing public model/demo manifest is still the older authenticated artifact rather than this
 new child checkpoint.
 
+### Stateful productivity GRPO continuation and closed-loop reality check (m276)
+
+The [`m276 GRPO receipt`](paper/results/raw/m276-stateful-productivity-grpo-v1.json) is a fresh,
+bounded pure-PyTorch RL simulation from the current 10.52M BPE browser-context checkpoint. It uses
+only the repository's deterministic, source-disjoint local email, Notion, browser-search, recovery,
+and abstention state machine; no public benchmark task text, emulator, MCP server, or external
+account enters training. A 16-step SFT warm-up plus four GRPO rollout steps raises the held-out
+local shaped reward from `0.000` to `0.09375`, but exact action/text accuracy remains `0%`.
+
+The [`m276 runtime receipt`](paper/results/raw/m276-stateful-productivity-runtime-v1.json) keeps
+the verifier boundary explicit: the oracle reaches `5/5` complete tasks, while the checkpoint
+completes only the abstention task (`1/5`, `20%`). Email, Notion, browser search, and recovery all
+remain `0/1`; this is stronger than a teacher-forced metric but is still a local simulation, not
+AndroidWorld, BrowserGym, MCPMark, EnterpriseOps-Gym, or real-account evidence.
+
+The paired [`m276 weight audit`](paper/results/raw/m276-stateful-productivity-grpo-weight-v1.json)
+confirms identical configuration/tokenizer/shapes and frozen deployment heads. Relative backbone
+movement is small but non-zero (embedding `1.89%`, attention/mixer `0.87%`, FFN `1.04%`,
+normalization `0.035%`). The adoption decision is unchanged: retain the compatible body only as
+an initialization candidate, and do not ship this RL child until service-schema grounding and
+native closed-loop success improve against a matched no-transfer control.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
