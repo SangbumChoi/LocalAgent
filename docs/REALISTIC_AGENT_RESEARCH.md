@@ -145,6 +145,12 @@ MobileSafetyBench makes confirmation, refusal, and prompt-injection handling mea
 OSWorld-MCP separates the decision to invoke a structured tool from the GUI action itself. These
 should be represented as distinct WebGPU heads/metrics, not collapsed into token accuracy.
 
+The m178 source audit pins iOSWorld at `e91f4cb2ef4c9dd48fef83a894477b41fd5e209d` and
+MobileSafetyBench at `bc5e0579626a280c4f551261abcb721442ff92ea`, retaining README and available
+license hashes plus aggregate contracts.  This makes the safety and personalization references
+reproducible without importing protected task text, seeded profiles, APKs, or simulator state into
+training.  See the [`m178 receipt`](paper/results/raw/m178-mobile-safety-personalization-source-audit-v1.json).
+
 ## Recommended WebGPU protocol
 
 The deployment should be evaluated in two non-interchangeable tracks:

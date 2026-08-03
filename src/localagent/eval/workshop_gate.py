@@ -28,6 +28,8 @@ KIND = "localagent_workshop_publication_gate"
 REQUIRED_NATIVE_BENCHMARKS: tuple[str, ...] = (
     "androidworld",
     "mobilegym",
+    "mobile_safety_bench",
+    "iosworld",
     "browsergym_miniwob",
     "osworld",
     "osworld_v2",

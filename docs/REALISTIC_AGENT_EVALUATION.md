@@ -56,18 +56,18 @@ runtime dependencies, task revisions, and licensing terms are pinned.
 
 The catalog preflight is necessary but not sufficient for a workshop claim.  The stricter
 [`scripts/workshop_gate.py`](../scripts/workshop_gate.py) requires explicit native receipts for
-AndroidWorld, BrowserGym/MiniWoB, OSWorld, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym;
-it also requires a hardware-WebGPU capability/latency receipt, both transfer and no-transfer
-weight reports, and a public model/demo manifest.  It never treats a protocol bridge, a synthetic
-state loop, SwiftShader, or a local checkpoint path as a pass:
+AndroidWorld, MobileGym, MobileSafetyBench, iOSWorld, BrowserGym/MiniWoB, OSWorld, AgentNet,
+ToolSandbox, MCPMark, and EnterpriseOps-Gym; it also requires a hardware-WebGPU capability/latency
+receipt, both transfer and no-transfer weight reports, and a public model/demo manifest.  It never
+treats a protocol bridge, a synthetic state loop, SwiftShader, or a local checkpoint path as a pass:
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict
 ```
 
-The command without supplied receipts exits non-zero with nine blocking requirements.  Supplying
+The command without supplied receipts exits non-zero with fourteen blocking requirements.  Supplying
 the verified native WebGPU, full BrowserGym, MobileGym, and public-artifact receipts reduces this
-to seven:
+to nine:
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
@@ -79,7 +79,7 @@ PYTHONPATH=src python scripts/workshop_gate.py --strict \
   --public-artifact-manifest docs/paper/results/raw/public-model-demo-manifest-v1.json
 ```
 
-The seven remaining native benchmark receipts are still absent.  The public artifact manifest now
+The nine remaining native benchmark receipts are still absent.  The public artifact manifest now
 verifies the already-live 28.32M-parameter byte model and static WebGPU Space, but it does not
 prove native OS/emulator/MCP control or task success.  That is intentional:
 four train adapters and the tracked offline receipts are useful progress, but they do not prove
@@ -1756,6 +1756,25 @@ It records `0` training rows, `0` native runs, `0` WebGPU runs, and `0` official
 appropriate next step is native, release-matched evaluation with Android/desktop runtimes and
 visual encoders where required; converting these source summaries into SFT would violate the
 evaluation-only boundary.
+
+### Mobile safety and personal-intelligence source audit (m178)
+
+The [`m178 receipt`](paper/results/raw/m178-mobile-safety-personalization-source-audit-v1.json)
+hash-pins two public benchmarks that cover the safety and personal-state surfaces missing from a
+text-only browser smoke test.  MobileSafetyBench defines `100` Android-emulator tasks: `50`
+helpfulness tasks, `42` safety-scored tasks, and `8` indirect-prompt-injection tasks across
+messaging, web navigation, social, finance, device/data management, and utility apps.  Its
+rule-based evaluator inspects action history and device state, and its Appium/ADB runtime must be
+treated as part of the benchmark rather than reduced to a prompt-only classification.
+
+The same receipt binds iOSWorld's `26` seeded SwiftUI apps and `133` tasks: `27` single-app,
+`60` multi-app, and `46` memory/personalization tasks.  The persistent cross-app identity and
+optional accessibility-XML/MCP modes make this a separate state-and-consent gate, not a generic
+mobile action score.  Both source audits retain only README/license hashes and aggregate contract
+fields (and records the missing MobileSafetyBench license file); they add `0` training rows, `0` native runs, and `0` official scores.  A publishable result
+still requires the release-matched Android emulator or iOS Simulator, seeded state, action logs,
+and official verifier.  In particular, the current WebGPU model must not claim safe messaging,
+finance, or personal-data handling from this metadata-only audit.
 
 ### ToolSandbox public-source projection and transfer probe (m59)
 

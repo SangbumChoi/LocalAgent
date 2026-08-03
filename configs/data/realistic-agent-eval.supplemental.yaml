@@ -126,7 +126,7 @@ entries:
     project_url: https://iosworld.io/
     paper_url: https://arxiv.org/abs/2606.09764
     license: Apache-2.0
-    source_revision: pin-before-use
+    source_revision: e91f4cb2ef4c9dd48fef83a894477b41fd5e209d
     scale: 133_tasks_across_26_interconnected_ios_apps
     modalities: [goal, screenshot, accessibility_xml, persistent_user_state, MCP_tools]
     split_policy: evaluation_only_until_release_seed_and_task_split_are_frozen
@@ -141,7 +141,7 @@ entries:
     source_url: https://mobilesafetybench.github.io/
     paper_url: https://arxiv.org/abs/2410.17520
     license: source-license-review-required
-    source_revision: release-required-before-score
+    source_revision: bc5e0579626a280c4f551261abcb721442ff92ea
     scale: safety_and_prompt_injection_tasks_on_android_emulators
     modalities: [goal, screenshot, mobile_action, app_state, safety_policy]
     split_policy: evaluation_only; safety prompts, emulator snapshots, and attack variants stay out of training
