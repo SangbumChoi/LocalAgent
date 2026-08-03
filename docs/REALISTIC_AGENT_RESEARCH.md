@@ -796,6 +796,22 @@ confirms that the preserved-head child is loadable by the actual LocalAgent runt
 this smoke and is explicitly not exported or promoted; preserving tensors fixes checkpoint
 integrity, not policy quality.
 
+### Matched random RL control (m237–m240)
+
+The [`m237 random-control receipt`](paper/results/raw/m237-stateful-productivity-grpo-random-control-v1.json)
+repeats the m234 protocol with a shape-matched random backbone and random auxiliary heads.  The
+train/eval task hashes, seed, 32-step SFT prelude, four GRPO steps, rollout budget, and frozen-head
+contract are identical.  The random arm stays at mean reward `−0.05`, produces zero informative
+groups and zero realized optimizer updates, and has `0%` held-out exactness.
+
+The [`m240 matched ablation`](paper/results/raw/m240-stateful-productivity-grpo-matched-ablation-v1.json)
+joins both arms with tensor movement and deployment smoke.  Warm initialization has a shaped-reward
+advantage of `+0.1625`, but exact tool/text accuracy ties at `0%`, while the random child wins the
+10-case echo-stub deployment smoke `2/10` to `1/10`.  The decision is therefore explicit:
+pretrained weights help the local reward signal but are not adopted for WebGPU deployment.  This
+control is still a deterministic local simulation, not public benchmark or native environment
+evidence.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
