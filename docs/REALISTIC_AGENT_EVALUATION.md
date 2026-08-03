@@ -181,6 +181,12 @@ No credentials or side effects were used.  This is a regression/publication-boun
 an official browser, email, Notion, or MCP score, and the current bundle still requires an
 authenticated Hugging Face upload and public re-fetch verification.
 
+The current action boundary also has a separate local safety receipt, [`m227`](paper/results/raw/m227-webgpu-side-effect-safety-policy-v1.json).
+It requires confirmation for email/Notion and other state-changing tools and blocks prompt-injection
+or secret-exfiltration indicators before a real harness could execute them.  This policy is
+deterministic and unlearned; it does not replace native safety benchmarks or prove external task
+success.
+
 The first native checkpoint-in-loop browser probe is now recorded in the [`m29 receipt`](paper/results/raw/m29-browsergym-native-model-eval-v1.json).
 It executed the pinned BrowserGym/MiniWoB environment for all 240 episodes (60 task variants,
 four fixed seeds) with live accessibility-tree observations.  This is a real environment result,

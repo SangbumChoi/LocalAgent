@@ -690,6 +690,17 @@ Because verifiers, server configuration, and execution were removed, the result 
 email-tool retrieval but cannot be promoted to EnterpriseOps-Gym, MCP, real-email, or WebGPU
 closed-loop success.
 
+### WebGPU side-effect and injection boundary (m227)
+
+The [`m227 receipt`](paper/results/raw/m227-webgpu-side-effect-safety-policy-v1.json) adds an
+explicit runtime policy around the model's structured action output.  `open_url` is read-only and
+allowed; email, Notion, messaging, file, shell, and other state-changing tools are marked
+`confirmation_required`; destructive actions receive high severity; and prompt-injection or
+secret-exfiltration indicators in the request or untrusted observation are blocked.  The seven-case
+audit is pure JavaScript (`side_effect_confirmation_v1`), changes no learned weights, and executes
+no external effects.  It is a deployment safety contract, not a VPI-Bench, AgentCIBench,
+MobileSafetyBench, or native task-success score.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

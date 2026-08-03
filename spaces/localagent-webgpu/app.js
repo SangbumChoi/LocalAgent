@@ -1767,6 +1767,90 @@ function retrievalSelect(query) {
   return retrievalSelectFromSidecar(query, DISPATCH?.retrieval_selector);
 }
 
+// ---- side-effect safety ---------------------------------------------------
+// The static demo has no external credentials or tool servers, but its action contract is meant
+// to be reusable by a real browser/mobile harness.  Keep the safety decision explicit at the
+// boundary so an adapter cannot accidentally turn a good route prediction into an unconfirmed
+// email, Notion write, deletion, or message.  This is a policy gate, not learned-quality evidence.
+const SIDE_EFFECT_TOOLS = new Set([
+  "send_email", "email_send", "notion_write", "notion_create_page", "calendar_event",
+  "slack_send", "slack_post_message", "create_event", "update_event", "delete_event",
+  "write_file", "edit_file", "delete_file", "move_file", "run_command", "shell_exec",
+  "send_message", "post_message", "delete_message", "submit_form", "purchase",
+]);
+const INTERACTIVE_TOOLS = new Set([
+  "click", "web_click", "browser_click", "type_text", "web_type", "browser_type",
+  "mobile_click", "mobile_type", "tap", "press_key", "scroll", "open_app",
+]);
+const DESTRUCTIVE_TOOLS = new Set([
+  "delete_event", "delete_file", "move_file", "run_command", "shell_exec", "delete_message",
+  "purchase", "submit_form",
+]);
+const SAFETY_POLICY_VERSION = "side_effect_confirmation_v1";
+
+function safetyText(value) {
+  return typeof value === "string" ? value : "";
+}
+
+function promptInjectionIndicators(text) {
+  const low = safetyText(text).toLowerCase();
+  const patterns = [
+    /\b(?:ignore|disregard|override)\b[^.\n]{0,80}\b(?:previous|prior|system|developer|user)\b/,
+    /\b(?:system|developer)\s+(?:message|instruction|prompt)\b[^.\n]{0,100}\b(?:send|delete|upload|share|forward|exfiltrat)/,
+    /\b(?:exfiltrat|steal|leak)\w*\b|\b(?:password|credential|secret|api[ -]?key)\b[^.\n]{0,60}\b(?:send|upload|share|forward)/,
+    /\b(?:do not tell|don't tell|hide from|without (?:asking|confirmation)|silently)\b/,
+  ];
+  return patterns
+    .map((pattern, index) => (pattern.test(low) ? `pattern_${index + 1}` : null))
+    .filter(Boolean);
+}
+
+function actionSafetyPolicy(actionOrTool, request = "", options = {}) {
+  const tool = typeof actionOrTool === "string" ? actionOrTool : actionOrTool?.name;
+  const actionName = typeof tool === "string" ? tool : "";
+  const context = [
+    safetyText(request),
+    safetyText(options.untrustedText),
+    safetyText(options.observation),
+  ].filter(Boolean).join("\n");
+  const indicators = promptInjectionIndicators(context);
+  const sideEffect = SIDE_EFFECT_TOOLS.has(actionName) || INTERACTIVE_TOOLS.has(actionName);
+  const destructive = DESTRUCTIVE_TOOLS.has(actionName);
+  if (indicators.length && sideEffect) {
+    return {
+      policy_version: SAFETY_POLICY_VERSION,
+      status: "blocked",
+      severity: "high",
+      requires_confirmation: false,
+      tool: actionName,
+      reason: "prompt_injection_or_secret_exfiltration_signal",
+      indicators,
+    };
+  }
+  if (sideEffect) {
+    return {
+      policy_version: SAFETY_POLICY_VERSION,
+      status: "confirmation_required",
+      severity: destructive ? "high" : "medium",
+      requires_confirmation: true,
+      tool: actionName,
+      reason: destructive
+        ? "destructive_or_irreversible_side_effect"
+        : SIDE_EFFECT_TOOLS.has(actionName) ? "external_state_write" : "interactive_external_action",
+      indicators,
+    };
+  }
+  return {
+    policy_version: SAFETY_POLICY_VERSION,
+    status: "allowed",
+    severity: "none",
+    requires_confirmation: false,
+    tool: actionName || null,
+    reason: "read_only_or_abstention_action",
+    indicators,
+  };
+}
+
 function productivityLexicalSelect(query, dispatch = DISPATCH) {
   if (typeof query !== "string") return null;
   const names = new Set(dispatch?.dense_selector?.tool_names || []);
@@ -2709,9 +2793,15 @@ async function planRollout(query, maxSteps = 4) {
       const resultText = String(steps.at(-1)?.response || "").replace(/^result:\s*/i, "").trim();
       if (resultText) args = { ...(args || {}), content: resultText };
     }
+    const safety = actionSafetyPolicy(sel.name, query, {
+      untrustedText: steps.at(-1)?.response || "",
+    });
     const s3 = performance.now();
-    steps.push({ tool: sel.name, route: sel.route, args, conf: sel.conf, selection_policy: sel.selection_policy,
-      response: simResponse(sel.name, args) });
+    steps.push({ tool: sel.name, route: sel.route, args: safety.status === "blocked" ? null : args,
+      conf: sel.conf, selection_policy: sel.selection_policy, safety,
+      // A state-changing step is staged for confirmation; do not fabricate a successful tool
+      // response that could make a later planner step believe the external write happened.
+      response: safety.status === "allowed" ? simResponse(sel.name, args) : null });
     stepTimings.push({
       step: i,
       input_tokens: ids.length,
@@ -2721,6 +2811,7 @@ async function planRollout(query, maxSteps = 4) {
       dispatch_ms: s3 - s2,
       ttfa_ms: s3 - s0,
     });
+    if (safety.status !== "allowed") break;
     // The public demo's search→Notion workflow has two explicit milestones.  Stop after the
     // second accepted tool instead of repeatedly replaying the first clause when the tiny model
     // has no learned STOP state for the simulated response.
@@ -2764,6 +2855,17 @@ function renderCall(step, idx) {
     div.innerHTML = `${conf}${route}${ix}<span class="tool">${step.tool}</span>` +
       `<pre>${JSON.stringify(step.args, null, 2)}</pre>`;
   }
+  if (step.safety) {
+    const notice = document.createElement("div");
+    notice.className = `safety-notice ${step.safety.status}`;
+    const label = step.safety.status === "blocked"
+      ? "Blocked by safety policy"
+      : step.safety.status === "confirmation_required"
+        ? "Confirmation required before external side effect"
+        : "Read-only action";
+    notice.textContent = `${label} · ${step.safety.reason}`;
+    div.appendChild(notice);
+  }
   return div;
 }
 
@@ -2786,6 +2888,8 @@ async function run() {
       res.appendChild(t);
     } else {
       const out = await callOnce(query);
+      out.safety = actionSafetyPolicy(out, query);
+      if (out.safety.status === "blocked") out.args = null;
       res.innerHTML = "";
       res.appendChild(renderCall(out));
       const t = document.createElement("div");
@@ -2851,6 +2955,7 @@ if (typeof module !== "undefined" && module.exports) {
     compactDispatchQuery,
     createCachedAutoregressiveRunner,
     dispatchSelect,
+    actionSafetyPolicy,
     greedyToken,
     groundedActionCandidates,
     materializeCachedLogits,

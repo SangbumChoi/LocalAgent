@@ -9,8 +9,12 @@ checkpoint by `scripts/train_deployment_dispatch_repair.py`; its public/eval row
 random control, frozen-backbone movement report, export identity, and browser probe are bound in
 [`m111-deployment-dispatch-repair-v1.json`](../../docs/paper/results/raw/m111-deployment-dispatch-repair-v1.json).
 The app (`app.js`) uses the structured route head → dense selector → pointer-copy dispatch over the
-50-tool surface plus named, bounded URL/search/planner safety adapters. A public Hub URL is not
-claimed until the upload completes and is independently verified.
+50-tool surface plus named, bounded URL/search/planner safety adapters. It also applies the
+versioned `side_effect_confirmation_v1` boundary: read-only actions may proceed, state-changing
+email/Notion/message/file/shell/browser-interaction actions are marked for confirmation, and
+prompt-injection or secret-exfiltration signals are blocked. The static demo has no external
+credentials and never executes those side effects. A public Hub URL is not claimed until the
+upload completes and is independently verified.
 
 The newer stateful-productivity low-rate child is also exportable and is the artifact bound by
 the `m57` WebGPU and `m58` HF-format receipts. It has the same 10,524,544-parameter
