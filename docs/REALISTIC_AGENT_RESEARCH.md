@@ -984,6 +984,31 @@ free-run slice despite its much worse teacher-forced loss.  This is a useful dep
 backbone reuse is clearly valuable for representation learning, but it is not sufficient to adopt
 the current tool heads or claim reliable multi-turn tool execution.
 
+### Current AppWorld native baseline and public action-step continuation (m278)
+
+The [`m278 baseline receipt`](paper/results/raw/m278-appworld-current-checkpoint-native-v1.json)
+reruns the current `10,524,544`-parameter WebGPU checkpoint in the public AppWorld `0.2.0` data
+environment.  The runner's own contract test passes, all six caller-selected tasks reset against
+isolated task databases, and the native verifier executes; the model nevertheless replays `0/6`
+actions and makes `0` API calls.  This is a current-checkpoint zero-action interface baseline, not
+an AppWorld leaderboard or email/SMS/Spotify result.
+
+To separate action-program length from routing, the [`m278 continuation report`](paper/results/raw/m278-appworld-action-step-sft-v1.json)
+trains only on 24 public AppWorld train rows and evaluates on 12 disjoint public dev rows.  The
+source is pinned to AppWorld data `0.2.0` (package `0.2.0.dev0`); credentials, bootstrap calls,
+protected test data, and raw solution programs remain outside Git.  Warm continuation raises
+held-out first-action token accuracy from `43.28%` to `58.70%` and lowers mean loss from `3.989`
+to `2.596`, but sequence exactness remains `0/12`.
+
+The paired [`m278 weight audit`](paper/results/raw/m278-appworld-action-step-weight-v1.json)
+finds identical configuration/tokenizer/shapes and frozen action heads, with relative movement of
+`0.434%` in the embedding, `0.248%` in attention/mixer, `0.306%` in the FFN, and `0.010%` in
+normalization.  The [`m278 native adapter receipt`](paper/results/raw/m278-appworld-action-step-native-v1.json)
+then enables strict one-call AST replay and schema grounding on 12 disjoint dev tasks.  The child
+still selects no replayable `run_python`/API action: `0/12` native successes, `0` action replays,
+and `0` native API calls.  The result is useful source-disjoint transfer evidence, but it does not
+close the AppWorld, real-account, or WebGPU closed-loop publication boundary.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

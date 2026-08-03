@@ -2882,3 +2882,28 @@ finds `16.67%` tool-name exactness and `3.33%` step exactness, so the random con
 free-run slice despite its much worse teacher-forced loss. This is a deployment warning: backbone
 reuse is useful representation-learning evidence, but it is not sufficient to adopt the current
 tool heads or claim reliable multi-turn tool execution.
+
+### Current AppWorld native baseline and action-step transfer (m278)
+
+The [`m278 current-checkpoint receipt`](paper/results/raw/m278-appworld-current-checkpoint-native-v1.json)
+is the first current-checkpoint AppWorld native baseline in this evaluation chain.  AppWorld's own
+contract verifier passes, six public tasks reset independently in isolated databases, and the native
+runtime executes.  The model emits no replayable AppWorld action, so native success is `0/6`, with
+zero action replays and zero API calls.  The receipt explicitly excludes AppWorld leaderboard,
+AppWorld-UL, and real email/SMS/Spotify claims.
+
+The [`m278 public continuation report`](paper/results/raw/m278-appworld-action-step-sft-v1.json)
+uses a train-only 24-row first-action projection and a disjoint 12-row dev projection from the
+public AppWorld `0.2.0` data release.  Held-out assistant-token accuracy improves `43.28%`→`58.70%`
+and mean loss `3.989`→`2.596`, but sequence exactness remains `0/12`; this is teacher-forced
+evidence only.  The [`m278 weight report`](paper/results/raw/m278-appworld-action-step-weight-v1.json)
+confirms tokenizer/config compatibility, frozen deployment heads, and low-rate shared-backbone
+movement (embedding `0.434%`, attention/mixer `0.248%`, FFN `0.306%`, normalization `0.010%`).
+
+The paired [`m278 native action-step receipt`](paper/results/raw/m278-appworld-action-step-native-v1.json)
+uses strict one-call AST replay plus schema grounding on the 12 disjoint dev tasks.  The child
+still produces no replayable API call: `0/12` native successes, `0` action replays, and `0` native
+API calls, despite the teacher-forced gain.  This is a reproducible negative transfer-to-control
+result and keeps the AppWorld/native closed-loop requirement blocked; it is not an official
+AppWorld score or a substitute for AndroidWorld, OSWorld, BrowserGym, MCPMark, or real-account
+evaluation.
