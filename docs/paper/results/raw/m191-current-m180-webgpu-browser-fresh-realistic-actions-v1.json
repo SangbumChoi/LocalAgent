@@ -7,7 +7,8 @@
     "single_step_prompts": 12,
     "planner_prompts": 2,
     "public_benchmark_rows_used": 0,
-    "claim": "Fresh realistic smoke only; this is not an official benchmark split."
+    "bundle_label": "current_workspace_webgpu_export",
+    "claim": "Fresh realistic smoke only over the current workspace WebGPU export; this is not an official benchmark split."
   },
   "bundle": {
     "path": "spaces/localagent-webgpu",
@@ -67,6 +68,6 @@
     "exact_trajectory_count": 0,
     "trajectory_count": 2
   },
-  "claim_boundary": "A fresh local browser smoke over synthetic realistic prompts. The page reported WEBGPU and model-ready status, but this does not establish learned quality on MobileGym, BrowserGym, OSWorld, MCPMark, email, Notion, or any external account. The email/Notion successes are local runtime routing with no side effects; planner and non-productivity failures remain model-quality evidence.",
-  "receipt_self_sha256": "2a4ca7240bd3eb745a56c0e6c02c5e306a369f7d424453b72ba589ff796ca0d7"
+  "claim_boundary": "A fresh local browser smoke over synthetic realistic prompts using the current workspace WebGPU export (checkpoint 9bba544ae37190fdc24ea51ac9f3f8d80350cd905c01e13186156c19f7e0f9ee). The page reported WEBGPU and model-ready status, but this does not establish learned quality on MobileGym, BrowserGym, OSWorld, MCPMark, email, Notion, or any external account. The email/Notion successes are local runtime routing with no side effects; planner and non-productivity failures remain model-quality evidence.",
+  "receipt_self_sha256": "2d8a3dc8fcb886485bfb6518b69251516c7d5c64885c5dbde74893c177284fe0"
 }

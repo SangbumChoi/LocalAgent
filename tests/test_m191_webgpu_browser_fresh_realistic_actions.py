@@ -23,6 +23,9 @@ def test_m191_fresh_browser_smoke_is_webgpu_but_not_a_public_benchmark_score() -
     assert payload["browser"]["backend_badge"] == "WEBGPU"
     assert payload["browser"]["external_side_effects"] is False
     assert payload["bundle"]["model_parameters"] < 100_000_000
+    assert payload["bundle"]["checkpoint_sha256"] == (
+        "9bba544ae37190fdc24ea51ac9f3f8d80350cd905c01e13186156c19f7e0f9ee"
+    )
     assert payload["bundle"]["parity_gate_passed"] is True
     assert payload["single_step"]["unambiguous_rows"] == 9
     assert payload["single_step"]["exact_tool_count"] == 4
