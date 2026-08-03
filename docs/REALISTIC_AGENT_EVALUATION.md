@@ -2158,3 +2158,25 @@ heads.  This is useful evidence for the requested adoption recipe—reuse the bo
 grounding head the larger rate—but the holdout is small and in-source.  It is not the official
 Mind2Web test score, BrowserGym/WebArena success, screenshot-grounded control, or a real browser,
 email, Notion, MCP, or external-account side effect.
+
+### Current-parent mobile dispatch and pointer adaptation (m158)
+
+The [`m158 receipt`](paper/results/raw/m158-mobile-dispatch-transfer-v1.json) repeats the mobile
+adaptation from the current m142 five-surface parent rather than the older m129 parent.  It uses the
+public AndroidControl/AITW projection for 4,096 train rows and keeps the disjoint 904-row public
+evaluation file outside optimization.  Focused oversampling targets `mobile_long_press`,
+`mobile_navigate_home`, and `mobile_submit_answer`; the pointer pass uses 300 updates and four
+held-out literal spans.  The source screenshots are deliberately omitted, so these are text and
+accessibility action diagnostics rather than visual Android control.
+
+On the held-out projection, route accuracy is `100%` and selector top-1 is `41.26%`; pointer exact
+is `1/4` (`25%`).  The weight audit finds exact tokenizer/config compatibility, zero movement in
+the inherited embedding, mixer, FFN, and normalization tensors, and `124.77%` relative action-head
+movement.  This is consistent with a frozen-body / high-rate-head deployment recipe, but it is not
+evidence that the transferred body is optimal.
+
+The child was then run in the pinned MobileGym simulator over the first 20 official test IDs with
+the state-diff judge, a five-step cap, and a DOM/text observation projection.  It passes `1/20`
+(`5%`) with no runtime or judge errors, exactly matching the parent m135 canary on the same range;
+the child emits `mobile_submit_answer` on 13 tasks.  This is a bounded native canary, not the full
+MobileGym score, an Android emulator result, screenshot grounding, or a publication-gate pass.

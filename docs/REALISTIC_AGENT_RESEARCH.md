@@ -43,6 +43,15 @@ move 46.40%.  The pointer vocabulary grows from 17 to 19 rows by design.  This i
 in-source action-replay diagnostic—not the official Mind2Web test score or native BrowserGym,
 email, Notion, MCP, or browser-account control.  See the [`m157 receipt`](paper/results/raw/m157-mind2web-grounded-transfer-v1.json).
 
+The m158 mobile continuation returns to the current m142 parent and uses a public AndroidControl/AITW
+train projection with a disjoint 904-row evaluation file.  Focused oversampling raises the offline
+selector to `41.26%` top-1 with `100%` routing and `25%` exact pointer spans, while the inherited
+body is unchanged and only action heads move substantially (`124.77%` relative ΔL2).  A pinned
+MobileGym first-20-task canary reaches `1/20` (`5%`), exactly matching the parent same-range result.
+This cleanly separates offline action-format learning from state-conditioned simulator transfer;
+it is not the full MobileGym score, Android emulator/screenshot grounding, or a browser/email/Notion
+side-effect claim.  See the [`m158 receipt`](paper/results/raw/m158-mobile-dispatch-transfer-v1.json).
+
 The recurring methodological point is that a benchmark is not just a prompt list. The authoritative
 score includes the observation contract, reset state, action interface, environment revision, and
 verifier. A static conversation projection must be labelled as such even when it uses the original
