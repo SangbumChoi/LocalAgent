@@ -345,6 +345,17 @@ retain the m180 body for compatibility experiments, but not promote it as a brow
 until a catalog-aware action head, argument grounding, and native closed-loop evidence all improve
 together.
 
+### Frozen dispatch repair control (m194)
+
+The [`m194 receipt`](paper/results/raw/m194-current-m180-dispatch-repair-v1.json) tests whether the
+m180 child can be repaired without changing its WebGPU-compatible backbone.  A matched warm-start
+and random-head arm trains route and dense-selector heads on 741 source-disjoint AgentNet/Mind2Web
+projection rows plus 1,286 deterministic local adapter rows; 320 additional synthetic adapter rows
+are held out.  Warm routing reaches 99.61% versus 99.42% for random, but warm selector top-1 is
+82.75% versus 82.95%, and canonical tool probes are 4/6 versus 5/6.  The warm head therefore is
+not adopted and no export is requested.  This is evidence for measuring head transfer separately
+from backbone reuse, not evidence of native browser, mobile, MCP, visual, or real-account control.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
