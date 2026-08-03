@@ -2907,3 +2907,18 @@ API calls, despite the teacher-forced gain.  This is a reproducible negative tra
 result and keeps the AppWorld/native closed-loop requirement blocked; it is not an official
 AppWorld score or a substitute for AndroidWorld, OSWorld, BrowserGym, MCPMark, or real-account
 evaluation.
+
+### AppWorld route/selector head-only repair and native schema grounding (m279)
+
+The [`m279 head adapter report`](paper/results/raw/m279-appworld-head-adapter-v1.json) keeps the
+backbone effectively frozen while training only the route and dense-selector heads on 24 public
+AppWorld train rows.  On 12 source-disjoint dev rows, route accuracy and selector top-1 both rise
+from `0%` to `100%`.  The [`m279 weight report`](paper/results/raw/m279-appworld-head-weight-v1.json)
+confirms zero movement in the shared body and `65.93%` relative movement in the action-head group.
+
+With selector-first inference, the [`m279 native receipt`](paper/results/raw/m279-appworld-head-native-v1.json)
+replays `9/12` API calls inside resettable AppWorld fixtures, including `48` total native requests
+and `27` credential/bootstrap requests.  None of the 12 task verifiers pass.  This cleanly separates
+three requirements: head routing is learnable, native API execution is live, and API/schema grounding
+is still missing.  It is not an official AppWorld score, an external-account result, or evidence that
+the model is ready for WebGPU productivity control.

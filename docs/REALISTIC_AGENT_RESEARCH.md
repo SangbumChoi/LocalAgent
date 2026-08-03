@@ -1009,6 +1009,24 @@ still selects no replayable `run_python`/API action: `0/12` native successes, `0
 and `0` native API calls.  The result is useful source-disjoint transfer evidence, but it does not
 close the AppWorld, real-account, or WebGPU closed-loop publication boundary.
 
+### AppWorld route/selector head-only repair and schema failure (m279)
+
+The [`m279 head adapter report`](paper/results/raw/m279-appworld-head-adapter-v1.json) isolates
+deployment-head learning from backbone transfer.  It uses the same 24 public AppWorld train rows
+and 12 disjoint dev rows as m278, but performs one language-model update and 256 route/selector
+updates.  Held-out route and dense-selector top-1 accuracy move from `0%` to `100%` on all 12
+rows.  The [`m279 weight audit`](paper/results/raw/m279-appworld-head-weight-v1.json) shows the
+intended movement pattern: the shared embedding, attention/mixer, FFN, and normalization groups
+remain unchanged, while the serialized action-head group moves `65.93%` relative L2.
+
+The [`m279 native receipt`](paper/results/raw/m279-appworld-head-native-v1.json) forces the
+selector-first path and runs strict one-call AST/schema replay on the same 12 disjoint dev tasks.
+The adapter now executes `9/12` real AppWorld API calls (`48` total requests including `27`
+credential/bootstrap requests), but verifier success remains `0/12`.  The failed calls are a
+valuable interface diagnosis: routing can be learned, while API-name and argument/schema grounding
+still fail.  This is resettable native execution evidence, not an AppWorld leaderboard score or a
+reason to ship the head adapter to WebGPU.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
