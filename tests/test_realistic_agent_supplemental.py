@@ -10,7 +10,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     assert payload["kind"] == "localagent_realistic_agent_supplemental_catalog"
     entries = payload["entries"]
-    assert len(entries) == 14
+    assert len(entries) == 16
     assert {entry["id"] for entry in entries} == {
         "androidworld",
         "browsergym_miniwob",
@@ -26,6 +26,8 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         "toolsandbox",
         "webbench",
         "bu_bench_v1",
+        "cua_gym",
+        "osworld_verified_trajectories",
     }
     for entry in entries:
         assert entry["source_url"].startswith(
@@ -58,3 +60,16 @@ def test_live_browser_sources_are_eval_only_and_contamination_safe() -> None:
         assert "training" in entry["split_policy"]
         assert entry["source_revision"] == "pin-before-use"
     assert "encrypted" in entries["bu_bench_v1"]["split_policy"]
+
+
+def test_cua_gym_and_osworld_trajectory_sources_are_not_silently_trainable() -> None:
+    payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
+    entries = {entry["id"]: entry for entry in payload["entries"]}
+    cua = entries["cua_gym"]
+    assert cua["license"] == "CC-BY-4.0"
+    assert cua["source_revision"] == "3c021d0"
+    assert "no official evaluation partition" in cua["notes"]
+    osworld = entries["osworld_verified_trajectories"]
+    assert osworld["license"] == "MIT"
+    assert osworld["source_revision"] == "8413d635f654c1f95a17f8813f52f2b1b450c566"
+    assert osworld["split_policy"].startswith("evaluation_only")

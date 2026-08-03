@@ -208,3 +208,32 @@ entries:
     webgpu_projection: tool routing and DOM/action safety canary only; no task decryption or live account access
     metric: verified_task_success_and_category_breakdown
     notes: The upstream repository keeps BU_Bench_V1 encrypted to reduce contamination and warns that decrypted task text and traces must not be published or used as model-training data.
+
+  - id: cua_gym
+    family: computer
+    name: CUA-Gym
+    source_url: https://huggingface.co/datasets/xlangai/CUA-Gym
+    paper_url: https://arxiv.org/abs/2605.25624
+    license: CC-BY-4.0
+    source_revision: 3c021d0
+    scale: 10910_public_task_metadata_rows;_327_app_types;_110_environments_reported_by_project
+    modalities: [instruction, setup_artifact, reward_function, desktop_state, web_state]
+    split_policy: metadata_train_table_only_until_task_identity_holdout_and_artifact_license_review
+    runtime: disposable_desktop_or_mock_web_environment;_self_hosted_CUA-Gym-Hub_endpoints
+    webgpu_projection: instruction/app-family metadata inventory; executable rewards and GUI state require a sandboxed runtime
+    metric: RLVR_reward_and_final_state_success_after_release-matched_setup
+    notes: The public table is CC-BY-4.0 and exposes 10910 metadata rows, but the single train split has no official evaluation partition; the artifact archive contains untrusted Python/shell/application setup and reward code and is not executed or copied into the model bundle.
+
+  - id: osworld_verified_trajectories
+    family: computer
+    name: OSWorld Verified Trajectories
+    source_url: https://huggingface.co/datasets/xlangai/ubuntu_osworld_verified_trajs
+    license: MIT
+    source_revision: 8413d635f654c1f95a17f8813f52f2b1b450c566
+    scale: 46_large_trajectory_archives;_about_260GB_listed_bytes
+    modalities: [instruction, screenshot, desktop_action, verifier_result]
+    split_policy: evaluation_only_until_verified_task_identity_deduplication_and_train_holdout_are_frozen
+    runtime: OSWorld_desktop_VM_and_release-matched_verifier
+    webgpu_projection: text/action-history diagnostics only; screenshot grounding and native desktop score require the VM
+    metric: execution_success_and_verified_task_completion
+    notes: The public Hub repository is MIT-tagged but is a collection of model-run packages rather than a declared train split; no archive or screenshot is admitted to SFT by this audit.

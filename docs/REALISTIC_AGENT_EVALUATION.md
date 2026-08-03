@@ -12,7 +12,7 @@ restricted) and has a canonical SHA-256 fingerprint recorded by the preflight co
 The fingerprint is generated from the canonical catalog by the preflight command below.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
-It adds fourteen high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
+It adds sixteen high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
 trajectories, EnterpriseOps-Gym, MCPMark, ToolSandbox, AndroidWorld, BrowserGym, WebBench, and
 BU Bench V1, plus their mobile and desktop companion rows—with explicit license, split, runtime,
 and WebGPU-projection policies. These entries are catalog-only until an exact revision and
