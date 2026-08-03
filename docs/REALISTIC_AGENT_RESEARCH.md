@@ -431,6 +431,26 @@ score `1/5` with identical per-scenario similarities in the interactive simulato
 are therefore not exported or adopted; action-head and state-history supervision must be trained
 explicitly before another WebGPU release.
 
+### ToolSandbox selector repair and native bridge (m205–m207)
+
+The [`m207 receipt`](paper/results/raw/m207-toolsandbox-selector-repair-bridge-v1.json) isolates
+the next hypothesis: keep the m194 backbone, replace only the dense selector, and train against the
+actual 32-tool catalog extracted from the public ToolSandbox AST projection.  On the same 107 train /
+20 eval rows, held-out candidate top-1 rises from 0% to 50% for the warm arm and 45% for the matched
+random arm (top-3 reaches 65% for both).  Selector movement is large (warm query/tool towers
+1.12/0.58 relative L2; random 1.25/1.06), so this is a genuine head-only adaptation rather than
+backbone drift.
+
+The native bridge rejects that offline gain: both children score exactly `1/5` on the five-scenario
+interactive simulator/verifier stress set, with identical per-scenario similarities
+(`0.25`, `0.3333`, `1.0`, `0.0`, `0.5`).  The AST row-local candidates do not match the runtime
+ToolSpec serialization and state/action-history conditions used by `run_toolsandbox_native.py`;
+the route and pointer heads also remain inherited.  Therefore neither child is exported or adopted.
+The next experiment must bind the training rows to the same runtime candidate serializer and
+state-history format, then train route, selector, and argument/action heads jointly with native
+closed-loop replay.  This result is diagnostic transfer evidence, not an official ToolSandbox score
+or WebGPU productivity claim.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
