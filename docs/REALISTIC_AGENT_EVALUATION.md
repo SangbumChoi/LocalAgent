@@ -1776,6 +1776,22 @@ still requires the release-matched Android emulator or iOS Simulator, seeded sta
 and official verifier.  In particular, the current WebGPU model must not claim safe messaging,
 finance, or personal-data handling from this metadata-only audit.
 
+### Public mobile evaluation-manifest acquisition audit (m179)
+
+The [`m179 receipt`](paper/results/raw/m179-mobile-evaluation-manifest-audit-v1.json) moves the
+two references one step beyond README metadata while preserving the evaluation boundary.  The
+pinned iOSWorld `tasks.json` is `192,020` bytes with `133` rows, reconciled as `27` single-app,
+`60` multi-app, and `46` memory/personalization tasks over `26` apps.  MobileSafetyBench's pinned
+source task table is `69,821` bytes with `90` rows across six operational areas, and its separate
+QA analysis file is `1,778` bytes with `3` rows.  The paper's `100`-task suite count is retained as
+the authoritative contract; the two public files are not silently summed because the upstream
+runner's assembly rules are not available here.
+
+Only byte counts, SHA-256 values, and aggregate category counts are retained.  The manifests were
+fetched to a temporary audit directory, their task text was not copied into Git or SFT/RL, and no
+simulator, seeded profile, APK, or official verifier was executed.  This is stronger split and
+provenance evidence, not a mobile benchmark score.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:

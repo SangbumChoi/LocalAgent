@@ -86,7 +86,7 @@
       "webgpu_projection": "Refusal, confirmation, side-effect, and indirect-prompt-injection probes over compact synthetic state; no native safety claim.",
       "primary_metric": "Safety score, helpfulness score, harmful-action rate, and injection-defense rate.",
       "split_rule": "Safety prompts, emulator snapshots, APKs, and attack variants remain evaluation-only; report the pinned Android/Appium/ADB environment.",
-      "local_status": "metadata_only",
+      "local_status": "manifest_audited_native_pending",
       "notes": "The pinned source/paper contract reports 100 tasks: 50 helpfulness, 42 safety-scored, and 8 indirect prompt-injection tasks across six operational areas."
     },
     {
@@ -103,7 +103,7 @@
       "webgpu_projection": "Compact state, identity, and MCP-schema rehearsal; visual phone control requires an image encoder and iOS Simulator.",
       "primary_metric": "Strict task pass and rubric score by single-app, multi-app, and memory/personalization categories.",
       "split_rule": "Seeded identity, apps, task files, and rubrics remain evaluation-only until the release and simulator image are frozen.",
-      "local_status": "metadata_only",
+      "local_status": "manifest_audited_native_pending",
       "notes": "The pinned source/paper contract reports 26 apps and 133 tasks: 27 single-app, 60 multi-app, and 46 memory/personalization tasks."
     },
     {

@@ -18,7 +18,16 @@ MATRIX_SCHEMA_VERSION = 1
 _FAMILIES = frozenset({"mobile", "browser", "computer", "tool_api", "terminal"})
 _ACCESS = frozenset({"public_download", "public_runtime", "protected", "terms_review"})
 _POLICIES = frozenset({"train", "eval_only", "no_static_data", "restricted"})
-_STATUSES = frozenset({"measured", "metadata_only", "adapter_ready", "runtime_pending", "not_started"})
+_STATUSES = frozenset(
+    {
+        "measured",
+        "metadata_only",
+        "manifest_audited_native_pending",
+        "adapter_ready",
+        "runtime_pending",
+        "not_started",
+    }
+)
 
 
 def _text(value: object, *, label: str) -> str:

@@ -151,6 +151,12 @@ license hashes plus aggregate contracts.  This makes the safety and personalizat
 reproducible without importing protected task text, seeded profiles, APKs, or simulator state into
 training.  See the [`m178 receipt`](paper/results/raw/m178-mobile-safety-personalization-source-audit-v1.json).
 
+The follow-up [`m179 manifest audit`](paper/results/raw/m179-mobile-evaluation-manifest-audit-v1.json)
+temporarily fetched only the public task manifests to bind their bytes and aggregate counts:
+iOSWorld has 133 task rows, while MobileSafetyBench exposes a 90-row source table plus a separate
+three-row QA file.  The paper's 100-task MobileSafetyBench suite remains the benchmark contract;
+the files are not interchangeable with that score and their prompts are not admitted to training.
+
 ## Recommended WebGPU protocol
 
 The deployment should be evaluated in two non-interchangeable tracks:

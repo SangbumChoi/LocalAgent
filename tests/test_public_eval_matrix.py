@@ -46,6 +46,9 @@ def test_public_matrix_covers_the_realistic_modalities() -> None:
         "mobileworld",
         "mobile_agent_bench",
     }
+    status = {row["id"]: row["local_status"] for row in matrix["entries"]}
+    assert status["mobile_safety_bench"] == "manifest_audited_native_pending"
+    assert status["iosworld"] == "manifest_audited_native_pending"
     assert {row["id"] for row in entries_by_family(matrix, "tool_api")} >= {
         "mcpmark",
         "toolsandbox",
