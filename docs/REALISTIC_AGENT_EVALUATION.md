@@ -2293,6 +2293,33 @@ verified-backbone transfer recipe, but it is diagnostic only—not an official M
 MCP/server/verifier execution, native browser or desktop success, screenshot grounding, or a real
 Notion/email side effect.
 
+### Current-child four-surface public continuation (m168)
+
+The [`m168 receipt`](paper/results/raw/m168-current-cross-surface-transfer-v1.json) continues the
+current m167 child over four public projections: AndroidControl text/accessibility actions,
+AgentNet Ubuntu desktop actions, grounded Mind2Web browser actions, and redacted MCPMark
+trajectories.  The source references are [Android-Control-84k](https://huggingface.co/datasets/OfficerChul/Android-Control-84k),
+[AgentNet](https://huggingface.co/datasets/xlangai/AgentNet),
+[Mind2Web](https://github.com/OSU-NLP-Group/Mind2Web), and
+[MCPMark trajectory-log](https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log).
+The mixture contains `4,637` public train rows and `1,043` held-out rows; the receipt binds each
+input hash, revision, source-disjoint parent-record audit, and public URL.  AndroidControl rows
+omit screenshots, and MCPMark tool outputs/free text remain redacted.
+
+After 32 CPU updates at learning rate `1e-5`, the warm current-child arm reaches `70.11%`
+aggregate held-out assistant-token accuracy versus `30.80%` for the matched random-backbone arm,
+a `+39.31` percentage-point gap.  Warm-start remains better after training on every held-out
+surface: AndroidControl `75.39%` vs `38.37%`, AgentNet `49.60%` vs `1.74%`, Mind2Web `61.93%`
+vs `0%`, and MCPMark `33.26%` vs `0.89%`.  Exact sequence accuracy is `0%` for both arms.
+
+The compatibility audit finds 51 shared tensors with equal tokenizers and no config/shape
+mismatches.  Warm relative movement is `0.50%` embedding, `0.19%` attention/mixer, `0.24%` FFN,
+`0.012%` normalization, and `0%` action-head movement; the matched random control moves those
+groups by approximately `123.44%`, `77.88%`, `87.81%`, and `7.90%`.  This strengthens the
+low-rate transferred-body recommendation, but it remains a teacher-forced diagnostic—not an
+official AgentNet, Mind2Web, AndroidControl, or MCPMark score, native Android/desktop/browser/MCP
+execution, screenshot grounding, or a real email/Notion side effect.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the
