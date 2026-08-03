@@ -1831,6 +1831,21 @@ not used.  The correct conclusion is to keep the surface-specific catalog plumbi
 rejecting selector-transfer adoption until screenshot grounding and native AgentNet/OSWorld
 verification are available.
 
+### Current-child MobileGym native canary (m182)
+
+The [`m182 receipt`](paper/results/raw/m182-current-child-mobilegym-native-canary-v1.json) runs
+the current m180 child inside the pinned MobileGym simulator at revision
+`093a3292d13fc4186e279af4ef1b005ac8e4d2b7`.  The runner verifies the official `160`/`256`
+train/test split, launches Chromium, executes the state-diff judge, and completes one official
+test task with zero runtime or judge errors.  Under the same two-step text projection used by the
+existing m146 result, the current child scores `0/1`; the task reaches no judged progress and the
+model emits no translated mobile action.
+
+This is genuine native environment evidence for the current checkpoint, but deliberately only a
+canary: it is not the complete 256-task MobileGym result, visual grounding, or Android emulator
+evidence.  The next required comparison is a complete split run with the current child and the
+same release-matched runtime.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:
