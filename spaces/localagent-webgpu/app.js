@@ -1767,6 +1767,44 @@ function retrievalSelect(query) {
   return retrievalSelectFromSidecar(query, DISPATCH?.retrieval_selector);
 }
 
+function productivityLexicalSelect(query, dispatch = DISPATCH) {
+  if (typeof query !== "string") return null;
+  const names = new Set(dispatch?.dense_selector?.tool_names || []);
+  const low = query.toLowerCase();
+  // These are deliberately narrow intent guards, not learned-quality evidence.  They keep an
+  // obvious email/Notion side-effect request from being routed to an unrelated timer/URL tool
+  // when the tiny model is out of distribution.  The caller still validates the selected schema
+  // and the demo never touches an external account.
+  const emailTool = names.has("email_send") ? "email_send" : names.has("send_email") ? "send_email" : null;
+  if (
+    emailTool &&
+    /\b(?:email|e-mail|mail)\b/.test(low) &&
+    /\b(?:send|compose|write|draft|email|mail)\b/.test(low)
+  ) {
+    return {
+      name: emailTool,
+      route: "app_action",
+      conf: 1,
+      isStop: false,
+      selection_policy: "productivity_email_intent_guard",
+    };
+  }
+  if (
+    /\b(?:notion|save|note|page)\b/.test(low) &&
+    (names.has("notion_create_page") || names.has("notion_write"))
+  ) {
+    const name = names.has("notion_create_page") ? "notion_create_page" : "notion_write";
+    return {
+      name,
+      route: "app_action",
+      conf: 1,
+      isStop: false,
+      selection_policy: "productivity_notion_intent_guard",
+    };
+  }
+  return null;
+}
+
 function dispatchSelect(
   hiddenTensor,
   T,
@@ -1804,6 +1842,10 @@ function dispatchSelect(
       isStop: false,
       selection_policy: "compound_search_first_step_guard",
     };
+  }
+  if (requestedSelector === "dense") {
+    const productivity = productivityLexicalSelect(query, dispatch);
+    if (productivity) return productivity;
   }
   if (requestedSelector === "retrieval") {
     const retrieved = retrievalSelectFromSidecar(query, dispatch?.retrieval_selector);
@@ -2027,6 +2069,10 @@ function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
       /\b(?:content|note|text|saying)\s+(?:is\s+)?(.+?)(?:[.!?]|$)/i
     );
     if (contentMatch?.[1]) return stripGrounding(contentMatch[1]);
+    const notionSaveMatch = prompt.match(
+      /\b(?:save|write|add)\s+(?:the\s+)?(.+?)\s+(?:to|in)\s+Notion\b/i
+    );
+    if (notionSaveMatch?.[1]) return stripGrounding(notionSaveMatch[1]);
   }
 
   if (schema.enum) {

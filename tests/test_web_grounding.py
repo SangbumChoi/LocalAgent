@@ -188,6 +188,25 @@ process.stdout.write(JSON.stringify({email, notion}));
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_notion_save_grounding_does_not_copy_the_destination_name():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { groundFromSchema } = require(process.argv[1]);
+process.stdout.write(JSON.stringify(groundFromSchema(
+  "Save the search result to Notion.",
+  { properties: {content: {type: "string", format: "quoted"}}, required: ["content"] }
+)));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {"content": "search result"}
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
 def test_dispatch_safety_guards_are_explicit_and_bounded():
     script = """
 global.window = { __localAgentSkipInit: true, location: { search: "" } };
@@ -219,3 +238,44 @@ process.stdout.write(JSON.stringify({url, compound}));
             "selection_policy": "compound_search_first_step_guard",
         },
     }
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_productivity_intent_guards_prevent_cross_surface_side_effect_misrouting():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { dispatchSelect } = require(process.argv[1]);
+const dispatch = {
+  dense_selector: {
+    tool_names: ["set_timer", "open_url", "send_email", "notion_write", "web_search"],
+  },
+};
+const email = dispatchSelect(null, 0, "Email Dana the quarterly report", dispatch);
+const notion = dispatchSelect(null, 0, "Save the search result to Notion.", dispatch);
+const compound = dispatchSelect(
+  null, 0, "Search the web for AI news, then save it to Notion.", dispatch
+);
+process.stdout.write(JSON.stringify({ email, notion, compound }));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(result.stdout)
+    assert payload["email"] == {
+        "name": "send_email",
+        "route": "app_action",
+        "conf": 1,
+        "isStop": False,
+        "selection_policy": "productivity_email_intent_guard",
+    }
+    assert payload["notion"] == {
+        "name": "notion_write",
+        "route": "app_action",
+        "conf": 1,
+        "isStop": False,
+        "selection_policy": "productivity_notion_intent_guard",
+    }
+    assert payload["compound"]["selection_policy"] == "compound_search_first_step_guard"
