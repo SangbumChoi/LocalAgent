@@ -381,6 +381,17 @@ embedding/mixer/FFN groups, while pointer and tool heads move more.  The result 
 argument grounding needs aligned span supervision and an explicit DOM/action contract; more
 route-head training will not solve it.  The child is not exported or adopted.
 
+### Frozen-feature pointer transfer (m197)
+
+The [`m197 receipt`](paper/results/raw/m197-pointer-grounding-repair-v1.json) isolates the
+argument head with the m194 backbone completely frozen.  It caches token-position features for
+219 public Mind2Web train spans and trains matched warm and random start/end pointer heads for 400
+steps.  Warm transfer reaches `3/63` held-out exact spans (4.76%) while random reaches `5/63`
+(7.94%).  The warm head moves substantially less (`31.42%` shared pointer L2 versus `134.06%`),
+but the lower movement does not carry useful unseen-value grounding.  This rules out adopting the
+warm pointer solely because it preserves pretrained weights; the next adapter must align DOM
+candidate serialization, action argument schemas, and span labels before another WebGPU export.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
