@@ -418,6 +418,19 @@ model therefore still cannot turn route repair into reliable multi-tool state pr
 next training target is explicit state/action-history supervision and recovery, not another frozen
 selector update.
 
+### Public ToolSandbox continuation and native bridge (m202–m204)
+
+The [`m204 receipt`](paper/results/raw/m204-toolsandbox-continuation-native-bridge-v1.json) runs the
+AST-only public projection from the pinned [ToolSandbox](https://github.com/apple/ToolSandbox) source:
+107 train rows and 20 source-disjoint eval rows.  A matched 32-step warm continuation improves
+held-out assistant-token accuracy from `65.79%` to `73.21%`, while the random-backbone control
+reaches only `8.61%`; warm embedding/mixer/FFN movement stays at `0.52%/0.19%/0.24%`, and the
+action heads do not move.  This is useful evidence that the pretrained body transfers public
+ToolSandbox language signal, but the native bridge is decisive: warm and random children both
+score `1/5` with identical per-scenario similarities in the interactive simulator.  The children
+are therefore not exported or adopted; action-head and state-history supervision must be trained
+explicitly before another WebGPU release.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
