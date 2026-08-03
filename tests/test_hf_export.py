@@ -19,6 +19,11 @@ def test_hf_bundle_builds_and_roundtrips(tmp_path):
     out = export_hf(str(ckpt), str(tmp_path / "hf"), push=False)
     cfg_d = json.load(open(f"{out}/config.json"))
     assert cfg_d["name"] == "test-tiny" and cfg_d["vocab_size"] == 256
+    weight_file = cfg_d["weights"]["filename"]
+    weight_path = tmp_path / "hf" / weight_file
+    assert cfg_d["weights"]["bytes"] == weight_path.stat().st_size
+    assert cfg_d["weights"]["sha256"] == hashlib.sha256(weight_path.read_bytes()).hexdigest()
+    assert f"`{weight_file}` — decoder weights" in (tmp_path / "hf" / "README.md").read_text()
     assert (tmp_path / "hf" / "README.md").exists()
 
     # reload weights into a fresh model
@@ -61,6 +66,8 @@ def test_hf_bpe_bundle_is_self_contained_and_exports_dispatch_heads(tmp_path):
     config = json.loads(Path(out, "config.json").read_text(encoding="utf-8"))
     assert config["tokenizer"]["kind"] == "bpe"
     assert config["tokenizer"]["filename"] == "tokenizer.json"
+    assert config["weights"]["filename"] in {"model.safetensors", "pytorch_model.bin"}
+    assert config["weights"]["bytes"] == Path(out, config["weights"]["filename"]).stat().st_size
     assert Path(out, "tokenizer.json").read_bytes() == tokenizer_path.read_bytes()
     assert "byte-level" not in Path(out, "README.md").read_text(encoding="utf-8")
     heads = torch.load(Path(out, "agent_heads.bin"), map_location="cpu", weights_only=True)

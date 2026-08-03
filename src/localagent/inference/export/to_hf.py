@@ -49,7 +49,7 @@ Codex coding surface, and computer-use / productivity tools), including parallel
 
 ## Files
 - `config.json` — `ModelConfig`
-- `model.safetensors` / `pytorch_model.bin` — decoder weights
+- `{weight_file}` — decoder weights
 - `agent_heads.bin` — trained tool/pointer/route/dispatch heads plus dispatch metadata (optional)
 
 ## What it can do (use cases)
@@ -84,8 +84,7 @@ from localagent.model import LocalAgentLM, ModelConfig
 cfg_d = json.load(open(hf_hub_download("{repo}", "config.json")))
 cfg = ModelConfig(**{{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__}})
 model = LocalAgentLM(cfg)
-from safetensors.torch import load_file
-model.load_state_dict(load_file(hf_hub_download("{repo}", "model.safetensors")))
+{weight_loading}
 model.eval()
 # BPE checkpoints also ship tokenizer.json; byte-tier checkpoints use ByteTokenizer().
 tokenizer_meta = cfg_d.get("tokenizer", {{}})
@@ -154,6 +153,21 @@ def _tokenizer_bundle(
     }
 
 
+def _weight_loading(repo_id: str, weight_file: str) -> str:
+    """Return a model-card loader matching the weight file emitted by this export."""
+
+    if weight_file == "model.safetensors":
+        return (
+            "from safetensors.torch import load_file\n"
+            f"model.load_state_dict(load_file(hf_hub_download(\"{repo_id}\", \"{weight_file}\")))"
+        )
+    return (
+        f"weights = torch.load(hf_hub_download(\"{repo_id}\", \"{weight_file}\"), "
+        "map_location=\"cpu\", weights_only=True)\n"
+        "model.load_state_dict(weights)"
+    )
+
+
 def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: str | None = None,
               private: bool = True, push: bool = False) -> str:
     checkpoint_path = Path(checkpoint).resolve()
@@ -193,15 +207,22 @@ def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: 
     }
     if dispatch_metadata:
         config["agent"] = dispatch_metadata
-    (out_path / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
-
     sd = ck["state_dict"]
     try:
         from safetensors.torch import save_file
-        save_file({k: v.contiguous() for k, v in sd.items()},
-                  str(out_path / "model.safetensors"))
+        weight_file = "model.safetensors"
+        save_file({k: v.contiguous() for k, v in sd.items()}, str(out_path / weight_file))
     except Exception:
-        torch.save(sd, out_path / "pytorch_model.bin")
+        weight_file = "pytorch_model.bin"
+        torch.save(sd, out_path / weight_file)
+
+    weight_path = out_path / weight_file
+    config["weights"] = {
+        "filename": weight_file,
+        "bytes": weight_path.stat().st_size,
+        "sha256": _sha256(weight_path),
+    }
+    (out_path / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
 
     heads = {
         key: ck[key]
@@ -222,7 +243,10 @@ def export_hf(checkpoint: str, out_dir: str, repo_id: str | None = None, token: 
         ntools=len(dispatch_metadata.get("tool_pool", [])) or 0,
         repo=repo_id or "<your-repo>", tokenizer_label=tokenizer["label"],
         tokenizer_tag=tokenizer["tag"], tokenizer_file=tokenizer["filename"] or "built-in",
-        tokenizer_sha256=tokenizer["sha256"] or "not-applicable")
+        tokenizer_sha256=tokenizer["sha256"] or "not-applicable",
+        weight_file=weight_file,
+        weight_loading=_weight_loading(repo_id or "<your-repo>", weight_file),
+    )
     (out_path / "README.md").write_text(card, encoding="utf-8")
 
     if not push:
