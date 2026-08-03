@@ -146,3 +146,31 @@ def test_best_abstains_when_a_grounded_candidate_exceeds_context_window():
     assert _best(m, tok, "Find the message.", [body], device="cpu") == (
         "I cannot complete this request."
     )
+
+
+def test_hybrid_grounding_prompt_does_not_copy_serialized_catalog_text():
+    from localagent.agent.constrained import hybrid_decode
+    from localagent.data.schema import ToolSpec
+
+    send = ToolSpec(
+        name="email_send",
+        description="Send an email.",
+        parameters={
+            "type": "object",
+            "properties": {"to": {"type": "string"}},
+            "required": ["to"],
+        },
+    )
+    catalog = '<|tool_catalog|>{"name":"catalog_only_noise"}</|tool_catalog|>'
+    grounding = "<|user|>Send an email to alice@example.com<|assistant|>"
+    output = hybrid_decode(
+        None,
+        None,
+        catalog + grounding,
+        [send],
+        framed=True,
+        selector_first=True,
+        grounding_prompt=grounding,
+    )
+    assert "alice@example.com" in output
+    assert "catalog_only_noise" not in output

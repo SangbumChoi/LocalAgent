@@ -2397,6 +2397,18 @@ more WebGPU-aligned than the full-history `18.56%` result because the loss is co
 action decisions rather than assistant prose.  This is still a teacher-forced diagnostic, not
 official ToolACE/BFCL scoring or executed email/Notion/browser/MCP behavior.
 
+### Current-child ToolACE action-history free-run probe (m174)
+
+The [`m174 receipt`](paper/results/raw/m174-current-child-toolace-action-history-free-run-v1.json)
+replays the WebGPU-shaped catalog-plus-history decode path over `16` held-out conversations and
+`30` action steps without dispatching any tool.  The corrected decoder separates serialized
+function-catalog context from argument-grounding text, preventing catalog JSON from being copied
+into arguments.  The warm m173 child reaches only `10.0%` tool-name exactness, `3.33%` full
+tool-and-argument exactness, `60.0%` schema-valid output, and `0%` exact whole episodes.
+This is the required warning against promoting teacher-forced `49.99%` action-token accuracy to
+autonomous capability: selector/routing and grounded argument behavior still require substantial
+work before email, Notion, browser, or MCP execution can be claimed.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the

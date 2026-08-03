@@ -322,7 +322,7 @@
       "train_policy": "train",
       "modalities": ["instruction", "tool_schema", "multi_turn_dialogue"],
       "webgpu_projection": "Strict first-action, full multi-turn, and action-history Conversation projections; action-history retains user/tool state and strict assistant calls while omitting non-action assistant prose.",
-      "primary_metric": "Held-out assistant-token accuracy plus exact tool, argument, sequence, history-turn, and prose-omission diagnostics; official ToolACE/BFCL scores remain external.",
+      "primary_metric": "Held-out teacher-forced and free-run tool/argument/sequence diagnostics plus history-turn and prose-omission audits; official ToolACE/BFCL scores remain external.",
       "split_rule": "Use only the pinned source bytes; the current split is source-record and normalized-prompt disjoint and is not an upstream official split.",
       "local_status": "measured",
       "notes": "m171 first-action accepted 8,993/11,300; m172 full history and m173 action-history accepted 8,992/11,300, with m173 retaining 1,357 tool responses and omitting 1,806 assistant prose turns."

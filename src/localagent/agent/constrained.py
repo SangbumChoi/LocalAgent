@@ -391,7 +391,8 @@ def _ctx_feats(model, tok, ctx: str, device):
 def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", *,
                   retriever=None, route_head=None, ptr_head=None, selector=None, top_m=1, k=8,
                   framed=False, blocked_candidates: set[str] | None = None,
-                  selector_first: bool = False) -> str:
+                  selector_first: bool = False,
+                  grounding_prompt: str | None = None) -> str:
     """The *generable* decode path — no fixed-N classifier. Selection narrows the catalog to a few
     candidates, then the model RANKS their grounded bodies; argument *values* are copied by
     `ptr_head` (the one sub-task a tiny model can't free-generate). An optional 5-way `route_head`
@@ -401,11 +402,14 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
       `selector` (a `BoundSelector`, recommended) — a *trained* two-tower scorer that ranks every
         tool by its description embedding; we keep its top-`top_m`. Generalizes to unseen tools.
       else `retriever` — zero-training char-ngram retrieval top-k (weaker; the model must then rank).
-    Either way adding a tool needs zero head reshape / retraining."""
+    Either way adding a tool needs zero head reshape / retraining. ``grounding_prompt`` optionally
+    separates the user/history text used for schema argument candidates from the full model
+    context (which may contain a serialized function catalog)."""
     from localagent.agent.retriever import ToolRetriever
     from localagent.model.tokenizer import ASSISTANT, USER
     ctx = prompt if framed else f"{USER}{prompt}{ASSISTANT}"
     score = prompt if not framed else ctx
+    grounding = prompt if grounding_prompt is None else grounding_prompt
     feats = ids = None
     # 0. route gate (text vs tool) — falls back to the heuristic text detector when no head given
     if route_head is not None or selector is not None:
@@ -417,11 +421,11 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
             # can misclassify a long state-conditioned tool prompt as ``text``; turning that into
             # an unconditional abstention makes retries impossible and hides the selector's
             # useful tool prior.  Known greeting/identity/thanks intents still take the text path.
-            text_candidates = _text_candidates(prompt)
+            text_candidates = _text_candidates(grounding)
             if text_candidates is not None:
                 return _best(model, tok, score, text_candidates, device)
     else:
-        txt = _text_candidates(prompt)
+        txt = _text_candidates(grounding)
         if txt is not None:
             return _best(model, tok, score, txt, device)
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
@@ -431,7 +435,7 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
         keep = set(selector_order[:top_m])
     else:
         retriever = retriever or ToolRetriever(tools)
-        keep = set(retriever.retrieve(prompt, k=k))
+        keep = set(retriever.retrieve(grounding, k=k))
     use = [t for t in tools if t.name in keep] or tools
     if selector_order is not None:
         order = {name: index for index, name in enumerate(selector_order)}
@@ -445,7 +449,7 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
     # 3. rank every candidate's grounded body; _best picks the tool AND args jointly
     bodies = []
     for t in use:
-        bodies += _tool_bodies(prompt, t, ptr)
+        bodies += _tool_bodies(grounding, t, ptr)
     if not bodies:
         return "I am LocalAgent."
     if blocked_candidates:
