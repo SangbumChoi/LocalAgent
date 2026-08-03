@@ -36,6 +36,7 @@ TOOLACE_URL = "https://huggingface.co/datasets/Team-ACE/ToolACE"
 TOOLACE_LICENSE = "Apache-2.0"
 TOOLACE_LICENSE_URL = "https://www.apache.org/licenses/LICENSE-2.0"
 TOOLACE_ADAPTER_VERSION = "toolace-first-canonical-action-v1"
+TOOLACE_MULTITURN_ADAPTER_VERSION = "toolace-multiturn-canonical-actions-v1"
 TOOLACE_MANIFEST_KIND = "localagent_toolace_projection"
 _SUPPORTED_SCHEMA_KEYS = {
     "type",
@@ -285,6 +286,21 @@ def _first_action(raw: object) -> tuple[str, tuple[ToolCall, ...], int] | None:
     return None
 
 
+def _all_action_calls(raw: object) -> list[tuple[int, tuple[ToolCall, ...]]]:
+    """Return every strict assistant action, retaining its source message index."""
+
+    if not isinstance(raw, dict) or not isinstance(raw.get("conversations"), list):
+        return []
+    actions: list[tuple[int, tuple[ToolCall, ...]]] = []
+    for index, message in enumerate(raw["conversations"]):
+        if not isinstance(message, dict) or message.get("from") != "assistant":
+            continue
+        calls = parse_toolace_calls(message.get("value"))
+        if calls:
+            actions.append((index, calls))
+    return actions
+
+
 def normalize_toolace_row(
     raw: object,
     *,
@@ -344,6 +360,93 @@ def normalize_toolace_row(
     return conversation
 
 
+def normalize_toolace_multiturn_row(
+    raw: object,
+    *,
+    record_index: int,
+    split: str,
+    source_sha256: str,
+) -> Conversation | None:
+    """Normalize all user, assistant, and tool turns while retaining strict action calls."""
+
+    if not isinstance(raw, dict) or not isinstance(raw.get("conversations"), list):
+        return None
+    actions = _all_action_calls(raw)
+    if not actions:
+        return None
+    calls = [call for _index, action_calls in actions for call in action_calls]
+    tools, fallback_tools = _catalog_for_calls(raw.get("system"), calls)
+    messages: list[Message] = []
+    assistant_action_count = 0
+    tool_response_count = 0
+    for index, raw_message in enumerate(raw["conversations"]):
+        if not isinstance(raw_message, dict):
+            raise ValueError(f"ToolACE conversation message {index} must be an object")
+        role = raw_message.get("from")
+        value = raw_message.get("value")
+        if not isinstance(value, str):
+            raise ValueError(f"ToolACE conversation message {index} value must be text")
+        if role == "user":
+            messages.append(Message(role=Role.user, content=value))
+        elif role == "assistant":
+            parsed = parse_toolace_calls(value)
+            if parsed:
+                messages.append(Message(role=Role.assistant, tool_calls=list(parsed)))
+                assistant_action_count += 1
+            else:
+                messages.append(Message(role=Role.assistant, content=value))
+        elif role == "tool":
+            messages.append(Message(role=Role.tool, tool_response=value))
+            tool_response_count += 1
+        else:
+            raise ValueError(f"ToolACE conversation message {index} role is unsupported")
+    parent_record_id = f"toolace-{record_index:05d}"
+    conversation = Conversation(
+        messages=messages,
+        tools=list(tools),
+        meta={
+            "category": "toolace_function_calling",
+            "group": "public_agent",
+            "kind": "public_agent_trace",
+            "public_data": True,
+            "behavior": "stateful_action",
+            "capabilities": sorted({call.name for call in calls}),
+            "action_count": len(calls),
+            "assistant_action_turns": assistant_action_count,
+            "tool_response_turns": tool_response_count,
+            "parent_record_id": parent_record_id,
+            "split": split,
+            "source_turn_index": actions[0][0],
+            "toolace_projection": TOOLACE_MULTITURN_ADAPTER_VERSION,
+            "schema_fallback_tools": list(fallback_tools),
+            "slot_values": {},
+            "slot_policy": "omitted; only parent-record and prompt disjointness are claimed",
+            "derivation": "all_canonical_assistant_actions_with_tool_history_v1",
+            "quality": {
+                "source_conversation_turns": len(raw["conversations"]),
+                "tool_response_omitted": False,
+            },
+            "provenance": {
+                "dataset": TOOLACE_DATASET,
+                "subset": "source_record_disjoint_train" if split == "train" else "source_record_disjoint_eval",
+                "revision": TOOLACE_REVISION,
+                "record_id": parent_record_id,
+                "url": TOOLACE_URL,
+                "license": TOOLACE_LICENSE,
+                "file_sha256": source_sha256,
+                "source_line": record_index + 1,
+            },
+            "verified": False,
+            "rule_verified": True,
+            "model_verified": False,
+            "environment_executed": False,
+            "verification_scope": "tool_catalog_schema_and_multiturn_action_history_projection",
+        },
+    )
+    assistant_training_turns(conversation)
+    return conversation
+
+
 def _identity(path: Path) -> dict[str, Any]:
     digest = hashlib.sha256()
     size = 0
@@ -385,11 +488,19 @@ def normalize_toolace_snapshot(
     expected_sha256: str | None = None,
     expected_bytes: int | None = None,
     eval_modulo: int = 10,
+    projection: str = "first_action",
 ) -> dict[str, Any]:
     """Normalize a byte-pinned ToolACE array into deterministic source-disjoint JSONL splits."""
 
     if eval_modulo < 2:
         raise ValueError("eval_modulo must be at least 2")
+    if projection not in {"first_action", "multiturn"}:
+        raise ValueError("projection must be 'first_action' or 'multiturn'")
+    adapter_version = (
+        TOOLACE_ADAPTER_VERSION
+        if projection == "first_action"
+        else TOOLACE_MULTITURN_ADAPTER_VERSION
+    )
     source = Path(input_path)
     identity = _identity(source)
     if expected_bytes is not None and identity["bytes"] != expected_bytes:
@@ -404,6 +515,7 @@ def normalize_toolace_snapshot(
     rejected = Counter()
     split_parent_ids: dict[str, set[str]] = {"train": set(), "eval": set()}
     split_prompts: dict[str, set[str]] = {"train": set(), "eval": set()}
+    projection_stats = Counter()
     for index, row in enumerate(raw):
         action = _first_action(row)
         if action is None:
@@ -413,11 +525,13 @@ def normalize_toolace_snapshot(
         prompt_hash = hashlib.sha256(prompt.encode("utf-8")).digest()
         split = "eval" if prompt_hash[0] % eval_modulo == 0 else "train"
         try:
-            conversation = normalize_toolace_row(
-                row,
-                record_index=index,
-                split=split,
-                source_sha256=identity["sha256"],
+            normalizer = (
+                normalize_toolace_row
+                if projection == "first_action"
+                else normalize_toolace_multiturn_row
+            )
+            conversation = normalizer(
+                row, record_index=index, split=split, source_sha256=identity["sha256"]
             )
         except (TypeError, ValueError, SyntaxError, MemoryError, RecursionError):
             rejected["schema_or_projection_failure"] += 1
@@ -427,6 +541,13 @@ def normalize_toolace_snapshot(
             continue
         target = evaluation if split == "eval" else train
         target.append(conversation)
+        projection_stats["messages"] += len(conversation.messages)
+        projection_stats["tool_response_messages"] += sum(
+            message.role == Role.tool for message in conversation.messages
+        )
+        projection_stats["assistant_action_turns"] += sum(
+            bool(message.tool_calls) for message in conversation.messages
+        )
         parent_id = str(conversation.meta["parent_record_id"])
         split_parent_ids[split].add(parent_id)
         split_prompts[split].add(prompt)
@@ -448,20 +569,26 @@ def normalize_toolace_snapshot(
     manifest_core = {
         "kind": TOOLACE_MANIFEST_KIND,
         "schema_version": 1,
-        "adapter_version": TOOLACE_ADAPTER_VERSION,
+        "adapter_version": adapter_version,
+        "projection_mode": projection,
         "dataset": TOOLACE_DATASET,
         "revision": TOOLACE_REVISION,
         "url": TOOLACE_URL,
         "license": TOOLACE_LICENSE,
         "license_url": TOOLACE_LICENSE_URL,
         "source": identity,
-        "split_policy": "sha256(NFKC-casefolded first-user prompt)[0] modulo 10; prompt and parent disjoint",
-        "projection": "first strict bracketed assistant action; tool response and later turns omitted",
+        "split_policy": "sha256(casefolded first-user prompt)[0] modulo 10; prompt and parent disjoint",
+        "projection": (
+            "first strict bracketed assistant action; tool response and later turns omitted"
+            if projection == "first_action"
+            else "all strict bracketed assistant actions with user, assistant text, and tool-response history preserved"
+        ),
         "raw_rows": len(raw),
         "accepted_rows": len(train) + len(evaluation),
         "rejected_rows": sum(rejected.values()),
         "rejections": dict(sorted(rejected.items())),
         "outputs": outputs,
+        "projection_stats": dict(sorted(projection_stats.items())),
         "split_audit": {
             "train_parent_records": len(split_parent_ids["train"]),
             "eval_parent_records": len(split_parent_ids["eval"]),
@@ -471,7 +598,12 @@ def normalize_toolace_snapshot(
             "prompt_overlap": 0,
             "slot_values_checked": False,
         },
-        "claim_boundary": "Source-record-disjoint ToolACE first-action projection for low-rate SFT/transfer diagnostics; not an official ToolACE split, BFCL score, multi-turn execution result, or native browser/mobile/desktop/MCP evaluation.",
+        "claim_boundary": (
+            "Source-record-disjoint ToolACE "
+            + ("first-action" if projection == "first_action" else "multi-turn")
+            + " projection for low-rate SFT/transfer diagnostics; not an official ToolACE split, "
+            "BFCL score, multi-turn execution result, or native browser/mobile/desktop/MCP evaluation."
+        ),
     }
     manifest, payload = self_hashed_manifest(manifest_core)
     manifest_file = Path(manifest_path)

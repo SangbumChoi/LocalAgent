@@ -321,11 +321,11 @@
       "access_status": "public_download",
       "train_policy": "train",
       "modalities": ["instruction", "tool_schema", "multi_turn_dialogue"],
-      "webgpu_projection": "Strict first canonical assistant action; tool responses and later turns are omitted in the current text-first projection.",
-      "primary_metric": "Held-out assistant-token accuracy plus exact tool, argument, and sequence diagnostics; official ToolACE/BFCL scores remain external.",
+      "webgpu_projection": "Strict first-action and opt-in multi-turn Conversation projections; the multi-turn path preserves user, assistant, and tool-response history but does not execute tools.",
+      "primary_metric": "Held-out assistant-token accuracy plus exact tool, argument, sequence, and history-turn diagnostics; official ToolACE/BFCL scores remain external.",
       "split_rule": "Use only the pinned source bytes; the current split is source-record and normalized-prompt disjoint and is not an upstream official split.",
       "local_status": "measured",
-      "notes": "m171 accepted 8,993 of 11,300 source rows and measured a bounded 1,024/256 continuation arm against a matched random-backbone control."
+      "notes": "m171 first-action accepted 8,993/11,300; m172 multi-turn accepted 8,992/11,300 and preserved 1,357 tool responses in the bounded transfer audit."
     },
     {
       "id": "appworld",

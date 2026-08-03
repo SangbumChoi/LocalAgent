@@ -16,6 +16,12 @@ def main() -> int:
     parser.add_argument("--output-train", required=True, type=Path)
     parser.add_argument("--output-eval", required=True, type=Path)
     parser.add_argument("--manifest", required=True, type=Path)
+    parser.add_argument(
+        "--projection",
+        choices=("first_action", "multiturn"),
+        default="first_action",
+        help="retain only the first action or preserve the full tool-response history",
+    )
     parser.add_argument("--expected-bytes", type=int)
     parser.add_argument("--expected-sha256")
     args = parser.parse_args()
@@ -26,6 +32,7 @@ def main() -> int:
         manifest_path=args.manifest,
         expected_bytes=args.expected_bytes,
         expected_sha256=args.expected_sha256,
+        projection=args.projection,
     )
     print(json.dumps(manifest, indent=2, sort_keys=True))
     return 0

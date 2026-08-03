@@ -5,9 +5,12 @@ from pathlib import Path
 from localagent.data.conversation_artifact import canonical_json_bytes
 from localagent.data.toolace import (
     TOOLACE_ADAPTER_VERSION,
+    TOOLACE_MULTITURN_ADAPTER_VERSION,
     normalize_toolace_snapshot,
     parse_toolace_calls,
 )
+from localagent.data.schema import Conversation
+from localagent.data.prompt_contract import assistant_training_turns
 
 
 def _row(prompt: str, *, tool: str = "email_send", value: str = "a@example.com") -> dict:
@@ -108,3 +111,52 @@ def test_toolace_projection_is_deterministic_source_bound_and_split_safe(tmp_pat
     assert train_row["meta"]["toolace_projection"] == TOOLACE_ADAPTER_VERSION
     assert train_row["meta"]["provenance"]["dataset"] == "Team-ACE/ToolACE"
     assert train_row["meta"]["environment_executed"] is False
+
+
+def test_toolace_multiturn_projection_preserves_tool_history(tmp_path: Path) -> None:
+    row = _row("Stateful request")
+    row["conversations"] = [
+        row["conversations"][0],
+        row["conversations"][1],
+        {"from": "tool", "value": '[{"name":"email_send","results":{"ok":true}}]'},
+        {"from": "assistant", "value": "The message was sent successfully."},
+        {"from": "user", "value": "Now summarize the result."},
+        {"from": "assistant", "value": "The email was accepted by the service."},
+    ]
+    rows = []
+    for index in range(20):
+        variant = json.loads(json.dumps(row))
+        variant["conversations"][0]["value"] = f"Stateful request {index}"
+        rows.append(variant)
+    source = tmp_path / "toolace.json"
+    source.write_text(json.dumps(rows, separators=(",", ":")), encoding="utf-8")
+    source_bytes = source.read_bytes()
+    manifest = normalize_toolace_snapshot(
+        source,
+        output_train=tmp_path / "train.jsonl",
+        output_eval=tmp_path / "eval.jsonl",
+        manifest_path=tmp_path / "manifest.json",
+        expected_bytes=len(source_bytes),
+        expected_sha256=hashlib.sha256(source_bytes).hexdigest(),
+        projection="multiturn",
+    )
+    assert manifest["adapter_version"] == TOOLACE_MULTITURN_ADAPTER_VERSION
+    assert manifest["projection_mode"] == "multiturn"
+    payload = next(
+        json.loads(line)
+        for output in (tmp_path / "train.jsonl", tmp_path / "eval.jsonl")
+        for line in output.read_text(encoding="utf-8").splitlines()
+        if line
+    )
+    assert [message["role"] for message in payload["messages"]] == [
+        "user",
+        "assistant",
+        "tool",
+        "assistant",
+        "user",
+        "assistant",
+    ]
+    assert payload["messages"][2]["tool_response"]
+    turns = assistant_training_turns(Conversation.from_json(json.dumps(payload)))
+    assert len(turns) == 3
+    assert payload["meta"]["quality"]["tool_response_omitted"] is False

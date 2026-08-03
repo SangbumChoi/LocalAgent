@@ -11,7 +11,6 @@ from typing import Any
 
 from localagent.data.conversation_artifact import canonical_json_bytes
 from localagent.data.toolace import (
-    TOOLACE_ADAPTER_VERSION,
     TOOLACE_DATASET,
     TOOLACE_LICENSE,
     TOOLACE_REVISION,
@@ -57,24 +56,40 @@ def assemble(
     warm_child_path: Path,
     random_child_path: Path,
     output_path: Path,
+    projection_mode: str = "first_action",
 ) -> dict[str, Any]:
     manifest = _load(manifest_path)
     warm = _load(warm_report_path)
     random = _load(random_report_path)
     if manifest["dataset"] != TOOLACE_DATASET or manifest["revision"] != TOOLACE_REVISION:
         raise ValueError("ToolACE manifest identity mismatch")
+    if manifest.get("projection_mode", "first_action") != projection_mode:
+        raise ValueError("ToolACE projection mode mismatch")
     if warm["rows"] != random["rows"] or warm["parent"] != random["parent"]:
         raise ValueError("warm/random reports are not matched")
     if warm["eval_sources"][0]["input"] != random["eval_sources"][0]["input"]:
         raise ValueError("warm/random eval input mismatch")
     if warm["train_sources"][0]["input"] != random["train_sources"][0]["input"]:
         raise ValueError("warm/random train input mismatch")
+    if _identity(train_path) != warm["train_sources"][0]["input"]:
+        raise ValueError("warm report train input does not match --train-data")
+    if _identity(eval_path) != warm["eval_sources"][0]["input"]:
+        raise ValueError("warm report eval input does not match --eval-data")
     warm_after = _after(warm)
     random_after = _after(random)
+    is_multiturn = projection_mode == "multiturn"
     body: dict[str, Any] = {
-        "kind": "localagent_current_child_toolace_transfer_receipt",
+        "kind": (
+            "localagent_current_child_toolace_multiturn_transfer_receipt"
+            if is_multiturn
+            else "localagent_current_child_toolace_transfer_receipt"
+        ),
         "schema_version": 1,
-        "measurement": "m171_current_child_toolace_first_action_transfer",
+        "measurement": (
+            "m172_current_child_toolace_multiturn_transfer"
+            if is_multiturn
+            else "m171_current_child_toolace_first_action_transfer"
+        ),
         "generated_at": "2026-08-03",
         "dataset": {
             "dataset": TOOLACE_DATASET,
@@ -85,13 +100,15 @@ def assemble(
             "projection_manifest": {
                 "path": str(manifest_path),
                 "self_sha256": manifest["manifest_self_sha256"],
-                "adapter_version": TOOLACE_ADAPTER_VERSION,
+                "adapter_version": manifest["adapter_version"],
+                "projection_mode": projection_mode,
                 "raw_rows": manifest["raw_rows"],
                 "accepted_rows": manifest["accepted_rows"],
                 "rejected_rows": manifest["rejected_rows"],
                 "rejections": manifest["rejections"],
                 "full_train": manifest["outputs"]["train"],
                 "full_eval": manifest["outputs"]["eval"],
+                "projection_stats": manifest["projection_stats"],
                 "split_audit": manifest["split_audit"],
             },
             "projection_boundary": manifest["projection"],
@@ -134,8 +151,9 @@ def assemble(
         "compatibility": warm["weight_transfer"]["compatibility"],
         "decision": "diagnostic_only",
         "claim_boundary": (
-            "Source-record-disjoint public ToolACE first-action projection with a bounded 1,024/256 "
-            "continuation and matched random-backbone control. This is not an official ToolACE or "
+            "Source-record-disjoint public ToolACE "
+            + ("multi-turn" if is_multiturn else "first-action")
+            + " projection with a bounded continuation and matched random-backbone control. This is not an official ToolACE or "
             "BFCL split/score, not a multi-turn execution result, and not native mobile, browser, "
             "desktop, email, Notion, MCP, or external-account success."
         ),
@@ -161,6 +179,7 @@ def main() -> int:
     parser.add_argument("--warm-child", type=Path, required=True)
     parser.add_argument("--random-child", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--projection-mode", choices=("first_action", "multiturn"), default="first_action")
     args = parser.parse_args()
     print(
         json.dumps(
@@ -173,6 +192,7 @@ def main() -> int:
                 warm_child_path=args.warm_child,
                 random_child_path=args.random_child,
                 output_path=args.output,
+                projection_mode=args.projection_mode,
             ),
             indent=2,
             sort_keys=True,

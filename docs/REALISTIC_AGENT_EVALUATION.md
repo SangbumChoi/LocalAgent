@@ -2363,6 +2363,25 @@ low-rate transferred-body recipe, but this bounded first-action projection is di
 it is not BFCL, official ToolACE, multi-turn execution, native browser/mobile/desktop/MCP,
 email/Notion side effects, or a public Hub upload.
 
+### Current-child ToolACE multi-turn transfer (m172)
+
+The [`m172 receipt`](paper/results/raw/m172-current-child-toolace-multiturn-transfer-v1.json)
+reuses the same byte-pinned ToolACE source but preserves every user turn, assistant free-text turn,
+strict assistant action, and tool response in the canonical `Conversation` history.  The full
+projection accepts `8,992` of `11,300` rows (`8,043` train / `949` held out); `1,187` tool-response
+messages are retained in train and `170` in held out.  One additional row is rejected by the
+schema/prompt-marker guard, so this is a stricter stateful projection than m171 rather than a
+silent rewrite of its first-action data.
+
+On a matched CPU arm (`256` train / `64` held out, 16 updates, batch 2, learning rate `1e-5`),
+the warm child improves held-out assistant-token accuracy `17.58% → 18.56%`; the random control
+improves `0.40% → 1.19%`, leaving a `+17.37` percentage-point warm-minus-random gap.  Both arms
+remain at `0%` exact sequence accuracy.  Warm body movement is `0.236%` embedding, `0.124%`
+mixer, `0.153%` FFN, and `0.006%` normalization; action heads are unchanged.  This supports
+preserving tool history for future stateful SFT, but remains a bounded teacher-forced diagnostic:
+it is not official ToolACE/BFCL scoring, tool execution, email/Notion side effects, or native
+browser/mobile/desktop/MCP evidence.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the

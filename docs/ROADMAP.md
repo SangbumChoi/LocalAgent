@@ -60,8 +60,9 @@ Stubs reference these phase numbers in their `TODO(phase-N)` markers.
       output, deterministic enrichment, provenance, license/split policy, exact-prompt
       decontamination, and self-hashed manifests.
 - [ ] External teacher/verifier adapters.
-- [x] ToolACE-format importer: byte-pinned Apache-2.0 snapshot, strict first-action projection,
-      prompt/parent-disjoint held-out split, and matched warm/random transfer receipt.
+- [x] ToolACE-format importer: byte-pinned Apache-2.0 snapshot, strict first-action and opt-in
+      multi-turn projections, prompt/parent-disjoint held-out splits, and matched warm/random
+      transfer receipts.
 - Exit: a few-thousand-sample rule-audited agent dataset on disk, with executed-environment
   verification required before any stronger claim.
 
