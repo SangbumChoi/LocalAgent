@@ -2799,6 +2799,20 @@ deployment blocker for the requested Notion and stateful-tool workflows.  MCP se
 state, verifiers, user simulation, credentials, and external side effects were not run, so this
 remains a routing proxy rather than an official MCPMark result or native WebGPU capability claim.
 
+### Current EnterpriseOps-Gym email retrieval control (m275)
+
+The [`m275 receipt`](paper/results/raw/m275-enterpriseopsgym-current-email-retrieval-v1.json)
+evaluates `67` public EnterpriseOps-Gym email rows with an average `20`-tool distractor catalog.
+The current checkpoint reaches `20.90%` hit@1, `53.73%` hit@3, and `76.12%` hit@5.  The warm m273
+child reaches `25.37%`, `55.22%`, and `74.63%`; the matched random-backbone control reaches
+`35.82%`, `80.60%`, and `94.03%`.
+
+The counterintuitive random-control advantage is important: the current warm checkpoint has learned
+strong local tool-name priors but transfers poorly to unseen EnterpriseOps email schemas.  This is
+negative-transfer evidence, not a reason to ship the random child; it means the next training stage
+needs an in-domain schema adapter, explicit name/description diversity, and a no-transfer control.
+No EnterpriseOps container, SQL verifier, email account, or external side effect was used.
+
 ### Workshop gate after current MobileGym receipt (m263)
 
 The [`m263 gate`](paper/results/raw/m263-workshop-gate-current-mobilegym-v1.json) joins the
