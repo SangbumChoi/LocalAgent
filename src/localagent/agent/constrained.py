@@ -427,7 +427,7 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
     selector_order: list[str] | None = None
     if selector is not None:
-        selector_order = selector.rank(feats[-1])
+        selector_order = selector.rank(feats[-1], allowed_names={t.name for t in tools})
         keep = set(selector_order[:top_m])
     else:
         retriever = retriever or ToolRetriever(tools)

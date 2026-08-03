@@ -24,3 +24,25 @@ def test_agent_scales_selection_to_topk():
     # retriever restricts candidates to top-k, not the whole catalog
     specs = agent._select_specs("open the report 'x'")
     assert len(specs) == agent.retrieve_k
+
+
+def test_selector_path_keeps_retrieved_catalog_bounded(monkeypatch):
+    agent, tools = _agent(80)
+    seen: dict[str, object] = {}
+
+    class DummySelector:
+        def rank(self, _feat, allowed_names=None):
+            return list(allowed_names or ())
+
+    def fake_decode(_model, _tokenizer, _prompt, candidates, **_kwargs):
+        seen["candidate_names"] = [tool.name for tool in candidates]
+        return f'<tool_call>{{"name":"{candidates[0].name}","arguments":{{}}}}</tool_call>'
+
+    monkeypatch.setattr("localagent.agent.constrained.hybrid_decode", fake_decode)
+    agent.model = object()
+    agent.tokenizer = object()
+    agent.selector = DummySelector()
+    out = agent.chat("open the report 'x'")
+    assert out.startswith("[")
+    assert len(seen["candidate_names"]) == agent.retrieve_k
+    assert set(seen["candidate_names"]).issubset({tool.name for tool in tools})

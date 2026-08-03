@@ -14,7 +14,8 @@
  *
  * Selection is NOT a fixed-N classifier: the dense selector scores every tool by its description
  * embedding, so adding/removing a tool is adding/removing a tool_matrix row.  An explicit
- * retrieval_selector ablation is available with ?selector=retrieval; it is reported separately.
+ * retrieval_selector ablations are available with ?selector=retrieval and
+ * ?selector=retrieval_then_dense; both are reported separately from the default dense selector.
  */
 
 const ACTION_POLICIES = Object.freeze({
@@ -1605,7 +1606,9 @@ function selectTokenFromLogits(logits, options = {}, allowedTokenIds = null) {
 
 // ---- generable dispatch: route head -> dense two-tower selector ------------
 function lastHidden(hiddenTensor, T) {
-  const d = META.d_model, H = hiddenTensor.data, off = (T - 1) * d;
+  const d = META?.d_model ?? hiddenTensor?.dims?.at(-1);
+  if (!Number.isInteger(d) || d < 1) throw new Error("Hidden tensor has no valid model width.");
+  const H = hiddenTensor.data, off = (T - 1) * d;
   return H.subarray ? H.subarray(off, off + d) : Array.from(H).slice(off, off + d);
 }
 function linrow(W, b, x) {                 // W[o][d] · x[d] + b[o] -> [o]
@@ -1695,28 +1698,69 @@ function retrievalEmbedding(text, dim) {
   return vector;
 }
 
-function retrievalSelectFromSidecar(query, R) {
+function retrievalScoresFromSidecar(query, R) {
   if (!R?.tool_matrix?.length || !Array.isArray(R.tool_names)) return null;
   const compact = compactDispatchQuery(query, R.compact_instruction_marker);
   const q = retrievalEmbedding(compact, Number(R.dim));
-  let best = 0;
-  let bestScore = -Infinity;
+  const scores = [];
   for (let row = 0; row < R.tool_matrix.length; row++) {
     const values = R.tool_matrix[row];
     let score = 0;
     for (let index = 0; index < q.length; index++) score += q[index] * values[index];
-    if (score > bestScore) {
-      best = row;
-      bestScore = score;
-    }
+    scores.push(score);
   }
+  const order = Array.from({ length: scores.length }, (_, index) => index).sort(
+    (left, right) => scores[right] - scores[left] || left - right,
+  );
+  return { scores, order };
+}
+
+function retrievalCandidatesFromSidecar(query, R, k = 10) {
+  const scored = retrievalScoresFromSidecar(query, R);
+  if (!scored) return [];
+  const limit = Math.max(1, Math.min(Number(k) || 10, scored.order.length));
+  return scored.order.slice(0, limit).map((index) => ({
+    name: R.tool_names[index],
+    score: scored.scores[index],
+    route: R.tool_routes?.[index] || "text",
+  }));
+}
+
+function retrievalSelectFromSidecar(query, R) {
+  const candidates = retrievalCandidatesFromSidecar(query, R, 1);
+  if (!candidates.length) return null;
+  const best = candidates[0];
+  const bestScore = best.score;
   return {
-    name: R.tool_names[best],
-    route: R.tool_routes?.[best] || "text",
+    name: best.name,
+    route: best.route,
     conf: Math.max(0, Math.min(1, (bestScore + 1) / 2)),
     isStop: false,
     selection_policy: "retrieval_selector",
   };
+}
+
+function retrievalCandidateNames(query, R, k = 10) {
+  return retrievalCandidatesFromSidecar(query, R, k).map((candidate) => candidate.name);
+}
+
+function retrievalCandidateIndexSet(query, R, toolNames, k = 10) {
+  const names = new Set(retrievalCandidateNames(query, R, k));
+  return toolNames.reduce((indices, name, index) => {
+    if (names.has(name)) indices.push(index);
+    return indices;
+  }, []);
+}
+
+function denseCandidateIndices(query, S, dispatch, requestedSelector) {
+  if (requestedSelector !== "retrieval_then_dense") {
+    return { indices: Array.from({ length: S.tool_names.length }, (_, index) => index), policy: "dense_selector" };
+  }
+  const indices = retrievalCandidateIndexSet(query, dispatch?.retrieval_selector, S.tool_names, 10);
+  if (!indices.length) {
+    return { indices: Array.from({ length: S.tool_names.length }, (_, index) => index), policy: "dense_selector" };
+  }
+  return { indices, policy: "retrieval_then_dense" };
 }
 
 function retrievalSelect(query) {
@@ -1775,12 +1819,20 @@ function dispatchSelect(
   const S = dispatch.dense_selector;
   const q = linrow(S.q_proj_weight, S.q_proj_bias, last);
   if (S.normalize_query) { let n = 0; for (const x of q) n += x * x; n = Math.sqrt(n) || 1; for (let i = 0; i < q.length; i++) q[i] /= n; }
-  let bi = 0, bs = -Infinity;
-  for (let j = 0; j < S.tool_names.length; j++) {
+  const candidates = denseCandidateIndices(query, S, dispatch, requestedSelector);
+  let bi = candidates.indices[0] ?? 0, bs = -Infinity;
+  for (const j of candidates.indices) {
     const Tj = S.tool_matrix[j]; let a = 0; for (let i = 0; i < S.proj; i++) a += Tj[i] * q[i];
     if (a > bs) { bs = a; bi = j; }
   }
-  return { name: S.tool_names[bi], route: R.routes[ri], conf: (bs + 1) / 2, isStop: false, selection_policy: "dense_selector" };
+  return {
+    name: S.tool_names[bi],
+    route: R.routes[ri],
+    conf: (bs + 1) / 2,
+    isStop: false,
+    selection_policy: candidates.policy,
+    candidate_count: candidates.indices.length,
+  };
 }
 
 // ---- argument grounding: learned pointer head + schema-typed extraction -------
@@ -2767,6 +2819,7 @@ if (typeof module !== "undefined" && module.exports) {
     mobileLexicalSelect,
     modelArtifactEvidence,
     retrievalEmbedding,
+    retrievalCandidatesFromSidecar,
     retrievalSelectFromSidecar,
     sha256Bytes,
     selectTokenFromLogits,

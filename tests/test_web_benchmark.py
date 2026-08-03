@@ -208,6 +208,57 @@ process.stdout.write(JSON.stringify({ selected, guarded }));
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_retrieval_then_dense_scores_only_retrieved_sidecar_candidates():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "?selector=retrieval_then_dense" } };
+global.META = { d_model: 1 };
+const { dispatchSelect, retrievalCandidatesFromSidecar } = require(process.argv[1]);
+const names = Array.from({ length: 12 }, (_, index) => `tool_${index}`);
+const sidecar = {
+  route_head: {
+    weight: [[0], [1], [0], [0], [0]], bias: [0, 0, 0, 0, 0],
+    routes: ["text", "browser", "computer_use", "python", "filesystem"], stop_index: 0,
+  },
+  dense_selector: {
+    q_proj_weight: [[1]], q_proj_bias: [0], proj: 1,
+    tool_matrix: names.map((_, index) => [index === 0 ? 2 : index === 10 ? 1 : 0]),
+    tool_names: names,
+    normalize_query: true,
+  },
+  retrieval_selector: {
+    algorithm: "char_ngram_crc32_v1", dim: 1,
+    tool_matrix: names.map((_, index) => [index === 0 ? 0 : 1 - index / 20]),
+    tool_names: names,
+    tool_routes: names.map(() => "browser"),
+    compact_instruction_marker: " instruction:",
+  },
+};
+const hidden = { data: new Float32Array([1]), dims: [1, 1, 1] };
+const candidates = retrievalCandidatesFromSidecar("send an email", sidecar.retrieval_selector, 10);
+const selected = dispatchSelect(hidden, 1, "send an email", sidecar);
+process.stdout.write(JSON.stringify({ candidates, selected }));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(result.stdout)
+    assert len(payload["candidates"]) == 10
+    assert "tool_0" not in [row["name"] for row in payload["candidates"]]
+    assert "tool_11" not in [row["name"] for row in payload["candidates"]]
+    assert payload["selected"] == {
+        "name": "tool_10",
+        "route": "browser",
+        "conf": pytest.approx(1.0),
+        "isStop": False,
+        "selection_policy": "retrieval_then_dense",
+        "candidate_count": 10,
+    }
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
 def test_browser_ar_policy_contract_keeps_raw_and_trie_decoding_distinct():
     script = """
 global.window = { __localAgentSkipInit: true, location: { search: "" } };

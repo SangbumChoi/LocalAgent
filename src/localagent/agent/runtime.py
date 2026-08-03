@@ -177,7 +177,7 @@ class Agent:
         specs = self._select_specs(user_message)
         if self.model is not None and self.selector is not None:
             # generable path: route gate -> dense selector -> pointer-copy args (scales to any pool)
-            out = hybrid_decode(self.model, self.tokenizer, user_message, list(self.catalog.values()),
+            out = hybrid_decode(self.model, self.tokenizer, user_message, specs,
                                 selector=self.selector, route_head=self.route_head,
                                 ptr_head=self.ptr_head, top_m=self.selector_top_m,
                                 selector_first=self.selector_first)

@@ -26,6 +26,14 @@ def test_rank_returns_all_bound_tools_in_order():
     assert sorted(order) == sorted(t.name for t in TOOLS)   # a full permutation, no tool dropped
 
 
+def test_rank_can_be_restricted_to_retrieved_candidates():
+    sel = DenseToolSelector(d_model=16, emb_dim=tool_embeddings(TOOLS).shape[1])
+    bound = BoundSelector(sel, TOOLS)
+    allowed = {TOOLS[1].name, TOOLS[4].name}
+    order = bound.rank(torch.randn(16), allowed_names=allowed)
+    assert set(order) == allowed
+
+
 def test_generalizes_to_an_unseen_tool():
     # bind to a tool list that includes a tool the selector never "saw" — it still scores/ranks it,
     # because scoring is over the description embedding, not a trained output index.

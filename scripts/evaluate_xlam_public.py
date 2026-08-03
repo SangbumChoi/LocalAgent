@@ -120,6 +120,35 @@ def _decode(agent: Agent, row: dict[str, Any], mode: str, device: str) -> ToolCa
             ptr_head=agent.ptr_head,
             top_m=1,
         )
+    elif mode == "global_retriever":
+        output = hybrid_decode(
+            agent.model,
+            agent.tokenizer,
+            row["query"],
+            list(agent.catalog.values()),
+            device=device,
+            retriever=agent.retriever,
+            route_head=agent.route_head,
+            ptr_head=agent.ptr_head,
+            k=agent.retrieve_k,
+            top_m=1,
+        )
+    elif mode == "runtime_retriever_selector":
+        # Mirror Agent.chat: retrieve a bounded catalog first, then let the learned two-tower
+        # selector rank only those candidates. This prevents a full-catalog selector from
+        # silently defeating the runtime's O(top-k) contract.
+        tools = agent._select_specs(row["query"])
+        output = hybrid_decode(
+            agent.model,
+            agent.tokenizer,
+            row["query"],
+            tools,
+            device=device,
+            selector=agent.selector,
+            route_head=agent.route_head,
+            ptr_head=agent.ptr_head,
+            top_m=1,
+        )
     elif mode == "global_selector":
         output = hybrid_decode(
             agent.model,
@@ -157,7 +186,12 @@ def evaluate(
     registry = _registry(rows)
     agent = Agent.from_checkpoint(checkpoint, registry)
     by_mode: dict[str, dict[str, Any]] = {}
-    for mode in ("row_retriever", "global_selector"):
+    for mode in (
+        "row_retriever",
+        "global_retriever",
+        "runtime_retriever_selector",
+        "global_selector",
+    ):
         counters = defaultdict(int)
         by_length: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         predictions: list[dict[str, Any]] = []
@@ -226,6 +260,10 @@ def evaluate(
         "checkpoint": _identity(checkpoint),
         "rows": len(rows),
         "modes": by_mode,
+        "candidate_policy": {
+            "runtime_retriever_selector": "Agent.chat retrieval followed by selector over retrieved candidates",
+            "retrieve_k": agent.retrieve_k,
+        },
         "claim_boundary": (
             "Bounded first-call evaluation on a public xLAM-derived test shard. xLAM answers may "
             "contain multiple calls; this 10.5M decoder is scored on the first call only. The "

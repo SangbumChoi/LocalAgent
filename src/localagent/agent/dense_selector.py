@@ -69,9 +69,18 @@ class BoundSelector:
         self.embs = tool_embeddings(tools, model.emb_dim, device, examples=examples)
 
     @torch.no_grad()
-    def rank(self, feat) -> list[str]:
+    def rank(self, feat, allowed_names: set[str] | None = None) -> list[str]:
+        """Return tool names ordered by score, optionally restricted to this turn's candidates.
+
+        Large catalogs are retrieved before decoding.  Restricting the bound selector at this
+        boundary is important: otherwise a selector trained over the full catalog can reintroduce
+        every tool after retrieval and silently defeat the O(top-k) runtime contract.
+        """
         scores = self.model(feat.unsqueeze(0), self.embs)[0]
-        return [self.names[i] for i in torch.argsort(scores, descending=True).tolist()]
+        order = [self.names[i] for i in torch.argsort(scores, descending=True).tolist()]
+        if allowed_names is not None:
+            order = [name for name in order if name in allowed_names]
+        return order
 
 
 def train_dense_selector(model, samples, tok, tools, *, steps=400, batch_size=64, lr=5e-3,

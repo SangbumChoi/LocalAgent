@@ -34,7 +34,8 @@
         concurrency, exact tool-and-argument scoring, independent schema validation, and closed
         loop state assertions. Mobile selections made by the optional lexical guard are reported
         separately from the learned dense selector; use <code>mobile_guard=0</code> for a no-guard
-        run, or add <code>selector=retrieval</code> to measure the explicit retrieval ablation.
+        run, or add <code>selector=retrieval</code> for retrieval-only or
+        <code>selector=retrieval_then_dense</code> to retrieve ten candidates before dense scoring.
       </p>
       <div class="row browser-task-controls">
         <span id="mobile-task-progress" class="timing">Waiting for the model bundle…</span>

@@ -1929,6 +1929,20 @@ This is useful evidence for candidate retrieval and schema-conditioned dispatch,
 official Salesforce xLAM, generated argument exactness, live API execution, or a workshop-gate
 native score; the child is explicitly not promoted.
 
+### Deployment-shaped retrieval before selector scoring (m140)
+
+The m138 result exposed a real runtime bug: when a dense selector was present, `Agent.chat` passed
+the entire catalog to the selector and silently bypassed the documented top-`k` retrieval path.
+The fix restricts `BoundSelector.rank` to the retrieved candidate names and makes the runtime pass
+the retrieved `ToolSpec` list into `hybrid_decode`.  The [`m140 receipt`](paper/results/raw/m140-xlam-runtime-retrieval-selector-v1.json)
+replays the public 128-row derivative shard with the exact deployment-shaped path (`k=10`).
+
+Global first-tool exactness improves from `0%` with unrestricted dense selection to `9.375%` with
+retrieval followed by selector scoring; schema validity improves from `0.78%` to `14.84%`.  The
+row-local upper-bound diagnostic remains `50.78%`, and first-argument exactness remains `0%`, so
+this is an efficiency and safety correction—not a quality promotion.  The checkpoint remains
+unpromoted, and the result is not official xLAM, live API execution, or native WebGPU evidence.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution

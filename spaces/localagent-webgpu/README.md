@@ -32,6 +32,10 @@ Source: [LocalAgent](https://github.com/sangbumchoi/localagent).
 - **Tool selection** — a **dense two-tower selector**: the query tower projects `hidden`, scored by
   cosine against a precomputed per-tool description-embedding matrix over the **50-tool** surface
   (`argmax_j q·tool_matrix[j]`). Adding/removing a tool is adding/removing a row — no retraining.
+  The browser bundle also exposes `?selector=retrieval_then_dense`, which retrieves the top ten
+  sidecar candidates before dense scoring; `?selector=retrieval` remains the retrieval-only
+  ablation. Neither optional policy is presented as a quality promotion without a fresh held-out
+  receipt.
 - **Grounded arguments** — eligible string fields can use learned prompt-span pointers; other
   primitive fields use deterministic schema-aware grounding. Missing required values abort the
   action, and an independent validator checks the supported schema subset before dispatch.
