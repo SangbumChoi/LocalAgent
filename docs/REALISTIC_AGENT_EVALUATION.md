@@ -1988,6 +1988,22 @@ not promoted.  The matched random result also cautions against reading this one-
 weight-transfer quality win; the separate m142 held-out token audit is the evidence for warm-start
 initialization, not this native base-scenario aggregate.
 
+### Current m142 native BrowserGym/MiniWoB evaluation (m144)
+
+The [`m144 receipt`](paper/results/raw/m144-browsergym-native-current-checkpoint-v1.json) runs the
+current five-surface m142 child through the complete pinned BrowserGym/MiniWoB plan: `240`
+episodes, `60` task variants, four fixed seeds, and a ten-step budget.  Chromium, BrowserGym, and
+MiniWoB all executed natively with zero environment or action errors.  The model nevertheless
+achieves `0/240` success, produces `0` grounded actions, and emits `2,400/2,400` `noop(0)` actions
+(`1,400` explicit abstentions).
+
+This is an official-split **negative** result for the current checkpoint, not a deployment failure:
+the native browser gate is technically eligible, but the child is not promoted.  The earlier m43
+adapter checkpoint reached `5/240` (`2.08%`) on the same pinned plan, so m144 is a regression in
+native UI grounding after the five-surface continuation.  The receipt retains only per-episode
+aggregates in Git and hashes the raw trace; it does not claim visual grounding, WebArena, real
+email/Notion accounts, Android control, or WebGPU hardware quality.
+
 ### EnterpriseOps-Gym public email retrieval diagnostic (v10)
 
 To probe realistic enterprise tool breadth without contaminating training or claiming an execution

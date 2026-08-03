@@ -118,6 +118,14 @@ control: native execution can run without exceptions, but the current transfer d
 stateful tool-use quality, and the run is not official-split eligible because the model-based user
 simulator and full augmented matrix were not executed.  See the [`m143 receipt`](paper/results/raw/m143-toolsandbox-native-base-transfer-audit-v1.json).
 
+The m144 native BrowserGym run is the decisive current-checkpoint regression check.  The same
+m142 child that improved held-out token accuracy in the five-surface continuation completes the
+official 240-episode MiniWoB plan with `0/240` success and `0` grounded actions, versus `5/240`
+for the older m43 adapter checkpoint.  This means the low-rate continuation preserved useful text
+token transfer but degraded native browser grounding; it is not evidence for adopting the child
+as the deployment checkpoint.  The [`m144 receipt`](paper/results/raw/m144-browsergym-native-current-checkpoint-v1.json)
+binds the raw trace and keeps the checkpoint unpromoted.
+
 The AgentNet/OpenCUA adapter is deliberately outside this weight-transfer series.  Its 12-action
 official sample is parsed into evaluation-only coordinate tools, so it changes no checkpoint
 weights and cannot be counted as a training gain.  A screenshot/accessibility grounding bridge
