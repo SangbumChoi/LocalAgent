@@ -721,6 +721,41 @@ Those counts are not additive or interchangeable.  Before a native safety score,
 be selected and its task manifest, APKs, emulator, and verifier hash-bound.  No m228 rows entered
 training and no runtime was executed.
 
+### Stateful productivity and user-in-the-loop refresh (m229)
+
+The [`m229 receipt`](paper/results/raw/m229-stateful-productivity-benchmark-refresh-v1.json)
+updates the contract for the workflows the WebGPU demo is meant to approach.  MCPMark's public
+task format requires `meta.json`, `description.md`, and an independent `verify.py` state check over
+Notion, GitHub, filesystem, Postgres, and Playwright services; its documented tasks average 16.2
+execution turns and 17.4 tool calls, so a single correct tool name is not task completion.
+EnterpriseOps-Gym exposes 649 resettable enterprise tasks, including 67 email rows, with selected
+tools, MCP server state, and SQL/database-state verifiers.  These are the closest public email and
+Notion-adjacent stateful contracts in the current matrix, but no server or account is attached here.
+
+AppWorld-UL adds the missing user-interaction dimension: 516 tasks require clarification,
+confirmation, or handling an infeasible instruction.  This maps directly to the deployment policy:
+the model must distinguish an allowed read, a confirmation-required write, a clarification request,
+and a blocked action before calling a tool.  τ³-Bench adds knowledge-grounded policy/tool use and
+full-duplex voice, while TUA-Bench covers 120 general terminal tasks including email management and
+live-web information seeking; both remain evaluation-only for this text-first WebGPU model.
+
+The adoption conclusion is unchanged but sharper: warm-start token or retrieval gains are useful
+initialization evidence only.  Promotion requires matched random/no-transfer arms, per-group tensor
+movement, and native state-verifier success on the same pinned release.  m229 adds no training rows,
+does not execute external effects, and does not convert the local email/Notion state machine into an
+official MCPMark, EnterpriseOps-Gym, or AppWorld-UL score.
+
+### Structured-action safety boundary fix (m230)
+
+The [`m230 receipt`](paper/results/raw/m230-webgpu-structured-action-safety-fix-v1.json) caught a
+real deployment-path mismatch: planner calls supplied a tool name as a string, while the ordinary
+UI path supplied `{tool, args}`.  The policy reader only inspected `{name}`, so the second path
+could have been labeled read-only even for `send_email` or `notion_write`.  The policy now accepts
+all three action shapes (`name`, `tool`, and nested `action.tool`), and the regression covers
+structured email/Notion confirmation, read-only URL allowance, and injection blocking for an
+interactive click.  This fixes policy observability; it is not a learned-quality or native task
+success result.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

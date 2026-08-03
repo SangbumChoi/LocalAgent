@@ -54,6 +54,7 @@ def test_public_matrix_covers_the_realistic_modalities() -> None:
         "toolsandbox",
         "enterpriseopsgym",
         "appworld",
+        "appworld_ul",
         "tau_bench",
         "toolace",
     }
@@ -62,6 +63,10 @@ def test_public_matrix_covers_the_realistic_modalities() -> None:
     assert "web_search" in agentic_bfcl["modalities"]
     assert "memory_state" in agentic_bfcl["modalities"]
     assert agentic_bfcl["source_revision"] == "release-required-before-score"
+    appworld_ul = next(row for row in matrix["entries"] if row["id"] == "appworld_ul")
+    assert appworld_ul["train_policy"] == "eval_only"
+    assert "user_simulator" in appworld_ul["modalities"]
+    assert "confirmation" in appworld_ul["webgpu_projection"]
 
 
 def test_public_matrix_rejects_ambiguous_training_rows() -> None:

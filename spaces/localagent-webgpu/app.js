@@ -1806,7 +1806,9 @@ function promptInjectionIndicators(text) {
 }
 
 function actionSafetyPolicy(actionOrTool, request = "", options = {}) {
-  const tool = typeof actionOrTool === "string" ? actionOrTool : actionOrTool?.name;
+  const tool = typeof actionOrTool === "string"
+    ? actionOrTool
+    : actionOrTool?.name || actionOrTool?.tool || actionOrTool?.action?.tool;
   const actionName = typeof tool === "string" ? tool : "";
   const context = [
     safetyText(request),

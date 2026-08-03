@@ -37,7 +37,7 @@ const output = {
   ),
 };
 process.stdout.write(JSON.stringify(output));
-""";
+"""
     result = subprocess.run(
         [shutil.which("node"), "-e", script, str(WEB_APP)],
         check=True,
@@ -64,7 +64,7 @@ def test_webgpu_safety_policy_is_explicitly_versioned() -> None:
 global.window = { __localAgentSkipInit: true, location: { search: "" } };
 const { actionSafetyPolicy } = require(process.argv[1]);
 process.stdout.write(JSON.stringify(actionSafetyPolicy({name: "notion_write"}, "Save this to Notion.")));
-""";
+"""
     result = subprocess.run(
         [shutil.which("node"), "-e", script, str(WEB_APP)],
         check=True,
@@ -74,3 +74,25 @@ process.stdout.write(JSON.stringify(actionSafetyPolicy({name: "notion_write"}, "
     payload = json.loads(result.stdout)
     assert payload["policy_version"] == "side_effect_confirmation_v1"
     assert payload["tool"] == "notion_write"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_webgpu_safety_policy_reads_structured_action_tool_field() -> None:
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { actionSafetyPolicy } = require(process.argv[1]);
+process.stdout.write(JSON.stringify(actionSafetyPolicy(
+  {tool: "send_email", args: {}},
+  "Email Dana the report"
+)));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "confirmation_required"
+    assert payload["requires_confirmation"] is True
+    assert payload["tool"] == "send_email"

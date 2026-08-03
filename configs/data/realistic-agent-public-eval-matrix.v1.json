@@ -379,6 +379,23 @@
       "notes": "The official site describes nine apps, 457 APIs, 106 simulated people, and 750 benchmark tasks."
     },
     {
+      "id": "appworld_ul",
+      "family": "tool_api",
+      "name": "AppWorld-UL",
+      "source_url": "https://appworld.dev/appworld-ul/",
+      "paper_url": "https://arxiv.org/abs/2607.20536",
+      "source_revision": "release-required-before-score",
+      "license": "source-license-review-required",
+      "access_status": "public_runtime",
+      "train_policy": "eval_only",
+      "modalities": ["user_goal", "tool_schema", "simulated_app_state", "user_simulator", "agent_dialogue"],
+      "webgpu_projection": "Clarification, confirmation, infeasible-request, and safe-abstention decisions over compact app state; full AppWorld execution and user simulation remain runtime-only.",
+      "primary_metric": "Task/scenario success with user-interaction correctness and compositional-task breakdown.",
+      "split_rule": "Keep the 516 task prompts, user-simulator policies, app state, and verifiers evaluation-only; pin the AppWorld release before scoring.",
+      "local_status": "metadata_only",
+      "notes": "The public project describes 516 user-in-the-loop tasks over the nine-app AppWorld environment, explicitly testing clarification, confirmation, and infeasible instructions."
+    },
+    {
       "id": "tau_bench",
       "family": "tool_api",
       "name": "τ-Bench",
