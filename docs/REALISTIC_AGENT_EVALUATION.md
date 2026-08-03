@@ -1813,6 +1813,24 @@ embedding, `0.223%` attention/mixer, and `0.273%` FFN (random control: `0.554%`,
 experiments, not publishing a universal transfer claim or asserting native browser, desktop,
 mobile, email, Notion, MCP, or WebGPU control.
 
+### Current AgentNet surface-selector ablation (m181)
+
+The [`m181 receipt`](paper/results/raw/m181-agentnet-current-surface-selector-ablation-v1.json)
+retests the current m180 child with the correct 14-action `agentnet_*` catalog instead of the
+browser catalog used by the mixed-continuation diagnostic.  The backbone is frozen and the
+surface-specific selector is trained for 400 updates on 513 public-train projection rows, with
+133 source-held-out rows.  Across three seeds, warm-start held-out selector top-1 averages
+`69.67%`, while the matched random selector averages `70.68%`; warm is better on zero seeds,
+equal on one, and worse on two.  Selector movement is therefore head adaptation, not evidence
+that the inherited language representation improves desktop action choice.
+
+The strongest replay uses the seed-2044 warm selector and covers all eight held-out parent
+trajectories: first-action type is `100%`, but exact trajectory and task success are both `0%`.
+Screenshots, coordinates as visual input, the official split, and an Ubuntu desktop runtime were
+not used.  The correct conclusion is to keep the surface-specific catalog plumbing while
+rejecting selector-transfer adoption until screenshot grounding and native AgentNet/OSWorld
+verification are available.
+
 ### ToolSandbox public-source projection and transfer probe (m59)
 
 ToolSandbox is the most direct public stress test for the requested stateful productivity surface:
