@@ -22,6 +22,7 @@ def test_public_matrix_is_source_linked_and_split_explicit() -> None:
         "android_in_the_wild",
         "mind2web",
         "agentnet",
+        "toolace",
     }
     assert all(row["source_url"].startswith("https://") for row in matrix["entries"])
     assert all(row["paper_url"].startswith("https://") for row in matrix["entries"])
@@ -49,6 +50,7 @@ def test_public_matrix_covers_the_realistic_modalities() -> None:
         "enterpriseopsgym",
         "appworld",
         "tau_bench",
+        "toolace",
     }
 
 

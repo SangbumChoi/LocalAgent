@@ -2339,6 +2339,30 @@ planning, and no external navigation.  It is not a BrowserGym/MiniWoB score, nat
 Android/desktop/MCP execution, trusted browser control, or real email/Notion side effect.
 The bundle is not uploaded because Hugging Face authentication is still not configured.
 
+### Current-child ToolACE first-action transfer (m171)
+
+The [`m171 receipt`](paper/results/raw/m171-current-child-toolace-transfer-v1.json) adds the
+public Apache-2.0 [Team-ACE/ToolACE](https://huggingface.co/datasets/Team-ACE/ToolACE) snapshot
+at revision `6bda777c88d21e5a204703c1ee45597a8fa4f734`.  The raw `37,154,735` bytes are
+hash-bound.  The importer accepts only strict bracketed calls such as
+`[email_send(to="user@example.com")]`, projects the first canonical assistant action, and
+keeps tool responses and later turns out of the WebGPU SFT projection.  It accepts `8,993` of
+`11,300` rows; `2,293` rows have no strict first action and `14` fail schema/projection checks.
+The resulting source-record/prompt-disjoint projection contains `8,044` train and `949` held-out
+rows.  This is a reproducible adapter boundary, not an official ToolACE split.
+
+For a CPU-bounded continuation, `1,024` train rows and `256` held-out rows were sampled from the
+frozen projection and matched against a fresh random-backbone control for 32 updates at
+learning rate `1e-5`.  The warm current child improves held-out assistant-token accuracy
+`39.35% → 42.23%` while the random control reaches `8.00%`; the warm-minus-random gap after
+training is `+34.23` percentage points.  Both arms remain at `0%` exact sequence accuracy.
+Warm relative movement is only `0.47%` embedding, `0.16%` mixer, `0.19%` FFN, and `0.007%`
+normalization, versus `123.40%`, `77.79%`, `87.84%`, and `7.91%` for the random body; action
+heads are unchanged.  The 51-tensor compatibility and equal-tokenizer audit supports the same
+low-rate transferred-body recipe, but this bounded first-action projection is diagnostic only:
+it is not BFCL, official ToolACE, multi-turn execution, native browser/mobile/desktop/MCP,
+email/Notion side effects, or a public Hub upload.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the

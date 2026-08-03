@@ -311,6 +311,23 @@
       "notes": "The public card reconciles 512 tools, eight domains, 649 oracle rows, and 637 rows per distractor mode; local work has no server run."
     },
     {
+      "id": "toolace",
+      "family": "tool_api",
+      "name": "Team-ACE/ToolACE",
+      "source_url": "https://huggingface.co/datasets/Team-ACE/ToolACE",
+      "paper_url": "https://arxiv.org/abs/2409.00920",
+      "source_revision": "6bda777c88d21e5a204703c1ee45597a8fa4f734",
+      "license": "Apache-2.0",
+      "access_status": "public_download",
+      "train_policy": "train",
+      "modalities": ["instruction", "tool_schema", "multi_turn_dialogue"],
+      "webgpu_projection": "Strict first canonical assistant action; tool responses and later turns are omitted in the current text-first projection.",
+      "primary_metric": "Held-out assistant-token accuracy plus exact tool, argument, and sequence diagnostics; official ToolACE/BFCL scores remain external.",
+      "split_rule": "Use only the pinned source bytes; the current split is source-record and normalized-prompt disjoint and is not an upstream official split.",
+      "local_status": "measured",
+      "notes": "m171 accepted 8,993 of 11,300 source rows and measured a bounded 1,024/256 continuation arm against a matched random-backbone control."
+    },
+    {
       "id": "appworld",
       "family": "tool_api",
       "name": "AppWorld",
