@@ -410,6 +410,14 @@ mean similarity `0.2921`, and zero per-scenario wins or losses.  This is a usefu
 the m194 route/selector repair did not change native ToolSandbox behavior under the one-step
 protocol, so it is not promoted.  The same official-split/user-simulator boundary still applies.
 
+The [`m201 interactive receipt`](paper/results/raw/m201-toolsandbox-native-current-interactive-v1.json)
+extends the check to five stateful, ambiguous, and multi-turn scenarios with the bounded interactive
+scripted user.  The m194 child reaches `1/5` (`20%`) and exactly matches the prior m92 stateful,
+public-only, and projection arms on every scenario (`0.25`, `0.3333`, `1.0`, `0.0`, `0.5`).  The
+model therefore still cannot turn route repair into reliable multi-tool state progression; the
+next training target is explicit state/action-history supervision and recovery, not another frozen
+selector update.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
