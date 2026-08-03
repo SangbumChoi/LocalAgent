@@ -392,6 +392,17 @@ but the lower movement does not carry useful unseen-value grounding.  This rules
 warm pointer solely because it preserves pretrained weights; the next adapter must align DOM
 candidate serialization, action argument schemas, and span labels before another WebGPU export.
 
+### Current native ToolSandbox smoke (m198)
+
+The [`m198 receipt`](paper/results/raw/m198-toolsandbox-native-current-v1.json) runs the current
+m194 checkpoint in the pinned Apple [ToolSandbox](https://github.com/apple/ToolSandbox) simulator
+and milestone verifier.  It completes `3/3` resettable single-turn scenarios—cellular-off,
+Wi-Fi-off, and send-message—with mean milestone similarity `1.0`; no external API is called.
+This is the first current-checkpoint stateful-tool result for the deployment path, but it remains a
+diagnostic smoke: the scripted user ends after the first response, multi-tool and multi-turn cases
+are truncated, and the official split/model-based user simulator/full scenario matrix were not
+executed.  It therefore does not establish native MCP, email, Notion, or publication-gate success.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
