@@ -489,6 +489,23 @@ shared tensors, tokenizer equality, and warm embedding/attention/FFN relative mo
 candidate, not adopting it as a computer-use solution: visual grounding plus native AgentNetBench
 or desktop execution is still required.
 
+### AgentNet public continuation and matched random transfer (m221)
+
+The [`m221 receipt`](paper/results/raw/m221-agentnet-public-continuation-transfer-v1.json) is the
+first current-child SFT continuation on the pinned AgentNet text/action projection rather than a
+selector-only probe.  It uses `513` train rows from `32` parents and `133` held-out rows from `8`
+unseen parents, with the same `32`-step schedule for the warm m180 checkpoint and a matched random
+backbone.  The split is parent-disjoint and screenshots remain excluded.
+
+Warm reuse improves held-out teacher-forced token accuracy from `55.80%` to `67.00%` and route
+accuracy from `18.80%` to `83.46%`; the random control reaches `21.22%` token accuracy and `0%`
+route accuracy.  The stronger action evaluator is decisive: warm and random children both remain
+at `0%` exact trajectories and `0` meaningful coordinate/text action score.  The tensor audit
+finds `51` compatible tensors, equal tokenizers, and warm embedding/attention/FFN movement of
+`0.532%`/`0.284%`/`0.346%`.  The adoption decision is therefore to keep warm reuse for a future
+visual/action-grounded continuation, while refusing to promote this text-only training result to
+native desktop or AgentNetBench capability.
+
 ### Frozen dispatch repair control (m194)
 
 The [`m194 receipt`](paper/results/raw/m194-current-m180-dispatch-repair-v1.json) tests whether the

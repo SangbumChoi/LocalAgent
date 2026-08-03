@@ -105,6 +105,13 @@ random, but both arms have 0% exact trajectories and effectively zero coordinate
 screenshots and desktop state were not consumed.  This is evidence for retaining the compatible
 pretrained body as a candidate initialization, not a native desktop or visual-grounding result.
 
+The follow-up [`m221 continuation`](paper/results/raw/m221-agentnet-public-continuation-transfer-v1.json)
+trains the same public AgentNet train projection for 32 steps from the warm m180 child and a
+matched random backbone.  Warm held-out token accuracy rises 55.80% → 67.00% and route accuracy
+18.80% → 83.46%, while the random control reaches 21.22% token accuracy and 0% route accuracy.
+Neither child reaches an exact trajectory or meaningful coordinate/text action score, so the
+result supports warm-weight reuse for future visual/action-grounded training only.
+
 The actual SFT checkpoint has also been exercised through the local deployment path with
 [`scripts/deploy_smoke.py`](../scripts/deploy_smoke.py).  The pinned
 [`m24 receipt`](paper/results/raw/m24-local-deployment-smoke-v1.json) records 10 realistic prompts

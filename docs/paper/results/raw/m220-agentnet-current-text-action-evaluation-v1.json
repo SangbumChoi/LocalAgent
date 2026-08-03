@@ -8,7 +8,7 @@
   "kind": "localagent_agentnet_current_text_action_evaluation",
   "matched_control": {
     "checkpoint": {
-      "bytes": 52240681,
+      "bytes": 52319842,
       "path": "/private/tmp/agentnet-random-backbone-parent.pt",
       "sha256": "a322e3100ddec6a733ec474dfc5f3c545a15fa23232f914a8b5994af7b8e7527"
     },
@@ -105,5 +105,5 @@
     },
     "recommendation": "Reuse compatible pretrained backbone tensors only behind a matched no-transfer ablation; use a smaller backbone learning rate and a larger action-head rate, but do not promote this text-only result to native computer-use capability."
   },
-  "receipt_self_sha256": "1fe81afce15fe6bac2fc740f21579d147231f900df5bc218e2a2e353c9917f04"
+  "receipt_self_sha256": "91d5c298ab694f5eb25e28fb65a4097f0aeba82fa0b9b99aeb216eb527cac93a"
 }

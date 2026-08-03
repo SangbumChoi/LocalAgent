@@ -29,6 +29,7 @@ def test_m220_receipt_is_self_hashed_and_source_bound() -> None:
     assert payload["projection"]["action_rows"] == 133
     assert payload["projection"]["eval_parent_records"] == 8
     assert payload["projection"]["images_consumed"] is False
+    assert payload["matched_control"]["checkpoint"]["bytes"] == 52319842
 
 
 def test_m220_matched_control_is_complete_and_not_native() -> None:
