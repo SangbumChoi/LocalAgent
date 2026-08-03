@@ -4,6 +4,7 @@ from pathlib import Path
 
 from localagent.data.conversation_artifact import canonical_json_bytes
 from localagent.data.toolace import (
+    TOOLACE_ACTION_HISTORY_ADAPTER_VERSION,
     TOOLACE_ADAPTER_VERSION,
     TOOLACE_MULTITURN_ADAPTER_VERSION,
     normalize_toolace_snapshot,
@@ -160,3 +161,49 @@ def test_toolace_multiturn_projection_preserves_tool_history(tmp_path: Path) -> 
     turns = assistant_training_turns(Conversation.from_json(json.dumps(payload)))
     assert len(turns) == 3
     assert payload["meta"]["quality"]["tool_response_omitted"] is False
+
+
+def test_toolace_action_history_omits_assistant_prose_but_keeps_state(tmp_path: Path) -> None:
+    row = _row("Action history request")
+    row["conversations"] = [
+        row["conversations"][0],
+        row["conversations"][1],
+        {"from": "tool", "value": '{"ok":true}'},
+        {"from": "assistant", "value": "The operation succeeded."},
+        {"from": "user", "value": "Do it again."},
+        {"from": "assistant", "value": '[email_send(to="b@example.com", urgent=False)]'},
+    ]
+    rows = []
+    for index in range(20):
+        variant = json.loads(json.dumps(row))
+        variant["conversations"][0]["value"] = f"Action history request {index}"
+        rows.append(variant)
+    source = tmp_path / "toolace.json"
+    source.write_text(json.dumps(rows, separators=(",", ":")), encoding="utf-8")
+    source_bytes = source.read_bytes()
+    manifest = normalize_toolace_snapshot(
+        source,
+        output_train=tmp_path / "train.jsonl",
+        output_eval=tmp_path / "eval.jsonl",
+        manifest_path=tmp_path / "manifest.json",
+        expected_bytes=len(source_bytes),
+        expected_sha256=hashlib.sha256(source_bytes).hexdigest(),
+        projection="action_history",
+    )
+    assert manifest["adapter_version"] == TOOLACE_ACTION_HISTORY_ADAPTER_VERSION
+    assert manifest["projection_mode"] == "action_history"
+    payload = next(
+        json.loads(line)
+        for output in (tmp_path / "train.jsonl", tmp_path / "eval.jsonl")
+        for line in output.read_text(encoding="utf-8").splitlines()
+        if line
+    )
+    assert [message["role"] for message in payload["messages"]] == [
+        "user",
+        "assistant",
+        "tool",
+        "user",
+        "assistant",
+    ]
+    assert payload["meta"]["assistant_text_turns_omitted"] == 1
+    assert payload["messages"][2]["tool_response"] == '{"ok":true}'

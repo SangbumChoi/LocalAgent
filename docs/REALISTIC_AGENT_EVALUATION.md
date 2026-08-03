@@ -2382,6 +2382,21 @@ preserving tool history for future stateful SFT, but remains a bounded teacher-f
 it is not official ToolACE/BFCL scoring, tool execution, email/Notion side effects, or native
 browser/mobile/desktop/MCP evidence.
 
+### Current-child ToolACE action-history transfer (m173)
+
+The [`m173 receipt`](paper/results/raw/m173-current-child-toolace-action-history-transfer-v1.json)
+uses the same source-disjoint multi-turn data but removes non-action assistant prose from the
+history.  User turns, strict assistant calls, and tool responses remain; `1,806` assistant prose
+turns are explicitly counted as omitted.  The full projection still contains `8,992` accepted
+rows, `9,679` action turns, `1,357` tool responses, and `21,164` retained messages.
+
+With the same bounded `256/64` split and matched 16-update warm/random arm, held-out assistant-token
+accuracy is `48.95% → 49.99%` for the warm child versus `0.02% → 0.51%` for random, a `+49.48`
+percentage-point gap.  Exact sequence accuracy remains `0%`, but the action-history target is far
+more WebGPU-aligned than the full-history `18.56%` result because the loss is concentrated on
+action decisions rather than assistant prose.  This is still a teacher-forced diagnostic, not
+official ToolACE/BFCL scoring or executed email/Notion/browser/MCP behavior.
+
 ### Current-parent MCPMark redacted-trajectory transfer (m159)
 
 The [`m159 receipt`](paper/results/raw/m159-mcpmark-current-parent-transfer-v1.json) repeats the

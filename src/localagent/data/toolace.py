@@ -37,6 +37,7 @@ TOOLACE_LICENSE = "Apache-2.0"
 TOOLACE_LICENSE_URL = "https://www.apache.org/licenses/LICENSE-2.0"
 TOOLACE_ADAPTER_VERSION = "toolace-first-canonical-action-v1"
 TOOLACE_MULTITURN_ADAPTER_VERSION = "toolace-multiturn-canonical-actions-v1"
+TOOLACE_ACTION_HISTORY_ADAPTER_VERSION = "toolace-action-history-canonical-actions-v1"
 TOOLACE_MANIFEST_KIND = "localagent_toolace_projection"
 _SUPPORTED_SCHEMA_KEYS = {
     "type",
@@ -366,6 +367,7 @@ def normalize_toolace_multiturn_row(
     record_index: int,
     split: str,
     source_sha256: str,
+    include_assistant_text: bool = True,
 ) -> Conversation | None:
     """Normalize all user, assistant, and tool turns while retaining strict action calls."""
 
@@ -378,6 +380,7 @@ def normalize_toolace_multiturn_row(
     tools, fallback_tools = _catalog_for_calls(raw.get("system"), calls)
     messages: list[Message] = []
     assistant_action_count = 0
+    assistant_text_turns_omitted = 0
     tool_response_count = 0
     for index, raw_message in enumerate(raw["conversations"]):
         if not isinstance(raw_message, dict):
@@ -393,8 +396,10 @@ def normalize_toolace_multiturn_row(
             if parsed:
                 messages.append(Message(role=Role.assistant, tool_calls=list(parsed)))
                 assistant_action_count += 1
-            else:
+            elif include_assistant_text:
                 messages.append(Message(role=Role.assistant, content=value))
+            else:
+                assistant_text_turns_omitted += 1
         elif role == "tool":
             messages.append(Message(role=Role.tool, tool_response=value))
             tool_response_count += 1
@@ -413,6 +418,7 @@ def normalize_toolace_multiturn_row(
             "capabilities": sorted({call.name for call in calls}),
             "action_count": len(calls),
             "assistant_action_turns": assistant_action_count,
+            "assistant_text_turns_omitted": assistant_text_turns_omitted,
             "tool_response_turns": tool_response_count,
             "parent_record_id": parent_record_id,
             "split": split,
@@ -425,6 +431,7 @@ def normalize_toolace_multiturn_row(
             "quality": {
                 "source_conversation_turns": len(raw["conversations"]),
                 "tool_response_omitted": False,
+                "assistant_text_omitted": not include_assistant_text,
             },
             "provenance": {
                 "dataset": TOOLACE_DATASET,
@@ -444,6 +451,31 @@ def normalize_toolace_multiturn_row(
         },
     )
     assistant_training_turns(conversation)
+    return conversation
+
+
+def normalize_toolace_action_history_row(
+    raw: object,
+    *,
+    record_index: int,
+    split: str,
+    source_sha256: str,
+) -> Conversation | None:
+    """Normalize action-relevant history while omitting non-action assistant prose."""
+
+    conversation = normalize_toolace_multiturn_row(
+        raw,
+        record_index=record_index,
+        split=split,
+        source_sha256=source_sha256,
+        include_assistant_text=False,
+    )
+    if conversation is not None:
+        conversation.meta["toolace_projection"] = TOOLACE_ACTION_HISTORY_ADAPTER_VERSION
+        conversation.meta["derivation"] = "canonical_assistant_actions_with_user_tool_history_v1"
+        conversation.meta["verification_scope"] = (
+            "tool_catalog_schema_and_action_history_projection"
+        )
     return conversation
 
 
@@ -494,12 +526,16 @@ def normalize_toolace_snapshot(
 
     if eval_modulo < 2:
         raise ValueError("eval_modulo must be at least 2")
-    if projection not in {"first_action", "multiturn"}:
-        raise ValueError("projection must be 'first_action' or 'multiturn'")
+    if projection not in {"first_action", "multiturn", "action_history"}:
+        raise ValueError("projection must be 'first_action', 'multiturn', or 'action_history'")
     adapter_version = (
         TOOLACE_ADAPTER_VERSION
         if projection == "first_action"
-        else TOOLACE_MULTITURN_ADAPTER_VERSION
+        else (
+            TOOLACE_MULTITURN_ADAPTER_VERSION
+            if projection == "multiturn"
+            else TOOLACE_ACTION_HISTORY_ADAPTER_VERSION
+        )
     )
     source = Path(input_path)
     identity = _identity(source)
@@ -528,7 +564,11 @@ def normalize_toolace_snapshot(
             normalizer = (
                 normalize_toolace_row
                 if projection == "first_action"
-                else normalize_toolace_multiturn_row
+                else (
+                    normalize_toolace_multiturn_row
+                    if projection == "multiturn"
+                    else normalize_toolace_action_history_row
+                )
             )
             conversation = normalizer(
                 row, record_index=index, split=split, source_sha256=identity["sha256"]
@@ -547,6 +587,9 @@ def normalize_toolace_snapshot(
         )
         projection_stats["assistant_action_turns"] += sum(
             bool(message.tool_calls) for message in conversation.messages
+        )
+        projection_stats["assistant_text_turns_omitted"] += int(
+            conversation.meta.get("assistant_text_turns_omitted", 0)
         )
         parent_id = str(conversation.meta["parent_record_id"])
         split_parent_ids[split].add(parent_id)
@@ -581,7 +624,11 @@ def normalize_toolace_snapshot(
         "projection": (
             "first strict bracketed assistant action; tool response and later turns omitted"
             if projection == "first_action"
-            else "all strict bracketed assistant actions with user, assistant text, and tool-response history preserved"
+            else (
+                "all strict bracketed assistant actions with user, assistant text, and tool-response history preserved"
+                if projection == "multiturn"
+                else "all strict bracketed assistant actions with user and tool-response history preserved; non-action assistant prose omitted"
+            )
         ),
         "raw_rows": len(raw),
         "accepted_rows": len(train) + len(evaluation),
@@ -600,7 +647,11 @@ def normalize_toolace_snapshot(
         },
         "claim_boundary": (
             "Source-record-disjoint ToolACE "
-            + ("first-action" if projection == "first_action" else "multi-turn")
+            + (
+                "first-action"
+                if projection == "first_action"
+                else ("multi-turn" if projection == "multiturn" else "action-history")
+            )
             + " projection for low-rate SFT/transfer diagnostics; not an official ToolACE split, "
             "BFCL score, multi-turn execution result, or native browser/mobile/desktop/MCP evaluation."
         ),

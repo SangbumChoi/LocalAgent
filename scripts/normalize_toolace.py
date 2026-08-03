@@ -18,9 +18,9 @@ def main() -> int:
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument(
         "--projection",
-        choices=("first_action", "multiturn"),
+        choices=("first_action", "multiturn", "action_history"),
         default="first_action",
-        help="retain only the first action or preserve the full tool-response history",
+        help="retain only the first action, preserve full history, or keep action-relevant history",
     )
     parser.add_argument("--expected-bytes", type=int)
     parser.add_argument("--expected-sha256")

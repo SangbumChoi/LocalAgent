@@ -78,17 +78,26 @@ def assemble(
     warm_after = _after(warm)
     random_after = _after(random)
     is_multiturn = projection_mode == "multiturn"
+    is_action_history = projection_mode == "action_history"
     body: dict[str, Any] = {
         "kind": (
             "localagent_current_child_toolace_multiturn_transfer_receipt"
             if is_multiturn
-            else "localagent_current_child_toolace_transfer_receipt"
+            else (
+                "localagent_current_child_toolace_action_history_transfer_receipt"
+                if is_action_history
+                else "localagent_current_child_toolace_transfer_receipt"
+            )
         ),
         "schema_version": 1,
         "measurement": (
             "m172_current_child_toolace_multiturn_transfer"
             if is_multiturn
-            else "m171_current_child_toolace_first_action_transfer"
+            else (
+                "m173_current_child_toolace_action_history_transfer"
+                if is_action_history
+                else "m171_current_child_toolace_first_action_transfer"
+            )
         ),
         "generated_at": "2026-08-03",
         "dataset": {
@@ -108,7 +117,7 @@ def assemble(
                 "rejections": manifest["rejections"],
                 "full_train": manifest["outputs"]["train"],
                 "full_eval": manifest["outputs"]["eval"],
-                "projection_stats": manifest["projection_stats"],
+                "projection_stats": manifest.get("projection_stats", {}),
                 "split_audit": manifest["split_audit"],
             },
             "projection_boundary": manifest["projection"],
@@ -152,7 +161,11 @@ def assemble(
         "decision": "diagnostic_only",
         "claim_boundary": (
             "Source-record-disjoint public ToolACE "
-            + ("multi-turn" if is_multiturn else "first-action")
+            + (
+                "multi-turn"
+                if is_multiturn
+                else ("action-history" if is_action_history else "first-action")
+            )
             + " projection with a bounded continuation and matched random-backbone control. This is not an official ToolACE or "
             "BFCL split/score, not a multi-turn execution result, and not native mobile, browser, "
             "desktop, email, Notion, MCP, or external-account success."
@@ -179,7 +192,11 @@ def main() -> int:
     parser.add_argument("--warm-child", type=Path, required=True)
     parser.add_argument("--random-child", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--projection-mode", choices=("first_action", "multiturn"), default="first_action")
+    parser.add_argument(
+        "--projection-mode",
+        choices=("first_action", "multiturn", "action_history"),
+        default="first_action",
+    )
     args = parser.parse_args()
     print(
         json.dumps(
