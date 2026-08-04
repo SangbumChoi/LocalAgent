@@ -49,6 +49,9 @@ def test_public_matrix_covers_the_realistic_modalities() -> None:
     status = {row["id"]: row["local_status"] for row in matrix["entries"]}
     assert status["mobile_safety_bench"] == "manifest_audited_native_pending"
     assert status["iosworld"] == "manifest_audited_native_pending"
+    mobilegym = next(row for row in matrix["entries"] if row["id"] == "mobilegym")
+    assert mobilegym["source_revision"] == "093a3292d13fc4186e279af4ef1b005ac8e4d2b7"
+    assert mobilegym["local_status"] == "measured_official_text_projection"
     assert {row["id"] for row in entries_by_family(matrix, "tool_api")} >= {
         "mcpmark",
         "toolsandbox",

@@ -1424,6 +1424,16 @@ to the legacy 50-tool catalog.  The publisher now resolves one checkpoint-bound 
 same name-set hash `fd3c5d30…`; all four ONNX parity checks pass.  This improves deploy correctness,
 but does not create native mobile/browser/MCP success or a public HF release.
 
+### Current MobileGym catalog/native reconciliation (m337)
+
+The [m337 receipt](paper/results/raw/m337-mobilegym-current-catalog-reconciliation-v1.json)
+corrects a registry lag discovered during the workshop-gate audit.  The pinned MobileGym source
+`093a3292…` has 28 simulated apps, 416 templates, and a disjoint 160-template/256-task contract.
+The current checkpoint's existing native receipt covers the complete official test split and passes
+`1/256` (`0.39%`) under a compact text/DOM observation projection.  The score is native simulator
+and state-diff evidence, but not visual mobile grounding: screenshots were not used.  The benchmark
+data remains CC-BY-NC-4.0 and evaluation-only, with zero training rows admitted.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

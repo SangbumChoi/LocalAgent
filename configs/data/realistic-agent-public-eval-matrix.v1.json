@@ -61,16 +61,16 @@
       "name": "MobileGym / MobileGym-Bench",
       "source_url": "https://github.com/Purewhiter/mobilegym",
       "paper_url": "https://arxiv.org/abs/2605.26114",
-      "source_revision": "release-required-before-score",
-      "license": "source-license-review-required",
-      "access_status": "terms_review",
+      "source_revision": "093a3292d13fc4186e279af4ef1b005ac8e4d2b7",
+      "license": "Apache-2.0_code_CC-BY-NC-4.0_data",
+      "access_status": "public_runtime",
       "train_policy": "eval_only",
       "modalities": ["goal", "structured_mobile_state", "screenshot", "action"],
       "webgpu_projection": "Structured JSON state plus goal; compact enough for text-first control and deterministic local reward.",
       "primary_metric": "AnswerSheet task success, dense state reward, and sim-to-real retention.",
       "split_rule": "Use the 160 train and 256 test templates only after pinning the release; never train on test templates.",
-      "local_status": "not_started",
-      "notes": "Public project describes 28 simulated apps and 416 parameterized templates; license and exact release must be audited before training."
+      "local_status": "measured_official_text_projection",
+      "notes": "Pinned release has 28 simulated apps, 416 templates, and a disjoint 160-template train/256-task test contract. The current checkpoint completed the full official test split at 1/256 (0.39%) using text/DOM state only; screenshots and visual grounding were not used. Benchmark data remains CC-BY-NC-4.0 and evaluation-only."
     },
     {
       "id": "mobile_safety_bench",

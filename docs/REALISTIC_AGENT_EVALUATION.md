@@ -167,6 +167,13 @@ but the WebGPU metadata and selector sidecars defaulted to 50.  The publisher no
 ONNX parity checks and the shared tool-name hash is `fd3c5d30…`; this is deployment-integrity
 evidence only, not native browser/mobile/MCP capability or a public release.
 
+The [m337 MobileGym reconciliation](paper/results/raw/m337-mobilegym-current-catalog-reconciliation-v1.json)
+updates the source-linked matrix to the already completed pinned native run: revision
+`093a3292…`, 28 apps, 416 templates, and the complete official 256-task test split.  The current
+checkpoint passes `1/256` (`0.39%`) using text/DOM state only.  This is native simulator/state-diff
+evidence but not screenshot or visual-grounding evidence; MobileGym data remains evaluation-only
+and no training rows were admitted.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

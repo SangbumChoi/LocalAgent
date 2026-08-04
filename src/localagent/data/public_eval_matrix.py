@@ -21,6 +21,7 @@ _POLICIES = frozenset({"train", "eval_only", "no_static_data", "restricted"})
 _STATUSES = frozenset(
     {
         "measured",
+        "measured_official_text_projection",
         "metadata_only",
         "manifest_audited_native_pending",
         "native_mock_diagnostic",

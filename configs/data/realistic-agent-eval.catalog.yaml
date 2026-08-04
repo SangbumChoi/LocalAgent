@@ -748,6 +748,7 @@ entries:
     source_url: https://github.com/Purewhiter/mobilegym
     paper_url: https://arxiv.org/abs/2605.26114
     code_url: https://github.com/Purewhiter/mobilegym
+    source_revision: 093a3292d13fc4186e279af4ef1b005ac8e4d2b7
     data_access_url: https://huggingface.co/datasets/Purewhiter/MobileGym
     access_status: public_runtime
     license:
@@ -758,6 +759,8 @@ entries:
       kind: benchmark
       apps: 28
       task_templates: 416
+      official_test_tasks: 256
+      train_templates: 160
     observation:
       modalities: [text, screenshot, accessibility_tree, simulator_state]
       formats: [JSON, PNG, live_simulator]
@@ -777,7 +780,7 @@ entries:
     contamination:
       split: official_runtime
       rule: the CC-BY-NC-4.0 task/data release is evaluator-only and never enters a commercial training mix
-    notes: Deterministic simulated Android apps with reusable templates and judges; useful for repeatable closed-loop mobile evaluation.
+    notes: Deterministic simulated Android apps with reusable templates and judges. The current checkpoint has a complete official text-projection receipt at 1/256; screenshots and visual grounding were not used, and the CC-BY-NC-4.0 benchmark data remains evaluation-only.
 
   - id: mobileworld
     family: mobile

@@ -1,6 +1,6 @@
 # Public realistic-agent evaluation matrix
 
-Status: source discovery and split policy refreshed on 2026-08-04. This is the reference map for
+Status: source discovery, split policy, and current native evidence refreshed on 2026-08-05. This is the reference map for
 the WebGPU agent; it is not a claim that every suite has been executed. The machine-readable
 source of truth is [`realistic-agent-public-eval-matrix.v1.json`](../../configs/data/realistic-agent-public-eval-matrix.v1.json).
 The source-method and native-vs-projection protocol is summarized in the
@@ -32,7 +32,7 @@ hash, tokenizer hash, runtime versions, task IDs, seeds, and complete action/ter
 | Mobile | [AndroidControl](https://github.com/google-research/google-research/tree/master/android_control) | Human mobile demonstrations, accessibility/gesture actions | Train official train split only | Goal + compact accessibility tree | Adapter ready; bounded replay only |
 | Mobile | [Android in the Wild](https://github.com/google-research/google-research/tree/master/android_in_the_wild) | Large visual/gesture mobile episodes | Train official task/app/platform train split only | Instruction + text screen projection | Adapter ready; no emulator score |
 | Mobile | [AndroidWorld](https://github.com/google-research/android_world) | 116 tasks, 20 apps, dynamic emulator rewards | Eval-only runtime | Accessibility tree + goal | Metadata inventory; emulator pending |
-| Mobile | [MobileGym](https://github.com/Purewhiter/mobilegym) | 28 simulated apps, 416 parameterized tasks, deterministic judges | Eval-only until release/license pin | Structured JSON state + goal | Not started |
+| Mobile | [MobileGym](https://github.com/Purewhiter/mobilegym) | 28 simulated apps, 416 parameterized tasks, deterministic judges | Eval-only; CC-BY-NC-4.0 benchmark data | Structured JSON state + goal | Official 256-task text projection: 1/256; no visual claim |
 | Mobile | [MobileSafetyBench](https://mobilesafetybench.github.io/) | Release-dependent: pinned paper/repository contract reports 100 tasks; current project page reports 250 (200 daily + 50 injection) | Eval-only; select one release and keep safety prompts, emulator snapshots, APKs, and attack variants out of SFT | Goal + compact image/text state + refusal/confirmation policy | Scope discrepancy recorded; native emulator pending |
 | Mobile | [iOSWorld](https://github.com/ljang0/iOSWorld) | 133 tasks across 26 seeded iOS apps, including multi-app and memory/personalization workflows | Eval-only; seeded identity, apps, task files, and rubrics stay out of SFT | Compact identity/state + MCP schema; visual phone control requires an encoder | Source pinned; iOS Simulator pending |
 | Mobile | [MobileWorld](https://github.com/Tongyi-MAI/MobileWorld) | 201 long-horizon agent-user/MCP tasks across 20 apps | Eval-only; pinned source, benchmark/runtime terms still under review | State text + explicit tools | m302 source profile; native Docker/KVM runner pending |
