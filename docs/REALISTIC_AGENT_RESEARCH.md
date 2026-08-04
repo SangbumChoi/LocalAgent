@@ -1569,6 +1569,26 @@ bundle is parity-gated and locally verified. This closes the local packaging loo
 unauthenticated, so no upload, anonymous download audit, public URL, hardware adapter result, or
 benchmark claim is made.
 
+### Current interactive ToolSandbox stress run (m368)
+
+The [m368 receipt](paper/results/raw/m368-toolsandbox-native-current-interactive-v1.json) runs the
+current BPE checkpoint inside the pinned Apple ToolSandbox simulator/verifier while allowing
+bounded model continuation after each tool result. All three selected scenarios execute, but the
+agent reaches `0/3` exact completions (`0.5`, `0.5`, and `0.0` milestone similarity), with no
+external API call. This is native resettable runtime evidence, not an official ToolSandbox result:
+the upstream split and model-based user simulator remain unexecuted, and the dependency
+substitution (`ccy 1.4.0` for the unavailable Python-3.12 `ccy 1.3.1`) is recorded in the receipt.
+
+### Strict workshop gate after interactive ToolSandbox run (m369)
+
+The [m369 gate receipt](paper/results/raw/m369-workshop-gate-current-toolsandbox-interactive-v1.json)
+joins the interactive native receipt with current WebGPU, BrowserGym/MiniWoB, MobileGym, weight,
+RL-preflight, catalog, and artifact checks. It remains `ready: false`: ToolSandbox is explicitly
+blocked because the official split was not verified; AndroidWorld, MobileSafetyBench, iOSWorld,
+OSWorld, OSWorld-V2, AgentNet, MCPMark, and EnterpriseOps-Gym lack official native receipts; and
+the supplied public artifact is not bound to the current checkpoint. This is the intended
+fail-closed workshop decision, not a claim that the missing environments were evaluated.
+
 ### Current native ToolSandbox smoke (m366)
 
 The [m366 receipt](paper/results/raw/m366-toolsandbox-native-current-v1.json) executes three

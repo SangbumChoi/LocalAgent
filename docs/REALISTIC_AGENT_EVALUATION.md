@@ -289,6 +289,27 @@ the bundle identity remains `e0e19a8a…a296ed` and all ONNX parity gates pass. 
 still unauthenticated, so publication, anonymous re-fetch, and public model/Space URLs remain
 false rather than being inferred from local staging.
 
+### Current interactive ToolSandbox stress run (m368)
+
+The [m368 receipt](paper/results/raw/m368-toolsandbox-native-current-interactive-v1.json) reruns
+the exact current checkpoint in the pinned ToolSandbox simulator/verifier with bounded model
+continuation after tool results (up to four agent turns). All three selected scenarios execute,
+but none reaches exact completion (`0/3`, with milestone similarities `0.5`, `0.5`, and `0.0`).
+This is a stronger stateful-runtime stress diagnostic than the one-step smoke, not an official
+ToolSandbox score: the upstream official split and model-based user simulator were not run, so the
+publication blocker remains open.
+
+### Strict workshop gate after interactive ToolSandbox run (m369)
+
+The [m369 gate receipt](paper/results/raw/m369-workshop-gate-current-toolsandbox-interactive-v1.json)
+re-runs the strict publication contract with m368, the current native WebGPU receipt, BrowserGym/
+MiniWoB, MobileGym, weight-transfer, RL-preflight, and public-artifact inputs. It remains
+`ready: false`: ToolSandbox is blocked by `official_split_not_verified`; AndroidWorld,
+MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, MCPMark, and EnterpriseOps-Gym have no
+supplied official native receipts; and the legacy public artifact is not bound to the current
+checkpoint. The result is fail-closed and does not treat local packaging or protocol bridges as
+publication evidence.
+
 ### Current native ToolSandbox smoke (m366)
 
 The [m366 receipt](paper/results/raw/m366-toolsandbox-native-current-v1.json) runs the current
