@@ -3084,6 +3084,18 @@ config exposes no checkpoint binding, so `current_checkpoint_match=false` agains
 `bc1aca20…c16361` BPE checkpoint.  This confirms the public URLs are live but still legacy; the
 current model/demo upload and a matching manifest remain outstanding.
 
+### Current parent → stateful RL weight audit (m306)
+
+The [m306 receipt](paper/results/raw/m306-current-parent-stateful-rl-weight-transfer-v1.json)
+compares the current `bc1aca20…c16361` parent with the m276 stateful-productivity RL child at the
+tensor level. All `51` shared tensors have compatible shapes/configuration and the tokenizer hash
+matches. The child leaves action heads unchanged (`0%` movement) but moves the shared embedding,
+attention/mixer, and FFN groups by `1.89%`, `0.87%`, and `1.04%`; this is materially larger than
+the earlier low-rate transfer controls. The adoption decision remains conservative: reuse the
+compatible parent initialization, use a smaller body learning rate and larger task-head rate, and
+retain a matched no-transfer arm before any deployment promotion. This is weight-lineage evidence,
+not a native email, Notion, browser, or MCP success claim.
+
 The source audit also binds OSWorld 2.0 to the upstream `osworld-v2-2026.06.24` release: code,
 task classes, gated assets, and mocked websites must come from the same release.  The required
 gated task/asset snapshots and a desktop VM are not present locally, so OSWorld-V2 remains a
