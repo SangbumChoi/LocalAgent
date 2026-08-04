@@ -79,7 +79,8 @@ PYTHONPATH=src python scripts/workshop_gate.py --strict
 
 The command without supplied receipts exits non-zero with fourteen blocking requirements.  Supplying
 the verified native WebGPU, full BrowserGym, MobileGym, and public-artifact receipts reduces this
-to nine:
+to ten when the current checkpoint is also bound (nine native requirements plus the stale-public-
+artifact binding):
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
@@ -105,8 +106,10 @@ therefore an auditable workshop decision, not a claim that the current model has
 
 The current canonical receipt is joined in [`m218`](paper/results/raw/m218-workshop-gate-current-canonical-native-v1.json):
 MobileGym and BrowserGym/MiniWoB are accepted as official-split native evidence, while the
-ToolSandbox diagnostic remains blocked for missing official-split verification.  This is the
-authoritative nine-blocker state; older gate receipts are retained for historical comparison.
+ToolSandbox diagnostic remains blocked for missing official-split verification.  The latest
+current-checkpoint-bound report is [`m307`](paper/results/raw/m307-workshop-gate-current-checkpoint-final-v1.json):
+it is `ready=false` with ten blockers (nine absent or non-official native receipts plus
+`current_checkpoint_not_bound`). Older gate receipts are retained for historical comparison.
 
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
