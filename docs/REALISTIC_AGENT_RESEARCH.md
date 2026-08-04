@@ -1560,6 +1560,15 @@ demo safety boundary, while still stopping short of external multi-step producti
 hardware adapter, external side effect, official benchmark score, or public model release is
 claimed.
 
+### Current paired HF + Space preparation rebuild (m364)
+
+The [m364 receipt](paper/results/raw/m364-hf-paired-release-local-current-v1.json) rebuilds the
+current Hugging Face-format model and static Space staging directories from the exact BPE parent.
+The 63-tool pool is aligned across config, metadata, selectors, tokenizer, and ONNX graphs; the
+bundle is parity-gated and locally verified. This closes the local packaging loop only. HF remains
+unauthenticated, so no upload, anonymous download audit, public URL, hardware adapter result, or
+benchmark claim is made.
+
 ### Unified six-source public transfer control (m361)
 
 The [m361 receipt](paper/results/raw/m361-all-public-candidate-transfer-v1.json) performs a

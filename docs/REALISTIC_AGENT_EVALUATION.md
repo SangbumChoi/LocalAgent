@@ -280,6 +280,15 @@ parity-gated; the current bundle identity is `e0e19a8a…a296ed`, with no local 
 This establishes a reproducible upload candidate, not a public Hub URL, physical adapter result,
 throughput claim, or browser task-success score.
 
+### Current paired HF + Space preparation rebuild (m364)
+
+The [m364 receipt](paper/results/raw/m364-hf-paired-release-local-current-v1.json) reruns
+`publish_hf_release.py` from the exact `10,524,544`-parameter checkpoint. The local model bundle,
+all eight WebGPU artifacts, aligned 63-tool metadata, and copied static Space verify successfully;
+the bundle identity remains `e0e19a8a…a296ed` and all ONNX parity gates pass. `hf auth whoami` is
+still unauthenticated, so publication, anonymous re-fetch, and public model/Space URLs remain
+false rather than being inferred from local staging.
+
 ### Unified public-candidate continuation and weight control (m361)
 
 The [m361 receipt](paper/results/raw/m361-all-public-candidate-transfer-v1.json) joins six
