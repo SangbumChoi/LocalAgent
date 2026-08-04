@@ -3098,3 +3098,14 @@ emits `mobile_press_enter` on 19 episodes and `mobile_submit_answer` on one.  Th
 `mobile_input_text`; its run used a two-step limit), so the dispatch transfer does not improve
 closed-loop mobile behavior.  The child is not promoted, and no Android emulator, screenshot, or
 real-device claim is made.
+
+### Selector-first MobileGym control ablation (m293)
+
+The [m293 receipt](paper/results/raw/m293-mobilegym-selector-first-canary-v1.json) adds an
+implementation control to the m292 child: the runner can now emit the top learned selector
+candidate directly, without letting the language model re-rank it.  This mode is opt-in and does
+not change the default runner.  On the same pinned 20-task MobileGym canary, selector-first also
+scores `0/20` and emits the identical `19` `mobile_press_enter` plus one `mobile_submit_answer`
+pattern.  The negative control localizes the failure to selector generalization on MobileGym
+task-state prompts, rather than only to candidate-body ranking; the mode is not promoted as a
+default policy.

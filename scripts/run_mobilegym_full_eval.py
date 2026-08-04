@@ -123,7 +123,12 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
     specs = mobile_tools()
     for spec in specs:
         registry.register(spec, lambda **kwargs: kwargs)
-    agent = Agent.from_checkpoint(args.checkpoint, registry, selector_top_m=args.selector_top_m)
+    agent = Agent.from_checkpoint(
+        args.checkpoint,
+        registry,
+        selector_top_m=args.selector_top_m,
+        selector_first=args.selector_first,
+    )
     env = MobileGymEnv(
         url=args.env_url,
         headless=True,
@@ -265,6 +270,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "seed": args.seed,
             "max_steps": max(1, args.max_steps),
             "selector_top_m": args.selector_top_m,
+            "selector_first": args.selector_first,
             "start": args.start,
             "limit": args.limit,
             "full_official_test_split": full_split,
@@ -296,6 +302,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-steps", type=int, default=2)
     parser.add_argument("--selector-top-m", type=int, default=1)
+    parser.add_argument(
+        "--selector-first",
+        action="store_true",
+        help="emit the top learned selector candidate without LM re-ranking it",
+    )
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--progress-every", type=int, default=10)

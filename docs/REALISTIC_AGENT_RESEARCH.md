@@ -1197,6 +1197,13 @@ control.  The result supports retaining parent weights as an initialization cand
 rejecting this child for WebGPU promotion; it is not an Android emulator, screenshot, or real-device
 score.
 
+The [m293 selector-first ablation](paper/results/raw/m293-mobilegym-selector-first-canary-v1.json)
+forces the learned top candidate instead of allowing LM re-ranking.  It remains `0/20` with the
+same `19` press-enter and one submit-answer collapse.  This is useful diagnosis: MobileGym's
+task-state distribution is not recognized by the AndroidControl-trained selector, so a decoding
+policy change alone cannot close the mobile grounding gap.  Selector-first remains opt-in and the
+child is rejected for deployment.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
