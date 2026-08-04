@@ -1166,6 +1166,19 @@ episodes with `0/20` success.  This is a useful negative result for the WebGPU b
 official Mind2Web test score, full BrowserGym score, visual grounding result, or account-control
 claim; the child is not promoted.
 
+### Mind2Web browser-head and pointer transfer audit (m290–m291)
+
+The [m290–m291 receipt](paper/results/raw/m290-mind2web-browser-head-pointer-v1.json) isolates
+browser routing from argument grounding.  Frozen-body warm head transfer raises source-disjoint
+Mind2Web selector top-1 `19.05%`→`92.06%` and top-3 `85.71%`→`100%`; the matched random head reaches
+`85.71%` top-1.  Warm route/selector movement (`0.674`/`0.820` relative L2) is below random
+(`1.253`/`1.133`).
+
+The standard-schema pointer continuation adds `target`/`text` and reaches only `3/63` exact spans.
+All three native 20-episode BrowserGym/MiniWoW canaries remain `0/20`; outputs reveal systematic
+`type_text` placeholder or prompt-fragment copying.  Pointer precedence now prefers learned spans
+when available, but the child is not promoted and native browser capability remains unverified.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

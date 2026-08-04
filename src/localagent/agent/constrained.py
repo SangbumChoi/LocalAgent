@@ -273,6 +273,11 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         opts = _phone(prompt)
     elif name in ID_ARGS or name.endswith("_id"):
         opts = _identifier(prompt, name)
+    elif ptr is not None and name in ptr[0].arg_idx:        # learned pointer/copy span
+        ph, feats_row, framed_ids, tok = ptr[:4]
+        span_bounds = ptr[4] if len(ptr) > 4 else None
+        s, e = ph.predict_span(feats_row, name, span_bounds=span_bounds)
+        opts = [tok.decode(framed_ids[s:e + 1])]
     elif name in TEXT_ARGS:
         opts = _text_arg(prompt, name)
     elif name in EMAIL_ARGS:
@@ -291,11 +296,6 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         opts = _path(prompt)
     elif fmt == "url":
         opts = _url(prompt)
-    elif ptr is not None and name in ptr[0].arg_idx:        # learned pointer/copy span
-        ph, feats_row, framed_ids, tok = ptr[:4]
-        span_bounds = ptr[4] if len(ptr) > 4 else None
-        s, e = ph.predict_span(feats_row, name, span_bounds=span_bounds)
-        opts = [tok.decode(framed_ids[s:e + 1])]
     elif schema.get("type") in ("integer", "number"):
         # cast to typed numbers so the canonical body matches the int/float target (not "5").
         cast = int if schema.get("type") == "integer" else float

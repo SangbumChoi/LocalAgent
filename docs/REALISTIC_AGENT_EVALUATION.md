@@ -2829,6 +2829,23 @@ achieves `0/20` successes.  This is a reproducible negative transfer result: no 
 test data, BrowserGym full-plan claim, screenshot grounding, email/Notion account, or external side
 effect was used, and the child is not promoted.
 
+### Mind2Web browser-head and pointer transfer audit (m290–m291)
+
+The [m290–m291 receipt](paper/results/raw/m290-mind2web-browser-head-pointer-v1.json) separates
+browser tool selection from argument grounding on the same public Mind2Web train-only projection.
+With the body frozen, a warm route/dense-selector adapter raises held-out selector top-1 from
+`19.05%` to `92.06%` (`85.71%`→`100%` top-3); a matched random-head control reaches `85.71%`
+top-1.  Warm head movement is smaller (`0.674` route, `0.820` selector relative L2) than random
+(`1.253`, `1.133`), supporting compatible initialization for the proxy only.
+
+Mapping public `web_click`/`web_type`/`web_select` into deployed `click`/`type_text` schemas and
+training `target`/`text` pointer rows improves held-out pointer spans only `0/63`→`3/63`
+(`4.76%`).  Three native 20-episode BrowserGym/MiniWoW canaries remain `0/20`: the head adapter
+repeatedly chooses `type_text` with a `Submit` placeholder, while the pointer child copies a prompt
+fragment.  The constrained decoder now gives learned pointer spans precedence over quoted-string
+heuristics when that argument is present, making this failure explicit.  No child is promoted and
+the native browser gate remains blocked.
+
 ### Current MCPMark service-routing control (m274)
 
 The [`m274 receipt`](paper/results/raw/m274-mcpmark-current-service-routing-v1.json) evaluates the
