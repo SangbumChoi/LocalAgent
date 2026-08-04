@@ -76,7 +76,8 @@ Stubs reference these phase numbers in their `TODO(phase-N)` markers.
       Step 12 was the strict teacher-forced winner, but its bound development greedy scorecard
       had 170/820 EOS completions and zero valid protocol outputs; confirmatory evaluation,
       fallback selection, RL, and candidate WebGPU promotion were correctly withheld.
-- [ ] Schema-preserving function masking / tool-renaming augmentation.
+- [x] Schema-preserving function masking / tool-renaming augmentation, with deterministic aliases,
+      full-catalog prompt support, and a matched ToolSandbox projection transfer receipt.
 - [ ] Test explicit autoregressive protocol distillation or the full-budget 10M tier; additional
       teacher-forced loss reduction alone is not a justified continuation of the failed 1M lane.
 - [x] Tool format wired through tokenizer + parser.

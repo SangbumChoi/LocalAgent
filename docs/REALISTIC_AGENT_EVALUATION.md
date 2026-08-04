@@ -7,8 +7,13 @@ desktop workflows, and stateful API/MCP tools.  The source-linked inventory is
 It is deliberately a catalog, not a downloader: every acquired byte must be recorded in a local
 provenance manifest with an upstream revision, byte count, and SHA-256.
 
-The current catalog contains 40 source-linked rows (four train-eligible and 36 evaluation or
-restricted) and has a canonical SHA-256 fingerprint recorded by the preflight command below.
+The current canonical catalog contains 40 source-linked rows (four train-eligible and 36 evaluation
+or restricted) and has a canonical SHA-256 fingerprint recorded by the preflight command below.
+The separate 27-row public evaluation matrix marks five research train candidates, adding the
+supplemental ToolACE adapter; its current byte and canonical hashes are bound by the [m359 matrix
+audit](paper/results/raw/m359-public-realistic-eval-matrix-audit-v1.json). These are deliberately
+different layers: the canonical catalog controls acquisition configs, while the matrix records the
+broader source-linked research plan.
 The fingerprint is generated from the canonical catalog by the preflight command below.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).

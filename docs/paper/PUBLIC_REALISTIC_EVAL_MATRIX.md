@@ -11,8 +11,10 @@ The source-method and native-vs-projection protocol is summarized in the
 The rows intentionally separate three evidence types:
 
 1. **Trainable public data** has an explicit public download, reviewed license, official train
-   partition, and a source-specific adapter. Current candidates are AndroidControl, Android in the
-   Wild, Mind2Web train, and AgentNet train. A downloaded artifact still needs a byte/hash receipt.
+   partition, and a source-specific adapter. The matrix currently marks AndroidControl, Android in
+   the Wild, Mind2Web train, AgentNet train, and ToolACE as candidates. A downloaded artifact still
+   needs a byte/hash receipt; ToolACE remains a supplemental adapter rather than a row in the
+   canonical four-source acquisition catalog.
 2. **Runtime evaluation** is not SFT data. AndroidWorld, MobileGym, MobileWorld, BrowserGym,
    OSWorld, MCPMark, ToolSandbox, and AppWorld require their own resettable environment and
    verifier. A metadata inventory or local state-machine proxy is never an official score.
