@@ -221,6 +221,13 @@ verifier. On the pinned easy `structure_analysis` task, the model failed all thr
 as a concrete MCP tool/schema failure, but it is not an official MCPMark split score: the user
 simulator and remaining Notion/GitHub/Postgres/Playwright services were not executed.
 
+The [m351 native transfer control](paper/results/raw/m351-mcpmark-public-state-transfer-native-control-v1.json)
+then trains the exact current parent on eight public state-summary trajectories and compares it with
+a deterministic random-backbone control. Warm held-out token accuracy reaches `31.97%` versus
+`8.97%` random, but both children fail the native filesystem verifier (`0/1`, exit code `1`).
+This separates representation transfer from executable MCP competence: the warm child is rejected
+for deployment and no native MCPMark score is claimed.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

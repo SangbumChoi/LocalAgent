@@ -1499,6 +1499,18 @@ directory, so the verifier exited `1`. This is a native failure diagnostic, not 
 MCPMark score: the full split, user simulator, and other MCP services were not run, and no task
 result was admitted to training.
 
+### Current public MCPMark state transfer with native control (m351)
+
+The [m351 receipt](paper/results/raw/m351-mcpmark-public-state-transfer-native-control-v1.json)
+repeats the transfer experiment from the exact current BPE parent using eight source-disjoint
+public MCPMark state-summary trajectories for training and two held-out trajectories for evaluation.
+The warm child improves held-out token accuracy from `30.21%` to `31.97%`; the matched random
+backbone reaches `8.97%` after the same 16 updates, a `23.00`-point warm advantage. Weight movement
+is small for the warm child (embedding `0.215%`, mixer `0.133%`, FFN `0.156%`) and large for the
+random child. However, both children fail the same native filesystem MCPMark verifier (`0/1`,
+exit code `1`) with malformed tool/path actions. The native control therefore rejects transfer
+for deployment despite the teacher-forced gain; neither child is exported.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
