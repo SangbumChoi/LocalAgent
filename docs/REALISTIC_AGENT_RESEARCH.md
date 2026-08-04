@@ -1223,6 +1223,25 @@ now includes this native receipt and records the exact blocker `official_split_n
 overall gate remains closed because the official ToolSandbox split and the other native surfaces are
 still absent.
 
+### Current-checkpoint ToolSandbox base-matrix replay (m300)
+
+The [m300 receipt](paper/results/raw/m300-toolsandbox-current-base-v1.json) reruns the same
+current 10.52M BPE checkpoint over every one of the 129 pinned base/no-distraction scenarios
+(zero simulator or verifier exceptions).  It completes `29/129` (`22.48%`) exact milestones.
+The result is sharply category-dependent: insufficient-information cases reach `26/28`, while
+multiple-tool-call, multiple-user-turn, canonicalization, and state-dependency cases have no exact
+completions under the one-step scripted-user protocol.  This isolates the current failure mode as
+stateful continuation and argument grounding rather than package availability.
+
+This is the complete upstream base set, not the 1,032 runtime variants: distraction and schema
+scramble variants remain unevaluated, and the model-based user simulator is still absent.  Therefore
+m300 strengthens native diagnosis but cannot satisfy the official ToolSandbox/publication gate.
+
+The [m301 gate](paper/results/raw/m301-workshop-gate-current-toolsandbox-base-v1.json) joins m300
+without relaxing the contract: ToolSandbox is still blocked specifically by
+`official_split_not_verified`, while the catalog, current MobileGym, BrowserGym/MiniWoB, WebGPU,
+weight-ablation, and existing public-artifact checks remain independently visible.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
