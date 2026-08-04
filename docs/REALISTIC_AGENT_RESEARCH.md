@@ -1569,6 +1569,15 @@ bundle is parity-gated and locally verified. This closes the local packaging loo
 unauthenticated, so no upload, anonymous download audit, public URL, hardware adapter result, or
 benchmark claim is made.
 
+### Current native ToolSandbox smoke (m366)
+
+The [m366 receipt](paper/results/raw/m366-toolsandbox-native-current-v1.json) executes three
+scenarios in the pinned ToolSandbox simulator with its milestone verifier and the current BPE
+checkpoint. `cellular_off` and `wifi_off` pass exactly; the message scenario reaches `0.425`
+similarity. This is native resettable tool-state evidence, not an official ToolSandbox score: the
+official split and model-based user simulator remain unexecuted, and the run made no external API
+call. The Python-3.12 dependency substitution is recorded in the receipt rather than hidden.
+
 ### Unified six-source public transfer control (m361)
 
 The [m361 receipt](paper/results/raw/m361-all-public-candidate-transfer-v1.json) performs a

@@ -289,6 +289,17 @@ the bundle identity remains `e0e19a8a…a296ed` and all ONNX parity gates pass. 
 still unauthenticated, so publication, anonymous re-fetch, and public model/Space URLs remain
 false rather than being inferred from local staging.
 
+### Current native ToolSandbox smoke (m366)
+
+The [m366 receipt](paper/results/raw/m366-toolsandbox-native-current-v1.json) runs the current
+checkpoint inside the pinned Apple ToolSandbox simulator and milestone verifier. Two of three
+single-step scenarios are exact (`cellular_off` and `wifi_off`); the phone-message scenario reaches
+`0.425` milestone similarity. The run executed the simulator/verifier with no external API and
+binds checkpoint `bc1aca20…c16361`, but it deliberately did not run the official split or the
+model-based user simulator. It therefore adds genuine native smoke evidence without clearing the
+ToolSandbox publication blocker. The isolated Python 3.12 environment used compatible `ccy 1.4.0`
+because the source-declared `ccy 1.3.1` has no Python 3.12 release.
+
 ### Unified public-candidate continuation and weight control (m361)
 
 The [m361 receipt](paper/results/raw/m361-all-public-candidate-transfer-v1.json) joins six
