@@ -2,7 +2,10 @@
 
 Everything here is **prepared but not pushed** — publishing to your HF account is yours to run.
 Requires `huggingface_hub` (installed) and a write token. Set `HF_USER` to your own namespace;
-the commands below deliberately do not assume a public account or URL.
+the commands below deliberately do not assume a public account or URL. The current release target
+is the 10,524,544-parameter BPE checkpoint at
+`runs/sft-webgpu-browser-context-adapter-20260802/latest.pt` (SHA-256
+`bc1aca209ec08df1483a3c6d088366a68f8d8f4f0766e2b4350a2ef473c16361`).
 
 The currently verified deployment repair is generated from the 10,524,544-parameter m103 warm
 checkpoint by `scripts/train_deployment_dispatch_repair.py`; its public/eval row hashes, matched
@@ -27,10 +30,11 @@ remain outside Git and must be regenerated or uploaded by an authenticated maint
 hf auth login          # paste a token with write access  (or: export HF_TOKEN=hf_xxx)
 ```
 
-## 1. Export the inference bundle from the latest checkpoint
+## 1. Export the inference bundle from the current checkpoint
 ```bash
+CURRENT_CHECKPOINT=runs/sft-webgpu-browser-context-adapter-20260802/latest.pt
 python -c "from localagent.inference.export.to_onnx import export_web; \
-           export_web('runs/sft-webgpu-proxy-pilot-hybrid-seed2027/latest.pt', 'build/web', action_only=True)"
+           export_web('${CURRENT_CHECKPOINT}', 'build/web', action_only=True)"
 # writes the full logits graph, hidden-only action graph, heads/meta, and bundle-manifest.json
 # bundle-manifest.json is published only after all fp32/fp16 graphs pass hard PyTorch parity
 
@@ -48,14 +52,11 @@ python -c "import json, pathlib; p=pathlib.Path('build/web'); \
 HF_USER=your-huggingface-user
 MODEL_REPO="$HF_USER/localagent-webgpu-10m"
 SPACE_REPO="$HF_USER/localagent-webgpu"
+HF_OUT=build/hf-current
+python scripts/push_to_hf.py --checkpoint "$CURRENT_CHECKPOINT" --out "$HF_OUT" \
+  --repo "$MODEL_REPO" --public --push
 hf repo create "$MODEL_REPO" --repo-type model -y || true
-hf upload "$MODEL_REPO" runs/sft-webgpu-proxy-pilot-hybrid-seed2027/latest.pt model.pt --repo-type model
-hf upload "$MODEL_REPO" build/web/model.onnx model.onnx --repo-type model
-hf upload "$MODEL_REPO" build/web/model.fp16.onnx model.fp16.onnx --repo-type model
-hf upload "$MODEL_REPO" build/web/action_model.onnx action_model.onnx --repo-type model
-hf upload "$MODEL_REPO" build/web/action_model.fp16.onnx action_model.fp16.onnx --repo-type model
-hf upload "$MODEL_REPO" build/web/dispatch_heads.json dispatch_heads.json --repo-type model
-hf upload "$MODEL_REPO" build/web/bundle-manifest.json bundle-manifest.json --repo-type model
+hf upload "$MODEL_REPO" build/web/ . --repo-type model
 # (load in PyTorch via this repo's LocalAgentLM/ModelConfig — pure PyTorch, no transformers dep)
 ```
 
@@ -70,6 +71,31 @@ hf upload "$SPACE_REPO" spaces/localagent-webgpu/ . --repo-type space \
 ```
 `hf upload` puts the ONNX graphs on LFS automatically. The demo is then live at
 `https://huggingface.co/spaces/$HF_USER/localagent-webgpu`.
+
+## 3b. Verify the public release against the exact checkpoint
+
+After both uploads, run the anonymous auditor. It fetches the public API metadata and resolver
+bytes, then emits a manifest whose `current_checkpoint_sha256` is populated only when the remote
+model `config.json` contains the exact checkpoint hash. A legacy model or stale Space therefore
+fails the current-release gate instead of being mistaken for this checkpoint.
+
+```bash
+PYTHONPATH=src python scripts/audit_public_hf_release.py \
+  --model-repo "$MODEL_REPO" \
+  --space-repo "$SPACE_REPO" \
+  --checkpoint "$CURRENT_CHECKPOINT" \
+  --dataset-url "https://huggingface.co/datasets/$HF_USER/localagent-dispatch-data" \
+  --output docs/paper/results/raw/public-model-demo-manifest-current-v2.json
+```
+
+Then pass the manifest and checkpoint to the workshop gate:
+
+```bash
+PYTHONPATH=src python scripts/workshop_gate.py \
+  --public-artifact-manifest docs/paper/results/raw/public-model-demo-manifest-current-v2.json \
+  --current-checkpoint "$CURRENT_CHECKPOINT" \
+  --strict
+```
 
 ## 3a. Verify before uploading (fail closed)
 

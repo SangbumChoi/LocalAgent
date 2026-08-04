@@ -3074,6 +3074,16 @@ current `10,524,544`-parameter BPE checkpoint.  The m283 local HF/WebGPU export 
 but unauthenticated and unpublished, and its fresh headed/headless host probes did not expose a
 usable adapter identity.  Therefore no workshop or public-deployment approval is claimed.
 
+### Anonymous public Hub release audit (m305)
+
+The [m305 receipt](paper/results/raw/m305-public-hf-legacy-current-audit-v1.json) independently
+fetches the public model and Space without credentials.  Both endpoints return HTTP `200` at
+revisions `d15db7c…` and `3c07f7d…`; the downloaded legacy model weight is
+`a0043408…c1d0c2` and the Space's `model.fp16.onnx` is `59f06336…5d3d34c`.  The remote model
+config exposes no checkpoint binding, so `current_checkpoint_match=false` against the current
+`bc1aca20…c16361` BPE checkpoint.  This confirms the public URLs are live but still legacy; the
+current model/demo upload and a matching manifest remain outstanding.
+
 The source audit also binds OSWorld 2.0 to the upstream `osworld-v2-2026.06.24` release: code,
 task classes, gated assets, and mocked websites must come from the same release.  The required
 gated task/asset snapshots and a desktop VM are not present locally, so OSWorld-V2 remains a
