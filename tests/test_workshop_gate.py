@@ -20,6 +20,54 @@ def test_default_gate_is_not_ready_and_lists_native_blockers() -> None:
     assert "native:osworld_v2" in requirements
     assert "webgpu:native_capability_and_latency" in requirements
     assert "artifacts:public_model_demo_manifest" in requirements
+    assert "training:rl_preflight" in requirements
+
+
+def test_rl_preflight_receipt_must_pass_and_bind_current_checkpoint(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"current-checkpoint")
+    receipt = tmp_path / "rl-preflight.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "kind": "localagent_one_update_training_preflight",
+                "schema_version": 1,
+                "status": "failed",
+                "metrics": {
+                    "lineage": {
+                        "parent_checkpoint_sha256": "0" * 64,
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        rl_preflight_receipt=receipt,
+        current_checkpoint=checkpoint,
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "training:rl_preflight")
+    assert check["status"] == "blocked"
+    assert check["blockers"] == ["current_checkpoint_sha256_mismatch", "preflight_status_not_passed"]
+
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    import hashlib
+
+    payload["status"] = "passed"
+    payload["metrics"]["lineage"]["parent_checkpoint_sha256"] = hashlib.sha256(
+        checkpoint.read_bytes()
+    ).hexdigest()
+    receipt.write_text(json.dumps(payload), encoding="utf-8")
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        rl_preflight_receipt=receipt,
+        current_checkpoint=checkpoint,
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "training:rl_preflight")
+    assert check["status"] == "pass"
 
 
 def test_native_receipt_contract_requires_execution_and_split(tmp_path: Path) -> None:

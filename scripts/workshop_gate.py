@@ -33,6 +33,7 @@ def main() -> int:
     parser.add_argument("--webgpu-receipt")
     parser.add_argument("--weight-report", action="append", default=[])
     parser.add_argument("--public-artifact-manifest")
+    parser.add_argument("--rl-preflight-receipt")
     parser.add_argument(
         "--current-checkpoint",
         help="checkpoint path whose SHA-256 must be bound by the public manifest",
@@ -47,6 +48,7 @@ def main() -> int:
         webgpu_receipt=args.webgpu_receipt,
         weight_reports=args.weight_report,
         public_artifact_manifest=args.public_artifact_manifest,
+        rl_preflight_receipt=args.rl_preflight_receipt,
         current_checkpoint=args.current_checkpoint,
     )
     if args.output:

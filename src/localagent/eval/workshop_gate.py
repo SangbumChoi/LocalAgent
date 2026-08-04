@@ -3,7 +3,8 @@
 The realistic-agent catalog and the individual result bridges deliberately allow local protocol
 receipts without pretending that they are native benchmark runs.  This module is the final join:
 it requires explicit native-environment receipts, a real WebGPU capability/performance receipt, a
-transfer-vs-no-transfer ablation, and a public artifact manifest before reporting ``ready``.
+transfer-vs-no-transfer ablation, a successful current-checkpoint RL preflight, and a public
+artifact manifest before reporting ``ready``.
 
 An absent receipt is a blocked requirement, never an implicit pass.  The gate is intentionally
 independent of any benchmark package and does not execute an emulator, browser, VM, MCP server, or
@@ -328,6 +329,65 @@ def _public_artifact_check(
     )
 
 
+def _rl_preflight_parent_sha256(payload: Mapping[str, Any]) -> str | None:
+    """Return the checkpoint used as the RL preflight parent, if recorded."""
+
+    metrics = payload.get("metrics")
+    if isinstance(metrics, Mapping):
+        lineage = metrics.get("lineage")
+        if isinstance(lineage, Mapping):
+            value = lineage.get("parent_checkpoint_sha256")
+            if isinstance(value, str):
+                return value
+    source = payload.get("source")
+    if isinstance(source, Mapping):
+        parent = source.get("sft_parent_checkpoint")
+        if isinstance(parent, Mapping):
+            value = parent.get("sha256")
+            if isinstance(value, str):
+                return value
+    return None
+
+
+def _rl_preflight_check(
+    path: Path | None,
+    *,
+    repo_root: Path,
+    current_checkpoint_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Require a successful, current-checkpoint-bound one-update RL preflight."""
+
+    requirement = "training:rl_preflight"
+    if path is None:
+        return _check(requirement, status="blocked", blockers=["receipt_not_supplied"])
+    resolved = path if path.is_absolute() else repo_root / path
+    payload, error = _read_json(resolved)
+    if payload is None:
+        return _check(
+            requirement,
+            status="blocked",
+            evidence=[str(resolved)],
+            blockers=[error or "receipt_unreadable"],
+        )
+    blockers: list[str] = []
+    if payload.get("kind") != "localagent_one_update_training_preflight":
+        blockers.append("preflight_kind_mismatch")
+    if payload.get("status") != "passed":
+        blockers.append("preflight_status_not_passed")
+    if current_checkpoint_sha256 is not None:
+        parent_sha256 = _rl_preflight_parent_sha256(payload)
+        if parent_sha256 is None:
+            blockers.append("current_checkpoint_not_bound")
+        elif parent_sha256 != current_checkpoint_sha256:
+            blockers.append("current_checkpoint_sha256_mismatch")
+    return _check(
+        requirement,
+        status="pass" if not blockers else "blocked",
+        evidence=[str(resolved), _sha256(resolved)],
+        blockers=blockers,
+    )
+
+
 def build_workshop_gate(
     catalog_path: str | Path = "configs/data/realistic-agent-eval.catalog.yaml",
     *,
@@ -336,6 +396,7 @@ def build_workshop_gate(
     webgpu_receipt: str | Path | None = None,
     weight_reports: Sequence[str | Path] = (),
     public_artifact_manifest: str | Path | None = None,
+    rl_preflight_receipt: str | Path | None = None,
     current_checkpoint: str | Path | None = None,
 ) -> dict[str, Any]:
     """Build a JSON-compatible, fail-closed workshop readiness report."""
@@ -406,6 +467,13 @@ def build_workshop_gate(
         )
     )
     checks.append(
+        _rl_preflight_check(
+            Path(rl_preflight_receipt) if rl_preflight_receipt is not None else None,
+            repo_root=root,
+            current_checkpoint_sha256=current_checkpoint_sha256,
+        )
+    )
+    checks.append(
         _public_artifact_check(
             Path(public_artifact_manifest)
             if public_artifact_manifest is not None
@@ -446,7 +514,8 @@ def build_workshop_gate(
         "blocking_requirements": blocking,
         "claim_boundary": (
             "ready is false unless native benchmark receipts, native WebGPU performance and "
-            "capability evidence, transfer ablations, and public model/demo artifacts are all "
+            "capability evidence, transfer ablations, a successful current-checkpoint RL "
+            "preflight, and public model/demo artifacts are all "
             "explicitly supplied; protocol bridges and synthetic receipts do not satisfy these checks"
         ),
     }

@@ -1332,6 +1332,15 @@ there is no reward diversity, no nonzero-LR policy update changes a model tensor
 tool exactness remains `0%`.  This is a useful training diagnosis—not a promotion: the current
 checkpoint needs a schema-valid, learnable reward curriculum before RL can be claimed or exported.
 
+### RL-bound workshop gate (m320)
+
+The [m320 gate](paper/results/raw/m320-workshop-gate-rl-bound-v1.json) makes that diagnosis part
+of the publication contract.  A gate now requires a successful one-update RL preflight whose
+parent SHA matches the current checkpoint; joining the failed m319 receipt therefore adds the
+explicit blocker `training:rl_preflight:preflight_status_not_passed`.  This prevents a future
+native/artifact pass from being misread as a complete training pipeline while RL still has no
+learnable signal.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
