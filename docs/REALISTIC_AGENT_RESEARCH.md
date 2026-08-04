@@ -1090,6 +1090,20 @@ verified, but native success is `0/240`, reward is `0.0`, and `2,080/2,400` acti
 `noop(0)`.  Every task family is `0/4`; this is a complete, reproducible negative browser-control
 result and closes the current-checkpoint BrowserGym gate against promotion.
 
+### Current export and native WebGPU deployment audit (m283)
+
+The [m283 export audit](paper/results/raw/m283-current-export-deployment-audit-v1.json) rebuilds
+the HF-format and ONNX/WebGPU artifacts from the exact `bc1aca…` checkpoint rather than reusing
+the stale generated files in the checked-in Space directory.  The HF bundle reloads with exact
+PyTorch parity (`max_abs_diff=0`, argmax agreement `1.0`), and the WebGPU export passes the hard
+fp32/fp16 graph parity gate.  A clean static Space directory verifies all eight generated files,
+manifest hashes, and the `10,524,544`-parameter checkpoint identity.
+
+Publication is still not claimed: `hf auth whoami` reports `Not logged in`, so no Hub model or
+Space URL exists.  Two local Chromium probes (headless and headed) also fail closed because the
+host exposes no non-empty WebGPU adapter identity; the export is ready, but native WebGPU
+throughput and hardware capability remain unverified until run on a suitable GPU host.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

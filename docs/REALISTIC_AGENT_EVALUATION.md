@@ -2979,3 +2979,16 @@ executes the complete pinned `240`-episode test plan (`60` task families × `4` 
 reward, and `320/2400` grounded steps; `2080` actions become `noop(0)`.  All 60 task families are
 `0/4`, including the email-inbox families.  This is a complete official-split native negative
 result, not visual-agent success, WebArena success, or real-account email/Notion access.
+
+### Current export and native WebGPU deployment audit (m283)
+
+The [m283 audit receipt](paper/results/raw/m283-current-export-deployment-audit-v1.json) rebuilds
+the current checkpoint's local HF-format bundle and WebGPU bundle.  Reloading the HF weights gives
+exact source parity (`max_abs_diff=0`, argmax agreement `1.0`); the ONNX export passes all hard
+fp32/fp16 parity checks; and a clean static demo directory verifies the complete manifest-bound
+artifact set.
+
+The external publication and native-runtime gates remain open.  Hugging Face authentication is
+absent, so `published=false` and no Hub URL is provided.  Both headed and headless Chromium
+WebGPU probes fail closed with “no non-empty hardware identity”; this is a host capability
+failure, not evidence of model throughput or successful browser/email/Notion control.
