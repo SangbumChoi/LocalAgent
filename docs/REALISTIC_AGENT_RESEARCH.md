@@ -242,6 +242,30 @@ explicit—arbitrary public tool names are frequently mapped to a nearby schema 
 keeping all tool calls local and side-effect free. It is a bounded public-projection diagnostic,
 not official ToolACE/BFCL execution or evidence of email, Notion, browser, or MCP control.
 
+The larger [`m309` probe](paper/results/raw/m309-current-toolace-action-history-v1.json) covers 64
+held-out rows and 113 action steps: tool exactness is `22.12%`, argument/step exactness `2.65%`,
+schema validity `69.91%`, and complete-episode exactness `0%`. This is the current checkpoint's
+source-projected baseline; the eight-row m310 canary is retained as the exact before/after slice
+for the selector transfer below.
+
+The follow-up [`m312 selector transfer`](paper/results/raw/m312-current-toolace-selector-free-run-transfer-v1.json)
+uses 16 source-disjoint public train actions to update only the dense selector, with the decoder
+backbone and route/pointer heads frozen. On the same eight-row held-out canary, selector top-1 and
+free-run tool exactness both move from `11.76%` to `17.65%` (`+5.88` points), while schema
+validity drops from `70.59%` to `64.71%`; argument, step, and episode exactness remain `0%`.
+The matched random selector control and selector movement are retained in the receipt. This is
+evidence for a candidate selector adapter—not a deployable policy—so the full-policy promotion
+decision remains rejected pending larger source-disjoint and native verifier-backed runs.
+
+The larger [`m313 transfer`](paper/results/raw/m313-current-toolace-selector-64-transfer-v1.json)
+uses 447 public train actions and 113 held-out action steps. Selector top-1 rises from `23.89%`
+to `30.97%` (matched random `28.32%`); free-run tool exactness rises `22.12%`→`26.55%`,
+argument/step exactness `2.65%`→`7.08%`, episode exactness `0%`→`3.12%`, and schema validity
+`69.91%`→`72.57%`. This is the strongest current public ToolACE transfer signal, but the
+selector moves substantially (query `58.53%`, tool `225.42%`) and the evaluation remains a
+64-row projection; retain it as a candidate adapter and require a larger held-out and native
+verifier-backed replication before deployment adoption.
+
 ## Weight-adoption decision rule
 
 Adopt a pretrained backbone only when all three arms use the same tokenizer, configuration, seed,
