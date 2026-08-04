@@ -1179,6 +1179,24 @@ All three native 20-episode BrowserGym/MiniWoW canaries remain `0/20`; outputs r
 `type_text` placeholder or prompt-fragment copying.  Pointer precedence now prefers learned spans
 when available, but the child is not promoted and native browser capability remains unverified.
 
+### AndroidControl mobile dispatch transfer and native MobileGym canary (m292)
+
+The [m292 receipt](paper/results/raw/m292-mobile-dispatch-transfer-native-v1.json) uses the public
+AndroidControl mirror only as a text/action projection: `4,096` train rows and a separate balanced
+`904`-row test file, with screenshot bytes omitted.  A frozen-body warm route/selector continuation
+reaches `100%` route accuracy and `42.81%` selector top-1; the matched random-head control reaches
+`38.94%`.  Warm selection is strong for open-app (`89.6%`) but weak for click (`8.0%`) and zero
+for long-press and navigate-home, showing that the public action vocabulary is not equivalent to
+screen grounding.
+
+The warm child is evaluated in the pinned MobileGym simulator and independent state-diff judge on
+20 official-test tasks.  It completes `0/20` tasks and collapses to `mobile_press_enter` on 19
+episodes plus one `mobile_submit_answer`.  The parent’s first 20 tasks in the complete m262 run are
+also `0/20` (with a different two-step limit), so this transfer does not improve executable mobile
+control.  The result supports retaining parent weights as an initialization candidate while
+rejecting this child for WebGPU promotion; it is not an Android emulator, screenshot, or real-device
+score.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

@@ -3075,3 +3075,26 @@ The source audit also binds OSWorld 2.0 to the upstream `osworld-v2-2026.06.24` 
 task classes, gated assets, and mocked websites must come from the same release.  The required
 gated task/asset snapshots and a desktop VM are not present locally, so OSWorld-V2 remains a
 receipt blocker rather than a text-projection score.
+
+### AndroidControl mobile dispatch transfer and native MobileGym canary (m292)
+
+The [m292 receipt](paper/results/raw/m292-mobile-dispatch-transfer-native-v1.json) adds a
+source-disjoint mobile dispatch experiment using the public AndroidControl mirror: `4,096`
+train rows and a separate balanced `904`-row test file covering click, text input, long press,
+navigate-back, navigate-home, open-app, scroll, and wait.  The mirror is explicitly text-first;
+screenshots were not loaded, so this is action/dispatch evidence rather than visual grounding.
+
+With the backbone frozen, warm route/selector continuation reaches `100%` route accuracy and
+`42.81%` selector top-1 on the held-out rows.  The matched random-head control reaches the same
+synthetic route score and `38.94%` selector top-1.  Warm gains are uneven: open-app is `89.6%`,
+navigate-back `58.4%`, wait `59.2%`, scroll `50.4%`, input `44.0%`, click `8.0%`, and both
+long-press and navigate-home are `0%`.  This is a modest parent-geometry signal, not evidence
+that the model grounds screen state.
+
+The warm child is then executed in the pinned MobileGym simulator (`093a329…`) on a 20-task
+official-test canary with the independent state-diff judge.  Native success is `0/20`; the child
+emits `mobile_press_enter` on 19 episodes and `mobile_submit_answer` on one.  The parent’s first
+20 tasks in the complete m262 official run were also `0/20` (with 19 `mobile_press_enter` and one
+`mobile_input_text`; its run used a two-step limit), so the dispatch transfer does not improve
+closed-loop mobile behavior.  The child is not promoted, and no Android emulator, screenshot, or
+real-device claim is made.
