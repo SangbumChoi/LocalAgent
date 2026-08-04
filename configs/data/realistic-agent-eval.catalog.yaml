@@ -560,6 +560,9 @@ entries:
     source_url: https://github.com/eval-sys/mcpmark
     paper_url: https://arxiv.org/abs/2509.24002
     code_url: https://github.com/eval-sys/mcpmark
+    current_source_revision: cd45b7f57923b9b3985467f5139927575f83141c
+    current_readme_url: https://github.com/eval-sys/mcpmark/blob/cd45b7f57923b9b3985467f5139927575f83141c/README.md
+    current_tree_url: https://github.com/eval-sys/mcpmark/tree/cd45b7f57923b9b3985467f5139927575f83141c/tasks
     access_status: public_runtime
     license:
       name: Apache-2.0
@@ -567,10 +570,11 @@ entries:
       evidence: https://github.com/eval-sys/mcpmark
     scale:
       kind: benchmark
-      tasks: 239
-      standard_tasks: 169
-      easy_tasks: 70
+      tasks: 177
+      standard_tasks: 127
+      easy_tasks: 50
       services: 5
+      task_roots: 6
     observation:
       modalities: [text, tool_schema, application_state]
       formats: [JSON, MCP, Docker]
@@ -590,7 +594,7 @@ entries:
     contamination:
       split: verified_standard
       rule: do not train on task descriptions, source/eval workspaces, or verifier scripts
-    notes: Strong Notion and browser smoke target with version-pinned MCP servers and deterministic verifiers.
+    notes: Current MCPMark Verified tree has 127 standard and 50 easy tasks across five MCP services; the GitHub tree has a sixth playwright_webarena task-root variant. Historical 239-row metadata profiles (169 standard, 70 easy) refer to an older revision and are not current. Strong Notion and browser smoke target with version-pinned MCP servers and deterministic verifiers.
 
   - id: enterpriseopsgym
     family: tool_api

@@ -69,13 +69,13 @@ entries:
     source_url: https://github.com/eval-sys/mcpmark
     license: Apache-2.0
     source_revision: cd45b7f57923b9b3985467f5139927575f83141c
-    scale: standard_and_easy_task_suites_across_5_MCP_services
+    scale: 177_verified_tasks_(127_standard,_50_easy)_across_5_MCP_services
     modalities: [task_prompt, tool_schema, service_state, verifier]
     split_policy: evaluation_only; task text and verifiers are not SFT inputs
     runtime: isolated_Notion_GitHub_Filesystem_Postgres_Playwright_services
     webgpu_projection: tool routing, schema validation, abstention, and local service-contract probes
     metric: pass_at_k_pass_power_k_and_verifier_success
-    notes: Metadata profile is frozen at the pinned commit with 239 rows (169 standard, 70 easy), including 38 Notion and 35 browser/Playwright rows; credentials, task descriptions, state assets, and real accounts are never supplied to this project.
+    notes: Current MCPMark Verified source at the pinned revision reports 127 standard and 50 easy tasks across five MCP services. The tree also contains a playwright_webarena task-root variant; historical 239-row metadata profiles (169 standard, 70 easy) refer to an older tree and are not current. Credentials, task descriptions, state assets, and real accounts are never supplied to this project.
 
   - id: toolsandbox
     family: tool_api

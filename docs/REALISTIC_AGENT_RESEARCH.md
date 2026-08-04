@@ -1427,6 +1427,21 @@ deliberately contains no task instructions, and the result is a safety-boundary 
 no Android emulator, Appium, ADB, screenshot, device-state verifier, helpfulness score, or official
 safety score was run.
 
+### Current MCPMark Verified source refresh (m335)
+
+The [m335 source audit](paper/results/raw/m335-mcpmark-current-source-audit-v1.json) corrects a
+catalog snapshot drift without changing any model or training data.  At the pinned public commit
+`cd45b7f57923b9b3985467f5139927575f83141c`, MCPMark Verified has `127` standard and `50` easy
+tasks (`177` total) across the five README-level MCP services: Notion, GitHub, Filesystem,
+Postgres, and Playwright.  The repository tree has six task-root variants because the
+`playwright_webarena` subset is separate; its per-root counts sum to the same `177` tasks, with
+`354` metadata/description files.
+
+This is a source inventory only.  No task text, verifier, service state, credentials, runtime, or
+score was admitted to training or executed.  Historical metadata receipts that report `239`
+rows (`169` standard, `70` easy) remain useful only as historical records and are not current
+MCPMark Verified evidence.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

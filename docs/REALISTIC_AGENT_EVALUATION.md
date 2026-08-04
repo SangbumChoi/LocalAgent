@@ -167,6 +167,15 @@ then exercises the deployed `side_effect_confirmation_v1` boundary over 90 publi
 This is useful safety coverage for the WebGPU boundary, but it is explicitly not the benchmark's
 Appium/ADB, screenshot, device-state, helpfulness, or safety score.
 
+The [m335 MCPMark source audit](paper/results/raw/m335-mcpmark-current-source-audit-v1.json)
+refreshes the catalog against the current public `MCPMark Verified` commit
+`cd45b7f57923b9b3985467f5139927575f83141c`.  The pinned README reports `127` standard tasks and
+`50` easy tasks (`177` total) across five MCP services; the Git tree contains six task-root
+variants because `playwright_webarena` is represented separately.  The audit records `354`
+metadata/description paths, Apache-2.0 licensing, and zero retained task payloads, runtime
+executions, scores, or training rows.  Earlier `239`-row receipts are explicitly historical and
+must not be combined with the current tree.
+
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
 against a matched random-backbone control.  Warm first-action type coverage is 100% versus 12.5%
