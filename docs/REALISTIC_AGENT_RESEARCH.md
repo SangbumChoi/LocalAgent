@@ -1349,6 +1349,18 @@ then satisfied the RL requirement without changing the canonical m319 result.  T
 therefore has ten blockers rather than eleven: RL now passes, while nine native benchmark
 families and the current-checkpoint public artifact remain unresolved.
 
+### Longer stateful continuation and weight audit (m323)
+
+The [m323 control](paper/results/raw/m323-current-stateful-long-continuation-v1.json) extends the
+same current parent with 64 stateful SFT updates and 8 shaped-reward RL steps.  It produces a
+healthy six-value reward distribution and raises mean reward slightly (`0.3313→0.3500`), but
+held-out exactness falls from `25%` to `12.5%`; the deployment-shaped runtime remains `0/5`
+completed tasks.  The paired [weight report](paper/results/raw/m323-current-stateful-long-weight-v1.json)
+finds compatible configuration/tokenizer/shapes, zero action-head movement, and much larger body
+movement—embedding `7.59%`, attention/mixer `1.97%`, FFN `2.52%`.  This is a negative control,
+not a promotion: longer local RL is not evidence of better realistic-agent behavior, and the
+adoption recipe remains a verified body with low-rate updates plus separately controlled heads.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

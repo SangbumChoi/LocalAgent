@@ -117,6 +117,12 @@ while the current-checkpoint stateful email/Notion/browser fixture preflight in 
 passes with reward diversity and real policy updates.  The latest RL-bound gate is [`m322`](paper/results/raw/m322-workshop-gate-stateful-rl-v1.json):
 RL now passes, but the nine native receipts and current public-artifact binding remain blocked.
 
+The [m323 continuation control](paper/results/raw/m323-current-stateful-long-continuation-v1.json)
+also rejects a longer local curriculum: 64 SFT plus 8 RL steps increase reward diversity but
+reduce held-out exactness and leave resettable email/Notion/browser completion at `0/5`.  Its
+[weight audit](paper/results/raw/m323-current-stateful-long-weight-v1.json) shows large shared-body
+movement with frozen action heads, so the child is not promoted or exported.
+
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
 against a matched random-backbone control.  Warm first-action type coverage is 100% versus 12.5%
