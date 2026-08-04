@@ -109,6 +109,30 @@ def test_parent_loader_requires_the_exact_stage_chain_and_returns_loaded_byte_sh
     assert parent_sha256 == expected_parent_sha256
 
 
+def test_rl_parent_loader_accepts_specialized_sft_stage_with_sft_lineage(tmp_path: Path) -> None:
+    cfg = _config()
+    tokenizer_sha256 = _tokenizer_sha256()
+    path = tmp_path / "browser-context-sft.pt"
+    torch.save(
+        _checkpoint(
+            cfg,
+            stage="sft_browser_context",
+            lineage_stage="sft",
+            lineage_tokenizer_sha256=tokenizer_sha256,
+            tokenizer_sha256=tokenizer_sha256,
+        ),
+        path,
+    )
+
+    checkpoint, _ = load_stage_parent_checkpoint(
+        path,
+        stage="rl",
+        requested_model_config=cfg,
+        expected_tokenizer_sha256=tokenizer_sha256,
+    )
+    assert checkpoint["stage"] == "sft_browser_context"
+
+
 @pytest.mark.parametrize(
     ("mutation", "error"),
     [

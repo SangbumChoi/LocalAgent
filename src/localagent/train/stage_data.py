@@ -435,9 +435,18 @@ def load_stage_parent_checkpoint(
         )
     recorded_stage = checkpoint.get("stage")
     lineage_stage = lineage.get("stage")
-    if recorded_stage != expected_parent_stage or lineage_stage != expected_parent_stage:
+    specialized_sft_parent = (
+        stage == "rl"
+        and expected_parent_stage == "sft"
+        and isinstance(recorded_stage, str)
+        and recorded_stage.startswith("sft_")
+    )
+    if lineage_stage != expected_parent_stage or (
+        recorded_stage != expected_parent_stage and not specialized_sft_parent
+    ):
         raise ValueError(
-            f"{stage} requires an exact {expected_parent_stage} parent checkpoint; "
+            f"{stage} requires an exact {expected_parent_stage} parent checkpoint (or a "
+            f"specialized {expected_parent_stage}_* parent for RL); "
             f"got checkpoint stage {recorded_stage!r} and lineage stage {lineage_stage!r}"
         )
     assert_checkpoint_tokenizer(checkpoint, expected_tokenizer_sha256)

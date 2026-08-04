@@ -1322,6 +1322,16 @@ AndroidWorld now points to its actual `2405.14573` paper, and BrowserGym points 
 The catalog fingerprint is `b1b170b2…`; all native and public-release blockers remain explicit, and
 the gate is still `ready=false`.
 
+### Current-checkpoint RL preflight (m319)
+
+The [m319 receipt](paper/results/raw/m319-current-rl-preflight-v1.json) tests the actual
+`sft_browser_context` checkpoint rather than the older pilot parent.  The lineage rule now
+accepts this specialized SFT stage because its checkpoint lineage explicitly remains `stage: sft`.
+The isolated two-step RL prefix still fails closed: every sampled rollout receives zero reward,
+there is no reward diversity, no nonzero-LR policy update changes a model tensor, and held-out
+tool exactness remains `0%`.  This is a useful training diagnosis—not a promotion: the current
+checkpoint needs a schema-valid, learnable reward curriculum before RL can be claimed or exported.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
