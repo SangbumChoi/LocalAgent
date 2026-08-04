@@ -1,8 +1,9 @@
 """Supervised fine-tune on agent samples (Phase 4, implemented).
 
 Loss is masked to the assistant body + EOS (render.render_sft); the model only learns to produce
-tool calls / text given the prompt, not to echo the user. Function masking (Hammer) is a TODO
-hook — the deterministic templates already force copy-generalization to held-out slots.
+tool calls / text given the prompt, not to echo the user. Function masking is an opt-in,
+schema-preserving tool-name augmentation that retains original rows and adds deterministic opaque
+name variants; held-out conversations are never masked.
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ from localagent.data.render import (
     token_row_length,
 )
 from localagent.train.device import autocast_ctx
+from localagent.train.function_masking import augment_conversations
 from localagent.train.loop import (
     cosine_lr,
     pad_batch,
@@ -2065,11 +2067,10 @@ def run(
         data_cfg.get("conversation_prompt_contract")
     )
     heads_cfg = config.get("heads", {})
-    if data_cfg.get("function_masking", False):
-        raise NotImplementedError(
-            "TODO(phase-4): function masking is configured but no schema-preserving "
-            "tool-renaming transform is implemented"
-        )
+    runtime_cfg = config.get("runtime", {})
+    if not isinstance(runtime_cfg, Mapping):
+        raise TypeError("runtime must be a mapping")
+    function_masking_seed = runtime_cfg.get("seed", 0)
     strict_conversation_artifacts = data_cfg.get("strict_conversation_artifacts", False)
     if not isinstance(strict_conversation_artifacts, bool):
         raise TypeError("data.strict_conversation_artifacts must be boolean")
@@ -2094,12 +2095,37 @@ def run(
         for source in conversation_specs
     ]
     conversation_paths = [source.path for source in loaded_conversation_sources]
-    conversations = []
-    conversation_sources = []
-    for source in loaded_conversation_sources:
-        rows = list(source.conversations)
-        conversations.extend(rows)
-        conversation_sources.extend([str(source.path)] * len(rows))
+    raw_conversations = [
+        conversation
+        for source in loaded_conversation_sources
+        for conversation in source.conversations
+    ]
+    raw_conversation_source_paths = [
+        str(source.path)
+        for source in loaded_conversation_sources
+        for _ in source.conversations
+    ]
+    conversations, masked_source_indices, function_masking_main_audit = augment_conversations(
+        raw_conversations,
+        data_cfg.get("function_masking", False),
+        seed=function_masking_seed,
+    )
+    function_masking_enabled = bool(function_masking_main_audit["enabled"])
+    if function_masking_enabled and any(
+        bool(heads_cfg.get(key, default))
+        for key, default in (
+            ("joint_tool_pointer", True),
+            ("train_route_head", True),
+            ("train_dense_selector", True),
+        )
+    ):
+        raise ValueError(
+            "function_masking is an LM augmentation and requires all structured heads to be "
+            "disabled so opaque aliases cannot be mislabelled as canonical tool classes"
+        )
+    conversation_sources = [
+        raw_conversation_source_paths[index] for index in masked_source_indices
+    ]
     decay_specs = source_specs(
         data_cfg.get("decay_conversations", []),
         label="data.decay_conversations",
@@ -2116,9 +2142,30 @@ def run(
     decay_conversations_by_path = [
         (source.path, list(source.conversations)) for source in loaded_decay_sources
     ]
-    decay_conversations = [
+    raw_decay_conversations = [
         conversation for _, rows in decay_conversations_by_path for conversation in rows
     ]
+    raw_decay_source_paths = [
+        f"decay:{path}"
+        for path, rows in decay_conversations_by_path
+        for _ in rows
+    ]
+    decay_conversations, masked_decay_source_indices, function_masking_decay_audit = (
+        augment_conversations(
+            raw_decay_conversations,
+            data_cfg.get("function_masking", False),
+            seed=function_masking_seed,
+        )
+    )
+    decay_conversation_sources = [
+        raw_decay_source_paths[index] for index in masked_decay_source_indices
+    ]
+    function_masking_audit = {
+        "enabled": function_masking_enabled
+        or bool(function_masking_decay_audit["enabled"]),
+        "main": function_masking_main_audit,
+        "decay": function_masking_decay_audit,
+    }
     eval_conversation_specs = source_specs(
         data_cfg.get("eval_conversations", []),
         label="data.eval_conversations",
@@ -2417,23 +2464,20 @@ def run(
 
     decay_samples = None
     decay_sample_sources = None
-    decay_conversation_sources = None
     if decay_paths:
         if conversation_prompt_contract == LEGACY_CONVERSATION_PROMPT_CONTRACT:
             decay_samples = []
             decay_sample_sources = []
-            for path, decay_rows in decay_conversations_by_path:
-                projected = single_turn_samples(decay_rows)
+            for conversation, source_name in zip(
+                decay_conversations,
+                decay_conversation_sources,
+                strict=True,
+            ):
+                projected = single_turn_samples([conversation])
                 decay_samples.extend(projected)
-                decay_sample_sources.extend([f"decay:{path}"] * len(projected))
+                decay_sample_sources.extend([source_name] * len(projected))
             if not decay_samples:
                 raise ValueError("decay_conversations has no simple user -> assistant rows")
-        else:
-            decay_conversation_sources = [
-                f"decay:{path}"
-                for path, decay_rows in decay_conversations_by_path
-                for _ in decay_rows
-            ]
 
     data_metadata = {
         "conversation_rows": len(conversations),
@@ -2441,6 +2485,7 @@ def run(
         "probe_decision_rows": len(decision_samples),
         "paths": [str(path) for path in conversation_paths],
         "conversation_overlap_audit": conversation_overlap_audit.as_dict(),
+        "function_masking": function_masking_audit,
     }
     if conversation_prompt_contract != LEGACY_CONVERSATION_PROMPT_CONTRACT:
         data_metadata["conversation_prompt_contract"] = conversation_prompt_contract
@@ -2480,6 +2525,7 @@ def run(
             [dict(source.identity) for source in loaded_decay_sources] if decay_paths else []
         ),
         "conversation_overlap_audit": conversation_overlap_audit.as_dict(),
+        "function_masking": function_masking_audit,
         **(
             {"eval_selection": eval_selection_audit}
             if eval_selection_audit is not None

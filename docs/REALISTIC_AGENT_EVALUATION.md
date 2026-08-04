@@ -268,6 +268,24 @@ is staged for confirmation, so the Notion write is selected but not executed. Th
 routing and safety evidence only: it is not a hardware-adapter receipt, official BrowserGym or
 MCPMark score, or public Hub release, and no external side effect occurred.
 
+The [m358 ToolSandbox function-masking transfer pilot](paper/results/raw/m358-toolsandbox-function-masking-transfer-v1.json)
+adds a bounded public-data transfer experiment for the tool-catalog path. It uses the pinned
+Apple ToolSandbox scenario projection and the `openai_full_catalog_v1` prompt contract, so a
+deterministic opaque tool-name alias remains visible in the catalog and can be copied by the
+decoder. The raw projection contains `107` train and `20` eval rows; `78` and `15` are schema
+valid, while `29` and `5` are retained as invalid-coverage counts and excluded from the strict
+renderer because required arguments are incomplete. Function masking doubles the valid pools to
+`156` and `30` rows without changing descriptions, JSON schemas, arguments, user text, or tool
+responses.
+
+After a matched `16`-step CPU LM-only continuation, the warm child moves the shared body by
+`0.1646%` relative L2 (embedding `0.1907%`, mixer `0.1919%`, FFN `0.2388%`) and improves the
+bounded canonical-eval token accuracy from `55.84%` to `60.41%`; the matched-random child moves
+`0.2518%` and reaches `10.15%` from `0%`. These are teacher-forced transfer and weight-movement
+diagnostics, not tool execution, native simulator success, or a leaderboard score. The receipt
+explicitly records that no ToolSandbox simulator, verifier, user simulator, external API, mobile
+runtime, or desktop environment ran, so the official ToolSandbox gate remains closed.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

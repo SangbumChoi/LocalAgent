@@ -17,7 +17,8 @@ data:
     kind: byte
   seq_len: 2048
   mask_user_and_tool_response: true   # only learn assistant/tool_call tokens
-  # Keep false until the schema-preserving tool-renaming transform is implemented.
+  # Opt-in schema-preserving tool-name masking is available for LM-only SFT; keep the baseline
+  # lane canonical so its historical scorecards remain byte-stable.
   function_masking: false
   shuffle: true
 heads:

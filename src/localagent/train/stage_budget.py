@@ -49,6 +49,7 @@ from localagent.train.midtrain import (
     validate_packed_source,
 )
 from localagent.train.loop import validate_pad_to_input_tokens
+from localagent.train.function_masking import augment_conversations
 from localagent.train.replay_sampling import (
     MIXED_REPLAY_SAMPLING_MODE,
     PARENT_ANCHORED_FORMAT_PULSE_SAMPLING_MODE,
@@ -758,11 +759,6 @@ def _sft_plan(
         data_cfg.get("conversation_prompt_contract")
     )
     assert_prompt_contract_tokenizer(tokenizer, conversation_prompt_contract)
-    if data_cfg.get("function_masking", False):
-        raise NotImplementedError(
-            "TODO(phase-4): function masking is configured but no schema-preserving "
-            "tool-renaming transform is implemented"
-        )
     strict = data_cfg.get("strict_conversation_artifacts", False)
     if not isinstance(strict, bool):
         raise TypeError("data.strict_conversation_artifacts must be boolean")
@@ -803,16 +799,45 @@ def _sft_plan(
         for source in eval_specs
     ]
 
-    conversations = []
-    conversation_sources = []
-    for source in loaded_sources:
-        conversations.extend(source.conversations)
-        conversation_sources.extend([str(source.path)] * len(source.conversations))
-    decay_conversations = [
+    raw_conversations = [
+        conversation for source in loaded_sources for conversation in source.conversations
+    ]
+    raw_conversation_source_paths = [
+        str(source.path) for source in loaded_sources for _ in source.conversations
+    ]
+    runtime_cfg = config.get("runtime", {})
+    if not isinstance(runtime_cfg, Mapping):
+        raise TypeError("runtime must be a mapping")
+    function_masking_seed = int(runtime_cfg.get("seed", 0))
+    conversations, masked_source_indices, function_masking_main_audit = augment_conversations(
+        raw_conversations,
+        data_cfg.get("function_masking", False),
+        seed=function_masking_seed,
+    )
+    raw_decay_conversations = [
         conversation for source in loaded_decay for conversation in source.conversations
     ]
-    decay_conversation_sources = [
+    decay_conversations, masked_decay_source_indices, function_masking_decay_audit = (
+        augment_conversations(
+            raw_decay_conversations,
+            data_cfg.get("function_masking", False),
+            seed=function_masking_seed,
+        )
+    )
+    function_masking_audit = {
+        "enabled": bool(function_masking_main_audit["enabled"])
+        or bool(function_masking_decay_audit["enabled"]),
+        "main": function_masking_main_audit,
+        "decay": function_masking_decay_audit,
+    }
+    conversation_sources = [
+        raw_conversation_source_paths[index] for index in masked_source_indices
+    ]
+    raw_decay_source_paths = [
         f"decay:{source.path}" for source in loaded_decay for _ in source.conversations
+    ]
+    decay_conversation_sources = [
+        raw_decay_source_paths[index] for index in masked_decay_source_indices
     ]
     eval_conversations = [
         conversation for source in loaded_eval for conversation in source.conversations
@@ -865,6 +890,19 @@ def _sft_plan(
             multi_turn_sources.append(source_name)
 
     heads_cfg = config.get("heads", {})
+    function_masking_enabled = bool(function_masking_audit["enabled"])
+    if function_masking_enabled and any(
+        bool(heads_cfg.get(key, default))
+        for key, default in (
+            ("joint_tool_pointer", True),
+            ("train_route_head", True),
+            ("train_dense_selector", True),
+        )
+    ):
+        raise ValueError(
+            "function_masking is an LM augmentation and requires all structured heads to be "
+            "disabled so opaque aliases cannot be mislabelled as canonical tool classes"
+        )
     joint_heads = bool(heads_cfg.get("joint_tool_pointer", True))
     multi_turn_batch_size = validate_multi_turn_batch_size(
         heads_cfg.get("multi_turn_batch_size", 12)
@@ -893,10 +931,14 @@ def _sft_plan(
     if loaded_decay and conversation_prompt_contract == LEGACY_CONVERSATION_PROMPT_CONTRACT:
         decay_samples = []
         decay_sample_sources = []
-        for source in loaded_decay:
-            projected = single_turn_samples(source.conversations)
+        for conversation, source_name in zip(
+            decay_conversations,
+            decay_conversation_sources,
+            strict=True,
+        ):
+            projected = single_turn_samples([conversation])
             decay_samples.extend(projected)
-            decay_sample_sources.extend([f"decay:{source.path}"] * len(projected))
+            decay_sample_sources.extend([source_name] * len(projected))
         if not decay_samples:
             raise ValueError("decay_conversations has no simple user -> assistant rows")
 
@@ -1220,6 +1262,7 @@ def _sft_plan(
             "decay_conversations": [_loaded_source_identity(source) for source in loaded_decay],
             "eval_conversations": [_loaded_source_identity(source) for source in loaded_eval],
             "conversation_overlap_audit": overlap.as_dict(),
+            "function_masking": function_masking_audit,
             "eval_source_conversation_rows": full_eval_conversation_rows,
             "eval_selected_conversation_rows": len(eval_conversations),
             **(
