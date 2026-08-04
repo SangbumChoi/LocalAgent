@@ -123,6 +123,14 @@ reduce held-out exactness and leave resettable email/Notion/browser completion a
 [weight audit](paper/results/raw/m323-current-stateful-long-weight-v1.json) shows large shared-body
 movement with frozen action heads, so the child is not promoted or exported.
 
+The follow-up [m326 low-rate transfer ablation](paper/results/raw/m326-current-stateful-lowrate-transfer-v1.json)
+keeps the current checkpoint bound and compares frozen, low-rate-unfrozen, and matched-random
+backbones on the same disjoint local fixture.  Low-rate updates improve shaped reward (`0.2031`
+frozen → `0.2344`) and exact tool selection (`25%` → `37.5%`) while keeping backbone movement
+below `0.2%`, but productive closed-loop completion remains `0/4` and total completion remains
+`1/5` because only abstention succeeds.  It is therefore a weight-safety control, not evidence
+for email, Notion, browser, MCP, or native WebGPU capability.
+
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
 against a matched random-backbone control.  Warm first-action type coverage is 100% versus 12.5%

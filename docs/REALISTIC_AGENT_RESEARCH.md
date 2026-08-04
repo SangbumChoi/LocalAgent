@@ -1361,6 +1361,18 @@ movement—embedding `7.59%`, attention/mixer `1.97%`, FFN `2.52%`.  This is a n
 not a promotion: longer local RL is not evidence of better realistic-agent behavior, and the
 adoption recipe remains a verified body with low-rate updates plus separately controlled heads.
 
+### Current-checkpoint low-rate transfer ablation (m326)
+
+The [m326 receipt](paper/results/raw/m326-current-stateful-lowrate-transfer-v1.json) reruns the
+current parent with matched frozen, low-rate-unfrozen, and random-backbone arms on the same
+source-disjoint local email/Notion/browser/recovery fixture.  The low-rate arm keeps backbone
+movement below `0.2%` and raises mean shaped reward to `0.2344` and exact tool selection to `37.5%`,
+but closed-loop completion is unchanged at `1/5` tasks (`0/4` productive workflows); the frozen
+arm reaches `25%` exact tools and the random arm `12.5%`.  Selector top-1 is not improved over the
+frozen arm, so the receipt explicitly rejects capability adoption.  The result strengthens the
+weight policy—small body updates are safer than m323's larger continuation—but still does not
+establish native mobile, browser, desktop, MCP, email, Notion, or WebGPU task success.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
