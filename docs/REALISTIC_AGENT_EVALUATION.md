@@ -236,6 +236,15 @@ seven missing official native receipts (AndroidWorld, MobileSafetyBench, iOSWorl
 OSWorld-V2, AgentNet, and EnterpriseOps-Gym), non-official ToolSandbox/MCPMark splits, and the
 missing anonymous current-checkpoint model/demo manifest.
 
+The [m353 three-surface transfer control](paper/results/raw/m353-three-surface-transfer-current-v1.json)
+repeats the current-parent versus matched-random protocol across public AndroidControl, AgentNet,
+and train-only Mind2Web projections. Warm held-out token accuracy rises from `59.86%` to `67.58%`,
+while random rises from `0%` to `9.41%`; the warm child is ahead by `58.17` points on the aggregate
+and on each surface. The warm embedding, mixer, FFN, and normalization movements are only
+`0.394%`, `0.204%`, `0.244%`, and `0.008%`, respectively, but exact sequence accuracy remains
+`0%`. This is stronger lineage evidence for reusing the parent body as an initialization, not
+evidence of native mobile, browser, or desktop success; the child remains unexported.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

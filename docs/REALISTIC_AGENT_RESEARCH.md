@@ -1522,6 +1522,17 @@ MCPMark are explicitly blocked by `official_split_not_verified`, and the current
 manifest is still absent. This is the reproducible no-promotion decision for the present
 checkpoint, not a claim that any missing native benchmark was run.
 
+### Current three-surface public transfer control (m353)
+
+The [m353 receipt](paper/results/raw/m353-three-surface-transfer-current-v1.json) trains a matched
+warm/random continuation on source-disjoint public AndroidControl, AgentNet, and train-only
+Mind2Web projections. The warm arm improves held-out token accuracy from `59.86%` to `67.58%`,
+versus `0%` to `9.41%` for the random arm, giving a `58.17`-point warm advantage on all three
+surfaces. Warm body movement remains below `0.40%` by group while random initialization moves the
+embedding by `119.7%` and the mixer/FFN by `77.8%`/`87.9%`. Because exact sequence accuracy is
+`0%` and no native replay was executed, the result supports parent-body reuse plus surface-specific
+heads as a training hypothesis only; the child is not promoted or exported.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
