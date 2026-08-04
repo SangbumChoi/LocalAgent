@@ -1404,6 +1404,11 @@ checkpoint SHA, so the future public audit can reject a stale model even when th
 reachable.  HF upload and anonymous verification remain intentionally pending until an
 authenticated maintainer supplies a model repository and Space.
 
+The paired [`scripts/publish_hf_release.py`](../scripts/publish_hf_release.py) now makes that
+handoff reproducible: local-only preparation is the default, `--publish` is explicit, both model
+and static Space folders are verified before upload, and an anonymous Hub audit is mandatory for
+a successful current-release exit.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

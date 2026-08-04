@@ -145,6 +145,14 @@ config binds checkpoint SHA `bc1aca20…` and tokenizer SHA `83654055…`.  This
 export reproducibility step, but `published=false` remains correct because Hugging Face
 authentication and anonymous re-fetch verification have not occurred.
 
+The new [`publish_hf_release.py`](../scripts/publish_hf_release.py) closes the operational gap
+between local export and publication: it prepares the model and static Space together, refuses
+missing tokens or missing audit output, uploads only after the parity verifier passes, and exits
+without a current-release claim unless the anonymous Hub audit matches the checkpoint.
+Its local-only end-to-end preparation is recorded in [m331](paper/results/raw/m331-hf-paired-release-local-v1.json):
+the exact current checkpoint produced a verified model bundle and Space staging directory, while
+publication remains false.
+
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
 against a matched random-backbone control.  Warm first-action type coverage is 100% versus 12.5%

@@ -30,6 +30,29 @@ remain outside Git and must be regenerated or uploaded by an authenticated maint
 hf auth login          # paste a token with write access  (or: export HF_TOKEN=hf_xxx)
 ```
 
+## 0b. One-command verified release
+
+The repository also provides a fail-closed publisher that builds the model and Space bundles,
+verifies the exact checkpoint/parity hashes, uploads both repositories only with explicit
+`--publish`, and writes the anonymous current-checkpoint audit.  The command refuses to publish
+without a token or `--audit-output`:
+
+```bash
+PYTHONPATH=src python scripts/publish_hf_release.py \
+  --checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt \
+  --model-repo "$HF_USER/localagent-webgpu-10m" \
+  --space-repo "$HF_USER/localagent-webgpu" \
+  --model-out build/hf-current \
+  --web-out build/web-current \
+  --space-out build/space-current \
+  --audit-output docs/paper/results/raw/public-model-demo-manifest-current-v2.json \
+  --dataset-url "https://huggingface.co/datasets/$HF_USER/localagent-dispatch-data" \
+  --public --publish
+```
+
+Omit `--publish` for a local-only preparation run.  A successful upload is still not considered a
+current release unless the final anonymous audit records `current_checkpoint_match=true`.
+
 ## 1. Export the inference bundle from the current checkpoint
 ```bash
 CURRENT_CHECKPOINT=runs/sft-webgpu-browser-context-adapter-20260802/latest.pt
