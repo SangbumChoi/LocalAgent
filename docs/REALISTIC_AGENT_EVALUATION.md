@@ -138,6 +138,14 @@ random, but both arms have 0% exact trajectories and effectively zero coordinate
 screenshots and desktop state were not consumed.  This is evidence for retaining the compatible
 pretrained body as a candidate initialization, not a native desktop or visual-grounding result.
 
+The current-checkpoint [m327 Computer Agent Arena probe](paper/results/raw/m327-computer-agent-arena-current-v1.json)
+extends the desktop audit to 256 unique public trajectories.  The instruction-only route gate is
+100%, but first-action tool exactness is only 3.91% and pointer-action exactness is 0%; the model
+mostly emits screenshot or abstention actions when a click/move is required.  This confirms the
+deployment bottleneck is action grounding rather than computer-use route selection.  Screenshots,
+accessibility state, later trajectory steps, and arguments were intentionally excluded, so this is
+not a Computer Agent Arena, AgentNetBench, visual-grounding, or native desktop score.
+
 The follow-up [`m221 continuation`](paper/results/raw/m221-agentnet-public-continuation-transfer-v1.json)
 trains the same public AgentNet train projection for 32 steps from the warm m180 child and a
 matched random backbone.  Warm held-out token accuracy rises 55.80% → 67.00% and route accuracy

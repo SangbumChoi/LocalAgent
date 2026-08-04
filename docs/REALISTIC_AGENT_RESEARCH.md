@@ -1373,6 +1373,16 @@ frozen arm, so the receipt explicitly rejects capability adoption.  The result s
 weight policy—small body updates are safer than m323's larger continuation—but still does not
 establish native mobile, browser, desktop, MCP, email, Notion, or WebGPU task success.
 
+### Current Computer Agent Arena desktop action-prior probe (m327)
+
+The [m327 receipt](paper/results/raw/m327-computer-agent-arena-current-v1.json) evaluates the
+current `bc1aca20…c16361` checkpoint on 256 unique trajectories from the pinned public
+`xlangai/computer-agent-arena` revision.  Because this text-first model has no visual encoder, the
+probe uses only each instruction and its first parseable action.  Route accuracy is `100%`, but
+tool exactness is `3.91%`, with `0%` exactness on the 222 pointer rows; observation/screenshot is
+correct on `6/7` observation rows.  The result is a precise action-grounding failure diagnosis,
+not a native desktop or visual benchmark score, and it does not justify adding Arena rows to SFT.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
