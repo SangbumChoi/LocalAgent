@@ -121,6 +121,8 @@ PYTHONPATH=src python scripts/verify_demo_deploy.py \
   --demo-dir spaces/localagent-webgpu
 ```
 
+The current working-tree bundle was last re-synced and verified by the [`m308 receipt`](../../docs/paper/results/raw/m308-current-workspace-webgpu-deploy-v1.json): all eight generated artifacts are present, the manifest identity is `e989e737…`, and the hard parity gate passes. This remains a local pre-upload receipt until the same files are uploaded to an authenticated Hub Space.
+
 Do not hand-create `bundle-manifest.json` or upload a partial bundle. A verified local export is
 still not native WebGPU capability evidence; the workshop gate separately requires a hardware
 adapter receipt, native benchmark receipts, transfer/no-transfer ablations, and public URLs.
