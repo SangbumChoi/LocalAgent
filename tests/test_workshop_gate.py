@@ -193,3 +193,47 @@ def test_write_gate_refuses_overwrite(tmp_path: Path) -> None:
         pass
     else:
         raise AssertionError("write_workshop_gate must refuse overwrite")
+
+
+def test_public_manifest_must_bind_the_current_checkpoint_when_requested(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"current-checkpoint")
+    manifest = tmp_path / "public.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "public": True,
+                "model_url": "https://huggingface.co/example/model",
+                "demo_url": "https://huggingface.co/spaces/example/demo",
+                "artifact_sha256": "0" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        public_artifact_manifest=manifest,
+        current_checkpoint=checkpoint,
+    )
+    check = next(
+        item for item in report["checks"] if item["requirement"] == "artifacts:public_model_demo_manifest"
+    )
+    assert check["status"] == "blocked"
+    assert check["blockers"] == ["current_checkpoint_not_bound"]
+
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    import hashlib
+
+    payload["current_checkpoint_sha256"] = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        public_artifact_manifest=manifest,
+        current_checkpoint=checkpoint,
+    )
+    check = next(
+        item for item in report["checks"] if item["requirement"] == "artifacts:public_model_demo_manifest"
+    )
+    assert check["status"] == "pass"

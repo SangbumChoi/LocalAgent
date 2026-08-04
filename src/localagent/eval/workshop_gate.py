@@ -253,7 +253,13 @@ def _weight_check(paths: Sequence[Path], *, repo_root: Path) -> dict[str, Any]:
     )
 
 
-def _public_artifact_check(path: Path | None, *, repo_root: Path) -> dict[str, Any]:
+def _public_artifact_check(
+    path: Path | None,
+    *,
+    repo_root: Path,
+    current_checkpoint_sha256: str | None = None,
+    current_checkpoint_error: str | None = None,
+) -> dict[str, Any]:
     requirement = "artifacts:public_model_demo_manifest"
     if path is None:
         return _check(requirement, status="blocked", blockers=["manifest_not_supplied"])
@@ -280,6 +286,14 @@ def _public_artifact_check(path: Path | None, *, repo_root: Path) -> dict[str, A
     for field in ("model_url", "demo_url"):
         if not isinstance(payload.get(field), str) or not payload[field].startswith(("https://", "http://")):
             blockers.append(f"{field}_invalid")
+    if current_checkpoint_error is not None:
+        blockers.append(current_checkpoint_error)
+    elif current_checkpoint_sha256 is not None:
+        published_checkpoint = payload.get("current_checkpoint_sha256")
+        if published_checkpoint is None:
+            blockers.append("current_checkpoint_not_bound")
+        elif published_checkpoint != current_checkpoint_sha256:
+            blockers.append("current_checkpoint_sha256_mismatch")
     return _check(
         requirement,
         status="pass" if not blockers else "blocked",
@@ -296,6 +310,7 @@ def build_workshop_gate(
     webgpu_receipt: str | Path | None = None,
     weight_reports: Sequence[str | Path] = (),
     public_artifact_manifest: str | Path | None = None,
+    current_checkpoint: str | Path | None = None,
 ) -> dict[str, Any]:
     """Build a JSON-compatible, fail-closed workshop readiness report."""
 
@@ -351,12 +366,26 @@ def build_workshop_gate(
             repo_root=root,
         )
     )
+    current_checkpoint_sha256: str | None = None
+    current_checkpoint_error: str | None = None
+    current_checkpoint_path: Path | None = None
+    if current_checkpoint is not None:
+        checkpoint_path = Path(current_checkpoint)
+        if not checkpoint_path.is_absolute():
+            checkpoint_path = root / checkpoint_path
+        current_checkpoint_path = checkpoint_path
+        if checkpoint_path.is_file() and not checkpoint_path.is_symlink():
+            current_checkpoint_sha256 = _sha256(checkpoint_path)
+        else:
+            current_checkpoint_error = "current_checkpoint_unreadable"
     checks.append(
         _public_artifact_check(
             Path(public_artifact_manifest)
             if public_artifact_manifest is not None
             else None,
             repo_root=root,
+            current_checkpoint_sha256=current_checkpoint_sha256,
+            current_checkpoint_error=current_checkpoint_error,
         )
     )
     blocking = [
@@ -378,6 +407,14 @@ def build_workshop_gate(
             "runnable_ids": catalog["runnable_ids"],
             "blocked_ids": catalog["blocked_ids"],
         },
+        "current_checkpoint": (
+            {
+                "path": str(current_checkpoint_path),
+                "sha256": current_checkpoint_sha256,
+            }
+            if current_checkpoint_path is not None
+            else None
+        ),
         "checks": checks,
         "blocking_requirements": blocking,
         "claim_boundary": (

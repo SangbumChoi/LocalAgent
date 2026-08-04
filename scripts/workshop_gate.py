@@ -33,6 +33,10 @@ def main() -> int:
     parser.add_argument("--webgpu-receipt")
     parser.add_argument("--weight-report", action="append", default=[])
     parser.add_argument("--public-artifact-manifest")
+    parser.add_argument(
+        "--current-checkpoint",
+        help="checkpoint path whose SHA-256 must be bound by the public manifest",
+    )
     parser.add_argument("--output")
     parser.add_argument("--strict", action="store_true", help="exit 1 when any requirement is blocked")
     args = parser.parse_args()
@@ -43,6 +47,7 @@ def main() -> int:
         webgpu_receipt=args.webgpu_receipt,
         weight_reports=args.weight_report,
         public_artifact_manifest=args.public_artifact_manifest,
+        current_checkpoint=args.current_checkpoint,
     )
     if args.output:
         write_workshop_gate(report, args.output)

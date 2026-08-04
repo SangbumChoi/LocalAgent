@@ -88,12 +88,15 @@ PYTHONPATH=src python scripts/workshop_gate.py --strict \
   --native-receipt mobilegym=docs/paper/results/raw/m146-mobilegym-native-current-checkpoint-v1.json \
   --native-receipt toolsandbox=docs/paper/results/raw/m143-toolsandbox-native-base-transfer-audit-v1.json \
   --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json \
-  --public-artifact-manifest docs/paper/results/raw/public-model-demo-manifest-v1.json
+  --public-artifact-manifest docs/paper/results/raw/public-model-demo-manifest-v1.json \
+  --current-checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt
 ```
 
 The nine remaining native benchmark receipts are still absent.  The public artifact manifest now
 verifies the already-live 28.32M-parameter byte model and static WebGPU Space, but it does not
-prove native OS/emulator/MCP control or task success.  That is intentional:
+bind the current checkpoint, so the current-checkpoint-aware gate marks it blocked until the
+10.52M BPE model and its matching demo are uploaded and the manifest records the exact checkpoint
+SHA-256.  It also does not prove native OS/emulator/MCP control or task success.  That is intentional:
 four train adapters and the tracked offline receipts are useful progress, but they do not prove
 those native task outcomes.  Once a native runner produces a receipt, it
 can be supplied as `--native-receipt BENCHMARK_ID=PATH`; the receipt contract requires explicit

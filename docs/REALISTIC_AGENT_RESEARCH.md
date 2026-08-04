@@ -1268,5 +1268,7 @@ weight-ablation, and existing public-artifact checks remain independently visibl
 - [ ] Native environment executed with complete action/termination logs and independent verifier.
 - [ ] WebGPU hardware adapter, TTFA/throughput, memory, export parity, and closed-loop action
       success measured separately from token accuracy.
+- [ ] Public model/demo manifest binds the exact current checkpoint SHA-256; an older public
+      artifact must not satisfy the current-release gate.
 - [ ] Warm-start, low-rate, and matched-random transfer arms with per-group weight movement.
 - [ ] No real email, Notion, GitHub, or browser side effect without an isolated resettable fixture.
