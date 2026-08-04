@@ -153,6 +153,12 @@ Its local-only end-to-end preparation is recorded in [m331](paper/results/raw/m3
 the exact current checkpoint produced a verified model bundle and Space staging directory, while
 publication remains false.
 
+The [m334 current paired receipt](paper/results/raw/m334-hf-paired-release-local-current-v1.json)
+repeats that preparation after the safety-policy update.  The model bundle and all four ONNX
+graphs still pass hard parity from the exact `bc1aca20…` checkpoint, and the staged Space binds
+the current `app.js` hash `a2d8fed1…`.  This is still local-only evidence: HF authentication,
+upload, anonymous re-fetch, and a public URL remain absent.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

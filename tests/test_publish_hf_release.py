@@ -48,3 +48,23 @@ def test_m331_local_receipt_binds_current_checkpoint_without_public_claim() -> N
         "reason": "local-only preparation; HF authentication was not configured",
         "uploaded": False,
     }
+
+
+def test_m334_current_local_receipt_binds_safety_policy_app() -> None:
+    receipt = Path("docs/paper/results/raw/m334-hf-paired-release-local-current-v1.json")
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    body = dict(payload)
+    expected = body.pop("receipt_self_sha256")
+    actual = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert expected == actual
+    app_sha256 = hashlib.sha256(Path("spaces/localagent-webgpu/app.js").read_bytes()).hexdigest()
+    assert payload["checkpoint"]["sha256"] == (
+        "bc1aca209ec08df1483a3c6d088366a68f8d8f4f0766e2b4350a2ef473c16361"
+    )
+    assert payload["source"]["app_sha256"] == app_sha256
+    assert payload["space"]["app_sha256"] == app_sha256
+    assert payload["webgpu"]["parity_gate"] is True
+    assert payload["space"]["verified"] is True
+    assert payload["publication"]["published"] is False

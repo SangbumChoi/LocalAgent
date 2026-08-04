@@ -1409,6 +1409,12 @@ handoff reproducible: local-only preparation is the default, `--publish` is expl
 and static Space folders are verified before upload, and an anonymous Hub audit is mandatory for
 a successful current-release exit.
 
+The [m334 current paired receipt](paper/results/raw/m334-hf-paired-release-local-current-v1.json)
+refreshes the local preparation after the WebGPU safety-policy update.  It binds the exact
+`10,524,544`-parameter checkpoint, hard-parity-passed model/action graphs, and current `app.js`
+hash `a2d8fed1…` in the staged Space.  Publication remains false until a maintainer supplies HF
+write authentication and the post-upload anonymous audit.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
