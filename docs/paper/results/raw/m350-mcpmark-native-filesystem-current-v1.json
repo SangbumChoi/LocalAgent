@@ -1,5 +1,9 @@
 {
   "benchmark_id": "mcpmark",
+  "environment_executed": true,
+  "official_split_verified": false,
+  "success_rate": 0.0,
+  "task_count": 1,
   "claim_boundary": "One native MCPMark filesystem task fixture was run with the current LocalAgent checkpoint, a real MCP stdio server, and the pinned task verifier. The model failed to complete this task; no official MCPMark split or leaderboard score is claimed. The user simulator and the remaining MCP services were not executed.",
   "dataset": {
     "name": "MCPMark",
@@ -27,7 +31,7 @@
     "path": "/Users/sangbumchoi/Documents/LocalAgent/runs/sft-webgpu-browser-context-adapter-20260802/latest.pt",
     "sha256": "bc1aca209ec08df1483a3c6d088366a68f8d8f4f0766e2b4350a2ef473c16361"
   },
-  "receipt_self_sha256": "1ce62c23a848f1892833616c75e9a471caf0a1a1974e4c3b2f6526c2f7f752c1",
+  "receipt_self_sha256": "7d00d806e9618111230ab6d5ffe8af70915765f717350d28f5031d3277bc2392",
   "rollout": {
     "model_completed_task": false,
     "turns": [

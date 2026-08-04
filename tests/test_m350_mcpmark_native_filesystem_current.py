@@ -24,6 +24,9 @@ def test_m350_receipt_binds_current_checkpoint_and_native_mcp_fixture() -> None:
         "bc1aca209ec08df1483a3c6d088366a68f8d8f4f0766e2b4350a2ef473c16361"
     )
     assert payload["environment"]["mcp_server_executed"] is True
+    assert payload["environment_executed"] is True
+    assert payload["task_count"] == 1
+    assert payload["success_rate"] == 0.0
     assert payload["rollout"]["verifier_exit_code"] == 1
 
 
