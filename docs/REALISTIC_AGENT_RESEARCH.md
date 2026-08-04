@@ -1481,6 +1481,13 @@ matrix, and RapidAPI tools were not executed, so this is native verifier diagnos
 it does not satisfy the official ToolSandbox gate or establish email, Notion, MCP, or productivity
 completion.
 
+The [m349 transfer control](paper/results/raw/m349-toolsandbox-weight-transfer-native-control-v1.json)
+trains matched frozen route/selector heads on the 107-row ToolSandbox projection and evaluates 20
+held-out parent scenarios. Warm initialization reaches `85%` selector top-1 versus `80%` for the
+matched random arm, route reaches `100%` for both, and native single-step verifier outcomes are
+identical (`2/3`, with message similarity `0.425`). The result rejects deployment transfer despite
+the offline gain and keeps the parent-only initialization policy.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

@@ -208,6 +208,12 @@ single-step protocol passes `2/3` scenarios, but the interactive message continu
 Because the official split and model-based user simulator were not run, this is a native diagnostic,
 not an official ToolSandbox score or evidence of email/Notion/MCP completion.
 
+The [m349 transfer control](paper/results/raw/m349-toolsandbox-weight-transfer-native-control-v1.json)
+compares warm and matched-random frozen-head adaptation over 107 public projection rows with 20
+source-disjoint parent scenarios. Warm selector top-1 is `85%` versus `80%` random, but native
+single-step verifier success is identical at `2/3` for both arms; the transfer is rejected for
+deployment.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow
