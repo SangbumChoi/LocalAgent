@@ -2784,6 +2784,21 @@ random children.  Screenshots were not used, and neither Android emulators nor d
 were launched; this is training/weight-transfer evidence, not an official AndroidControl,
 AgentNetBench, OSWorld, or native WebGPU score.
 
+### Extended public weight-transfer continuation (m286)
+
+The [m286 receipt](paper/results/raw/m286-cross-surface-public-weight-transfer-v1.json) extends
+the same source-disjoint AndroidControl/AgentNet protocol to `32` low-rate updates (`1,024`
+training rows and `64` held-out rows).  The warm parent arm raises held-out token accuracy from
+`51.81%` to `57.04%` and lowers mean loss from `3.772` to `2.716`; AndroidControl rises from
+`60.91%` to `66.67%`, and AgentNet rises from `45.88%` to `50.76%`.  The matched random arm
+reaches only `8.71%` held-out token accuracy after the same budget.
+
+The warm shared-backbone movement remains small (`0.008%` normalization to `0.374%` embedding
+relative L2), while the random arm moves `7.8%`–`119.7%` by group.  This strengthens the
+pretrained-initialization and smaller-backbone-learning-rate policy.  It does not promote the
+child: sequence exactness is still `0/64`, and no emulator, browser, desktop VM, screenshot
+grounding, MCP server, or external account was executed.
+
 ### Current MCPMark service-routing control (m274)
 
 The [`m274 receipt`](paper/results/raw/m274-mcpmark-current-service-routing-v1.json) evaluates the
@@ -3008,3 +3023,8 @@ points to the older `28,322,304`-parameter byte model and its Space; it does not
 current `10,524,544`-parameter BPE checkpoint.  The m283 local HF/WebGPU export is hash-verified
 but unauthenticated and unpublished, and its fresh headed/headless host probes did not expose a
 usable adapter identity.  Therefore no workshop or public-deployment approval is claimed.
+
+The source audit also binds OSWorld 2.0 to the upstream `osworld-v2-2026.06.24` release: code,
+task classes, gated assets, and mocked websites must come from the same release.  The required
+gated task/asset snapshots and a desktop VM are not present locally, so OSWorld-V2 remains a
+receipt blocker rather than a text-projection score.

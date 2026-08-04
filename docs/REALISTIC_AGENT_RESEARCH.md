@@ -1119,6 +1119,25 @@ artifact, not a public model release.  This distinction, plus the m283 adapter-i
 keeps the workshop claim closed until the current checkpoint is uploaded and re-fetched
 anonymously and the missing native suites are executed with their independent verifiers.
 
+The computer-use source contract is now release-bound as well: OSWorld 2.0 requires the matching
+`osworld-v2-2026.06.24` code, task classes, gated assets, and mocked websites.  Without the gated
+snapshot and a resettable desktop VM, no OSWorld-V2 result is admitted to the WebGPU or workshop
+claims.
+
+### Extended public weight-transfer continuation (m286)
+
+The [m286 receipt](paper/results/raw/m286-cross-surface-public-weight-transfer-v1.json) repeats
+the matched source-disjoint AndroidControl/AgentNet experiment for `32` updates over `1,024`
+public training rows and `64` held-out rows.  Warm-start token accuracy improves `51.81%`→`57.04%`
+(`3.772`→`2.716` loss), with AndroidControl `60.91%`→`66.67%` and AgentNet `45.88%`→`50.76%`.
+The random-backbone control reaches `8.71%` after the same budget.  Group movement is
+`0.008%`–`0.374%` for the warm backbone versus `7.8%`–`119.7%` for random, so compatible
+pretrained weights and a lower backbone learning rate remain the adopted policy.
+
+This is still a teacher-forced text/accessibility result: exact held-out sequences remain `0/64`,
+and no native emulator, browser, desktop VM, screenshot, MCP, or external-account side effect was
+run.  The child is not promoted to the WebGPU release.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
