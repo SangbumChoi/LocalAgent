@@ -1415,6 +1415,15 @@ refreshes the local preparation after the WebGPU safety-policy update.  It binds
 hash `a2d8fed1…` in the staged Space.  Publication remains false until a maintainer supplies HF
 write authentication and the post-upload anonymous audit.
 
+The [m336 aligned release receipt](paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json)
+closes a deployment metadata mismatch discovered during the release audit.  The HF config had a
+63-name inferred dispatch pool while the WebGPU `meta.json` and selector matrices still defaulted
+to the legacy 50-tool catalog.  The publisher now resolves one checkpoint-bound pool—50 standard,
+11 mobile, and 2 productivity schemas—and passes it to both exports.  Fresh local staging reports
+63 names in the model config, browser metadata, dense selector, and retrieval selector, with the
+same name-set hash `fd3c5d30…`; all four ONNX parity checks pass.  This improves deploy correctness,
+but does not create native mobile/browser/MCP success or a public HF release.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

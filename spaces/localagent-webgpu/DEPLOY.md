@@ -7,23 +7,22 @@ is the 10,524,544-parameter BPE checkpoint at
 `runs/sft-webgpu-browser-context-adapter-20260802/latest.pt` (SHA-256
 `bc1aca209ec08df1483a3c6d088366a68f8d8f4f0766e2b4350a2ef473c16361`).
 
-The currently verified deployment repair is generated from the 10,524,544-parameter m103 warm
-checkpoint by `scripts/train_deployment_dispatch_repair.py`; its public/eval row hashes, matched
-random control, frozen-backbone movement report, export identity, and browser probe are bound in
-[`m111-deployment-dispatch-repair-v1.json`](../../docs/paper/results/raw/m111-deployment-dispatch-repair-v1.json).
+The current publisher binds the model and WebGPU bundle to one 63-tool pool (50 standard tools,
+11 mobile actions, and 2 full-field email/Notion schemas). The pool is inferred from the
+checkpoint's 51-class fixed head using `scripts/publish_hf_release.py`; the local parity and
+artifact audit is [`m336-hf-paired-release-local-current-63-tool-v1.json`](../../docs/paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json).
 The app (`app.js`) uses the structured route head → dense selector → pointer-copy dispatch over the
-50-tool surface plus named, bounded URL/search/planner safety adapters. It also applies the
+63-tool release surface plus named, bounded URL/search/planner safety adapters. It also applies the
 versioned `side_effect_confirmation_v1` boundary: read-only actions may proceed, state-changing
 email/Notion/message/file/shell/browser-interaction actions are marked for confirmation, and
 prompt-injection or secret-exfiltration signals are blocked. The static demo has no external
 credentials and never executes those side effects. A public Hub URL is not claimed until the
 upload completes and is independently verified.
 
-The newer stateful-productivity low-rate child is also exportable and is the artifact bound by
-the `m57` WebGPU and `m58` HF-format receipts. It has the same 10,524,544-parameter
-`webgpu-10m-hybrid` backbone, but its 62-tool heads include the email/Notion/browser stateful
-probe. The receipts intentionally record local hashes only; generated ONNX and safetensors files
-remain outside Git and must be regenerated or uploaded by an authenticated maintainer.
+The older m57/m58 stateful-productivity child remains a historical local artifact. The current
+10,524,544-parameter BPE checkpoint and 63-tool bundle are the release target; generated ONNX and
+safetensors files remain outside Git and must be regenerated or uploaded by an authenticated
+maintainer.
 
 ## 0. Authenticate (once)
 ```bash
@@ -143,7 +142,7 @@ PYTHONPATH=src python scripts/verify_demo_deploy.py \
   --demo-dir spaces/localagent-webgpu
 ```
 
-The current working-tree bundle was last re-synced and verified by the [`m308 receipt`](../../docs/paper/results/raw/m308-current-workspace-webgpu-deploy-v1.json): all eight generated artifacts are present, the manifest identity is `e989e737…`, and the hard parity gate passes. This remains a local pre-upload receipt until the same files are uploaded to an authenticated Hub Space.
+The current local paired Space staging was regenerated and verified by the [`m336 receipt`](../../docs/paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json): all model/WebGPU artifacts pass the hard parity gate, the model and dispatch metadata each contain 63 tools, and the bundle identity is `e0e19a8d…`. This remains a local pre-upload receipt until the same files are uploaded to an authenticated Hub Space.
 
 Do not hand-create `bundle-manifest.json` or upload a partial bundle. A verified local export is
 still not native WebGPU capability evidence; the workshop gate separately requires a hardware
@@ -157,12 +156,12 @@ adapter receipt, native benchmark receipts, transfer/no-transfer ablations, and 
   on WASM. Benchmark pages require an explicit provider, the manifest, and the distinct hidden-only
   action graph; they fail rather than falling back or relabeling the full logits graph.
 - Suggested model-card blurb for the model repo README:
-  > Sub-100M, byte-level, pretrained-from-scratch tool-calling agent. The exact parameter count
+  > Sub-100M, BPE, pretrained-from-scratch tool-calling agent. The exact parameter count
   > comes from the exported `meta.json`/`bundle-manifest.json`; the checked seed-2027 bundle has
   > 10,524,544 parameters. Generable dispatch:
   > 5-way route head → dense two-tower selector (scores any tool by its description embedding) →
-  > pointer-copy arguments. 50-tool surface; ~57% free-form OOD call-name, ~74% multi-turn next-tool
-  > selection. Runs in-browser and requests ONNX Runtime Web's WebGPU provider — see the linked
+  > pointer-copy arguments. 63-tool release surface (standard, mobile, and productivity schemas).
+  > Runs in-browser and requests ONNX Runtime Web's WebGPU provider — see the linked
   > Space. Per-node placement is not exposed by ORT Web.
 
 ## Matched cached-decode latency page

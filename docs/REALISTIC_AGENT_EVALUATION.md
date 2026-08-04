@@ -159,6 +159,14 @@ graphs still pass hard parity from the exact `bc1aca20…` checkpoint, and the s
 the current `app.js` hash `a2d8fed1…`.  This is still local-only evidence: HF authentication,
 upload, anonymous re-fetch, and a public URL remain absent.
 
+The follow-up [m336 aligned release receipt](paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json)
+fixes a concrete deployment contract mismatch: the HF config carried 63 inferred dispatch tools,
+but the WebGPU metadata and selector sidecars defaulted to 50.  The publisher now binds one
+63-name pool—50 standard tools plus 11 mobile and 2 productivity schemas—to the model config,
+`meta.json`, dense selector, and retrieval selector.  The regenerated local bundle passes all four
+ONNX parity checks and the shared tool-name hash is `fd3c5d30…`; this is deployment-integrity
+evidence only, not native browser/mobile/MCP capability or a public release.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

@@ -51,6 +51,40 @@ def _recorded_tokenizer_path(checkpoint: Path) -> str | None:
     raise FileNotFoundError(f"recorded BPE tokenizer is missing: {raw_path}")
 
 
+def _release_tool_specs(checkpoint: Path) -> list[Any] | None:
+    """Resolve the browser tool schemas to the checkpoint's HF dispatch pool.
+
+    Older continuation checkpoints omit ``dispatch_tool_pool`` but retain the 51-class fixed
+    tool head.  ``export_hf`` already infers the complete 63-name standard/mobile/productivity
+    pool for that case; the WebGPU export must use the same pool so ``meta.json`` and
+    ``dispatch_heads.json`` cannot silently fall back to the legacy 50-tool catalog.
+    """
+
+    from localagent.agent.mobile_toolset import mobile_tools, realistic_productivity_tools
+    from localagent.agent.toolset import STANDARD_TOOLS
+    from localagent.inference.export.to_hf import _dispatch_metadata
+
+    checkpoint_payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    metadata = _dispatch_metadata(checkpoint_payload)
+    raw_names = metadata.get("tool_pool")
+    if not isinstance(raw_names, list) or not raw_names:
+        return None
+    registry = {
+        tool.name: tool
+        for tool in [*STANDARD_TOOLS, *mobile_tools(), *realistic_productivity_tools()]
+    }
+    names = [str(name) for name in raw_names]
+    missing = [name for name in names if name not in registry]
+    if missing:
+        raise ValueError(
+            "checkpoint dispatch pool contains schemas unavailable to the WebGPU publisher: "
+            + ", ".join(missing)
+        )
+    if len(set(names)) != len(names):
+        raise ValueError("checkpoint dispatch pool contains duplicate tool names")
+    return [registry[name] for name in names]
+
+
 def _copy_static_space(source: Path, target: Path) -> None:
     """Copy app files while excluding generated model files that are supplied by ``bundle``."""
 
@@ -91,6 +125,7 @@ def prepare_release(
         str(web_out),
         action_only=True,
         tokenizer_path=_recorded_tokenizer_path(checkpoint),
+        tools=_release_tool_specs(checkpoint),
     )
     source_report = verify_demo_deploy(
         demo_source,

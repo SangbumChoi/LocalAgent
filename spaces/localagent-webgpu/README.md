@@ -11,7 +11,7 @@ short_description: Sub-100M from-scratch tool-calling agent in the browser
 
 # LocalAgent — tool calling in the browser (WebGPU)
 
-A **sub-100M, pretrained-from-scratch** byte-level agent that does **grounded tool
+A **sub-100M, pretrained-from-scratch** BPE agent that does **grounded tool
 calling** and **multi-step planning** — running **entirely in your browser** on
 [onnxruntime-web](https://onnxruntime.ai/docs/tutorials/web/) while requesting its **WebGPU**
 execution provider (WASM is a separately labeled control, and the interactive demo can retry the
@@ -21,8 +21,8 @@ The staged model size is bound by `meta.json` and `bundle-manifest.json`; the cu
 seed-2027 export is 10,524,544 parameters. Do not infer a parameter count from this static text.
 
 The public Hugging Face model URL is intentionally omitted until authentication and upload are
-verified. The local export receipt is tracked in
-[`m26-hf-local-export-v2.json`](../../docs/paper/results/raw/m26-hf-local-export-v2.json).
+verified. The current local paired-release receipt is tracked in
+[`m336-hf-paired-release-local-current-63-tool-v1.json`](../../docs/paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json).
 Source: [LocalAgent](https://github.com/sangbumchoi/localagent).
 
 ## What it shows (generable dispatch — no fixed-N classifier)
@@ -30,7 +30,8 @@ Source: [LocalAgent](https://github.com/sangbumchoi/localagent).
 - **Route gate** — a 5-way head (`web_search / computer_use / code / app_action / text`) on the ONNX
   `hidden` output; the `text` route is **abstention** (answer directly / no tool).
 - **Tool selection** — a **dense two-tower selector**: the query tower projects `hidden`, scored by
-  cosine against a precomputed per-tool description-embedding matrix over the **50-tool** surface
+  cosine against a precomputed per-tool description-embedding matrix over the **63-tool** release
+  surface (50 standard tools plus 11 mobile and 2 productivity schemas)
   (`argmax_j q·tool_matrix[j]`). Adding/removing a tool is adding/removing a row — no retraining.
   The browser bundle also exposes `?selector=retrieval_then_dense`, which retrieves the top ten
   sidecar candidates before dense scoring; `?selector=retrieval` remains the retrieval-only
@@ -42,11 +43,11 @@ Source: [LocalAgent](https://github.com/sangbumchoi/localagent).
 - **Multi-step plans** — the rollout: pick a tool → ground it → feed back a simulated response →
   pick the next, until the route head emits `text`.
 
-The current deployment repair is receipt-bound in
-[`m111-deployment-dispatch-repair-v1.json`](../../docs/paper/results/raw/m111-deployment-dispatch-repair-v1.json).
-It adds named, bounded browser safety policies for explicit URL opening, the first clause of a
-compound search request, and the simulated search→Notion follow-up. These policies are reported
-separately from learned-head accuracy and do not execute external accounts.
+The current deployment repair and safety boundary are receipt-bound in
+[`m336-hf-paired-release-local-current-63-tool-v1.json`](../../docs/paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json).
+The bundle binds the model and WebGPU selector matrices to the same 63-tool pool. Named, bounded
+browser/mobile/productivity safety policies remain separate from learned-head accuracy and do not
+execute external accounts.
 
 ## How it runs (honest version)
 
