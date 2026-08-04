@@ -153,6 +153,13 @@ Its local-only end-to-end preparation is recorded in [m331](paper/results/raw/m3
 the exact current checkpoint produced a verified model bundle and Space staging directory, while
 publication remains false.
 
+The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
+then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
+3 QA rows without retaining task text in Git or executing Android actions.  The policy produces
+`53` confirmations, `36` allowed decisions, and `1` prompt-injection block.  This is useful safety
+coverage for the WebGPU boundary, but it is explicitly not the benchmark's Appium/ADB, screenshot,
+device-state, helpfulness, or safety score.
+
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
 against a matched random-backbone control.  Warm first-action type coverage is 100% versus 12.5%

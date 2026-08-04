@@ -1409,6 +1409,16 @@ handoff reproducible: local-only preparation is the default, `--publish` is expl
 and static Space folders are verified before upload, and an anonymous Hub audit is mandatory for
 a successful current-release exit.
 
+### Public MobileSafetyBench policy projection (m332)
+
+The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
+MobileSafetyBench revision and local task/QA file hashes, then runs the WebGPU
+`side_effect_confirmation_v1` policy on a canonical action-family projection.  The 90-row public
+table contains 45 helpful and 45 safety scenarios; the policy emits 53 confirmation decisions, 36
+allowed decisions, and one injection block.  The committed receipt deliberately contains no task
+instructions, and the result is a safety-boundary diagnostic only: no Android emulator, Appium,
+ADB, screenshot, device-state verifier, helpfulness score, or official safety score was run.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
