@@ -2799,6 +2799,21 @@ pretrained-initialization and smaller-backbone-learning-rate policy.  It does no
 child: sequence exactness is still `0/64`, and no emulator, browser, desktop VM, screenshot
 grounding, MCP server, or external account was executed.
 
+### ToolSandbox runtime-head transfer control (m288)
+
+The [m288 receipt](paper/results/raw/m288-toolsandbox-runtime-head-transfer-v1.json) trains only
+the route and dense candidate-selector heads against the pinned public ToolSandbox AST projection:
+`107` source-disjoint training rows and `20` held-out rows, with the `10,524,544`-parameter body
+frozen.  The warm parent improves row-local selector top-1 from `45%` to `80%`, selector top-3
+from `90%` to `95%`, and app-action routing from `0%` to `100%`.  A matched random-body control
+also reaches `80%`/`95%`/`100%`, which shows that this small projection mostly measures head
+capacity and candidate-list regularity rather than transferable backbone knowledge.
+
+The warm and random head movements are large (`1.31`–`1.43` and `1.27`–`1.49` relative L2), so
+neither child is promoted.  This is a public schema-adapter diagnostic only: ToolSandbox's
+simulator, model-based user, milestone verifiers, external APIs, and native environment were not
+executed.  The native ToolSandbox publication blocker therefore remains unchanged.
+
 ### Current MCPMark service-routing control (m274)
 
 The [`m274 receipt`](paper/results/raw/m274-mcpmark-current-service-routing-v1.json) evaluates the

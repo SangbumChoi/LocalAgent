@@ -1138,6 +1138,20 @@ This is still a teacher-forced text/accessibility result: exact held-out sequenc
 and no native emulator, browser, desktop VM, screenshot, MCP, or external-account side effect was
 run.  The child is not promoted to the WebGPU release.
 
+### ToolSandbox runtime-head transfer control (m288)
+
+The [m288 receipt](paper/results/raw/m288-toolsandbox-runtime-head-transfer-v1.json) trains only
+the route and dense candidate-selector heads against a pinned public ToolSandbox AST projection:
+`107` source-disjoint training rows and `20` held-out rows, with the current `10,524,544`-parameter
+body frozen.  The warm parent reaches `80%` selector top-1, `95%` selector top-3, and `100%`
+app-action routing on the held-out rows, up from `45%`, `90%`, and `0%`.  The matched random-body
+control reaches the same post-update scores, so this bounded projection is evidence of head
+capacity and candidate-list regularity, not a claim of useful pretrained-backbone transfer.
+
+Both arms move their heads by roughly `1.27`–`1.49` relative L2 and neither child is promoted.
+The projection is AST-only; no ToolSandbox simulator, user simulator, verifier, external API, or
+native environment was executed.  Native ToolSandbox evidence remains a publication blocker.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
