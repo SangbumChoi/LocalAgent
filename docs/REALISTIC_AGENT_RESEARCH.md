@@ -234,6 +234,14 @@ why the candidate contract is necessary: row-scoped retrieval achieves `60%` too
 achieves only `10%`, `10%`, and `10%`. The matched no-schema child ties the row-scoped arm, so the
 schema-conditioned SFT child is not promoted as representation-transfer evidence.
 
+The current checkpoint's public ToolACE action-history canary is [`m310`](paper/results/raw/m310-current-toolace-action-history-canary-v1.json).
+It uses eight source rows from the pinned ToolACE projection and the same catalog-constrained
+dispatcher used by the WebGPU path: 17 action steps produce `11.76%` tool exactness, `0%`
+argument/step/episode exactness, and `70.59%` schema validity. The canary makes the failure mode
+explicit—arbitrary public tool names are frequently mapped to a nearby schema or dropped—while
+keeping all tool calls local and side-effect free. It is a bounded public-projection diagnostic,
+not official ToolACE/BFCL execution or evidence of email, Notion, browser, or MCP control.
+
 ## Weight-adoption decision rule
 
 Adopt a pretrained backbone only when all three arms use the same tokenizer, configuration, seed,
