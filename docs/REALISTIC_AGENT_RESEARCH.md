@@ -1303,6 +1303,16 @@ without relaxing the contract: ToolSandbox is still blocked specifically by
 `official_split_not_verified`, while the catalog, current MobileGym, BrowserGym/MiniWoB, WebGPU,
 weight-ablation, and existing public-artifact checks remain independently visible.
 
+### Current-checkpoint binding enforcement (m317)
+
+The [m317 gate](paper/results/raw/m317-workshop-gate-current-checkpoint-bound-v1.json) closes a
+lineage gap in the final join: when a current checkpoint is supplied, every native receipt must
+carry the same SHA-256 directly or under its checkpoint object.  The current MobileGym receipt
+(`1/256`) and BrowserGym/MiniWoB receipt (`0/240`) therefore pass only after binding to
+`bc1aca…`; older receipts without a checkpoint identity are no longer eligible by accident.  The
+gate remains `ready=false` with ten blockers: nine required native families are still absent and
+the public Hub manifest is a legacy byte-model release without the current checkpoint binding.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

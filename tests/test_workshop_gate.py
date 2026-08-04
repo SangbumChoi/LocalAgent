@@ -45,6 +45,47 @@ def test_native_receipt_contract_requires_execution_and_split(tmp_path: Path) ->
     assert check["status"] == "pass"
 
 
+def test_native_receipt_must_bind_current_checkpoint_when_requested(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"current-checkpoint")
+    receipt = tmp_path / "androidworld.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "benchmark_id": "androidworld",
+                "environment_executed": True,
+                "official_split_verified": True,
+                "task_count": 1,
+                "success_rate": 1.0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        native_receipts={"androidworld": receipt},
+        current_checkpoint=checkpoint,
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "native:androidworld")
+    assert check["status"] == "blocked"
+    assert check["blockers"] == ["current_checkpoint_not_bound"]
+
+    import hashlib
+
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    payload["checkpoint_sha256"] = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    receipt.write_text(json.dumps(payload), encoding="utf-8")
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        native_receipts={"androidworld": receipt},
+        current_checkpoint=checkpoint,
+    )
+    check = next(item for item in report["checks"] if item["requirement"] == "native:androidworld")
+    assert check["status"] == "pass"
+
+
 def test_native_browsergym_probe_is_recorded_but_not_official_score() -> None:
     receipt = ROOT / "docs/paper/results/raw/m29-browsergym-native-model-eval-v1.json"
     payload = json.loads(receipt.read_text(encoding="utf-8"))

@@ -77,11 +77,31 @@ def _check(
     }
 
 
+def _receipt_checkpoint_sha256(payload: Mapping[str, Any]) -> str | None:
+    """Return the evaluated checkpoint hash from common native-receipt layouts."""
+
+    direct = payload.get("checkpoint_sha256")
+    if isinstance(direct, str):
+        return direct
+    direct = payload.get("current_checkpoint_sha256")
+    if isinstance(direct, str):
+        return direct
+    for key in ("checkpoint", "model"):
+        nested = payload.get(key)
+        if isinstance(nested, Mapping):
+            for field in ("sha256", "checkpoint_sha256", "current_checkpoint_sha256"):
+                value = nested.get(field)
+                if isinstance(value, str):
+                    return value
+    return None
+
+
 def _native_receipt_check(
     benchmark_id: str,
     path: Path | None,
     *,
     repo_root: Path,
+    current_checkpoint_sha256: str | None = None,
 ) -> dict[str, Any]:
     requirement = f"native:{benchmark_id}"
     if path is None:
@@ -127,6 +147,12 @@ def _native_receipt_check(
         or not 0.0 <= float(success_rate) <= 1.0
     ):
         blockers.append("success_rate_not_in_0_1")
+    if current_checkpoint_sha256 is not None:
+        receipt_checkpoint = _receipt_checkpoint_sha256(payload)
+        if receipt_checkpoint is None:
+            blockers.append("current_checkpoint_not_bound")
+        elif receipt_checkpoint != current_checkpoint_sha256:
+            blockers.append("current_checkpoint_sha256_mismatch")
     return _check(
         requirement,
         status="pass" if not blockers else "blocked",
@@ -345,6 +371,18 @@ def build_workshop_gate(
             ],
         )
     )
+    current_checkpoint_sha256: str | None = None
+    current_checkpoint_error: str | None = None
+    current_checkpoint_path: Path | None = None
+    if current_checkpoint is not None:
+        checkpoint_path = Path(current_checkpoint)
+        if not checkpoint_path.is_absolute():
+            checkpoint_path = root / checkpoint_path
+        current_checkpoint_path = checkpoint_path
+        if checkpoint_path.is_file() and not checkpoint_path.is_symlink():
+            current_checkpoint_sha256 = _sha256(checkpoint_path)
+        else:
+            current_checkpoint_error = "current_checkpoint_unreadable"
     receipts = dict(native_receipts or {})
     for benchmark_id in REQUIRED_NATIVE_BENCHMARKS:
         checks.append(
@@ -352,6 +390,7 @@ def build_workshop_gate(
                 benchmark_id,
                 Path(receipts[benchmark_id]) if benchmark_id in receipts else None,
                 repo_root=root,
+                current_checkpoint_sha256=current_checkpoint_sha256,
             )
         )
     checks.append(
@@ -366,18 +405,6 @@ def build_workshop_gate(
             repo_root=root,
         )
     )
-    current_checkpoint_sha256: str | None = None
-    current_checkpoint_error: str | None = None
-    current_checkpoint_path: Path | None = None
-    if current_checkpoint is not None:
-        checkpoint_path = Path(current_checkpoint)
-        if not checkpoint_path.is_absolute():
-            checkpoint_path = root / checkpoint_path
-        current_checkpoint_path = checkpoint_path
-        if checkpoint_path.is_file() and not checkpoint_path.is_symlink():
-            current_checkpoint_sha256 = _sha256(checkpoint_path)
-        else:
-            current_checkpoint_error = "current_checkpoint_unreadable"
     checks.append(
         _public_artifact_check(
             Path(public_artifact_manifest)
