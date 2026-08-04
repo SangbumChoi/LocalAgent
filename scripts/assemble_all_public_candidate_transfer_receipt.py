@@ -140,7 +140,8 @@ def assemble(
             "random": random["weight_transfer"],
             "interpretation": (
                 "The parent-initialized arm changes shared embedding, mixer, and FFN tensors by less "
-                "than 0.1% relative L2 while the deterministic-random arm moves those groups by roughly "
+                "than 0.5% relative L2 in this scaled continuation, while the deterministic-random arm "
+                "moves those groups by roughly "
                 "0.78-1.20x. Both arms leave the action heads unchanged in this continuation. This supports "
                 "parent geometry as a compatible initialization candidate, not an optimality or promotion claim."
             ),

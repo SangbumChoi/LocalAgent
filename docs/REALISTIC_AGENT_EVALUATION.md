@@ -310,6 +310,19 @@ supplied official native receipts; and the legacy public artifact is not bound t
 checkpoint. The result is fail-closed and does not treat local packaging or protocol bridges as
 publication evidence.
 
+### Six-source public continuation at 32 steps (m372)
+
+The [m372 receipt](paper/results/raw/m372-all-public-candidate-transfer-32step-v1.json) extends
+the matched AndroidControl, AITW, AgentNet, Mind2Web, ToolACE, and xLAM public-train control to
+`32` optimizer updates over `86` train and `80` source-disjoint held-out rows at a `512`-token
+context. The warm current-parent arm improves aggregate held-out token accuracy from `51.31%` to
+`55.35%`; the deterministic-random arm moves from `0%` to `7.43%`, so warm remains ahead by
+`47.92` points and wins on every surface. Exact sequence accuracy is `0%` for both arms. Warm
+embedding/attention/FFN movement is `0.405%/0.188%/0.225%` relative L2 (normalization `0.009%`),
+while the random control moves those groups by `0.78–1.20×`; action heads remain unchanged.
+This supports parent-weight reuse as an initialization candidate only—no child is exported or
+promoted without native verifier-backed checks.
+
 ### Current native ToolSandbox smoke (m366)
 
 The [m366 receipt](paper/results/raw/m366-toolsandbox-native-current-v1.json) runs the current

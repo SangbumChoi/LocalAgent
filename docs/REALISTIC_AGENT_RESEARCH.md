@@ -1589,6 +1589,18 @@ OSWorld, OSWorld-V2, AgentNet, MCPMark, and EnterpriseOps-Gym lack official nati
 the supplied public artifact is not bound to the current checkpoint. This is the intended
 fail-closed workshop decision, not a claim that the missing environments were evaluated.
 
+### Six-source public continuation at 32 steps (m372)
+
+The [m372 receipt](paper/results/raw/m372-all-public-candidate-transfer-32step-v1.json) is a
+matched warm-parent/random-backbone continuation across six public sources: AndroidControl, AITW,
+AgentNet, Mind2Web, ToolACE, and xLAM. It uses `86` train and `80` source-disjoint held-out rows,
+`32` optimizer updates, and a `512`-token context. Warm held-out token accuracy rises `51.31% →
+55.35%`, while random reaches `7.43%` from `0%`; warm wins all six surfaces by `22.22–64.88`
+points, but exact sequence accuracy remains `0%` for both. Warm shared-body movement stays below
+`0.5%` relative L2 while random movement is `0.78–1.20×`; action heads are unchanged. The
+adoption decision is therefore “reuse the parent as an initialization candidate, keep native and
+official-split gates open,” not a WebGPU policy promotion.
+
 ### Current native ToolSandbox smoke (m366)
 
 The [m366 receipt](paper/results/raw/m366-toolsandbox-native-current-v1.json) executes three
