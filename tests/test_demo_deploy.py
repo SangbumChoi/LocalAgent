@@ -19,7 +19,10 @@ def _write_valid_bundle(root: Path) -> None:
         }
         for name in BUNDLE_FILES
     }
-    (root / "meta.json").write_text(json.dumps({"action_model_file": "action_model.fp16.onnx"}), encoding="utf-8")
+    (root / "meta.json").write_text(
+        json.dumps({"action_model_file": "action_model.fp16.onnx", "tools": ["tool"]}),
+        encoding="utf-8",
+    )
     # meta.json is itself an artifact, so update its identity after writing it.
     artifacts["meta.json"] = {
         "file": "meta.json",
@@ -30,6 +33,7 @@ def _write_valid_bundle(root: Path) -> None:
         json.dumps(
             {
                 "schema_version": 3,
+                "checkpoint_sha256": "checkpoint",
                 "artifacts": artifacts,
                 "parity_gate": {"hard_gate": True, "passed": True},
             }
@@ -59,6 +63,19 @@ def test_hash_mismatch_is_explicit_failure(tmp_path: Path) -> None:
     (tmp_path / "heads.json").write_text("tampered", encoding="utf-8")
     report = verify_demo_deploy(tmp_path)
     assert "artifact:heads.json:identity_mismatch" in report["blockers"]
+
+
+def test_expected_checkpoint_and_tool_pool_bindings_are_fail_closed(tmp_path: Path) -> None:
+    _write_valid_bundle(tmp_path)
+    assert verify_demo_deploy(
+        tmp_path,
+        expected_checkpoint_sha256="checkpoint",
+        expected_tool_count=1,
+    )["verified"] is True
+    checkpoint_mismatch = verify_demo_deploy(tmp_path, expected_checkpoint_sha256="other")
+    assert "manifest:checkpoint_sha256_mismatch" in checkpoint_mismatch["blockers"]
+    tool_mismatch = verify_demo_deploy(tmp_path, expected_tool_count=63)
+    assert "meta:tool_count_mismatch:expected=63:actual=1" in tool_mismatch["blockers"]
 
 
 def test_separate_source_bundle_requires_target_staging(tmp_path: Path) -> None:

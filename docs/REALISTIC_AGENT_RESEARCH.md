@@ -1468,7 +1468,9 @@ The [m342 browser smoke](paper/results/raw/m342-webgpu-static-browser-smoke-v1.j
 regenerated 63-tool staging Space at HTTP 200 with zero page errors and no failed asset requests.
 It also found and corrected the stale 50-tool/byte-level banner in `index.html` and the app contract
 comment. Chromium had no adapter and fell back to WASM, so this is static boot evidence only; the
-native Apple Metal WebGPU receipt remains separate.
+native Apple Metal WebGPU receipt remains separate. The deployment verifier now supports an
+explicit checkpoint SHA and expected tool-count binding, so a legacy 50-tool bundle cannot pass
+pre-upload verification merely by matching its own manifest.
 
 ### Current ToolSandbox native smoke (m348)
 

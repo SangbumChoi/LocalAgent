@@ -83,6 +83,8 @@ def verify_demo_deploy(
     *,
     bundle_dir: str | Path | None = None,
     require_target_bundle: bool = True,
+    expected_checkpoint_sha256: str | None = None,
+    expected_tool_count: int | None = None,
 ) -> dict[str, Any]:
     """Verify app files and a generated bundle, returning a JSON-compatible receipt."""
 
@@ -127,6 +129,8 @@ def verify_demo_deploy(
 
     if not isinstance(manifest.get("schema_version"), int) or manifest["schema_version"] < 3:
         blockers.append("manifest:schema_version_lt_3")
+    if expected_checkpoint_sha256 is not None and manifest.get("checkpoint_sha256") != expected_checkpoint_sha256:
+        blockers.append("manifest:checkpoint_sha256_mismatch")
     parity = manifest.get("parity_gate")
     if not isinstance(parity, Mapping) or parity.get("hard_gate") is not True or parity.get("passed") is not True:
         blockers.append("manifest:parity_gate_not_passed")
@@ -167,6 +171,13 @@ def verify_demo_deploy(
         blockers.append(f"meta:{meta_error or 'unreadable'}")
     elif meta.get("action_model_file") != "action_model.fp16.onnx":
         blockers.append("meta:action_model_file_mismatch")
+    if expected_tool_count is not None:
+        tool_names = meta.get("tools") if isinstance(meta, Mapping) else None
+        if not isinstance(tool_names, list) or len(tool_names) != expected_tool_count:
+            actual_count = len(tool_names) if isinstance(tool_names, list) else None
+            blockers.append(
+                f"meta:tool_count_mismatch:expected={expected_tool_count}:actual={actual_count}"
+            )
 
     if not (demo / "app.js").is_file():
         blockers.append("app:missing_app_js")
@@ -205,18 +216,34 @@ def verify_demo_deploy(
     }
 
 
-def sync_demo_bundle(source_dir: str | Path, demo_dir: str | Path) -> dict[str, Any]:
+def sync_demo_bundle(
+    source_dir: str | Path,
+    demo_dir: str | Path,
+    *,
+    expected_checkpoint_sha256: str | None = None,
+    expected_tool_count: int | None = None,
+) -> dict[str, Any]:
     """Copy only verified generated bundle files into a static demo directory."""
 
     source = Path(source_dir).resolve()
     target = Path(demo_dir).resolve()
-    source_report = verify_demo_deploy(target, bundle_dir=source, require_target_bundle=False)
+    source_report = verify_demo_deploy(
+        target,
+        bundle_dir=source,
+        require_target_bundle=False,
+        expected_checkpoint_sha256=expected_checkpoint_sha256,
+        expected_tool_count=expected_tool_count,
+    )
     if not source_report["verified"]:
         raise ValueError("refusing to sync an unverified bundle: " + ", ".join(source_report["blockers"]))
     target.mkdir(parents=True, exist_ok=True)
     for name in ("bundle-manifest.json", *BUNDLE_FILES):
         shutil.copy2(source / name, target / name)
-    return verify_demo_deploy(target)
+    return verify_demo_deploy(
+        target,
+        expected_checkpoint_sha256=expected_checkpoint_sha256,
+        expected_tool_count=expected_tool_count,
+    )
 
 
 def write_demo_deploy_receipt(report: Mapping[str, Any], path: str | Path) -> None:

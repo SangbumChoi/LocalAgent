@@ -201,6 +201,8 @@ and fixes a release-surface mismatch in the visible demo banner: it now identifi
 63-tool bundle rather than the stale 50-tool byte-model text. The regenerated staging Space returns
 HTTP 200 with no page errors and all static controls present; this headless host has no GPU adapter,
 so the observed WASM fallback is explicitly not a hardware WebGPU claim.
+The deployment verifier now also accepts the checkpoint SHA and expected tool count, preventing an
+internally self-consistent but stale 50-tool bundle from passing the local release preflight.
 
 The [m348 ToolSandbox native smoke](paper/results/raw/m348-toolsandbox-native-current-smoke-v1.json)
 boots the pinned simulator and milestone verifier with the exact current checkpoint. The bounded

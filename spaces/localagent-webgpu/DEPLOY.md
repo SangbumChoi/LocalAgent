@@ -126,7 +126,9 @@ static app before copying anything into the Space:
 ```bash
 PYTHONPATH=src python scripts/verify_demo_deploy.py \
   --demo-dir spaces/localagent-webgpu \
-  --bundle-dir build/web
+  --bundle-dir build/web \
+  --checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt \
+  --expected-tool-count 63
 ```
 
 The command checks the exporter manifest, every byte count and SHA-256, the hard PyTorch parity
@@ -137,9 +139,13 @@ deployable copy, use the explicit sync operation and then verify the target itse
 ```bash
 PYTHONPATH=src python scripts/verify_demo_deploy.py \
   --demo-dir spaces/localagent-webgpu \
-  --bundle-dir build/web --sync
+  --bundle-dir build/web --sync \
+  --checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt \
+  --expected-tool-count 63
 PYTHONPATH=src python scripts/verify_demo_deploy.py \
-  --demo-dir spaces/localagent-webgpu
+  --demo-dir spaces/localagent-webgpu \
+  --checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt \
+  --expected-tool-count 63
 ```
 
 The current local paired Space staging was regenerated and verified by the [`m336 receipt`](../../docs/paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json): all model/WebGPU artifacts pass the hard parity gate, the model and dispatch metadata each contain 63 tools, and the bundle identity is `e0e19a8d…`. This remains a local pre-upload receipt until the same files are uploaded to an authenticated Hub Space.

@@ -11,6 +11,7 @@ current release.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -26,6 +27,14 @@ from localagent.inference.export.to_onnx import export_web
 
 def _token(cli_token: str | None) -> str | None:
     return cli_token or os.environ.get("HF_TOKEN")
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _recorded_tokenizer_path(checkpoint: Path) -> str | None:
@@ -119,18 +128,23 @@ def prepare_release(
             raise FileExistsError(f"refusing to overwrite release output: {path}")
     model_out.parent.mkdir(parents=True, exist_ok=True)
     web_out.parent.mkdir(parents=True, exist_ok=True)
+    release_tools = _release_tool_specs(checkpoint)
+    expected_tool_count = len(release_tools) if release_tools is not None else None
+    expected_checkpoint_sha256 = _sha256(checkpoint)
     export_hf(str(checkpoint), str(model_out), repo_id=model_repo, push=False)
     export_web(
         str(checkpoint),
         str(web_out),
         action_only=True,
         tokenizer_path=_recorded_tokenizer_path(checkpoint),
-        tools=_release_tool_specs(checkpoint),
+        tools=release_tools,
     )
     source_report = verify_demo_deploy(
         demo_source,
         bundle_dir=web_out,
         require_target_bundle=False,
+        expected_checkpoint_sha256=expected_checkpoint_sha256,
+        expected_tool_count=expected_tool_count,
     )
     if not source_report["verified"]:
         raise RuntimeError(
@@ -138,8 +152,17 @@ def prepare_release(
             + ", ".join(source_report["blockers"])
         )
     _copy_static_space(demo_source.resolve(), space_out.resolve())
-    sync_demo_bundle(web_out, space_out)
-    target_report = verify_demo_deploy(space_out)
+    sync_demo_bundle(
+        web_out,
+        space_out,
+        expected_checkpoint_sha256=expected_checkpoint_sha256,
+        expected_tool_count=expected_tool_count,
+    )
+    target_report = verify_demo_deploy(
+        space_out,
+        expected_checkpoint_sha256=expected_checkpoint_sha256,
+        expected_tool_count=expected_tool_count,
+    )
     if not target_report["verified"]:
         raise RuntimeError(
             "refusing to publish an unverified Space staging directory: "
