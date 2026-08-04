@@ -46,7 +46,6 @@ PYTHONPATH=src python scripts/publish_hf_release.py \
   --web-out build/web-current \
   --space-out build/space-current \
   --audit-output docs/paper/results/raw/public-model-demo-manifest-current-v2.json \
-  --dataset-url "https://huggingface.co/datasets/$HF_USER/localagent-dispatch-data" \
   --public --publish
 ```
 
