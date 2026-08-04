@@ -214,6 +214,13 @@ source-disjoint parent scenarios. Warm selector top-1 is `85%` versus `80%` rand
 single-step verifier success is identical at `2/3` for both arms; the transfer is rejected for
 deployment.
 
+The [m350 MCPMark native filesystem receipt](paper/results/raw/m350-mcpmark-native-filesystem-current-v1.json)
+is the first current-checkpoint run through a real MCP stdio server and an independent public
+verifier. On the pinned easy `structure_analysis` task, the model failed all three bounded turns
+(`verifier_exit_code=1`) after selecting the wrong tools and malformed paths. The result is useful
+as a concrete MCP tool/schema failure, but it is not an official MCPMark split score: the user
+simulator and remaining Notion/GitHub/Postgres/Playwright services were not executed.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

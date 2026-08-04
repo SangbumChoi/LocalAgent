@@ -1488,6 +1488,17 @@ matched random arm, route reaches `100%` for both, and native single-step verifi
 identical (`2/3`, with message similarity `0.425`). The result rejects deployment transfer despite
 the offline gain and keeps the parent-only initialization policy.
 
+### Current MCPMark native filesystem task (m350)
+
+The [m350 receipt](paper/results/raw/m350-mcpmark-native-filesystem-current-v1.json) runs one
+public MCPMark Verified filesystem task from the pinned `cd45b7f…` checkout against the exact
+current checkpoint. A real `@modelcontextprotocol/server-filesystem@2025.12.18` stdio server,
+the downloaded public state archive, and the task's independent verifier all executed. The model
+did not complete the task: it selected incorrect tools and produced paths outside the allowed
+directory, so the verifier exited `1`. This is a native failure diagnostic, not an official
+MCPMark score: the full split, user simulator, and other MCP services were not run, and no task
+result was admitted to training.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
