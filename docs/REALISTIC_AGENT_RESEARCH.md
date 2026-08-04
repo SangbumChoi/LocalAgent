@@ -1204,6 +1204,25 @@ task-state distribution is not recognized by the AndroidControl-trained selector
 policy change alone cannot close the mobile grounding gap.  Selector-first remains opt-in and the
 child is rejected for deployment.
 
+### Current-checkpoint native ToolSandbox smoke and interactive control (m297)
+
+The [m297 receipt](paper/results/raw/m297-toolsandbox-current-native-smoke-v1.json) is the first
+current BPE-checkpoint ToolSandbox native run in this continuation.  The pinned simulator and
+milestone verifier execute successfully: a bounded one-step smoke passes `2/3` settings/message
+scenarios, with exact `cellular_off` and `wifi_off` milestones but only `0.425` similarity for the
+phone-message schema.  A bounded interactive scripted-user run passes `0/3`, showing that the
+current tool schema does not survive multi-turn feedback even when native execution is available.
+
+Because the official split and model-based user simulator were not executed, this result is a
+native smoke diagnostic rather than an official ToolSandbox score.  It is nevertheless stronger
+than the prior text-only projection and keeps the adoption decision negative for the current
+checkpoint.
+
+The [m298 workshop gate re-audit](paper/results/raw/m298-workshop-gate-current-toolsandbox-v1.json)
+now includes this native receipt and records the exact blocker `official_split_not_verified`; the
+overall gate remains closed because the official ToolSandbox split and the other native surfaces are
+still absent.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

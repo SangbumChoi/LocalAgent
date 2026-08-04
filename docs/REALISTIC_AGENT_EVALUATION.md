@@ -3109,3 +3109,20 @@ scores `0/20` and emits the identical `19` `mobile_press_enter` plus one `mobile
 pattern.  The negative control localizes the failure to selector generalization on MobileGym
 task-state prompts, rather than only to candidate-body ranking; the mode is not promoted as a
 default policy.
+
+### Current-checkpoint native ToolSandbox smoke and interactive control (m297)
+
+The [m297 receipt](paper/results/raw/m297-toolsandbox-current-native-smoke-v1.json) executes the
+current 10.52M checkpoint inside the pinned Apple ToolSandbox simulator and milestone verifier.
+The bounded single-step smoke passes `2/3` scenarios: `cellular_off` and `wifi_off` reach exact
+milestones, while `send_message_with_phone_number_and_content` reaches only `0.425` milestone
+similarity.  No external API or account is touched.
+
+The interactive scripted-user control (four agent turns) falls to `0/3`: the two settings tasks
+reach `0.5` milestone similarity and the message task reaches `0.0`.  This is genuine native
+simulator/verifier evidence, but the official split and model-based user simulator were not run,
+so it does not satisfy the ToolSandbox workshop gate or establish MCP/email/Notion readiness.
+
+The [m298 gate re-audit](paper/results/raw/m298-workshop-gate-current-toolsandbox-v1.json) includes
+this receipt explicitly and remains `ready=false`; ToolSandbox is now blocked for the precise reason
+`official_split_not_verified`, while the other missing native benchmark receipts remain unchanged.
