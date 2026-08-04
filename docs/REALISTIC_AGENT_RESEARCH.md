@@ -1409,11 +1409,12 @@ handoff reproducible: local-only preparation is the default, `--publish` is expl
 and static Space folders are verified before upload, and an anonymous Hub audit is mandatory for
 a successful current-release exit.
 
-The [m334 current paired receipt](paper/results/raw/m334-hf-paired-release-local-current-v1.json)
-refreshes the local preparation after the WebGPU safety-policy update.  It binds the exact
-`10,524,544`-parameter checkpoint, hard-parity-passed model/action graphs, and current `app.js`
-hash `a2d8fed1…` in the staged Space.  Publication remains false until a maintainer supplies HF
-write authentication and the post-upload anonymous audit.
+The [m334 paired receipt](paper/results/raw/m334-hf-paired-release-local-current-v1.json) is a
+historical local preparation after the WebGPU safety-policy update.  It binds the exact
+`10,524,544`-parameter checkpoint, hard-parity-passed model/action graphs, and the then-current
+`app.js` hash `a2d8fed1…` in its staged Space; later release edits intentionally make that hash
+different.  Publication remains false until a maintainer supplies HF write authentication and
+the post-upload anonymous audit.
 
 The [m336 aligned release receipt](paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json)
 closes a deployment metadata mismatch discovered during the release audit.  The HF config had a

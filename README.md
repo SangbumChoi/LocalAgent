@@ -7,12 +7,19 @@ for training and reference inference. PyTorch and ONNX/WebGPU export work today;
 ExecuTorch remain planned. The deterministic research flywheel is implemented, while production
 ingestion of served conversations and feedback is not.
 
-> **🤗 Model · 🚀 Demo · 📦 Data — all on the Hub (under `danelcsb`):**
+> **Legacy public baseline — model, demo, and data on the Hub (under `danelcsb`):**
 > [**model**](https://huggingface.co/danelcsb/localagent-tiny-30m-byte) ·
 > [**live WebGPU demo**](https://huggingface.co/spaces/danelcsb/localagent-webgpu) ·
 > [**dataset**](https://huggingface.co/datasets/danelcsb/localagent-dispatch-data)
 
-## TL;DR — generable tool dispatch (latest)
+The current deployment candidate is a separate **10,524,544-parameter BPE checkpoint** with a
+checkpoint-bound **63-tool** release surface (`bc1aca20…`). Its parity-verified model and static
+Space bundle are prepared locally, but the current checkpoint is **not yet public**: Hugging Face
+write authentication and an anonymous post-upload hash audit are still required. See
+[`spaces/localagent-webgpu/DEPLOY.md`](spaces/localagent-webgpu/DEPLOY.md) and the
+[publication audit](docs/paper/results/raw/m342-webgpu-static-browser-smoke-v1.json).
+
+## TL;DR — generable tool dispatch (legacy public baseline)
 
 A **28M, from-scratch, byte-level** agent that maps a natural request to a tool call over a
 **50-tool** surface, via a **generable** pipeline (no fixed-N classifier — adding a tool is one row,
