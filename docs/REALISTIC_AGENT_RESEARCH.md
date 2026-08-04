@@ -1511,6 +1511,17 @@ random child. However, both children fail the same native filesystem MCPMark ver
 exit code `1`) with malformed tool/path actions. The native control therefore rejects transfer
 for deployment despite the teacher-forced gain; neither child is exported.
 
+### Current-checkpoint workshop/publication gate re-audit (m352)
+
+The [m352 gate receipt](paper/results/raw/m352-workshop-gate-current-v1.json) re-runs the strict
+publication join after adding the current-checkpoint binding to m351. The gate remains
+`ready=false`: catalog coverage, MobileGym, BrowserGym/MiniWob, native WebGPU capability/latency,
+weight transfer, and stateful RL preflight pass, while AndroidWorld, MobileSafetyBench, iOSWorld,
+OSWorld, OSWorld-V2, AgentNet, and EnterpriseOps-Gym have no native receipts. ToolSandbox and
+MCPMark are explicitly blocked by `official_split_not_verified`, and the current public model/demo
+manifest is still absent. This is the reproducible no-promotion decision for the present
+checkpoint, not a claim that any missing native benchmark was run.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

@@ -228,6 +228,14 @@ a deterministic random-backbone control. Warm held-out token accuracy reaches `3
 This separates representation transfer from executable MCP competence: the warm child is rejected
 for deployment and no native MCPMark score is claimed.
 
+The [m352 strict gate re-audit](paper/results/raw/m352-workshop-gate-current-v1.json) binds the
+MCPMark receipt to the exact current checkpoint and records the final publication decision:
+`ready=false`. Catalog coverage, current MobileGym, BrowserGym/MiniWOb, native WebGPU capability,
+weight ablations, and the stateful RL preflight pass. The gate still blocks publication for the
+seven missing official native receipts (AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld,
+OSWorld-V2, AgentNet, and EnterpriseOps-Gym), non-official ToolSandbox/MCPMark splits, and the
+missing anonymous current-checkpoint model/demo manifest.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow
