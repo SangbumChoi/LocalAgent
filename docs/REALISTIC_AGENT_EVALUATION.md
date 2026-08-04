@@ -138,6 +138,13 @@ uses the public train-only DOM/action projection with a deterministic seed and a
 The result is still a teacher-forced DOM transfer diagnostic: native BrowserGym replay, visual
 grounding, and live browser success remain unproven, so the child is not exported.
 
+The [m330 HF-format export](paper/results/raw/m330-hf-local-export-current-v1.json) rebuilds the
+current `10,524,544`-parameter BPE bundle from the exact checkpoint after the pointer migration.
+The local safetensors, agent heads, tokenizer, and config all have recorded byte hashes; the
+config binds checkpoint SHA `bc1aca20…` and tokenizer SHA `83654055…`.  This closes the local
+export reproducibility step, but `published=false` remains correct because Hugging Face
+authentication and anonymous re-fetch verification have not occurred.
+
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
 against a matched random-backbone control.  Warm first-action type coverage is 100% versus 12.5%

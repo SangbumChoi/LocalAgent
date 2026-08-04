@@ -39,7 +39,7 @@ def main():
         has_tok = bool(args.token or os.environ.get("HF_TOKEN"))
         print(f"\n✓ local HF bundle written to {res}/")
         print("  to upload: set a token (HF_TOKEN env or `hf auth login`) and add "
-              f"--repo <user>/<name> --push" + ("" if has_tok else "   [no token detected]"))
+              "--repo <user>/<name> --push" + ("" if has_tok else "   [no token detected]"))
 
 
 if __name__ == "__main__":

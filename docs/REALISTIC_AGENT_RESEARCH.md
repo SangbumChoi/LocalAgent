@@ -1394,6 +1394,16 @@ now accepts the parent's known 17-row pointer head when explicit metadata is abs
 still shows an expanded pointer embedding shape and no proof of native browser success.  This
 supports the migration and low-rate policy, not deployment adoption.
 
+### Current-checkpoint HF-format export (m330)
+
+The [m330 receipt](paper/results/raw/m330-hf-local-export-current-v1.json) regenerates the
+self-contained Hugging Face-format bundle from the exact current WebGPU checkpoint.  It binds
+the `10,524,544`-parameter model, BPE tokenizer, `63`-tool dispatch pool, `23` pointer arguments,
+and every local bundle file by byte count and SHA-256.  The model config itself carries the
+checkpoint SHA, so the future public audit can reject a stale model even when the Hub URL is
+reachable.  HF upload and anonymous verification remain intentionally pending until an
+authenticated maintainer supplies a model repository and Space.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
