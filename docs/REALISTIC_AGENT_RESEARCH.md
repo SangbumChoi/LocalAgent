@@ -1456,6 +1456,13 @@ trajectory rate are all `0`.  Compared with the older mixed-surface child, this 
 regression signal rather than a promotion candidate; screenshots, OS state, and AgentNetBench
 execution remain outside the projection.
 
+The [m341 cross-surface weight-adoption decision](paper/results/raw/m341-cross-surface-weight-adoption-decision-v1.json)
+now joins the current Mind2Web, ToolACE, CUA-Gym, AgentNet, and stateful-productivity controls.
+It rejects exporting a child checkpoint: retain the pretrained BPE body only as an initialization
+candidate, adapt action heads per surface, and require frozen/low-rate/matched-random arms plus a
+release-matched native verifier before promotion. This prevents a positive offline selector or
+pointer metric from being mistaken for reliable email, Notion, browser, mobile, or desktop control.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

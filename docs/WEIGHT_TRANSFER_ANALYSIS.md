@@ -177,6 +177,17 @@ verified BPE parent with a lower-rate backbone continuation for browser adaptati
 support publishing the child as a Mind2Web result or claiming that these movement magnitudes are
 universally optimal.
 
+## Current cross-surface adoption decision (m341)
+
+The [`m341 decision receipt`](paper/results/raw/m341-cross-surface-weight-adoption-decision-v1.json)
+joins the current parent-bound controls before any WebGPU child is exported. The evidence is mixed:
+Mind2Web pointer spans and ToolACE selector metrics improve in offline projections, while CUA-Gym
+surface classification is `77.55%` warm versus `77.87%` matched random and the current AgentNet
+projection is `0/8` exact trajectories. The local stateful low-rate arm also leaves productive
+completion at `0/4`. The decision is therefore to retain the BPE backbone only as an initialization
+candidate, retrain action heads per surface, require frozen/low-rate/random comparators and native
+verifiers, and export no child checkpoint from these results.
+
 ## Adoption protocol
 
 1. **Compatibility gate:** require identical model config fields and tokenizer SHA-256.  Refuse
