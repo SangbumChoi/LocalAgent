@@ -1313,6 +1313,15 @@ carry the same SHA-256 directly or under its checkpoint object.  The current Mob
 gate remains `ready=false` with ten blockers: nine required native families are still absent and
 the public Hub manifest is a legacy byte-model release without the current checkpoint binding.
 
+### Source-corrected current gate (m318)
+
+The [m318 gate](paper/results/raw/m318-workshop-gate-source-corrected-v1.json) repeats the same
+join after correcting two catalog citations discovered during an official-source audit:
+AndroidWorld now points to its actual `2405.14573` paper, and BrowserGym points to the official
+2025 ecosystem paper (`openreview.net/forum?id=5298fKGmv3`) rather than unrelated arXiv records.
+The catalog fingerprint is `b1b170b2…`; all native and public-release blockers remain explicit, and
+the gate is still `ready=false`.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

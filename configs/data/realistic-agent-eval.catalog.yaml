@@ -160,7 +160,7 @@ entries:
     family: mobile
     name: AndroidWorld
     source_url: https://github.com/google-research/android_world
-    paper_url: https://arxiv.org/abs/2405.14591
+    paper_url: https://arxiv.org/abs/2405.14573
     code_url: https://github.com/google-research/android_world
     access_status: public_runtime
     license:
@@ -233,7 +233,7 @@ entries:
     family: browser
     name: BrowserGym MiniWoB++
     source_url: https://github.com/ServiceNow/BrowserGym
-    paper_url: https://arxiv.org/abs/2407.06967
+    paper_url: https://openreview.net/forum?id=5298fKGmv3
     code_url: https://github.com/Farama-Foundation/miniwob-plusplus
     access_status: public_runtime
     license:

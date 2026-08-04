@@ -84,12 +84,11 @@ artifact binding):
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict \
-  --webgpu-receipt docs/paper/results/raw/m40-webgpu-native-capability-notion-v1.json \
-  --native-receipt browsergym_miniwob=docs/paper/results/raw/m144-browsergym-native-current-checkpoint-v1.json \
-  --native-receipt mobilegym=docs/paper/results/raw/m146-mobilegym-native-current-checkpoint-v1.json \
-  --native-receipt toolsandbox=docs/paper/results/raw/m143-toolsandbox-native-base-transfer-audit-v1.json \
+  --webgpu-receipt docs/paper/results/raw/m265-webgpu-native-current-browser-context-v1.json \
+  --native-receipt browsergym_miniwob=docs/paper/results/raw/m282-browsergym-current-checkpoint-official-v1.json \
+  --native-receipt mobilegym=docs/paper/results/raw/m262-mobilegym-native-current-browser-context-v1.json \
   --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json \
-  --public-artifact-manifest docs/paper/results/raw/public-model-demo-manifest-v1.json \
+  --public-artifact-manifest docs/paper/results/raw/m305-public-hf-legacy-current-audit-v1.json \
   --current-checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt
 ```
 
@@ -107,9 +106,10 @@ therefore an auditable workshop decision, not a claim that the current model has
 The current canonical receipt is joined in [`m218`](paper/results/raw/m218-workshop-gate-current-canonical-native-v1.json):
 MobileGym and BrowserGym/MiniWoB are accepted as official-split native evidence, while the
 ToolSandbox diagnostic remains blocked for missing official-split verification.  The latest
-current-checkpoint-bound report is [`m307`](paper/results/raw/m307-workshop-gate-current-checkpoint-final-v1.json):
-it is `ready=false` with ten blockers (nine absent or non-official native receipts plus
-`current_checkpoint_not_bound`). Older gate receipts are retained for historical comparison.
+source-corrected current-checkpoint-bound report is [`m318`](paper/results/raw/m318-workshop-gate-source-corrected-v1.json):
+it is `ready=false` with ten blockers (nine absent native receipts plus
+`current_checkpoint_not_bound`). Every supplied native receipt must identify the same current
+checkpoint SHA-256; older gate receipts are retained only for historical comparison.
 
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories

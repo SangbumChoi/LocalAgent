@@ -62,6 +62,15 @@ def test_realistic_catalog_is_pinned_and_split_safe() -> None:
     assert enterprise["license"]["name"] == "Apache-2.0"
 
 
+def test_core_mobile_and_browser_papers_use_authoritative_sources() -> None:
+    catalog, _ = load_catalog(CATALOG)
+    rows = {row["id"]: row for row in catalog["entries"]}
+    assert rows["androidworld"]["paper_url"] == "https://arxiv.org/abs/2405.14573"
+    assert rows["browsergym_miniwob"]["paper_url"] == (
+        "https://openreview.net/forum?id=5298fKGmv3"
+    )
+
+
 def test_train_rows_require_public_download_and_verified_license() -> None:
     catalog, _ = load_catalog(CATALOG)
     broken = {**catalog, "entries": [dict(catalog["entries"][0])]}
