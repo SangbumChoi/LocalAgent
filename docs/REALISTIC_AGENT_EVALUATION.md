@@ -131,6 +131,13 @@ below `0.2%`, but productive closed-loop completion remains `0/4` and total comp
 `1/5` because only abstention succeeds.  It is therefore a weight-safety control, not evidence
 for email, Notion, browser, MCP, or native WebGPU capability.
 
+The [m329 current Mind2Web pointer transfer](paper/results/raw/m329-current-mind2web-pointer-transfer-v1.json)
+uses the public train-only DOM/action projection with a deterministic seed and an explicit
+17-row legacy pointer-vocabulary migration.  Pointer span exactness improves from `0/63` to
+`6/63` (`9.52%`), while the shared embedding/attention/FFN move only `0.23%`/`0.27%`/`0.29%`.
+The result is still a teacher-forced DOM transfer diagnostic: native BrowserGym replay, visual
+grounding, and live browser success remain unproven, so the child is not exported.
+
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories
 against a matched random-backbone control.  Warm first-action type coverage is 100% versus 12.5%

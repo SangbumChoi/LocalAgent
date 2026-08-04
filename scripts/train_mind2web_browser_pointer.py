@@ -18,11 +18,12 @@ from typing import Any
 
 import torch
 
-from localagent.agent.pointer_head import PointerHead
+from localagent.agent.pointer_head import PTR_ARGS, PointerHead
 from localagent.data.schema import Conversation, Role, ToolCall
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.model.tokenizer import load_tokenizer
 from localagent.train.sft import sft
+from localagent.train.stage_data import canonical_sha256
 from scripts.train_grounded_mind2web import _assert_disjoint, _head_samples, _pointer_metrics
 
 
@@ -68,9 +69,15 @@ def _pointer_args(parent: dict[str, Any]) -> list[str]:
     state = parent["ptr_head"]
     rows = int(state["arg_emb.weight"].shape[0])
     declared = parent.get("ptr_args")
-    if not isinstance(declared, list) or len(declared) != rows:
-        raise ValueError("parent pointer vocabulary is not explicitly declared")
-    result = [str(name) for name in declared]
+    if isinstance(declared, list) and len(declared) == rows:
+        source = [str(name) for name in declared]
+    elif rows == len(PTR_ARGS):
+        # The current WebGPU parent predates explicit ptr_args metadata.  Infer only the
+        # immutable canonical 17-row vocabulary; unknown widths must still fail closed.
+        source = list(PTR_ARGS)
+    else:
+        raise ValueError(f"cannot infer parent pointer vocabulary for {rows} rows")
+    result = list(source)
     for name in ("target", "text"):
         if name not in result:
             result.append(name)
@@ -79,12 +86,19 @@ def _pointer_args(parent: dict[str, Any]) -> list[str]:
 
 def _warm_pointer(parent: dict[str, Any], pointer_args: list[str]) -> dict[str, torch.Tensor]:
     source = parent["ptr_head"]
-    declared = [str(name) for name in parent["ptr_args"]]
+    rows = int(source["arg_emb.weight"].shape[0])
+    declared = parent.get("ptr_args")
+    if isinstance(declared, list) and len(declared) == rows:
+        source_args = [str(name) for name in declared]
+    elif rows == len(PTR_ARGS):
+        source_args = list(PTR_ARGS)
+    else:
+        raise ValueError(f"cannot infer parent pointer vocabulary for {rows} rows")
     target = PointerHead(parent["cfg"]["d_model"], args=pointer_args)
     state = target.state_dict()
     state["start.weight"] = source["start.weight"]
     state["end.weight"] = source["end.weight"]
-    for index, name in enumerate(declared):
+    for index, name in enumerate(source_args):
         state["arg_emb.weight"][target.arg_idx[name]] = source["arg_emb.weight"][index]
     target.load_state_dict(state)
     return target.state_dict()
@@ -100,6 +114,7 @@ def main() -> int:
     parser.add_argument("--steps", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1e-5)
+    parser.add_argument("--seed", type=int, default=2049)
     args = parser.parse_args()
     if args.output.exists() or args.report.exists():
         raise SystemExit("refusing to overwrite browser-pointer outputs")
@@ -109,6 +124,7 @@ def main() -> int:
     parent = torch.load(args.init, map_location="cpu", weights_only=False)
     config = ModelConfig(**parent["cfg"])
     config.assert_within_budget()
+    torch.manual_seed(args.seed)
     model = LocalAgentLM(config)
     model.load_state_dict(parent["state_dict"])
     tokenizer_meta = parent.get("tokenizer") or {"kind": "byte"}
@@ -136,6 +152,7 @@ def main() -> int:
         init_tool_head=parent.get("tool_head"),
         init_ptr_head=warm_pointer,
         ptr_weight=1.0,
+        seed=args.seed,
         log=print,
         return_metrics=True,
     )
@@ -151,12 +168,13 @@ def main() -> int:
         "source": {"dataset": "osunlp/Mind2Web", "url": "https://huggingface.co/datasets/osunlp/Mind2Web", "revision": "17ece8eb89862368edc0cc806acee6fca5163474", "train": _identity(args.train), "eval": _identity(args.eval), "train_rows": len(train_rows), "eval_rows": len(eval_rows)},
         "parent": _identity(args.init),
         "child": _identity(args.output),
-        "hyperparameters": {"steps": args.steps, "batch_size": args.batch_size, "learning_rate": args.lr, "pointer_args": pointer_args, "projection": "web_click->click(target), web_type->type_text(text), web_select->click(target)"},
+        "hyperparameters": {"steps": args.steps, "batch_size": args.batch_size, "learning_rate": args.lr, "seed": args.seed, "pointer_args": pointer_args, "projection": "web_click->click(target), web_type->type_text(text), web_select->click(target)"},
         "before": before,
         "after": after,
         "training_metrics": metrics,
         "decision": {"native_replay_required": True, "adoption": "pending_native_browsergym_canary", "claim_boundary": "Train-only public Mind2Web DOM/action continuation after action-schema projection; no official Mind2Web test score, BrowserGym labels, screenshots, or external side effects."},
     }
+    report["receipt_self_sha256"] = canonical_sha256(report)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))

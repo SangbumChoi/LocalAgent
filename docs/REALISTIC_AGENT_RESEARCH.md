@@ -1383,6 +1383,17 @@ tool exactness is `3.91%`, with `0%` exactness on the 222 pointer rows; observat
 correct on `6/7` observation rows.  The result is a precise action-grounding failure diagnosis,
 not a native desktop or visual benchmark score, and it does not justify adding Arena rows to SFT.
 
+### Current Mind2Web DOM pointer transfer (m329)
+
+The [m329 receipt](paper/results/raw/m329-current-mind2web-pointer-transfer-v1.json) reruns the
+browser pointer adapter from the exact current parent, using `36` train conversations and `12`
+source-disjoint evaluation conversations from the pinned `osunlp/Mind2Web` revision.  The trainer
+now accepts the parent's known 17-row pointer head when explicit metadata is absent, appends only
+`target` and `text`, and records a deterministic seed.  Exact literal-span grounding rises from
+`0/63` to `6/63` (`9.52%`), with low shared-body movement; the paired [weight audit](paper/results/raw/m329-current-mind2web-pointer-weight-v1.json)
+still shows an expanded pointer embedding shape and no proof of native browser success.  This
+supports the migration and low-rate policy, not deployment adoption.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
