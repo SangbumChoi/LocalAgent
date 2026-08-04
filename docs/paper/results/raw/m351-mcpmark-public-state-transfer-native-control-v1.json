@@ -1,5 +1,6 @@
 {
   "benchmark_id": "mcpmark",
+  "checkpoint_sha256": "bc1aca209ec08df1483a3c6d088366a68f8d8f4f0766e2b4350a2ef473c16361",
   "checkpoint": {
     "parent": {
       "bytes": 52242001,
@@ -66,7 +67,7 @@
     }
   },
   "official_split_verified": false,
-  "receipt_self_sha256": "82cdec2ebeaddc7093b15b5c8fb0715596cf2fffd59fd7a6bdd6a43e81312ec5",
+  "receipt_self_sha256": "e117a9814cfd9c7261e2d9d9ce266095a08408579d359e741ae0ec5a851f9a5f",
   "reports": {
     "random": {
       "bytes": 8832,

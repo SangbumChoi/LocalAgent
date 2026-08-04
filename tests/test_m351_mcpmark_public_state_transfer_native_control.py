@@ -26,6 +26,7 @@ def test_m351_binds_source_disjoint_current_parent_and_children() -> None:
     assert payload["checkpoint"]["parent_sha256"] == (
         "bc1aca209ec08df1483a3c6d088366a68f8d8f4f0766e2b4350a2ef473c16361"
     )
+    assert payload["checkpoint_sha256"] == payload["checkpoint"]["parent_sha256"]
 
 
 def test_m351_warm_token_gain_does_not_promote_native_transfer() -> None:
