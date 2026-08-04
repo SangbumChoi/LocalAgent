@@ -1104,6 +1104,21 @@ Space URL exists.  Two local Chromium probes (headless and headed) also fail clo
 host exposes no non-empty WebGPU adapter identity; the export is ready, but native WebGPU
 throughput and hardware capability remain unverified until run on a suitable GPU host.
 
+### Workshop/publication gate re-audit (m284)
+
+The [m284 gate receipt](paper/results/raw/m284-workshop-gate-current-v1.json) joins the pinned
+catalog, current-checkpoint native receipts, export audit, and transfer ablation.  The decision is
+`ready=false`, even though the structural checks for catalog coverage, MobileGym, the complete
+BrowserGym/MiniWoB plan, the earlier Apple Metal WebGPU receipt, and the parent-head/random
+ablation pass.  Nine required native surfaces remain unsupplied: AndroidWorld, MobileSafetyBench,
+iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym.
+
+The public manifest is a real, independently verified older byte-model/Space publication, but it
+is not the current BPE checkpoint.  The current export is therefore a local reproducibility
+artifact, not a public model release.  This distinction, plus the m283 adapter-identity failure,
+keeps the workshop claim closed until the current checkpoint is uploaded and re-fetched
+anonymously and the missing native suites are executed with their independent verifiers.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

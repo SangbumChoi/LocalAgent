@@ -2992,3 +2992,19 @@ The external publication and native-runtime gates remain open.  Hugging Face aut
 absent, so `published=false` and no Hub URL is provided.  Both headed and headless Chromium
 WebGPU probes fail closed with “no non-empty hardware identity”; this is a host capability
 failure, not evidence of model throughput or successful browser/email/Notion control.
+
+### Current workshop/publication gate re-audit (m284)
+
+The [m284 gate receipt](paper/results/raw/m284-workshop-gate-current-v1.json) is the current
+fail-closed decision for this checkpoint.  It accepts the catalog coverage, the official-split
+MobileGym receipt (`256` tasks, `0.39%` success), the complete official BrowserGym/MiniWoB
+receipt (`240` tasks, `0/240` success), the earlier hardware-backed WebGPU receipt, and the
+transfer/no-transfer ablation as explicit evidence.  It reports `ready=false`: native receipts
+are still missing for AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet,
+ToolSandbox, MCPMark, and EnterpriseOps-Gym.
+
+The public-artifact check is intentionally interpreted narrowly.  The verified public manifest
+points to the older `28,322,304`-parameter byte model and its Space; it does not publish the
+current `10,524,544`-parameter BPE checkpoint.  The m283 local HF/WebGPU export is hash-verified
+but unauthenticated and unpublished, and its fresh headed/headless host probes did not expose a
+usable adapter identity.  Therefore no workshop or public-deployment approval is claimed.
