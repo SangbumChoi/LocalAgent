@@ -781,9 +781,10 @@ entries:
     source_url: https://github.com/Tongyi-MAI/MobileWorld
     paper_url: https://arxiv.org/abs/2512.19432
     code_url: https://github.com/Tongyi-MAI/MobileWorld
-    access_status: public_runtime
+    source_revision: 0dcd0980eac64d76f498f93568a1ec0594b743c4
+    access_status: terms_review
     license:
-      name: Apache-2.0
+      name: Apache-2.0_code_benchmark-assets-runtime-terms-review
       url: https://www.apache.org/licenses/LICENSE-2.0
       evidence: https://github.com/Tongyi-MAI/MobileWorld
     scale:
@@ -809,7 +810,7 @@ entries:
     contamination:
       split: official_benchmark
       rule: long-horizon task prompts, user feedback, and MCP traces remain outside training and public checkpoints
-    notes: Long-horizon mobile tasks explicitly exercise agent-user interaction and MCP-augmented workflows.
+    notes: Pinned m302 source audit inventories all 201 tasks across 20 apps. Docker/KVM Android execution, user simulation, MCP services, and benchmark asset terms remain unresolved; no task rows enter training.
 
   - id: memgui_bench
     family: computer

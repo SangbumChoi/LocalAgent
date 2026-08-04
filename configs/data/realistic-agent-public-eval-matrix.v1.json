@@ -112,16 +112,16 @@
       "name": "MobileWorld",
       "source_url": "https://github.com/Tongyi-MAI/MobileWorld",
       "paper_url": "https://arxiv.org/abs/2512.19432",
-      "source_revision": "release-required-before-score",
-      "license": "source-license-review-required",
+      "source_revision": "0dcd0980eac64d76f498f93568a1ec0594b743c4",
+      "license": "Apache-2.0_code_benchmark-assets-runtime-terms-review",
       "access_status": "terms_review",
       "train_policy": "eval_only",
       "modalities": ["goal", "mobile_ui", "user_interaction", "MCP_tool_state"],
       "webgpu_projection": "Accessibility/state text plus explicit tool calls; no visual score without an image encoder.",
       "primary_metric": "Long-horizon task success across agent-user and MCP-augmented workflows.",
       "split_rule": "Keep the public evaluation tasks and generated parameters out of SFT/RL until a release split is pinned.",
-      "local_status": "not_started",
-      "notes": "The paper reports 201 tasks across 20 applications and specifically targets vague, hybrid mobile workflows."
+      "local_status": "metadata_only",
+      "notes": "m302 pins and inventories all 201 task classes across 20 applications. The source/runtime audit executed no emulator, user simulator, MCP service, or task; Docker/KVM host prerequisites and benchmark asset terms remain unresolved."
     },
     {
       "id": "mobile_agent_bench",
