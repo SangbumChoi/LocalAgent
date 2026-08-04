@@ -189,6 +189,12 @@ random (balanced `77.36%` versus `78.50%`), so the measured transfer delta is ne
 checkpoint is explicitly rejected for deployment on this probe.  No setup/reward artifacts,
 screenshots, action traces, or native desktop/browser outcomes were used.
 
+The [m340 current AgentNet projection](paper/results/raw/m340-agentnet-current-text-projection-v1.json)
+runs the exact current checkpoint over all eight retained Ubuntu evaluation parents (133 projected
+actions).  It produces complete predictions but `0%` first-action type accuracy, `0%` action score,
+and `0/8` exact trajectories.  This is an offline text/action regression diagnostic only: screenshots,
+desktop state, OS effects, and the upstream AgentNetBench runtime remain unconsumed.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

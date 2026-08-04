@@ -1449,6 +1449,13 @@ negative deltas reject this warm initialization for deployment on the surface pr
 instructions are used only for platform labels; setup files, reward code, screenshots, action
 traces, and native desktop/browser execution remain excluded.
 
+The [m340 AgentNet projection](paper/results/raw/m340-agentnet-current-text-projection-v1.json)
+updates the desktop text/action evidence to the exact current checkpoint.  All eight Ubuntu parents
+and 133 projected actions are present, but first-action type accuracy, action score, and exact
+trajectory rate are all `0`.  Compared with the older mixed-surface child, this is a current
+regression signal rather than a promotion candidate; screenshots, OS state, and AgentNetBench
+execution remain outside the projection.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
