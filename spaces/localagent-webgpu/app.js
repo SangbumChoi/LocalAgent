@@ -10,7 +10,7 @@
  *                                          tool_matrix:[N][p],tool_names:[N],normalize_query} }
  *                          retrieval_selector:{dim,tool_matrix:[N][dim],tool_names,tool_routes} }
  *   heads.json           { pointer_head:{arg_idx,arg_emb,start_W,end_W}, ... }   (args copy)
- *   meta.json            { model_file, action_model_file, d_model, markers, tools } (50 tools)
+ *   meta.json            { model_file, action_model_file, d_model, markers, tools } (63 tools)
  *
  * Selection is NOT a fixed-N classifier: the dense selector scores every tool by its description
  * embedding, so adding/removing a tool is adding/removing a tool_matrix row.  An explicit

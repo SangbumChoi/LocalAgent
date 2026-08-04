@@ -1463,6 +1463,12 @@ candidate, adapt action heads per surface, and require frozen/low-rate/matched-r
 release-matched native verifier before promotion. This prevents a positive offline selector or
 pointer metric from being mistaken for reliable email, Notion, browser, mobile, or desktop control.
 
+The [m342 browser smoke](paper/results/raw/m342-webgpu-static-browser-smoke-v1.json) verifies the
+regenerated 63-tool staging Space at HTTP 200 with zero page errors and no failed asset requests.
+It also found and corrected the stale 50-tool/byte-level banner in `index.html` and the app contract
+comment. Chromium had no adapter and fell back to WASM, so this is static boot evidence only; the
+native Apple Metal WebGPU receipt remains separate.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

@@ -195,6 +195,12 @@ actions).  It produces complete predictions but `0%` first-action type accuracy,
 and `0/8` exact trajectories.  This is an offline text/action regression diagnostic only: screenshots,
 desktop state, OS effects, and the upstream AgentNetBench runtime remain unconsumed.
 
+The [m342 static browser smoke](paper/results/raw/m342-webgpu-static-browser-smoke-v1.json) catches
+and fixes a release-surface mismatch in the visible demo banner: it now identifies the current BPE
+63-tool bundle rather than the stale 50-tool byte-model text. The regenerated staging Space returns
+HTTP 200 with no page errors and all static controls present; this headless host has no GPU adapter,
+so the observed WASM fallback is explicitly not a hardware WebGPU claim.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow
