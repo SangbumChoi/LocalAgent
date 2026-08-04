@@ -1547,6 +1547,19 @@ the parent representation as an initialization but does not show a warm quality 
 BrowserGym replay, screenshot grounding, official test split, or external browser side effect was
 run; both children remain diagnostic-only.
 
+### Current WebGPU browser realistic-action smoke (m357)
+
+The [m357 receipt](paper/results/raw/m357-current-webgpu-browser-realistic-actions-v1.json)
+binds a headed in-app-browser smoke to the current checkpoint and the hash-verified 63-tool
+bundle. The model loads at the local HTTP origin with the expected BPE banner and `WEBGPU`
+provider label. Email and Notion requests select the intended action schemas and arguments but
+are held at the confirmation boundary; a direct URL request is read-only. With planner mode
+enabled, the compound request selects `web_search` followed by `notion_write`, with the latter
+staged for confirmation rather than executed. This validates planner state propagation and the
+demo safety boundary, while still stopping short of external multi-step productivity success. No
+hardware adapter, external side effect, official benchmark score, or public model release is
+claimed.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

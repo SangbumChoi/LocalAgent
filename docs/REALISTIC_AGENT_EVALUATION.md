@@ -256,6 +256,18 @@ relative L2 versus `1.154`/`1.030` random), which supports low-rate head adaptat
 initialization experiment, not browser competence. Native BrowserGym, visual grounding, and
 external side effects were not executed, so the child is not promoted.
 
+The [m357 current WebGPU browser smoke](paper/results/raw/m357-current-webgpu-browser-realistic-actions-v1.json)
+exercises the exact hash-verified 63-tool bundle in the in-app browser at a local HTTP origin.
+The page loads with no request failures or page errors, reports `WEBGPU`, and exposes the expected
+10.52M-parameter BPE/63-tool banner. A realistic email request routes to `send_email` with the
+recipient grounded as `Dana`, and a Notion request routes to `notion_write` with the content
+grounded as `quarterly report summary`; both stop at the explicit confirmation boundary.
+Read-only URL navigation routes to `open_url` without a side effect. With the planner checkbox
+enabled, the compound prompt produces a two-step `web_search → notion_write` plan; the second step
+is staged for confirmation, so the Notion write is selected but not executed. This is local
+routing and safety evidence only: it is not a hardware-adapter receipt, official BrowserGym or
+MCPMark score, or public Hub release, and no external side effect occurred.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow
