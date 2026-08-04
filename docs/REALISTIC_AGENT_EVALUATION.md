@@ -247,6 +247,15 @@ and on each surface. The warm embedding, mixer, FFN, and normalization movements
 `0%`. This is stronger lineage evidence for reusing the parent body as an initialization, not
 evidence of native mobile, browser, or desktop success; the child remains unexported.
 
+The [m356 browser-head control](paper/results/raw/m356-current-mind2web-browser-head-transfer-v1.json)
+isolates the current browser route/selector heads on 219 public Mind2Web TRAIN decisions and 63
+parent/typed-slot-disjoint held-out decisions. Warm frozen-head transfer improves selector top-1
+from `19.05%` to `85.71%` and top-3 from `85.71%` to `100%`; a matched random head reaches the
+same post-training scores. Warm head movement is much smaller (`0.232` route and `0.216` selector
+relative L2 versus `1.154`/`1.030` random), which supports low-rate head adaptation as a safer
+initialization experiment, not browser competence. Native BrowserGym, visual grounding, and
+external side effects were not executed, so the child is not promoted.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

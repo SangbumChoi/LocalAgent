@@ -188,6 +188,15 @@ completion at `0/4`. The decision is therefore to retain the BPE backbone only a
 candidate, retrain action heads per surface, require frozen/low-rate/random comparators and native
 verifiers, and export no child checkpoint from these results.
 
+## Current Mind2Web browser-head control (m356)
+
+The [m356 receipt](paper/results/raw/m356-current-mind2web-browser-head-transfer-v1.json) is a
+current-parent-bound frozen-body control over 219 public TRAIN decisions and 63 held-out decisions.
+Warm route/selector heads move `0.232`/`0.216` relative L2, while matched-random heads move
+`1.154`/`1.030`; both reach `85.71%` held-out selector top-1 and `100%` top-3 after 32 updates.
+The lower warm movement is a weight-safety signal, not a quality gain: because post-training
+accuracy ties, browser-head adoption remains pending native BrowserGym replay and visual grounding.
+
 ## Adoption protocol
 
 1. **Compatibility gate:** require identical model config fields and tokenizer SHA-256.  Refuse

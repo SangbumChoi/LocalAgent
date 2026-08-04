@@ -1535,6 +1535,18 @@ embedding by `119.7%` and the mixer/FFN by `77.8%`/`87.9%`. Because exact sequen
 `0%` and no native replay was executed, the result supports parent-body reuse plus surface-specific
 heads as a training hypothesis only; the child is not promoted or exported.
 
+### Current Mind2Web browser-head matched control (m356)
+
+The [m356 receipt](paper/results/raw/m356-current-mind2web-browser-head-transfer-v1.json) reruns
+the browser route/selector adaptation against the exact current BPE parent, using 219 train and 63
+source-disjoint held-out decisions from the pinned public Mind2Web TRAIN split. A frozen-body warm
+head reaches `85.71%` selector top-1 and `100%` top-3 from `19.05%`/`85.71%`; the matched random
+head reaches the same `85.71%`/`100%` after the same 32 updates. Warm route/selector movement is
+`0.232`/`0.216` relative L2 versus `1.154`/`1.030` for random, so the evidence favors retaining
+the parent representation as an initialization but does not show a warm quality advantage. No
+BrowserGym replay, screenshot grounding, official test split, or external browser side effect was
+run; both children remain diagnostic-only.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
