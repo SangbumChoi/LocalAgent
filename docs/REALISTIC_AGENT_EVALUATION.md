@@ -70,14 +70,15 @@ The catalog preflight is necessary but not sufficient for a workshop claim.  The
 [`scripts/workshop_gate.py`](../scripts/workshop_gate.py) requires explicit native receipts for
 AndroidWorld, MobileGym, MobileSafetyBench, iOSWorld, BrowserGym/MiniWoB, OSWorld, AgentNet,
 ToolSandbox, MCPMark, and EnterpriseOps-Gym; it also requires a hardware-WebGPU capability/latency
-receipt, both transfer and no-transfer weight reports, and a public model/demo manifest.  It never
+receipt, both transfer and no-transfer weight reports, a successful current-checkpoint-bound RL
+preflight, and a public model/demo manifest.  It never
 treats a protocol bridge, a synthetic state loop, SwiftShader, or a local checkpoint path as a pass:
 
 ```bash
 PYTHONPATH=src python scripts/workshop_gate.py --strict
 ```
 
-The command without supplied receipts exits non-zero with fourteen blocking requirements.  Supplying
+The command without supplied receipts exits non-zero with fifteen blocking requirements.  Supplying
 the verified native WebGPU, full BrowserGym, MobileGym, and public-artifact receipts reduces this
 to ten when the current checkpoint is also bound (nine native requirements plus the stale-public-
 artifact binding):
@@ -88,6 +89,7 @@ PYTHONPATH=src python scripts/workshop_gate.py --strict \
   --native-receipt browsergym_miniwob=docs/paper/results/raw/m282-browsergym-current-checkpoint-official-v1.json \
   --native-receipt mobilegym=docs/paper/results/raw/m262-mobilegym-native-current-browser-context-v1.json \
   --weight-report docs/paper/results/raw/m25-weight-transfer-ablation-v1.json \
+  --rl-preflight-receipt docs/paper/results/raw/m321-current-stateful-rl-preflight-v1.json \
   --public-artifact-manifest docs/paper/results/raw/m305-public-hf-legacy-current-audit-v1.json \
   --current-checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt
 ```
@@ -109,7 +111,11 @@ ToolSandbox diagnostic remains blocked for missing official-split verification. 
 source-corrected current-checkpoint-bound report is [`m318`](paper/results/raw/m318-workshop-gate-source-corrected-v1.json):
 it is `ready=false` with ten blockers (nine absent native receipts plus
 `current_checkpoint_not_bound`). Every supplied native receipt must identify the same current
-checkpoint SHA-256; older gate receipts are retained only for historical comparison.
+checkpoint SHA-256; older gate receipts are retained only for historical comparison.  The failed
+canonical-toolcall RL preflight is recorded in [`m319`](paper/results/raw/m319-current-rl-preflight-v1.json),
+while the current-checkpoint stateful email/Notion/browser fixture preflight in [`m321`](paper/results/raw/m321-current-stateful-rl-preflight-v1.json)
+passes with reward diversity and real policy updates.  The latest RL-bound gate is [`m322`](paper/results/raw/m322-workshop-gate-stateful-rl-v1.json):
+RL now passes, but the nine native receipts and current public-artifact binding remain blocked.
 
 The current public computer-use result is [`m220`](paper/results/raw/m220-agentnet-current-text-action-evaluation-v1.json).
 It evaluates 133 source-disjoint AgentNet text-action rows across eight unseen Ubuntu trajectories

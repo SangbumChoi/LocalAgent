@@ -1332,14 +1332,22 @@ there is no reward diversity, no nonzero-LR policy update changes a model tensor
 tool exactness remains `0%`.  This is a useful training diagnosis—not a promotion: the current
 checkpoint needs a schema-valid, learnable reward curriculum before RL can be claimed or exported.
 
-### RL-bound workshop gate (m320)
+### Current-checkpoint stateful RL preflight (m321)
 
-The [m320 gate](paper/results/raw/m320-workshop-gate-rl-bound-v1.json) makes that diagnosis part
-of the publication contract.  A gate now requires a successful one-update RL preflight whose
-parent SHA matches the current checkpoint; joining the failed m319 receipt therefore adds the
-explicit blocker `training:rl_preflight:preflight_status_not_passed`.  This prevents a future
-native/artifact pass from being misread as a complete training pipeline while RL still has no
-learnable signal.
+The [m321 receipt](paper/results/raw/m321-current-stateful-rl-preflight-v1.json) supplies the
+learnable curriculum without weakening the canonical failure: it uses only the repository’s
+resettable email/Notion/browser fixture and shaped schema/tool/argument/transition rewards.  The
+same current checkpoint and tokenizer produce two reward values, change 40 policy tensors, and
+realize two optimizer updates in the isolated prefix.  No benchmark text, emulator, account, or
+external side effect is used, so this is a valid RL-simulation pass—not a native quality claim.
+
+### RL-bound workshop gates (m320–m322)
+
+The [m320 gate](paper/results/raw/m320-workshop-gate-rl-bound-v1.json) made that diagnosis part
+of the publication contract.  The successful [m321 receipt](paper/results/raw/m321-current-stateful-rl-preflight-v1.json)
+then satisfied the RL requirement without changing the canonical m319 result.  The [m322 gate](paper/results/raw/m322-workshop-gate-stateful-rl-v1.json)
+therefore has ten blockers rather than eleven: RL now passes, while nine native benchmark
+families and the current-checkpoint public artifact remain unresolved.
 
 ## Publication checklist
 
