@@ -2814,6 +2814,21 @@ neither child is promoted.  This is a public schema-adapter diagnostic only: Too
 simulator, model-based user, milestone verifiers, external APIs, and native environment were not
 executed.  The native ToolSandbox publication blocker therefore remains unchanged.
 
+### Public Mind2Web grounding continuation and BrowserGym canary (m289)
+
+The [m289 receipt](paper/results/raw/m289-mind2web-browsergym-transfer-v1.json) continues the
+current `10,524,544`-parameter BPE checkpoint on a public Mind2Web **train-only** DOM/action
+projection: `36` train conversations (`219` decisions) and `12` parent/typed-slot-disjoint held-out
+conversations (`63` decisions).  The browser pointer vocabulary adds `target_id` and `value`, but
+held-out exact pointer-span accuracy remains `0/63` before and after 64 low-rate updates.
+
+The child moves the shared backbone only `0.286%`–`0.309%` by relative L2 across attention and FFN
+groups (`0.293%` for embeddings), preserving configuration and tokenizer compatibility.  In a
+separate native, accessibility-only canary over the pinned BrowserGym/MiniWoW environment, it
+achieves `0/20` successes.  This is a reproducible negative transfer result: no official Mind2Web
+test data, BrowserGym full-plan claim, screenshot grounding, email/Notion account, or external side
+effect was used, and the child is not promoted.
+
 ### Current MCPMark service-routing control (m274)
 
 The [`m274 receipt`](paper/results/raw/m274-mcpmark-current-service-routing-v1.json) evaluates the

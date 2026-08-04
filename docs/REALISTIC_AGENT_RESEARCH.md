@@ -1152,6 +1152,20 @@ Both arms move their heads by roughly `1.27`–`1.49` relative L2 and neither ch
 The projection is AST-only; no ToolSandbox simulator, user simulator, verifier, external API, or
 native environment was executed.  Native ToolSandbox evidence remains a publication blocker.
 
+### Public Mind2Web grounding continuation and BrowserGym canary (m289)
+
+The [m289 receipt](paper/results/raw/m289-mind2web-browsergym-transfer-v1.json) continues the
+current BPE checkpoint on a public Mind2Web train-only DOM/action projection (`36` train
+conversations / `219` decisions and `12` parent/typed-slot-disjoint held-out conversations /
+`63` decisions).  Adding browser `target_id`/`value` pointer rows and 64 low-rate updates leaves
+held-out exact pointer-span accuracy at `0/63`.
+
+The compatible body moves only `0.286%`–`0.309%` across attention/FFN groups and `0.293%` in the
+embedding group.  A separate pinned BrowserGym/MiniWoW accessibility-only canary executes `20`
+episodes with `0/20` success.  This is a useful negative result for the WebGPU browser path, not an
+official Mind2Web test score, full BrowserGym score, visual grounding result, or account-control
+claim; the child is not promoted.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
