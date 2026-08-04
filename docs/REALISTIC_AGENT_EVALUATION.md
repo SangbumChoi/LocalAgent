@@ -202,6 +202,12 @@ and fixes a release-surface mismatch in the visible demo banner: it now identifi
 HTTP 200 with no page errors and all static controls present; this headless host has no GPU adapter,
 so the observed WASM fallback is explicitly not a hardware WebGPU claim.
 
+The [m348 ToolSandbox native smoke](paper/results/raw/m348-toolsandbox-native-current-smoke-v1.json)
+boots the pinned simulator and milestone verifier with the exact current checkpoint. The bounded
+single-step protocol passes `2/3` scenarios, but the interactive message continuation passes `0/1`.
+Because the official split and model-based user simulator were not run, this is a native diagnostic,
+not an official ToolSandbox score or evidence of email/Notion/MCP completion.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

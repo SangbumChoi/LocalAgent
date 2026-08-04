@@ -1470,6 +1470,17 @@ It also found and corrected the stale 50-tool/byte-level banner in `index.html` 
 comment. Chromium had no adapter and fell back to WASM, so this is static boot evidence only; the
 native Apple Metal WebGPU receipt remains separate.
 
+### Current ToolSandbox native smoke (m348)
+
+The [m348 receipt](paper/results/raw/m348-toolsandbox-native-current-smoke-v1.json) finally boots
+the pinned Apple ToolSandbox simulator and milestone verifier against the exact current checkpoint
+in an isolated compatibility environment. The bounded single-step smoke passes `2/3` scenarios
+(cellular and Wi-Fi state changes; message similarity `0.425`), while a bounded interactive message
+continuation passes `0/1`. The upstream model-based user simulator, official split, full scenario
+matrix, and RapidAPI tools were not executed, so this is native verifier diagnostic evidence only;
+it does not satisfy the official ToolSandbox gate or establish email, Notion, MCP, or productivity
+completion.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
