@@ -273,6 +273,13 @@ is staged for confirmation, so the Notion write is selected but not executed. Th
 routing and safety evidence only: it is not a hardware-adapter receipt, official BrowserGym or
 MCPMark score, or public Hub release, and no external side effect occurred.
 
+The [m360 current bundle verification](paper/results/raw/m360-current-webgpu-deploy-verification-v1.json)
+rechecks the workspace artifacts against the current checkpoint rather than reusing the historical
+m357 browser receipt. All eight ONNX/head/tokenizer artifacts are present, manifest-bound, and
+parity-gated; the current bundle identity is `e0e19a8a…a296ed`, with no local deployment blockers.
+This establishes a reproducible upload candidate, not a public Hub URL, physical adapter result,
+throughput claim, or browser task-success score.
+
 The [m358 ToolSandbox function-masking transfer pilot](paper/results/raw/m358-toolsandbox-function-masking-transfer-v1.json)
 adds a bounded public-data transfer experiment for the tool-catalog path. It uses the pinned
 Apple ToolSandbox scenario projection and the `openai_full_catalog_v1` prompt contract, so a
