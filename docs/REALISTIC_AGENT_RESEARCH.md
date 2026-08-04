@@ -1067,6 +1067,29 @@ success remains 0/12: these tasks require multi-step programs, so this result es
 first-action schema grounding and isolated execution, not complete AppWorld success or WebGPU
 productivity readiness.
 
+### Current-checkpoint native BrowserGym canary (m282)
+
+The [m282 BrowserGym canary comparison](paper/results/raw/m282-browsergym-current-checkpoint-canary-v1.json)
+runs the current `10.52M`-parameter WebGPU checkpoint in the pinned BrowserGym `0.14.3` /
+MiniWoB test environment with Chromium revision `1117`.  Across 20 reset episodes covering five
+task families, the accessibility-only arm records `0/20` success, `0.0` reward, and only `10/200`
+grounded steps; the model emits `open_app` on 80 steps, `move_cursor` on 40, no parseable tool on
+60, and other non-browser actions on the remainder.
+
+The matched DOM-coordinate sidecar is intentionally non-official.  It recovers the deterministic
+ascending-numbers family (`4/4`) but leaves bisect-angle, choose-list, click-button, and
+click-button-sequence at `0/16`.  This isolates the failure: the checkpoint still needs a
+browser-specific action policy and accessibility/target grounding; coordinate geometry alone does
+not establish general browser control.  The result is a native canary, not the complete 240-episode
+official plan, visual grounding, or an external-account result.
+
+The complete [m282 official-plan receipt](paper/results/raw/m282-browsergym-current-checkpoint-official-v1.json)
+then runs all `240` pinned episodes (`60` task families × `4` fixed seeds) with the same checkpoint,
+BrowserGym/MiniWoB revisions, Chromium revision, and ten-step limit.  The official-split flag is
+verified, but native success is `0/240`, reward is `0.0`, and `2,080/2,400` actions become
+`noop(0)`.  Every task family is `0/4`; this is a complete, reproducible negative browser-control
+result and closes the current-checkpoint BrowserGym gate against promotion.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

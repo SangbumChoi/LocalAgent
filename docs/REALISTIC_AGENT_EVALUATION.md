@@ -2957,3 +2957,25 @@ records 12/12 resettable native API calls (48 total requests, 36 bootstrap) and 
 records 12/12 exact translated-code hashes. The independent AppWorld verifiers still report 0/12,
 because the adapter executes exactly one action per task; this is first-action schema and execution
 evidence, not a complete trajectory, leaderboard result, or external-account claim.
+
+### Current-checkpoint native BrowserGym canary (m282)
+
+The [m282 comparison receipt](paper/results/raw/m282-browsergym-current-checkpoint-canary-v1.json)
+executes 20 pinned BrowserGym/MiniWoB test episodes against the current checkpoint.  With the
+accessibility-only action path, native success is `0/20`, reward is `0.0`, and only `10/200` steps
+are grounded; most outputs are `open_app`, `move_cursor`, or absent tool calls, so they become
+`noop(0)` in the browser adapter.
+
+The matched coordinate fallback is a non-official control: it reaches `4/20` by solving only
+ascending-numbers (`4/4`), while the other four families remain `0/16`.  This is evidence of a
+policy/tool-vocabulary and grounding gap, not evidence of visual-agent quality or a complete
+BrowserGym score.  The complete plan is recorded separately below.
+
+### Current-checkpoint official BrowserGym/MiniWoB plan (m282)
+
+The [m282 official-plan receipt](paper/results/raw/m282-browsergym-current-checkpoint-official-v1.json)
+executes the complete pinned `240`-episode test plan (`60` task families × `4` fixed seeds) with
+`official_split_verified=true`.  The current checkpoint scores `0/240` native successes, `0.0`
+reward, and `320/2400` grounded steps; `2080` actions become `noop(0)`.  All 60 task families are
+`0/4`, including the email-inbox families.  This is a complete official-split native negative
+result, not visual-agent success, WebArena success, or real-account email/Notion access.
