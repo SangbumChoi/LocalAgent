@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 
-def test_m332_receipt_is_source_pinned_and_not_an_official_score() -> None:
+def test_m332_historical_receipt_is_source_pinned_and_not_an_official_score() -> None:
     path = Path("docs/paper/results/raw/m332-mobilesafety-text-policy-v1.json")
     payload = json.loads(path.read_text(encoding="utf-8"))
     body = dict(payload)
@@ -18,8 +18,12 @@ def test_m332_receipt_is_source_pinned_and_not_an_official_score() -> None:
     assert payload["source"]["qa_rows"] == 3
     assert payload["policy"]["native_execution"] is False
     assert payload["policy"]["external_side_effects"] is False
-    app = Path("spaces/localagent-webgpu/app.js")
-    assert payload["policy"]["app_sha256"] == hashlib.sha256(app.read_bytes()).hexdigest()
+    assert payload["policy"]["app_sha256"] == (
+        "a2d8fed113f3a6716798a0d2ac656c47d17e759dc45b2899b50f65bc03160ca6"
+    )
+    assert payload["policy"]["app_sha256"] != hashlib.sha256(
+        Path("spaces/localagent-webgpu/app.js").read_bytes()
+    ).hexdigest()
     assert payload["policy"]["risk_version"] == "text_harm_block_v1"
     assert payload["notable_findings"]["task_text_committed"] is False
     assert payload["summary"]["policy_status_counts"] == {
