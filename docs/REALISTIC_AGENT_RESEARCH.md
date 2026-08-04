@@ -1441,6 +1441,14 @@ only four text-first adapters are runnable and 36 environment/evaluation rows re
 is a reproducibility receipt for infrastructure readiness; it intentionally performs no downloads,
 service starts, benchmark executions, training admission, or native score claims.
 
+The [m339 CUA-Gym surface probe](paper/results/raw/m339-cua-gym-current-surface-probe-v1.json)
+provides a current-checkpoint warm/random control without overclaiming what metadata can show.
+After 300 frozen-head steps on the task-ID-disjoint CUA-Gym table, the warm arm is `77.55%` versus
+`77.87%` random on the 628-row holdout; balanced accuracy is `77.36%` versus `78.50%`.  The
+negative deltas reject this warm initialization for deployment on the surface probe.  CUA-Gym
+instructions are used only for platform labels; setup files, reward code, screenshots, action
+traces, and native desktop/browser execution remain excluded.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

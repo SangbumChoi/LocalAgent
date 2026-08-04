@@ -181,6 +181,14 @@ Docker/QEMU, BrowserGym/MCPMark modules, and unavailable CoreSimulator service a
 infrastructure blockers, not benchmark failures.  The receipt downloads no benchmark payloads,
 starts no external service, admits no evaluation rows to training, and makes no native-score claim.
 
+The [m339 current CUA-Gym surface probe](paper/results/raw/m339-cua-gym-current-surface-probe-v1.json)
+re-runs the public CC-BY-4.0 metadata-only transfer control from the exact current BPE checkpoint.
+The backbone is frozen and the same 300-step linear surface head is trained for the warm and matched
+random arms over 3,005 task-ID-disjoint rows.  Warm held-out accuracy is `77.55%` versus `77.87%`
+random (balanced `77.36%` versus `78.50%`), so the measured transfer delta is negative and the
+checkpoint is explicitly rejected for deployment on this probe.  No setup/reward artifacts,
+screenshots, action traces, or native desktop/browser outcomes were used.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow
