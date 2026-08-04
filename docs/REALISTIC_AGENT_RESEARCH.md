@@ -1560,6 +1560,22 @@ demo safety boundary, while still stopping short of external multi-step producti
 hardware adapter, external side effect, official benchmark score, or public model release is
 claimed.
 
+### Unified six-source public transfer control (m361)
+
+The [m361 receipt](paper/results/raw/m361-all-public-candidate-transfer-v1.json) performs a
+matched continuation across six public source projections: AndroidControl, AITW, AgentNet,
+Mind2Web, ToolACE, and xLAM. It uses four train and four source-disjoint held-out rows per source,
+the current BPE parent for the warm arm, and a deterministic random backbone for the control. Warm
+token accuracy reaches `53.72%` versus `0%` random after eight CPU updates and wins on every
+surface, but exact sequence accuracy remains `0%` for both arms.
+
+This is a lineage and representation-transfer diagnostic, not six official benchmark scores. The
+AITW eval is a local whole-parent holdout from public train, AndroidControl screenshots are
+omitted, and no native mobile/browser/desktop/MCP runtime or external account was touched. Warm
+shared-body movement is below `0.1%` relative L2 while the random body moves by `0.78–1.20×`; the
+adoption decision is therefore “parent initialization candidate only,” with no WebGPU child export
+or workshop promotion.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

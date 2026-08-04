@@ -280,6 +280,28 @@ parity-gated; the current bundle identity is `e0e19a8a…a296ed`, with no local 
 This establishes a reproducible upload candidate, not a public Hub URL, physical adapter result,
 throughput claim, or browser task-success score.
 
+### Unified public-candidate continuation and weight control (m361)
+
+The [m361 receipt](paper/results/raw/m361-all-public-candidate-transfer-v1.json) joins six
+publicly referenced projections—AndroidControl, Android-in-the-Wild (AITW), AgentNet, Mind2Web,
+ToolACE, and xLAM—under one matched eight-step continuation. Each source contributes four train
+and four held-out rows, with source-record or whole-parent separation preserved by the normalized
+inputs. The warm arm starts from the current `bc1aca20…c16361` BPE checkpoint; the control starts
+from a deterministic random backbone under the same optimizer, seed, batch, and sequence budget.
+
+Warm held-out token accuracy is `53.72%` versus `0%` for the random control (`+53.72` points),
+and the warm arm is ahead on all six surfaces. This is teacher-forced continuation, not exact
+trajectory success: both arms are `0%` exact sequence accuracy. The AITW evaluation is a local
+four-row holdout derived from public AITW train parent IDs, not the official AITW test split;
+AndroidControl rows omit screenshots, and none of the six projections ran a native emulator,
+browser, desktop VM, MCP server, verifier, or external account.
+
+The tensor audit shows the warm shared-body movement stays below `0.1%` relative L2 for embedding,
+mixer, FFN, and normalization, while the random control moves those groups by roughly `0.78–1.20×`.
+Action heads are unchanged in both arms. The resulting decision is to retain the parent geometry as
+an initialization candidate while keeping surface-specific adapters and all official/native
+publication gates open; the child is not exported to WebGPU.
+
 The [m358 ToolSandbox function-masking transfer pilot](paper/results/raw/m358-toolsandbox-function-masking-transfer-v1.json)
 adds a bounded public-data transfer experiment for the tool-catalog path. It uses the pinned
 Apple ToolSandbox scenario projection and the `openai_full_catalog_v1` prompt contract, so a
