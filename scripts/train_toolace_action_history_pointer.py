@@ -106,6 +106,12 @@ def _pointer_from_state(model: LocalAgentLM, checkpoint: dict[str, Any], args: l
     old_args = checkpoint.get("ptr_args") or []
     if not isinstance(state, dict):
         return pointer
+    # Some browser-context checkpoints contain a trained legacy pointer matrix but omit the
+    # argument-name sidecar. Preserve those rows under deterministic placeholders so the common
+    # start/end projections remain loadable; never guess that a legacy row matches a public name.
+    arg_weight = state.get("arg_emb.weight")
+    if not old_args and isinstance(arg_weight, torch.Tensor) and arg_weight.ndim == 2:
+        old_args = [f"__legacy_ptr_{index}" for index in range(int(arg_weight.shape[0]))]
     legacy = PointerHead(model.cfg.d_model, args=old_args)
     legacy.load_state_dict(state)
     pointer.start.load_state_dict(legacy.start.state_dict())

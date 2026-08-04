@@ -266,6 +266,16 @@ selector moves substantially (query `58.53%`, tool `225.42%`) and the evaluation
 64-row projection; retain it as a candidate adapter and require a larger held-out and native
 verifier-backed replication before deployment adoption.
 
+The [`m316 pointer transfer`](paper/results/raw/m316-current-toolace-pointer-free-run-transfer-v1.json)
+isolates the remaining argument-grounding bottleneck. It trains 182 locatable spans from the same
+public ToolACE train projection and evaluates 63 held-out spans. Offline decoded-value exactness
+rises from `0%` to `19.35%`, but it only ties the matched random pointer; in the 113-step free run,
+argument/step/episode exactness remains `2.65%`/`2.65%`/`0%`, schema validity rises `69.91%`→`76.99%`,
+and tool exactness falls `22.12%`→`21.24%`. The pointer is therefore rejected for deployment
+promotion. The adapter also now preserves unnamed legacy pointer rows under deterministic
+placeholders when a checkpoint omits `ptr_args`, rather than silently misaligning or dropping
+the learned matrix.
+
 ## Weight-adoption decision rule
 
 Adopt a pretrained backbone only when all three arms use the same tokenizer, configuration, seed,
