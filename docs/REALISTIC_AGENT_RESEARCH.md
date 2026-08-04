@@ -10,6 +10,7 @@ the repository has completed every benchmark.
 |---|---|---|
 | Mobile UI | [AndroidWorld](https://github.com/google-research/android_world) runs resettable Android emulator tasks with accessibility/screenshot observations and durable task rewards. | Accessibility-tree/text protocol tests are useful for routing; an Android emulator, ADB, official task set, and reward logs are required for a native score. |
 | Personalized mobile UI | [iOSWorld](https://iosworld.io/) provides 133 tasks over 26 interconnected iOS apps with persistent seeded user identity and an optional MCP server. | Treat identity, cross-app state, and MCP-vs-GUI as separate axes; a WebGPU text projection cannot claim native iOS control or personalization. |
+| Cross-app mobile assistant | [MobileWorld](https://github.com/Tongyi-MAI/MobileWorld) defines 201 long-horizon tasks over 20 Android apps, including agent-user interaction and MCP-augmented workflows, with screenshot/accessibility/backend-state observations and deterministic verification. | Freeze the source revision, rooted AVD/Docker image, credentials, and task manifest. macOS lacks the upstream Linux/KVM runtime; source parsing is provenance only, not native mobile/email/browser success. |
 | Mobile safety | [MobileSafetyBench](https://mobilesafetybench.github.io/) evaluates Android-device safety, harmful side effects, and indirect prompt injection in messaging/banking-style tasks. | Run a dedicated refusal/confirmation/safe-side-effect gate before enabling email, messaging, settings, or payment tools. |
 | Visual prompt-injection safety | [VPI-Bench](https://github.com/cua-framework/agents) reports 306 dynamic cases across Amazon, Booking, BBC, Messenger, and Email, separating attempted from successful malicious actions. | Keep attack pages and traces evaluation-only; a text-only WebGPU model can measure refusal/confirmation policy but cannot claim visual robustness without a vision-capable runner. |
 | Contextual-integrity safety | [AgentCIBench](https://github.com/UKPLab/arxiv2026-agentcibench) uses state/prompt/recipient/`must_share`/`must_not_share` scenarios and engagement-conditioned leakage. | Add disclosure restraint and consent metrics alongside task success; generated scenario pools and judge configuration must be release-pinned. |
@@ -142,6 +143,24 @@ emulator/desktop runs, no WebGPU run, no training rows, and no official scores. 
 text-first model, use only compact state/action contract projections; screenshot grounding,
 hidden-profile reasoning, and APK interaction require their release-matched runtimes and
 additional model inputs.
+
+### MobileWorld source and runtime preflight (m302)
+
+The [`m302 receipt`](paper/results/raw/m302-mobileworld-source-runtime-audit-v1.json) pins the
+public [MobileWorld](https://github.com/Tongyi-MAI/MobileWorld) checkout at revision
+`0dcd0980eac64d76f498f93568a1ec0594b743c4`.  AST inventory finds all `201` upstream task classes
+across `20` apps: calendar, Chrome, Gmail, mall, maps, Mastodon, messages, native apps, settings,
+and work.  The receipt records the source-file hashes and the contract's screenshot,
+accessibility-tree, backend-state, tap/swipe/type/keyevent/wait/MCP interfaces without copying task
+rows into LocalAgent training.
+
+MobileWorld is especially relevant to the requested email, browser, cross-app, and agent-user
+workflows, but its official runner requires a privileged Docker-in-Docker rooted Android AVD,
+Linux/WSL2 KVM, model/user-agent credentials, and optional MCP credentials.  The current host is
+macOS arm64 with no Docker, ADB, QEMU, or `/dev/kvm`; the optional `uv run --offline mw env check`
+also stops before preflight because `gradio==5.49.1` is not cached.  No official runner, native
+environment, model, MCP service, or user simulator was executed, so the receipt deliberately has
+`score: null` and remains provenance/runtime evidence rather than a MobileWorld benchmark result.
 
 ### MobileGym official split profile (m122)
 
