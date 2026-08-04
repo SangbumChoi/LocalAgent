@@ -71,14 +71,26 @@ def _source_manifest(receipt: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return manifest
 
 
-def assemble(warm: dict[str, Any], random: dict[str, Any], *, warm_path: Path, random_path: Path) -> dict[str, Any]:
+def assemble(
+    warm: dict[str, Any],
+    random: dict[str, Any],
+    *,
+    warm_path: Path,
+    random_path: Path,
+    expected_train_rows: int = 24,
+    expected_eval_rows: int = 24,
+    benchmark_id: str = "cross_surface_all_public_train_candidates_transfer",
+) -> dict[str, Any]:
     comparison = compare(warm, random)
     if warm["parent"]["sha256"] != PARENT_SHA256:
         raise ValueError("warm report is not based on the current WebGPU parent checkpoint")
     if random["parent"]["sha256"] != PARENT_SHA256:
         raise ValueError("random report is not based on the current WebGPU parent checkpoint")
-    if warm["rows"] != {"train": 24, "eval": 24}:
-        raise ValueError("expected six sources with four train and four eval rows each")
+    expected_rows = {"train": expected_train_rows, "eval": expected_eval_rows}
+    if warm["rows"] != expected_rows:
+        raise ValueError(f"expected row counts {expected_rows}, got {warm['rows']}")
+    train_counts = {source["label"]: source["rows"] for source in warm["train_sources"]}
+    eval_counts = {source["label"]: source["rows"] for source in warm["eval_sources"]}
     protocol = {
         "backbone_initializations": {"warm": "parent", "random": "deterministic_random"},
         "batch_size": warm["hyperparameters"]["batch_size"],
@@ -90,7 +102,7 @@ def assemble(warm: dict[str, Any], random: dict[str, Any], *, warm_path: Path, r
         "random_backbone_seed": random["hyperparameters"]["random_backbone_seed"],
         "seed": warm["hyperparameters"]["seed"],
         "steps": warm["hyperparameters"]["steps"],
-        "rows_per_source": {"train": 4, "eval": 4},
+        "rows_per_source": {"train": train_counts, "eval": eval_counts},
         "source_count": 6,
     }
     projection_boundaries = {
@@ -102,7 +114,7 @@ def assemble(warm: dict[str, Any], random: dict[str, Any], *, warm_path: Path, r
         "xlam": "Derivative function-call projection from the public xLAM raw source; no external tool or account side effect ran.",
     }
     body: dict[str, Any] = {
-        "benchmark_id": "cross_surface_all_public_train_candidates_transfer",
+        "benchmark_id": benchmark_id,
         "claim_boundary": (
             "Diagnostic only: this is a matched six-source public-train text/accessibility continuation "
             "and weight-lineage control. It is not an official score for AndroidControl, AITW, AgentNet, "
@@ -150,12 +162,20 @@ def main() -> int:
     parser.add_argument("--warm-report", type=Path, required=True)
     parser.add_argument("--random-report", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--expected-train-rows", type=int, default=24)
+    parser.add_argument("--expected-eval-rows", type=int, default=24)
+    parser.add_argument(
+        "--benchmark-id", default="cross_surface_all_public_train_candidates_transfer"
+    )
     args = parser.parse_args()
     receipt = assemble(
         _load(args.warm_report),
         _load(args.random_report),
         warm_path=args.warm_report,
         random_path=args.random_report,
+        expected_train_rows=args.expected_train_rows,
+        expected_eval_rows=args.expected_eval_rows,
+        benchmark_id=args.benchmark_id,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")

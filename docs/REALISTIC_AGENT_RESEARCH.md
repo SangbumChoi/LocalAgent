@@ -1576,6 +1576,20 @@ shared-body movement is below `0.1%` relative L2 while the random body moves by 
 adoption decision is therefore “parent initialization candidate only,” with no WebGPU child export
 or workshop promotion.
 
+### Scaled six-source transfer control (m362)
+
+The [m362 receipt](paper/results/raw/m362-all-public-candidate-transfer-scaled-v1.json) expands
+the same public-source control to `86` train and `80` held-out rows at a 512-token context. Warm
+token accuracy is `52.59%` versus `0%` random after eight updates, and the warm arm still wins on
+all six source projections. Exact sequence accuracy remains `0%`; Mind2Web and ToolACE do not
+improve in this short horizon, which is why the result is treated as a representation/lineage
+control rather than a universal policy adapter.
+
+The current parent and tokenizer remain shape/hash-compatible. Warm body movement stays below
+`0.1%` relative L2, while the random body moves by `0.086–119.721%`. AITW is still a local
+whole-parent holdout from public train, screenshots are omitted for AndroidControl, and no native
+runtime or external account was used.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public

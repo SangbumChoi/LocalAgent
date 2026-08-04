@@ -302,6 +302,21 @@ Action heads are unchanged in both arms. The resulting decision is to retain the
 an initialization candidate while keeping surface-specific adapters and all official/native
 publication gates open; the child is not exported to WebGPU.
 
+### Scaled six-source continuation control (m362)
+
+The [m362 receipt](paper/results/raw/m362-all-public-candidate-transfer-scaled-v1.json) repeats
+the same six-source protocol at `86` train and `80` held-out rows, using up to 16 rows per source,
+an 8-step matched warm/random continuation, and a 512-token context. Warm held-out token accuracy
+is `52.59%` versus `0%` for the deterministic-random control (`+52.59` points), and the warm arm
+remains ahead on all six surfaces. Exact sequence accuracy is still `0%`, and Mind2Web/ToolACE
+show small warm token regressions despite the aggregate advantage, so this is stronger lineage
+evidence rather than a universal adapter claim.
+
+The shared warm body remains compatible with the parent and moves by only `0.003–0.100%` relative
+L2 across the major groups; the random body moves by `0.086–119.721%`. This larger control does not
+change the deployment decision: no child export, native capability, official split score, visual
+grounding, or email/Notion/MCP side effect is claimed.
+
 The [m358 ToolSandbox function-masking transfer pilot](paper/results/raw/m358-toolsandbox-function-masking-transfer-v1.json)
 adds a bounded public-data transfer experiment for the tool-catalog path. It uses the pinned
 Apple ToolSandbox scenario projection and the `openai_full_catalog_v1` prompt contract, so a
