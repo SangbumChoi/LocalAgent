@@ -174,6 +174,13 @@ checkpoint passes `1/256` (`0.39%`) using text/DOM state only.  This is native s
 evidence but not screenshot or visual-grounding evidence; MobileGym data remains evaluation-only
 and no training rows were admitted.
 
+The [m338 runtime-capability audit](paper/results/raw/m338-realistic-agent-runtime-capability-audit-v1.json)
+records the current host's read-only dependency probes against all 40 catalog rows: four text-first
+adapters are runnable and 36 environment/evaluation rows remain blocked.  The missing `adb`,
+Docker/QEMU, BrowserGym/MCPMark modules, and unavailable CoreSimulator service are recorded as
+infrastructure blockers, not benchmark failures.  The receipt downloads no benchmark payloads,
+starts no external service, admits no evaluation rows to training, and makes no native-score claim.
+
 The [m332 MobileSafetyBench text projection](paper/results/raw/m332-mobilesafety-text-policy-v1.json)
 then exercises the deployed `side_effect_confirmation_v1` boundary over 90 public task rows and
 3 QA rows without retaining task text in Git or executing Android actions.  The added narrow

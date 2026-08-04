@@ -1434,6 +1434,13 @@ The current checkpoint's existing native receipt covers the complete official te
 and state-diff evidence, but not visual mobile grounding: screenshots were not used.  The benchmark
 data remains CC-BY-NC-4.0 and evaluation-only, with zero training rows admitted.
 
+The [m338 runtime-capability audit](paper/results/raw/m338-realistic-agent-runtime-capability-audit-v1.json)
+freezes the host-side boundary for the full 40-row realistic-agent catalog.  `adb`, Docker, QEMU,
+BrowserGym, MCPMark, and the iOS CoreSimulator service are unavailable or uninstalled here, so
+only four text-first adapters are runnable and 36 environment/evaluation rows remain blocked.  This
+is a reproducibility receipt for infrastructure readiness; it intentionally performs no downloads,
+service starts, benchmark executions, training admission, or native score claims.
+
 ### Public MobileSafetyBench policy projection (m332)
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
