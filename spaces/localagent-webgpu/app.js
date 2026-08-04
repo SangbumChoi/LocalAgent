@@ -1799,8 +1799,14 @@ const DESTRUCTIVE_TOOLS = new Set([
   "delete_event", "delete_file", "move_file", "run_command", "shell_exec", "delete_message",
   "purchase", "submit_form",
 ]);
+// This is a deliberately small lexical safety layer for high-risk public mobile/browser cases.
+// It is independent of the learned selector and does not claim semantic safety understanding.
+const RISK_SENSITIVE_READ_TOOLS = new Set([
+  "web_search", "open_url", "read_message", "read_file", "screenshot",
+]);
 const SAFETY_POLICY_VERSION = "side_effect_confirmation_v1";
 const INTERACTION_POLICY_VERSION = "user_in_the_loop_v1";
+const RISK_POLICY_VERSION = "text_harm_block_v1";
 
 function safetyText(value) {
   return typeof value === "string" ? value : "";
@@ -1816,6 +1822,23 @@ function promptInjectionIndicators(text) {
   ];
   return patterns
     .map((pattern, index) => (pattern.test(low) ? `pattern_${index + 1}` : null))
+    .filter(Boolean);
+}
+
+function safetyRiskIndicators(text) {
+  const low = safetyText(text).toLowerCase();
+  const patterns = [
+    /\b(?:i\s+(?:will|am going to)|want to)\s+(?:kill|murder|harm|hurt)\b/,
+    /\b(?:ship|buy|sell|make|manufacture)\b[^.\n]{0,80}\b(?:drug|cocaine|weapon|katana|chemical|explosive|exit bag)\b/,
+    /\b(?:jailbreak|malicious use|illegal free movie|123movies)\b/,
+    /\b(?:google authentication code|verification code|one[- ]time password|api key|credential)\b/,
+    /\badversarial prompt attack\b/,
+    /\b(?:sexual orientation|pregnan(?:cy|t)|sex video)\b/,
+    /\b(?:women|men|race|ethnic(?:ity)?)\b[^.\n]{0,50}\b(?:superior|inferior)\b/,
+    /\b(?:drunk|intoxicated)\b/,
+  ];
+  return patterns
+    .map((pattern, index) => (pattern.test(low) ? `risk_pattern_${index + 1}` : null))
     .filter(Boolean);
 }
 
@@ -1851,7 +1874,9 @@ function actionSafetyPolicy(actionOrTool, request = "", options = {}) {
     safetyText(options.observation),
   ].filter(Boolean).join("\n");
   const indicators = promptInjectionIndicators(context);
+  const riskIndicators = safetyRiskIndicators(context);
   const sideEffect = SIDE_EFFECT_TOOLS.has(actionName) || INTERACTIVE_TOOLS.has(actionName);
+  const riskSensitive = sideEffect || RISK_SENSITIVE_READ_TOOLS.has(actionName);
   const destructive = DESTRUCTIVE_TOOLS.has(actionName);
   const missingArguments = missingRequiredActionArguments(actionName, actionOrTool, options);
   if (indicators.length && sideEffect) {
@@ -1863,6 +1888,19 @@ function actionSafetyPolicy(actionOrTool, request = "", options = {}) {
       tool: actionName,
       reason: "prompt_injection_or_secret_exfiltration_signal",
       indicators,
+    };
+  }
+  if (riskIndicators.length && riskSensitive) {
+    return {
+      policy_version: SAFETY_POLICY_VERSION,
+      risk_policy_version: RISK_POLICY_VERSION,
+      status: "blocked",
+      severity: "high",
+      requires_confirmation: false,
+      tool: actionName,
+      reason: "high_risk_safety_signal",
+      indicators,
+      risk_indicators: riskIndicators,
     };
   }
   if (missingArguments.length) {

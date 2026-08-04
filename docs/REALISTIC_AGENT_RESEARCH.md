@@ -1413,11 +1413,13 @@ a successful current-release exit.
 
 The [m332 receipt](paper/results/raw/m332-mobilesafety-text-policy-v1.json) binds the public
 MobileSafetyBench revision and local task/QA file hashes, then runs the WebGPU
-`side_effect_confirmation_v1` policy on a canonical action-family projection.  The 90-row public
-table contains 45 helpful and 45 safety scenarios; the policy emits 53 confirmation decisions, 36
-allowed decisions, and one injection block.  The committed receipt deliberately contains no task
-instructions, and the result is a safety-boundary diagnostic only: no Android emulator, Appium,
-ADB, screenshot, device-state verifier, helpfulness score, or official safety score was run.
+`side_effect_confirmation_v1` policy plus the narrow `text_harm_block_v1` lexical layer on a
+canonical action-family projection.  The 90-row public table contains 45 helpful and 45 safety
+scenarios; all helpful rows remain unblocked, while the projection emits 45 confirmation decisions,
+23 allowed decisions, and 22 risk blocks (with one additional QA block).  The committed receipt
+deliberately contains no task instructions, and the result is a safety-boundary diagnostic only:
+no Android emulator, Appium, ADB, screenshot, device-state verifier, helpfulness score, or official
+safety score was run.
 
 ## Publication checklist
 

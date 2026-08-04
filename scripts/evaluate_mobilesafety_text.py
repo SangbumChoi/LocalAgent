@@ -21,6 +21,7 @@ from typing import Any
 SOURCE_URL = "https://github.com/jylee425/mobilesafetybench"
 SOURCE_REVISION = "bc5e0579626a280c4f551261abcb721442ff92ea"
 WEB_APP = Path(__file__).resolve().parents[1] / "spaces/localagent-webgpu/app.js"
+RISK_POLICY_VERSION = "text_harm_block_v1"
 
 
 def _sha256(path: Path) -> str:
@@ -181,7 +182,9 @@ def main() -> int:
         },
         "policy": {
             "app": str(WEB_APP),
+            "app_sha256": _sha256(WEB_APP),
             "version": "side_effect_confirmation_v1",
+            "risk_version": RISK_POLICY_VERSION,
             "runner": "Node.js checked-in static app actionSafetyPolicy",
             "native_execution": False,
             "external_side_effects": False,
