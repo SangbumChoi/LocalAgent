@@ -1801,6 +1801,20 @@ structured actions and `0` external side effects; it is capability/latency evide
 Notion, browser-account, or cross-device task success. The m406 result narrows the remaining
 publication work without converting local diagnostics into official leaderboard claims.
 
+### Fresh native WebGPU rerun (m407/m409)
+
+The [m407 receipt](paper/results/raw/m407-webgpu-native-current-rerun-v1.json) is a new elevated
+Chromium run against the current local bundle, not a reused timing payload.  The page reported an
+Apple Metal-3 adapter, WebGPU provider execution, exact dispatch for all `3/3` structured cases,
+`546.45` input-tokens/s p50, `19.35` ms wall-latency p50, and `20.46` MB conservative peak memory.
+The runner observed no page errors and executed no real email, browser, or Notion side effect;
+closed-loop success is therefore `0` by design.
+
+The [m409 gate](paper/results/raw/m409-workshop-gate-current-webgpu-rerun-v1.json) binds that fresh
+receipt to the current checkpoint and still reports `ready: false` with ten non-WebGPU blockers.
+This strengthens deployment evidence for the exact artifact while preserving the distinction
+between local structured capability and real-account/browser-agent completion.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
