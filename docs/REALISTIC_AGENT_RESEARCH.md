@@ -2182,6 +2182,25 @@ candidate and rejects any claim that transfer alone yields executable browser co
 replay, official benchmark receipts, and the public HF/WebGPU manifest remain required; the warm
 child is not exported.
 
+### Bounded public xLAM-derived warm/random continuation (m463)
+
+The [m463 receipt](paper/results/raw/m463-xlam-derived-warm-random-v1.json) materializes one
+pinned train shard and one pinned test shard from the Apache-2.0
+[public derivative](https://huggingface.co/datasets/product-science/xlam-function-calling-60k-raw)
+at revision `dfbd3c…`: 256 normalized train rows and 128 evaluation rows. Normalization rejected
+three train rows and one eval row whose arguments violated the canonical tool schemas; no repair
+or coercion was applied. The derivative is explicitly not the gated Salesforce xLAM split, and
+generic slot values overlap across its train/test shards, so the split is recorded as a derivative
+directory boundary rather than a contamination-free slot-disjoint benchmark.
+
+Using the exact current `6a6520…` parent, 24 updates at `1e-5`, and a matched random backbone,
+held-out teacher-forced token accuracy is `51.30%` warm versus `0.49%` random (`+50.81` points);
+exact sequence accuracy is `0%` for both. Warm movement is embedding `0.260%`, attention/mixer
+`0.109%`, FFN `0.135%`, and normalization `0.0066%`; the random body moves `119.70%/77.88%/87.79%`
+for embedding/attention/FFN. This is useful initialization evidence for tool-call syntax, but
+not an official xLAM/BFCL score, multi-call score, native MCP result, or live API capability.
+The child remains unexported pending native replay and a full tool-use evaluation.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
