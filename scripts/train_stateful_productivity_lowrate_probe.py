@@ -140,8 +140,8 @@ def _train_lowrate(
                 ),
             }
         )
-    feature_rows = [*train_rows, *error_rows]
-    examples = base._examples(train_rows)
+    feature_rows = base._action_augmented_rows([*train_rows, *error_rows])
+    examples = base._examples(feature_rows)
     dense = DenseToolSelector(model.cfg.d_model, proj=int(parent.get("selector_proj", 256))).to(device)
     if parent.get("dense_selector"):
         dense.load_state_dict(parent["dense_selector"])

@@ -90,6 +90,7 @@ def _model_call(
     pointer,
     device,
     top_m: int,
+    lexical_weight: float,
     blocked_candidates: set[str] | None = None,
     selector_first: bool = False,
 ):
@@ -103,6 +104,7 @@ def _model_call(
         route_head=route,
         ptr_head=pointer,
         top_m=top_m,
+        lexical_weight=lexical_weight,
         blocked_candidates=blocked_candidates,
         selector_first=selector_first,
     )
@@ -159,6 +161,7 @@ def _model_episode(
     top_m: int,
     max_attempts_per_step: int,
     selector_first: bool,
+    lexical_weight: float,
 ) -> dict[str, Any]:
     """Run one model episode while remembering exact rejected outputs for retries."""
 
@@ -177,6 +180,7 @@ def _model_episode(
             pointer=pointer,
             device=device,
             top_m=top_m,
+            lexical_weight=lexical_weight,
             blocked_candidates=blocked_candidates,
             selector_first=selector_first,
         )
@@ -240,6 +244,12 @@ def main() -> int:
     parser.add_argument("--max-attempts-per-step", type=int, default=3)
     parser.add_argument("--top-m", type=int, default=1)
     parser.add_argument(
+        "--lexical-weight",
+        type=float,
+        default=0.5,
+        help="blend weight for the current action-tail lexical selector query",
+    )
+    parser.add_argument(
         "--selector-first",
         action="store_true",
         help="choose the highest-ranked grounded candidate instead of LM reranking",
@@ -277,6 +287,7 @@ def main() -> int:
             pointer=pointer,
             device=args.device,
             top_m=args.top_m,
+            lexical_weight=args.lexical_weight,
             max_attempts_per_step=args.max_attempts_per_step,
             selector_first=args.selector_first,
         )
@@ -305,6 +316,7 @@ def main() -> int:
             "device": args.device,
             "max_attempts_per_step": args.max_attempts_per_step,
             "top_m": args.top_m,
+            "lexical_weight": args.lexical_weight,
             "selector_first": args.selector_first,
             "rejection_memory": "exact_decoder_output_per_episode",
             "tool_pool_size": len(tools),

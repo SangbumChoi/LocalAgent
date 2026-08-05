@@ -69,14 +69,35 @@ class BoundSelector:
         self.embs = tool_embeddings(tools, model.emb_dim, device, examples=examples)
 
     @torch.no_grad()
-    def rank(self, feat, allowed_names: set[str] | None = None) -> list[str]:
+    def rank(
+        self,
+        feat,
+        allowed_names: set[str] | None = None,
+        *,
+        query_text: str | None = None,
+        lexical_weight: float = 0.5,
+    ) -> list[str]:
         """Return tool names ordered by score, optionally restricted to this turn's candidates.
 
         Large catalogs are retrieved before decoding.  Restricting the bound selector at this
         boundary is important: otherwise a selector trained over the full catalog can reintroduce
-        every tool after retrieval and silently defeat the O(top-k) runtime contract.
+        every tool after retrieval and silently defeat the O(top-k) runtime contract.  When a
+        current action/query string is available, blend its deterministic character n-gram
+        similarity with the learned dense score.  This keeps the trained backbone signal while
+        preventing long-horizon goal text from drowning out the immediate action instruction.
         """
         scores = self.model(feat.unsqueeze(0), self.embs)[0]
+        if query_text is not None:
+            if lexical_weight < 0:
+                raise ValueError("lexical_weight must be non-negative")
+            from localagent.agent.retriever import embed
+
+            query = torch.tensor(
+                embed(query_text, self.model.emb_dim),
+                dtype=self.embs.dtype,
+                device=self.embs.device,
+            )
+            scores = scores + lexical_weight * (self.embs @ query)
         order = [self.names[i] for i in torch.argsort(scores, descending=True).tolist()]
         if allowed_names is not None:
             order = [name for name in order if name in allowed_names]

@@ -127,10 +127,25 @@ def _text_arg(prompt: str, arg: str = "") -> list[str]:
             return [match.group(1)]
     if arg in {"text", "message"}:
         action_low = action.lower()
-        if "subject" in action_low and quoted:
-            return [quoted[0]]
-        if ("body" in action_low or "message field" in action_low) and quoted:
-            return [quoted[-1]]
+        # UI tools often expose one generic ``text`` argument for several focused fields.  Use
+        # the current action's field cue to select the corresponding labelled value from the
+        # overall goal; otherwise a quoted body can be copied into the recipient step.
+        if "address" in action_low or "recipient" in action_low:
+            email = re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", prompt)
+            if email:
+                return [email.group(0)]
+        if "subject" in action_low:
+            match = re.search(r"subject(?: field)?[^'\"]*['\"]([^'\"]+)['\"]", goal, re.I)
+            if match:
+                return [match.group(1)]
+            if quoted:
+                return [quoted[0]]
+        if "body" in action_low or "message field" in action_low:
+            match = re.search(r"body[^'\"]*['\"]([^'\"]+)['\"]", goal, re.I)
+            if match:
+                return [match.group(1)]
+            if quoted:
+                return [quoted[-1]]
         if quoted:
             return [quoted[-1]]
     if arg in {"title", "subject", "label"} and quoted:
@@ -277,7 +292,32 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         ph, feats_row, framed_ids, tok = ptr[:4]
         span_bounds = ptr[4] if len(ptr) > 4 else None
         s, e = ph.predict_span(feats_row, name, span_bounds=span_bounds)
-        opts = [tok.decode(framed_ids[s:e + 1])]
+        pointer_value = tok.decode(framed_ids[s:e + 1])
+        # Prefer an explicit schema-grounded value when one is available.  The learned pointer is
+        # still retained as a fallback for values that only occur in tool/history context, but a
+        # stale pointer must not override an exact URL, email, quoted field, or app name extracted
+        # from the current action instruction.
+        opts = [pointer_value]
+        if name in TEXT_ARGS:
+            explicit = _text_arg(prompt, name)
+            if explicit:
+                opts = explicit
+        elif name in EMAIL_ARGS:
+            explicit = _text_arg(prompt, name)
+            if explicit:
+                opts = explicit
+        elif name in APP_ARGS:
+            explicit = _app_name(prompt)
+            if explicit:
+                opts = explicit
+        elif name in TARGET_ARGS:
+            explicit = _target(prompt)
+            if explicit:
+                opts = explicit
+        elif fmt == "url":
+            explicit = _url(prompt)
+            if explicit:
+                opts = explicit
     elif name in TEXT_ARGS:
         opts = _text_arg(prompt, name)
     elif name in EMAIL_ARGS:
@@ -435,7 +475,8 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
                   retriever=None, route_head=None, ptr_head=None, selector=None, top_m=1, k=8,
                   framed=False, blocked_candidates: set[str] | None = None,
                   selector_first: bool = False,
-                  grounding_prompt: str | None = None) -> str:
+                  grounding_prompt: str | None = None,
+                  lexical_weight: float = 0.5) -> str:
     """The *generable* decode path — no fixed-N classifier. Selection narrows the catalog to a few
     candidates, then the model RANKS their grounded bodies; argument *values* are copied by
     `ptr_head` (the one sub-task a tiny model can't free-generate). An optional 5-way `route_head`
@@ -474,7 +515,19 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
     selector_order: list[str] | None = None
     if selector is not None:
-        selector_order = selector.rank(feats[-1], allowed_names={t.name for t in tools})
+        # Stateful/productivity prompts expose an explicit next-action boundary.  Use that short
+        # generic instruction as an auxiliary lexical query; the dense model feature still carries
+        # the full state/history, while the lexical term avoids selecting a tool mentioned only in
+        # the long-horizon goal (for example ``email_send`` instead of ``mobile_open_app``).
+        selector_query = (
+            _action_tail(grounding) if "Next required action:" in grounding else None
+        )
+        selector_order = selector.rank(
+            feats[-1],
+            allowed_names={t.name for t in tools},
+            query_text=selector_query,
+            lexical_weight=lexical_weight,
+        )
         keep = set(selector_order[:top_m])
     else:
         retriever = retriever or ToolRetriever(tools)
@@ -502,6 +555,11 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
         # returning an unrelated abstention.  The runtime's bounded attempt budget still limits
         # repeated calls, while the common case gets a genuine alternative candidate.
         bodies = available or bodies
+    # With a top-1 selector there is nothing for the language-model reranker to compare.  Avoid a
+    # second full forward pass; this is both exact (the sole candidate is the argmax) and material
+    # for WebGPU/CPU deployment latency in long-horizon retries.
+    if len(bodies) == 1:
+        return bodies[0]
     if selector_first:
         return bodies[0]
     return _best(model, tok, score, bodies, device)

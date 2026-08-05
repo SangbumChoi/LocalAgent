@@ -16,6 +16,7 @@ import hashlib
 import json
 import random
 from collections import Counter, defaultdict
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -135,12 +136,76 @@ def _rows(tasks) -> list[dict[str, Any]]:
 
 
 def _examples(rows: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Build deterministic query examples for the dense selector.
+
+    Stateful prompts contain two different retrieval signals: the long-horizon goal/state
+    context and the current action instruction.  Indexing only the full prompt makes the tool
+    tower overfit to the goal (for example, an email episode retrieves ``email_send`` even while
+    the next action is ``mobile_open_app``).  Keep both views so inference can match either a
+    full conversation or an action-tail query without introducing tool-specific rules.
+    """
+
+    from localagent.agent.constrained import _action_tail
+
     examples: dict[str, list[str]] = defaultdict(list)
     for row in rows:
         sample = row["sample"]
         if sample.kind == "tool":
             examples[sample.ref_name].append(sample.prompt)
-    return dict(examples)
+            tail = _action_tail(sample.prompt)
+            if tail and tail != sample.prompt:
+                examples[sample.ref_name].append(tail)
+    return {name: list(dict.fromkeys(values)) for name, values in examples.items()}
+
+
+_ACTION_REWRITES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Send ", ("Submit ", "Deliver ", "Dispatch ")),
+    ("Select ", ("Tap ", "Click ")),
+    ("Tap ", ("Select ", "Click ")),
+    ("Type ", ("Enter ", "Input ")),
+    ("Put ", ("Enter ", "Insert ")),
+    ("Fill ", ("Enter ", "Input ")),
+    ("Open ", ("Navigate to ", "Bring up ")),
+    ("Press ", ("Hit ",)),
+    ("Save ", ("Store ",)),
+    ("Create ", ("Make ",)),
+)
+
+
+def _action_augmented_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Add deterministic, slot-preserving action paraphrases to the training view.
+
+    The stateful benchmark deliberately keeps train/eval wording disjoint.  A tiny model still
+    benefits from seeing a few generic UI synonyms (``Select``/``Tap``, ``Send``/``Submit``), so
+    augment only the training prompts and leave task IDs, arguments, and evaluation rows intact.
+    This is lexical data augmentation, not a tool-specific runtime rule.
+    """
+
+    augmented = list(rows)
+    for row in rows:
+        prompt = row["sample"].prompt
+        marker = "Next required action:"
+        if marker not in prompt:
+            continue
+        prefix, tail = prompt.split(marker, 1)
+        action, separator, suffix = tail.partition(" Last tool result:")
+        leading = action[: len(action) - len(action.lstrip())]
+        action = action.strip()
+        for source, replacements in _ACTION_REWRITES:
+            if not action.startswith(source):
+                continue
+            for replacement in replacements:
+                variant = f"{prefix}{marker}{leading}{replacement}{action[len(source):]}"
+                if separator:
+                    variant += f"{separator}{suffix}"
+                augmented.append(
+                    {
+                        **row,
+                        "sample": replace(row["sample"], prompt=variant),
+                    }
+                )
+            break
+    return augmented
 
 
 def _features(model: LocalAgentLM, tokenizer, rows: list[dict[str, Any]], device: str) -> torch.Tensor:
@@ -240,18 +305,19 @@ def _train_heads(
     route = RouteHead(model.cfg.d_model).to(device)
     if warm_start and parent.get("route_head"):
         route.load_state_dict(parent["route_head"])
-    examples = _examples(rows)
+    feature_rows = _action_augmented_rows(rows)
+    examples = _examples(feature_rows)
     dense = DenseToolSelector(model.cfg.d_model, proj=int(parent.get("selector_proj", 256))).to(device)
     if warm_start and parent.get("dense_selector"):
         dense.load_state_dict(parent["dense_selector"])
     embeddings = tool_embeddings(tools, device=device, examples=examples)
-    feature_rows = _features(model, tokenizer, rows, device)
+    feature_rows_tensor = _features(model, tokenizer, feature_rows, device)
     route_labels = torch.tensor(
-        [ROUTE_INDEX[route_of(row["sample"].ref_name)] for row in rows],
+        [ROUTE_INDEX[route_of(row["sample"].ref_name)] for row in feature_rows],
         dtype=torch.long,
         device=device,
     )
-    selector_rows = [row for row in rows if row["sample"].kind == "tool"]
+    selector_rows = [row for row in feature_rows if row["sample"].kind == "tool"]
     selector_features = _features(model, tokenizer, selector_rows, device)
     selector_labels = torch.tensor(
         [{tool.name: index for index, tool in enumerate(tools)}[row["sample"].ref_name] for row in selector_rows],
@@ -265,9 +331,9 @@ def _train_heads(
     dense.train()
     for _ in range(max(1, steps)):
         route_idx = torch.tensor(
-            [rng.randrange(len(rows)) for _ in range(min(32, len(rows)))], device=device
+            [rng.randrange(len(feature_rows)) for _ in range(min(32, len(feature_rows)))], device=device
         )
-        route_loss = F.cross_entropy(route(feature_rows[route_idx]), route_labels[route_idx])
+        route_loss = F.cross_entropy(route(feature_rows_tensor[route_idx]), route_labels[route_idx])
         route_optimizer.zero_grad(set_to_none=True)
         route_loss.backward()
         route_optimizer.step()
@@ -287,7 +353,8 @@ def _train_heads(
     _train_pointer(model, tokenizer, rows, pointer, steps=max(1, steps // 2), seed=seed, device=device)
     return route, dense, pointer, {
         "examples": examples,
-        "route_features": len(rows),
+        "route_features": len(feature_rows),
+        "clean_route_features": len(rows),
         "selector_features": len(selector_rows),
         "pointer_span_examples": sum(
             isinstance(value, str)
