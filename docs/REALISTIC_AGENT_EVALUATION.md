@@ -369,6 +369,15 @@ model reaches `0/5` tasks and `0/48` accepted attempts despite three retries per
 useful negative checkpoint-in-loop result: the runtime and reward contract work, but the current
 model is not yet a productive closed-loop policy, and no native-account claim follows.
 
+The [m381 receipt](paper/results/raw/m381-current-stateful-lowrate-80-v1.json) records a bounded
+80-step continuation from that same parent with a `1e-5` backbone learning rate and `5e-3` head
+learning rate, plus matched frozen and random-backbone controls. Low-rate training raises the
+held-out selector top-1 from `53.33%` to `60.00%` and mean shaped reward from `0.2656` to `0.2813`,
+while moving the backbone by only `0.242%`. The strict three-retry replay still completes only
+`1/5` tasks and accepts `1/16` steps; the frozen and random controls also complete `1/5`. This is
+therefore a useful weight-transfer diagnostic, not evidence for native mobile, browser, desktop,
+MCP, real email/Notion, public-benchmark, or WebGPU capability, and the child is not promoted.
+
 ### ToolACE free-run parent/child control (m375)
 
 The [m375 receipt](paper/results/raw/m375-toolace-parent-warm-free-run-v1.json) runs the parent
