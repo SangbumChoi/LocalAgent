@@ -49,6 +49,70 @@ def _action_tail(prompt: str) -> str:
     return match.group(1).strip() if match else prompt
 
 
+def _mobile_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
+    """Return a conservative mobile UI tool hint from the current action.
+
+    A small model can learn the action schema while still confusing a generic desktop ``click``
+    or ``type_text`` with its mobile counterpart.  The WebGPU demo already has the same narrow
+    lexical guard.  Keep this adapter independent of task IDs and app names: it only fires when
+    the action explicitly describes a handset/mobile surface (or a focused compose screen in a
+    serialized UI state) and the corresponding tool is present in the supplied catalog.
+    """
+
+    names = {tool.name for tool in tools}
+    action = _action_tail(prompt)
+    low = action.lower()
+    compose_state = bool(re.search(r'"screen"\s*:\s*"compose"', prompt, re.I))
+    state_mobile = bool(
+        compose_state and re.search(r'"focus"\s*:\s*"[^\"]+"', prompt, re.I)
+    )
+    mobile_cue = bool(re.search(r"\b(?:mobile|android|phone|handset|touch|tap|swipe)\b", low))
+    if not mobile_cue and not compose_state:
+        return None
+
+    def choose(name: str) -> str | None:
+        return name if name in names else None
+
+    # A focused compose surface followed by a send/submit instruction is an email action, not
+    # another text entry.  Derive the choice from the available schemas rather than a task ID or
+    # app name so a different catalog can supply its own email tool.
+    if compose_state and re.search(r"\b(?:send|submit|deliver|dispatch)\b", low):
+        candidates = []
+        for tool in tools:
+            schema = tool.parameters or {}
+            properties = set((schema.get("properties") or {}).keys())
+            description = tool.description.lower()
+            score = int("email" in tool.name.lower() or "email" in description)
+            score += 2 * int({"to", "subject", "body"} <= properties)
+            score += int("send" in tool.name.lower())
+            if score:
+                candidates.append((score, tool.name))
+        if candidates:
+            return max(candidates)[1]
+
+    if re.search(r"\b(?:navigate|go|return|press)\b[\s\S]*\bhome\b", low):
+        return choose("mobile_navigate_home")
+    if re.search(r"\b(?:navigate|go|return|press)\b[\s\S]*\bback\b", low):
+        return choose("mobile_navigate_back")
+    if re.search(r"\b(?:press|hit|send)\b[\s\S]*\benter\b", low):
+        return choose("mobile_press_enter")
+    if re.search(r"\b(?:type|input|fill)\b", low) or (state_mobile and re.search(r"\bput\b", low)):
+        return choose("mobile_input_text")
+    if re.search(r"\b(?:long[ -]?press|hold)\b", low):
+        return choose("mobile_long_press")
+    if re.search(r"\bswipe\b", low):
+        return choose("mobile_swipe")
+    if re.search(r"\bscroll\b", low):
+        return choose("mobile_scroll")
+    if re.search(r"\b(?:open|launch|start|bring up)\b", low) and not re.search(r"https?://", low):
+        return choose("mobile_open_app")
+    if re.search(r"\b(?:tap|click|touch|select)\b", low):
+        return choose("mobile_click")
+    if re.search(r"\b(?:wait|sleep)\b", low):
+        return choose("mobile_wait")
+    return None
+
+
 # Argument names whose value is a proper-noun entity (take the capitalized span) vs free text
 # (take the whole tail, which may itself contain a proper noun, e.g. query "capital of Peru").
 ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place",
@@ -512,6 +576,7 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
         txt = _text_candidates(grounding)
         if txt is not None:
             return _best(model, tok, score, txt, device)
+    mobile_hint = _mobile_lexical_tool(grounding, tools)
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
     selector_order: list[str] | None = None
     if selector is not None:
@@ -528,10 +593,12 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
             query_text=selector_query,
             lexical_weight=lexical_weight,
         )
+        if mobile_hint is not None:
+            selector_order = [mobile_hint] + [name for name in selector_order if name != mobile_hint]
         keep = set(selector_order[:top_m])
     else:
         retriever = retriever or ToolRetriever(tools)
-        keep = set(retriever.retrieve(grounding, k=k))
+        keep = {mobile_hint} if mobile_hint is not None else set(retriever.retrieve(grounding, k=k))
     use = [t for t in tools if t.name in keep] or tools
     if selector_order is not None:
         order = {name: index for index, name in enumerate(selector_order)}

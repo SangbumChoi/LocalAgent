@@ -1719,6 +1719,21 @@ for the pinned ServiceNow-AI revision: the two source identities, files, and lic
 separate until an upstream maintainer confirms equivalence.  The mirror is useful for research
 discovery, but its task/server/verifier fields remain evaluation-only here.
 
+### Generic mobile/action guard continuation (m402)
+
+The [m402 receipt](paper/results/raw/m402-current-stateful-mobile-lexical-guard-v1.json) keeps the
+m393 child and adds a catalog-driven action adapter in the constrained decoder.  It only fires for
+explicit handset/mobile language, or a serialized focused compose screen, then derives the email
+send choice from the available tool schemas (`to`/`subject`/`body`) rather than a task ID or Gmail
+string.  Browser-focused fields are covered by a regression negative.
+
+With the same five disjoint local workflows and at most three retries per step, the oracle and model
+both complete `5/5`; the model accepts `16/16` steps in `17` attempts (`94.12%` attempt success).
+This is a policy/grounding improvement over m393's `4/5` local result, not a learned-weight gain:
+the child checkpoint is unchanged, and no public benchmark payload, emulator, browser account,
+MCP server, or external email side effect is involved.  The receipt therefore cannot satisfy the
+native AndroidWorld/BrowserGym or workshop-publication gates by itself.
+
 ### Upstream realism refresh (2026-08-05)
 
 The current source pages reinforce the release-specific evaluation policy.  [iOSWorld](https://iosworld.io/)
