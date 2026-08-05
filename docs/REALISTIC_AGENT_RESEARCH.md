@@ -1925,6 +1925,22 @@ The gate therefore narrows the child-specific risk: pretrained-weight reuse is s
 readiness and workshop publication are not.  This prevents a strong teacher-forced transfer number
 from being mistaken for end-to-end agent capability.
 
+### Current-child full MobileGym official test (m428)
+
+The [m428 receipt](paper/results/raw/m428-mobilegym-native-child-full-v1.json) closes the missing
+child checkpoint binding for the pinned MobileGym release.  The exact `6a6520…` m420 child ran all
+`256/256` official test tasks in the simulator and state-diff judge with no runtime errors, reaching
+`1/256` (`0.39%`) success.  This exactly matches the earlier parent-bound m262 result, so the
+Mind2Web continuation preserved the parent's bounded text/DOM projection rate rather than
+improving mobile task completion.
+
+The result is native simulator evidence and is now eligible for the official-split gate, but it is
+not visual Android control: `vision_used=false`, screenshots were not consumed, and no Android
+emulator or external account was touched.  The dominant failure mode is action collapse toward
+`mobile_input_text` (`255` calls), which points to a concrete next training target: action-family
+and argument grounding, followed by longer-horizon state transitions, not more teacher-forced
+Mind2Web token updates alone.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
