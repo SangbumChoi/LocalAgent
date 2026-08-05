@@ -2122,6 +2122,26 @@ and release-matched runtimes are not yet frozen. They provide realistic email, M
 Android, desktop, and temporal GUI coverage for the next modality-specific training/evaluation
 stage; none is claimed as a current score or admitted to SFT.
 
+### Current-checkpoint strict stateful RL preflight (m457)
+
+The [m457 receipt](paper/results/raw/m457-current-checkpoint-rl-preflight-v1.json) runs the
+repository's strict one-update RL contract from the exact `6a6520…` checkpoint over disjoint
+deterministic Conversation rows for email, Notion, browser search/recovery, and abstention. The
+isolated prefix executes two rollout steps and 32 rollouts, observes three reward values, realizes
+two optimizer updates, and changes all 40 named LM policy tensors after the first nonzero learning
+rate. Held-out mean reward is `0 → 0.10625`; exact tool/trajectory success remains `0`, as expected
+for this small diagnostic. The source is an in-memory local state machine with no public benchmark
+payload, emulator, browser service, MCP server, or external account, so this proves RL plumbing and
+weight movement—not native productivity capability.
+
+### Current-checkpoint gate after strict RL preflight (m459)
+
+The [m459 gate](paper/results/raw/m459-workshop-gate-current-rl-pass-v1.json) replaces the failed
+historical RL evidence with m457 and binds it to the current checkpoint. The gate now passes the
+RL-preflight, native WebGPU capability, and warm/random weight requirements. It remains
+`ready: false` by design: official Android/iOS/desktop/MCP/enterprise benchmark receipts and a
+public Hugging Face model/Space manifest bound to `6a6520…` are still absent.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
