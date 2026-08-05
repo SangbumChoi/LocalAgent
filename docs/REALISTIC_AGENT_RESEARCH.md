@@ -2308,6 +2308,44 @@ the child is retained as an initialization diagnostic only. This is a limit-4 te
 replay, not the complete 256-task MobileGym score, visual Android grounding, or real-account
 execution.
 
+### Realistic-agent catalog refresh: iOSWorld and MobileSafetyBench (m476)
+
+The [m476 catalog receipt](paper/results/raw/m476-realistic-agent-catalog-refresh-v1.json)
+refreshes the source-linked inventory to `42` entries and binds two newly verified mobile
+evaluation contracts. [iOSWorld](https://iosworld.io/) releases `26` SwiftUI apps, a persistent
+cross-app user identity, `133` tasks (`27` single-app, `60` multi-app, `46` memory), rubrics, an
+optional MCP server, and an AWS Mac runner. [MobileSafetyBench](https://mobilesafetybench.github.io/)
+defines `250` Android-emulator tasks: `200` daily safety/helpfulness scenarios and `50` indirect
+prompt-injection scenarios across messaging, web, social, calendar, and finance. Their official
+projects also specify the missing native requirements—iOSWorld needs Xcode 26+/iOS 26 Simulator;
+MobileSafetyBench needs Android emulators, ADB/Appium, and versioned APK assets.
+
+Both rows remain `eval_only`; the catalog still permits exactly four training sources
+(AndroidControl, AITW, xLAM, and Mind2Web train). Task prompts, seeded identity/state, screenshots,
+APK assets, rubrics, and safety labels do not enter SFT or tokenizer training. The current
+m472 MobileSafetyBench text policy projection is therefore a safety-boundary diagnostic, not the
+official 250-task score, and no iOSWorld native run is claimed on this host.
+
+### Realistic-agent runtime preflight after catalog refresh (m477)
+
+The [m477 preflight receipt](paper/results/raw/m477-realistic-agent-preflight-v1.json) probes the
+workspace without downloading or launching benchmark environments. It binds the m476 catalog
+fingerprint and reports `4` runnable source adapters (AndroidControl, AITW, xLAM, Mind2Web train)
+and `38` blocked evaluation/runtime rows. The probes find no `adb`, Docker, QEMU, BrowserGym,
+Gymnasium, MCPMark, or OSWorld runtime; `osascript`, `datasets`, `huggingface_hub`, and Playwright
+being present does not make a native benchmark runnable. This is a fail-closed readiness snapshot,
+not a benchmark score, and it confirms that text projections must remain labelled as diagnostics.
+
+### Workshop gate after catalog refresh (m478)
+
+The [m478 gate receipt](paper/results/raw/m478-workshop-gate-current-catalog-refresh-v1.json)
+rejoins the refreshed 42-entry catalog with the current checkpoint, native WebGPU receipt, full
+MobileGym/BrowserGym receipts, m467 warm/random weight ablation, and RL preflight. The gate remains
+`ready: false`: ten blockers persist—AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld, OSWorld
+2.0, native AgentNet, official ToolSandbox, official MCPMark, EnterpriseOps-Gym, and the current
+public model/demo manifest. The new iOSWorld and MobileSafetyBench rows are therefore visible in
+the same fail-closed publication contract rather than being counted as unexecuted proxies.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the

@@ -11,6 +11,8 @@ allowed_train_ids:
   - mind2web_train
 forbidden_train_ids:
   - androidworld
+  - iosworld
+  - mobile_safety_bench
   - aitw_control_eval
   - browsergym_miniwob
   - mind2web_eval
@@ -61,6 +63,8 @@ evaluation_holdouts:
     - data/private/weblinx/weblinx-test-web-denylist-v3.jsonl
   runtime_benchmarks:
     - androidworld
+    - iosworld
+    - mobile_safety_bench
     - webarena
     - osworld
     - appworld

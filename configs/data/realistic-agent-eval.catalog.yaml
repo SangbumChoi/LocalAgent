@@ -193,6 +193,85 @@ entries:
       rule: task templates and generated goals are evaluator-only; do not export gold state
     notes: Live Android emulator benchmark with durable rewards; use for end-to-end evaluation only.
 
+  - id: iosworld
+    family: mobile
+    name: iOSWorld
+    source_url: https://iosworld.io/
+    paper_url: https://arxiv.org/abs/2606.09764
+    code_url: https://github.com/ljang0/iosworld
+    source_revision: e91f4cb2ef4c9dd48fef83a894477b41fd5e209d
+    access_status: public_runtime
+    license:
+      name: Apache-2.0
+      url: https://www.apache.org/licenses/LICENSE-2.0
+      evidence: https://github.com/ljang0/iosworld/blob/main/LICENSE
+    scale:
+      kind: benchmark
+      apps: 26
+      tasks: 133
+      single_app_tasks: 27
+      multi_app_tasks: 60
+      memory_tasks: 46
+    observation:
+      modalities: [screenshot, accessibility_tree, simulator_state, persistent_identity]
+      formats: [PNG, XML, JSON, live_simulator]
+    action:
+      modalities: [mobile_action, tool_call, dialogue]
+      formats: [tap_xy, tap, type, swipe, home, wait, stop, JSON, MCP]
+    domains: [mobile_ui, email, messaging, finance, travel, productivity, personalization]
+    train_policy: eval_only
+    integration:
+      status: simulator_runner_pending
+      target_adapter: iosworld_episode_v1
+      source_split_policy: official_tasks_json_and_seeded_identity
+    webgpu_projection:
+      status: bridge_only
+      recommended_observation: compact_XCUITest_XML_plus_goal_and_action_history
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_tasks_and_persistent_identity
+      rule: seeded user state, task rubrics, app traces, and MCP service state remain evaluator-only
+    notes: The public release contains 26 SwiftUI apps, 133 tasks, seeded cross-app user data, rubrics, evaluation code, an optional MCP server, and AWS Mac helpers. Native scoring requires Xcode 26+ with an iOS 26 simulator; this text-first checkpoint has no iOS visual/native score.
+
+  - id: mobile_safety_bench
+    family: mobile
+    name: MobileSafetyBench
+    source_url: https://mobilesafetybench.github.io/
+    paper_url: https://arxiv.org/abs/2410.17520
+    code_url: https://github.com/jylee425/mobilesafetybench
+    source_revision: release/ver.3
+    access_status: public_runtime
+    license:
+      name: Apache-2.0
+      url: https://www.apache.org/licenses/LICENSE-2.0
+      evidence: https://github.com/jylee425/mobilesafetybench/blob/release/ver.3/LICENSE.txt
+    scale:
+      kind: benchmark
+      tasks: 250
+      daily_scenario_tasks: 200
+      prompt_injection_tasks: 50
+      safety_and_helpfulness_axes: 2
+    observation:
+      modalities: [text, screenshot, accessibility_tree, emulator_state, action_history]
+      formats: [JSON, PNG, ADB, Appium, live_emulator]
+    action:
+      modalities: [mobile_action, safety_decision]
+      formats: [tap, swipe, type, keyevent, JSON, confirmation, refusal]
+    domains: [messaging, web_navigation, social_media, calendar, finance, mobile_safety]
+    train_policy: eval_only
+    integration:
+      status: emulator_runner_pending
+      target_adapter: mobilesafetybench_episode_v1
+      source_split_policy: official_250_task_safety_and_injection_suite
+    webgpu_projection:
+      status: text_safety_bridge
+      recommended_observation: text_observation_plus_goal_and_action_history
+      screenshot_policy: runtime_only
+    contamination:
+      split: official_safety_and_prompt_injection_tasks
+      rule: task prompts, malicious UI content, APKs, emulator state, and harm labels remain evaluator-only
+    notes: The official suite covers 200 daily scenarios plus 50 indirect prompt-injection scenarios. Native scoring needs Android emulators, ADB/Appium, APK versions, and task-specific safety/helpfulness evaluation; the repository's current m472 policy projection is not an official score.
+
   - id: aitw_control_eval
     family: mobile
     name: AndroidControl generalization evaluation
