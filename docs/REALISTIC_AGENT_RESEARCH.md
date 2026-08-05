@@ -2233,6 +2233,46 @@ native simulator and state-diff judge execute cleanly for both arms, but both sc
 therefore shows no transfer to mobile task completion. This is a limit-4 diagnostic, not the
 official 256-task score, visual Android result, screenshot-grounding result, or real-account run.
 
+### Current-checkpoint AgentNet warm/random transfer control (m467)
+
+The [m467 receipt](paper/results/raw/m467-agentnet-current-warm-random-v1.json) replays the pinned
+`xlangai/AgentNet` Ubuntu projection against the exact current `6a6520…` parent: 32 training rows
+from four parent records, eight held-out rows from two disjoint parent records, eight low-rate
+updates, and a matched deterministic-random backbone. Warm held-out token accuracy rises from
+`47.81%` to `52.53%`, while random remains `0%`, a `52.53`-point post-update gap; exact sequence
+accuracy is `0%` for both. Warm embedding/attention/FFN movement is `0.109%/0.076%/0.091%`, while
+random movement is `119.70%/77.88%/87.79%`. Images were dropped, and no native Ubuntu VM or OSWorld
+execution ran, so this is initialization-lineage evidence only and the child is not exported.
+
+### AgentNet warm child native BrowserGym replay (m468)
+
+The [m468 receipt](paper/results/raw/m468-browsergym-agentnet-warm-parent-canary-v1.json) replays
+the m467 AgentNet warm child and the exact current parent on four fixed MiniWoB seeds in the pinned
+BrowserGym/Chromium accessibility/DOM environment. Both arms execute all four episodes, but both
+score `0/4`, ground `0` steps, and emit `40/40` no-op actions. The offline AgentNet token gain
+therefore does not transfer to browser interaction; this remains a limit-4 diagnostic, not the
+official 240-episode score or a live email/Notion result.
+
+### AgentNet warm child native MobileGym replay (m469)
+
+The [m469 receipt](paper/results/raw/m469-mobilegym-agentnet-warm-parent-canary-v1.json) runs the
+same m467 child and current parent on four pinned MobileGym test IDs with the two-step text-first
+protocol and official state-diff judge. Both arms score `0/4`, make `0.0` aggregate progress, and
+emit only `mobile_input_text`; the desktop projection transfer does not improve mobile state
+completion. This is a limit-4 diagnostic, not the complete 256-task score or visual Android result.
+
+### Current-checkpoint workshop gate after AgentNet native replays (m471)
+
+The [m471 gate](paper/results/raw/m471-workshop-gate-current-agentnet-v1.json) joins the current
+`6a6520…` checkpoint with the m467 warm/random weight audit, m451 hardware-WebGPU receipt, m457 RL
+preflight, current official-split MobileGym/BrowserGym full receipts, and the non-official
+ToolSandbox/MCPMark diagnostics. Seven checks pass, including catalog coverage, WebGPU capability,
+weights, and RL; the gate remains `ready: false` with ten blockers (nine native requirements plus
+the public artifact): AndroidWorld, MobileSafetyBench,
+iOSWorld, OSWorld, OSWorld 2.0, native AgentNet, EnterpriseOps-Gym, official ToolSandbox, official
+MCPMark, plus the missing public model/demo manifest. The m468/m469 limit-4 replays are intentionally
+not substituted for official native receipts.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
