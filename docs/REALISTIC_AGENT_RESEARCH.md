@@ -2346,6 +2346,31 @@ MobileGym/BrowserGym receipts, m467 warm/random weight ablation, and RL prefligh
 public model/demo manifest. The new iOSWorld and MobileSafetyBench rows are therefore visible in
 the same fail-closed publication contract rather than being counted as unexecuted proxies.
 
+### Public MCPMark productivity transfer: Notion + Playwright (m479)
+
+The [m479 receipt](paper/results/raw/m479-mcpmark-productivity-transfer-v1.json) turns the
+public [MCPMark trajectory-log dataset](https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log)
+at revision `e50578f0ab904d8e6a7c576c387c1e76ae482c89` into a source-bound productivity slice. Two
+redacted trajectories (one Notion workflow and one Playwright workflow) are used for continuation;
+two different Playwright trajectories (table extraction and a multi-step forum/wiki workflow) are
+held out. Tool outputs and assistant free text are replaced by markers, so no account state or
+hidden answer is copied into training.
+
+The eight-step matched ablation starts from the exact `6a6520…` parent. Warm initialization ends at
+`32.97%` held-out teacher-forced token accuracy versus `0.73%` for the random backbone (`+32.24`
+points), and wins on both holdout surfaces (`+21.56/+36.91` points). Exact multi-step sequence
+accuracy is `0%` in every arm. Warm attention/embedding/FFN movement is only
+`0.077%/0.101%/0.089%`, while random movement is `77.9%/119.7%/87.8%`; this supports reusing the
+shared parent body with a small transfer rate, not claiming that the child is a capable browser or
+Notion agent.
+
+A one-task real MCP stdio/Playwright replay was attempted with the warm child and the pinned local
+verifier. It failed closed before tool execution because `@playwright/mcp@0.0.68` could not be
+fetched (`npm ENOTFOUND`); the official MCPMark split remains unverified. This is therefore a
+provenance and weight-transfer result, not an official MCPMark score or live email/Notion side
+effect. EnterpriseOps-Gym remains evaluation-only: its public email tasks are used for retrieval
+audits, not SFT admission.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
