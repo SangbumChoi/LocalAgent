@@ -1734,6 +1734,22 @@ the child checkpoint is unchanged, and no public benchmark payload, emulator, br
 MCP server, or external email side effect is involved.  The receipt therefore cannot satisfy the
 native AndroidWorld/BrowserGym or workshop-publication gates by itself.
 
+### Authoritative realistic-source refresh (m404)
+
+The [m404 receipt](paper/results/raw/m404-authoritative-realistic-source-refresh-v1.json) records
+the current upstream contracts used by the evaluation plan.  AndroidWorld's official page describes
+`116` parameterized tasks across `20` Android apps; iOSWorld exposes `133` tasks across `26`
+persistent-identity iOS apps and an MCP option; MobileWorld describes `201` tasks across `20` apps
+with agent-user and MCP-augmented workflows; OSWorld 2.0 is a separate `108`-workflow release; and
+MCPMark requires version-pinned MCP services plus isolated state and verification.
+
+The refresh also catches a reproducibility hazard: the pinned AgentNet revision
+`d76ee50a63fad81cfdbe576416757d7c2091ed50` is still discoverable on Hugging Face, but the live
+viewer currently reports a `DatasetGenerationCastError` because merged files expose inconsistent
+columns.  LocalAgent therefore treats the raw pinned archive/normalized JSONL projection as the
+reproducible input and never treats the viewer's apparent row count as a complete dataset.  These
+are source-contract observations, not LocalAgent scores or native execution results.
+
 ### Upstream realism refresh (2026-08-05)
 
 The current source pages reinforce the release-specific evaluation policy.  [iOSWorld](https://iosworld.io/)
