@@ -1844,6 +1844,47 @@ figures demonstrate export/runtime integrity and local closed-loop behavior only
 replace Mind2Web test, BrowserGym, AndroidWorld, MCP, or real email/Notion/browser-account
 evaluation, and no external side effect was attempted.
 
+### Current m420 child ToolSandbox native stress (m422)
+
+The [m422 receipt](paper/results/raw/m422-toolsandbox-native-child-v1.json) runs the exact m420
+child inside the pinned Apple ToolSandbox simulator and milestone verifier.  The three bounded
+single-step scenarios (`cellular_off`, `wifi_off`, and `send_message_with_phone_number_and_content`)
+all pass (`3/3`, similarity `1.0`).  A separate state-dependent multi-turn scenario reaches
+`0/1`; the failure is retained as a negative control rather than hidden by the easy smoke set.
+
+This is native simulator/verifier evidence with no external API call, but it is not the official
+ToolSandbox split: the model-based user simulator, full 1,032-scenario matrix, and RapidAPI tools
+were not executed.  The current child therefore has a reproducible native diagnostic, while the
+publication gate correctly remains blocked by `official_split_not_verified`.
+
+### Current m420 child MCPMark filesystem native task (m423)
+
+The [m423 receipt](paper/results/raw/m423-mcpmark-native-child-v1.json) executes the exact child
+against the pinned MCPMark `cd45b7f…` filesystem task, a real
+`@modelcontextprotocol/server-filesystem@2025.12.18` stdio server, a hash-bound resettable archive,
+and the task's official verifier.  The child makes three mis-grounded `create_directory` calls;
+the verifier exits nonzero and completion is `0/1`.  This negative result is important for the
+deployment decision: a real MCP transport is reachable, but the current tiny model still needs
+better path/argument grounding for stateful computer-use tasks.
+
+The official MCPMark split, user simulator, remaining services, and leaderboard protocol were not
+run.  No external API or account side effect occurred, so this receipt is a native failure
+diagnostic rather than a public score or a promotion signal.
+
+### Fail-closed current-child workshop gate (m424)
+
+The [m424 gate](paper/results/raw/m424-workshop-gate-current-child-v1.json) re-evaluates
+publication readiness against the exact m420 child rather than the older `bc1aca…` parent.  The
+new ToolSandbox and MCPMark receipts are recognized and checkpoint-bound, but each remains blocked
+by its explicit `official_split_not_verified` field.  The gate also refuses to reuse the m405
+parent-bound transfer ablation or m321 parent-bound RL preflight, and rejects the local WebGPU
+manifest because it has no public model/demo URLs.
+
+This is the intended publication behavior: adding realistic native diagnostics improves the audit
+trail without turning a three-task smoke, one failed MCP task, or a local-only export into a
+workshop-passing result.  The remaining blockers are now named against the child checkpoint and
+are actionable rather than hidden by stale parent evidence.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
