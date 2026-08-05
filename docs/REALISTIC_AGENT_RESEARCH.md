@@ -1807,6 +1807,43 @@ grounding, MCP server, real email/Notion side effect, or external account was ru
 therefore improves the reproducible training/transfer evidence while leaving the native and
 publication gates closed.
 
+### Bounded public Mind2Web acquisition and weight-transfer continuation (m420)
+
+The [m420 receipt](paper/results/raw/m420-mind2web-public-continuation-v1.json) is the first
+current-checkpoint continuation in this thread backed by an acquired public source file rather than
+only a pre-existing projection.  The pinned `osunlp/Mind2Web` TRAIN shard is `616,000,823` bytes
+at revision `17ece8e…`; its SHA-256 and the derived subset hash are recorded.  The adapter inspected
+83 source tasks, rejected 19 with no valid positive grounded target, and retained the first 64
+tasks with supported CLICK/TYPE/SELECT operations (maximum eight actions).  The resulting 128
+Conversation rows are protected by the existing BFCL/Mind2Web/WebLINX prompt denylist.
+
+The 64 parents were split into 48 train and 16 evaluation parents with zero parent or typed-slot
+overlap.  Starting from the exact deployed `10,524,544`-parameter checkpoint, eight CPU SFT
+updates plus eight parent-initialized route/selector-head updates raise held-out teacher-forced
+token accuracy from `60.60%` to `69.65%`.  Selector top-1 rises from `0.54%` to `84.95%`, while
+embedding/attention/FFN relative movement stays at `0.157%/0.142%/0.161%` and the dense selector
+moves `97.799%`; route accuracy was already `100%`.  Exact sequence accuracy remains `0%` before
+and after.  This supports reusing the pretrained backbone and allocating adaptation capacity to
+schema/grounding heads, but it does not establish Mind2Web test, BrowserGym, live-site, visual, or
+native WebGPU task success.
+
+### m420 child local Hugging Face/WebGPU release and trajectory (m421)
+
+The [m421 receipt](paper/results/raw/m421-mind2web-child-webgpu-release-v1.json) binds the
+`6a6520…` m420 child checkpoint to a local Hugging Face-format model bundle and a static WebGPU
+Space bundle.  The export retains the exact `10,524,544`-parameter `webgpu-10m-hybrid` config;
+fp32 model/action parity is below `8e-6`, fp16 parity is below `0.00432`, and fp16 argmax
+agreement is `1.0`.  This is a reproducible release candidate, not a public upload: HF
+authentication was unavailable, so both `model_uploaded` and `space_uploaded` remain false.
+
+The same child was executed by Chromium with a WebGPU backend on the resettable in-memory
+fixture.  It produced `13/13` exact schema actions, `13/13` state transitions, and `3/3`
+complete trajectories (`gmail_compose_send`, `notion_capture`, and `browser_search_open`) at
+`21.6 ms` p50 action latency.  The cold start was `2,521.5 ms`; page errors were zero.  These
+figures demonstrate export/runtime integrity and local closed-loop behavior only.  They do not
+replace Mind2Web test, BrowserGym, AndroidWorld, MCP, or real email/Notion/browser-account
+evaluation, and no external side effect was attempted.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
