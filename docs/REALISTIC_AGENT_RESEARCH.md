@@ -1761,6 +1761,27 @@ MCP-augmented workflows; [AgentNet](https://huggingface.co/datasets/xlangai/Agen
 These counts are source/release metadata, not LocalAgent scores.  We retain the exact revision,
 split, and native-run requirement for every benchmark rather than mixing counts across releases.
 
+### Public source and host-capability refresh (m417)
+
+The [m417 receipt](paper/results/raw/m417-public-realistic-source-refresh-v1.json) adds a
+release-aware computer-use check to the catalog.  The upstream AgentNet card describes `22.6K`
+human-annotated Windows/macOS/Ubuntu tasks, while the CUA-Lite AgentNet card exposes a much smaller
+`4,900`-trajectory train split and `92`-trajectory validation split with `82,171` images.  Those
+figures describe different releases/projections; they are not interchangeable training counts.
+The receipt keeps the visual/coordinate rows outside this text-first checkpoint until the raw
+revision, license, and split are hash-pinned.
+
+The same refresh records the current BrowserGym family list (including WebArenaVerified and
+VisualWebArena), AndroidWorld's `116` tasks across `20` apps, MobileWorld's `201` tasks across
+`20` apps, iOSWorld's `133` tasks across `26` apps, MCPMark's current `127` standard plus `50`
+easy tasks over five services, and the local ToolSandbox AST profile.  Host preflight confirms
+that this Mac has Node, Playwright, ONNX Runtime, and `xcrun`, but no `adb`, Docker, or QEMU
+Android/desktop runner.  Therefore the only new training admission is zero: these sources remain
+evaluation-only or source-audit-only until their native environments and official splits are
+available.  This makes the WebGPU trajectory result useful for local dispatch/grounding, while
+preventing it from being mislabeled as AndroidWorld, BrowserGym, AgentNet, MCPMark, or ToolSandbox
+task success.
+
 ### Four-source public continuation and weight-transfer control (m405)
 
 The [m405 receipt](paper/results/raw/m405-four-source-public-continuation-v1.json) is a fresh,
@@ -1845,6 +1866,18 @@ the fixture is resettable and in-memory, and no real email, browser account, Not
 service, Android/iOS emulator, or official benchmark environment was contacted.  The m412 result
 remains the pre-repair negative control, so the improvement is auditable rather than silently
 overwriting a failure.
+
+### Current workshop gate with trajectory companion (m419)
+
+The [m419 gate](paper/results/raw/m419-workshop-gate-current-webgpu-plus-trajectory-v1.json)
+rejoins the exact `bc1aca…` checkpoint with the fresh m407 hardware-WebGPU receipt and the m416
+trajectory receipt.  Native WebGPU capability/latency, official-split MobileGym and
+BrowserGym/MiniWoB, the m405 warm/random transfer audit, current-checkpoint RL preflight, and
+catalog coverage pass.  The gate remains correctly fail-closed with ten blockers: AndroidWorld,
+MobileSafetyBench, iOSWorld, OSWorld, OSWorld 2.0, native AgentNet, native ToolSandbox, native
+MCPMark, native EnterpriseOps-Gym, and a public model/demo manifest bound to this checkpoint.
+The local trajectory is included as a companion diagnostic, not substituted for any of those
+native requirements.
 
 ## Publication checklist
 
