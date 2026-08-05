@@ -2074,6 +2074,40 @@ pass; the local bundle identity is `ff0259b3…`. The release is intentionally n
 `hf auth whoami` reports no login, so publication, anonymous re-fetch, and public model/Space URLs
 remain unproven. The unpromoted m448 child is not used for the bundle.
 
+### Current-checkpoint WebGPU local trajectory rerun (m450)
+
+The [m450 receipt](paper/results/raw/m450-webgpu-current-local-trajectory-v1.json) reruns the
+resettable three-trajectory browser/email/Notion fixture against the exact `6a6520…` bundle after
+the release rebuild. Chromium returned HTTP 200 with zero page errors; all 13 actions were
+schema-valid, exact, and state-transition-valid, and all three trajectories completed (`pass@1 =
+1.0`). This is deployment-shaped local evidence only: the adapter is explicit, the state machine
+is in-memory, and no real email account, browser session, Notion API, MCP server, mobile emulator,
+or official benchmark split was contacted. The receipt supersedes the older `bc1aca…`-bound local
+trajectory artifacts for current-checkpoint binding, but it does not satisfy the publication gate's
+native benchmark requirements.
+
+### Current-checkpoint native WebGPU capability rerun (m451)
+
+The [m451 receipt](paper/results/raw/m451-webgpu-native-current-rerun-v1.json) is a fresh
+elevated Chromium run against the same `6a6520…` bundle. It identifies an Apple Metal-3 adapter,
+uses the requested WebGPU provider without a WASM/CPU retry, and records 3/3 exact local action
+probes, `457.52` input-tokens/s p50, `28.45` ms wall-latency p50, and a `20.46` MB conservative
+host allocation estimate. The harness intentionally executes no side effect, so closed-loop
+success is `0`; this is hardware/export evidence and not email, Notion, BrowserGym, MCPMark, or
+agent-task success.
+
+### Current-checkpoint workshop/publication gate refresh (m452)
+
+The [m452 gate](paper/results/raw/m452-workshop-gate-current-v1.json) joins the current
+`6a6520…` checkpoint, m451 native WebGPU capability, m425 warm/random weight audit, the corrected
+m445 MCPMark ABI receipt, the RL preflight, and the existing public-manifest record. It remains
+`ready: false` with 13 blocking requirements. WebGPU capability and the weight ablation pass; the
+gate still requires native AndroidWorld/MobileGym/MobileSafetyBench/iOSWorld/BrowserGym/OSWorld/
+AgentNet/ToolSandbox/EnterpriseOps-Gym execution, MCPMark's official split, a successful
+current-checkpoint RL preflight, and public model/demo URLs bound to this checkpoint. This is the
+publication decision artifact: the local demo and synthetic trajectory are not silently promoted
+to workshop evidence.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
