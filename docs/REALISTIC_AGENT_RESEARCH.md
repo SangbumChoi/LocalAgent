@@ -2053,6 +2053,18 @@ recognizes this receipt's native contract and reduces the MCPMark blocker to the
 official score or make the model ready for public release: the gate still blocks on missing native
 mobile/desktop/enterprise families, child-bound RL, and a public artifact manifest.
 
+### Public Mind2Web realistic SFT and weight audit (m448)
+
+The [m448 receipt](paper/results/raw/m448-mind2web-realistic-sft-weight-v1.json) runs a bounded
+12-step continuation from the exact `6a6520…` child using 96 public Mind2Web train rows and 32
+source-disjoint eval rows from the pinned `17ece8…` snapshot. Held-out teacher-forced token
+accuracy improves from `72.72%` to `79.02%`, but exact multi-turn sequence accuracy remains `0%`.
+The group-wise transfer audit shows small movement—embedding `0.160%`, attention/mixer `0.102%`,
+FFN `0.120%`, normalization `0.004%`—with action heads unchanged. A real Playwright extraction
+canary reaches valid `browser_navigate` and `browser_snapshot` calls, then fails the verifier
+`0/1`; this separates protocol grounding progress from task completion. The child remains a
+low-rate initialization candidate only and is not exported to WebGPU.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
