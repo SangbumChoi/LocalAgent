@@ -79,6 +79,15 @@ of headroom at 4K. The historical proxy tokenizer requires 3,799. All new tiers 
 context. The legacy byte 1M, historical 2K 10M, and 2K 35M checkpoints fail this preflight
 honestly and are not assigned a fabricated full-catalog score.
 
+The [m378 one-microbatch preflight](paper/results/raw/m378-pretrain-96m-hybrid-one-microbatch-v1.json)
+now exercises the exact `webgpu-96m-hybrid` model shape (`95,320,448` parameters), paper-all
+packed corpus, BPE tokenizer, AdamW/WSD path, checkpoint writer, and lineage checks on CPU. It
+completes one isolated update over 2,048 tokens with loss `9.799`, taking `250.27 s` and peaking at
+`3.73 GiB` RSS (`8.18 input tokens/s`). This receipt uses the tracked preflight derivative with
+`grad_accum_steps: 1`; production remains `grad_accum_steps: 16`, so the result proves a bounded
+architecture/update path only—not production throughput, 4K WebGPU performance, or full 96M
+training quality. The 10M tier remains the only deployment candidate with browser evidence.
+
 ### Executed 1M paper lane, 2026-07-29 through 2026-07-30
 
 The 1M treatment completed 599 pretraining updates over 19,628,032 input tokens. Its fixed
