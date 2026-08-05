@@ -41,6 +41,7 @@ REQUIRED_NATIVE_BENCHMARKS: tuple[str, ...] = (
 )
 
 _SHA256_HEX = frozenset("0123456789abcdef")
+_NATIVE_MISSING = object()
 
 
 def _sha256(path: Path) -> str:
@@ -97,6 +98,18 @@ def _receipt_checkpoint_sha256(payload: Mapping[str, Any]) -> str | None:
     return None
 
 
+def _native_field(payload: Mapping[str, Any], field: str) -> Any:
+    """Read a native receipt field from legacy flat or canonical nested layouts."""
+
+    if field in payload:
+        return payload[field]
+    for section in ("environment", "result", "summary"):
+        nested = payload.get(section)
+        if isinstance(nested, Mapping) and field in nested:
+            return nested[field]
+    return _NATIVE_MISSING
+
+
 def _native_receipt_check(
     benchmark_id: str,
     path: Path | None,
@@ -123,7 +136,7 @@ def _native_receipt_check(
         "task_count",
         "success_rate",
     }
-    missing = sorted(required - set(payload))
+    missing = sorted(field for field in required if _native_field(payload, field) is _NATIVE_MISSING)
     if missing:
         return _check(
             requirement,
@@ -132,16 +145,16 @@ def _native_receipt_check(
             blockers=[f"missing_field:{field}" for field in missing],
         )
     blockers: list[str] = []
-    if payload.get("benchmark_id") != benchmark_id:
+    if _native_field(payload, "benchmark_id") != benchmark_id:
         blockers.append("benchmark_id_mismatch")
-    if payload.get("environment_executed") is not True:
+    if _native_field(payload, "environment_executed") is not True:
         blockers.append("environment_not_executed")
-    if payload.get("official_split_verified") is not True:
+    if _native_field(payload, "official_split_verified") is not True:
         blockers.append("official_split_not_verified")
-    task_count = payload.get("task_count")
+    task_count = _native_field(payload, "task_count")
     if isinstance(task_count, bool) or not isinstance(task_count, int) or task_count < 1:
         blockers.append("task_count_not_positive")
-    success_rate = payload.get("success_rate")
+    success_rate = _native_field(payload, "success_rate")
     if (
         isinstance(success_rate, bool)
         or not isinstance(success_rate, (int, float))

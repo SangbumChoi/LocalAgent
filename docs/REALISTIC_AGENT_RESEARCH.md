@@ -2142,6 +2142,18 @@ RL-preflight, native WebGPU capability, and warm/random weight requirements. It 
 `ready: false` by design: official Android/iOS/desktop/MCP/enterprise benchmark receipts and a
 public Hugging Face model/Space manifest bound to `6a6520…` are still absent.
 
+### Current gate with nested official native receipts (m460)
+
+The [m460 gate](paper/results/raw/m460-workshop-gate-current-native-nested-v1.json) fixes a
+schema mismatch in the unified publication gate: complete native receipts produced by the MobileGym
+and BrowserGym runners store execution and result fields under `environment` and `result`, while
+older probes used a flat layout. The gate now validates both layouts, verifies the exact current
+checkpoint, and admits the official current results: MobileGym `1/256` (`0.39%`) and BrowserGym /
+MiniWoB `0/240` (`0%`). The same gate records current ToolSandbox and corrected MCPMark Playwright
+receipts as executed diagnostics but keeps both blocked by `official_split_not_verified`. This
+reduces the current publication blockers without converting text/DOM native results into visual
+computer-use or real-account email/Notion claims.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
