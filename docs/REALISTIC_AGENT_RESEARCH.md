@@ -2167,6 +2167,21 @@ run moves the embedding/FFN groups more than the earlier low-rate candidate and 
 replay, its decision is to retain it as an initialization candidate only, require a matched
 no-transfer control, and forbid WebGPU export/promotion.
 
+### Matched current-parent Mind2Web warm/random continuation (m462)
+
+The [m462 receipt](paper/results/raw/m462-mind2web-long-warm-random-v1.json) closes the matched
+no-transfer control requested by m461. Both arms use the same pinned `osunlp/Mind2Web` revision,
+96 train rows, 32 source-disjoint eval rows, tokenizer/config, current `6a6520…` parent, seed,
+batch size, `1e-5` learning rate, 512-token horizon, and 24 optimizer updates. The warm arm is
+the m461 continuation; the control starts a fresh shape-matched random backbone with seed 2028.
+
+Held-out teacher-forced token accuracy is `78.98%` warm versus `13.53%` random, a `65.45`-point
+advantage. Warm improves from `72.72%` while random improves from `0%`; exact sequence accuracy
+is `0%` for both. The result supports retaining the warm checkpoint as a low-rate initialization
+candidate and rejects any claim that transfer alone yields executable browser competence. Native
+replay, official benchmark receipts, and the public HF/WebGPU manifest remain required; the warm
+child is not exported.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
