@@ -1830,6 +1830,22 @@ local state-machine diagnostic.  No account, browser navigation, Notion API, MCP
 mobile emulator was contacted.  The result therefore exposes the remaining multi-step routing and
 argument-grounding gap instead of being reported as a productivity benchmark score.
 
+### State-aware WebGPU trajectory repair (m416)
+
+The [m416 receipt](paper/results/raw/m416-webgpu-local-trajectory-v1.json) reruns the unchanged
+13-step fixture after a generic runtime repair.  Dispatch now isolates the latest action from the
+long-horizon goal, recognizes serialized focused-state transitions, routes explicit browser verbs
+to the matching schemas, and grounds send actions from state fields.  The same current checkpoint
+then reaches `13/13` exact actions, `13/13` schema-valid actions, `13/13` state transitions, and
+`3/3` complete trajectories (`pass@1 = 1.0`) on native WebGPU.
+
+This is evidence that the deployment adapter can preserve ordered local state transitions; it is
+not a learned-quality or public-benchmark gain.  The routing and normalization layer is explicit,
+the fixture is resettable and in-memory, and no real email, browser account, Notion API, MCP
+service, Android/iOS emulator, or official benchmark environment was contacted.  The m412 result
+remains the pre-repair negative control, so the improvement is auditable rather than silently
+overwriting a failure.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.

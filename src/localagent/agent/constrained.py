@@ -45,7 +45,12 @@ def _strip(s: str) -> str:
 def _action_tail(prompt: str) -> str:
     """Return the current-step instruction, excluding earlier goal/state slots when present."""
 
-    match = re.search(r"Next required action:\s*(.*?)(?:\s+Last tool result:|$)", prompt, re.I)
+    match = re.search(
+        r"(?:Next required action|Current step(?:\s+[^:]+)?|Current action|Instruction):\s*"
+        r"(.*?)(?:\s+Last tool result:|$)",
+        prompt,
+        re.I,
+    )
     return match.group(1).strip() if match else prompt
 
 
@@ -72,6 +77,15 @@ def _mobile_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
 
     def choose(name: str) -> str | None:
         return name if name in names else None
+
+    if compose_state and re.search(r"\b(?:send|submit|deliver|dispatch)\b", low):
+        # Prefer the full-field productivity contract when present.  This keeps a focused
+        # compose surface distinct from a generic ``send_email`` recipient-only tool while still
+        # allowing catalogs that expose only the legacy contract.
+        if "email_send" in names:
+            return "email_send"
+        if "send_email" in names:
+            return "send_email"
 
     # A focused compose surface followed by a send/submit instruction is an email action, not
     # another text entry.  Derive the choice from the available schemas rather than a task ID or

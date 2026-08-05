@@ -1640,12 +1640,14 @@ function mobileLexicalSelect(query, dispatch = DISPATCH) {
   // Stateful prompts include a goal and serialized state before the actionable instruction.
   // Only inspect the requested next action; otherwise words such as "fill" in a Gmail goal can
   // override the actual open-app action and turn a valid dense prediction into a wrong tool.
-  const actionMatch = query.match(/(?:next required action|instruction)\s*:\s*([\s\S]*)$/i);
+  const actionMatch = query.match(/(?:next required action|current step(?:\s+[^:]+)?|current action|instruction)\s*:\s*([\s\S]*)$/i);
   const low = (actionMatch ? actionMatch[1] : query).toLowerCase();
+  const composeState = /"screen"\s*:\s*"compose"/i.test(query) &&
+    /"focus"\s*:\s*"[^"]+"/i.test(query);
   // Require an explicitly mobile/handset cue. Generic browser prompts often mention a screen,
   // window, app, click, or scroll too; those must continue through the learned standard pool.
   const mobileCue = /\b(?:mobile|android|phone|touch|tap|swipe)\b/.test(low);
-  if (!mobileCue) return null;
+  if (!mobileCue && !composeState) return null;
   const choose = (name) => names.has(name) ? {
     name,
     route: "computer_use",
@@ -1653,6 +1655,12 @@ function mobileLexicalSelect(query, dispatch = DISPATCH) {
     isStop: false,
     selection_policy: "mobile_lexical_guard",
   } : null;
+  if (composeState && /\b(?:send|submit|deliver|dispatch)\b/.test(low)) {
+    // Prefer the full-field compose contract when the catalog exposes it.  A catalog with only
+    // the legacy recipient-only contract still receives the generic productivity fallback below.
+    if (names.has("email_send")) return choose("email_send");
+    if (names.has("send_email")) return choose("send_email");
+  }
   if (/\b(?:navigate|go|return|press)\b[\s\S]*\bhome\b/.test(low)) return choose("mobile_navigate_home");
   if (/\b(?:navigate|go|return|press)\b[\s\S]*\bback\b/.test(low)) return choose("mobile_navigate_back");
   if (/\b(?:press|hit|send)\b[\s\S]*\benter\b/.test(low)) return choose("mobile_press_enter");
@@ -1671,7 +1679,7 @@ function mobileLexicalSelect(query, dispatch = DISPATCH) {
 function compactDispatchQuery(query, marker = " instruction:") {
   if (typeof query !== "string") return "";
   const lower = query.toLowerCase();
-  const markers = [marker, " next required action:"];
+  const markers = [String(marker).trim(), "next required action:"];
   let index = -1;
   let selected = marker;
   for (const candidate of markers) {
@@ -1943,7 +1951,10 @@ function actionSafetyPolicy(actionOrTool, request = "", options = {}) {
 function productivityLexicalSelect(query, dispatch = DISPATCH) {
   if (typeof query !== "string") return null;
   const names = new Set(dispatch?.dense_selector?.tool_names || []);
-  const low = query.toLowerCase();
+  // Long-horizon prompts contain a goal and serialized observation before the current action.
+  // Route only on the latest instruction when that boundary exists; otherwise preserve the
+  // ordinary single-turn query unchanged.
+  const low = compactDispatchQuery(query).toLowerCase();
   // These are deliberately narrow intent guards, not learned-quality evidence.  They keep an
   // obvious email/Notion side-effect request from being routed to an unrelated timer/URL tool
   // when the tiny model is out of distribution.  The caller still validates the selected schema
@@ -1953,11 +1964,11 @@ function productivityLexicalSelect(query, dispatch = DISPATCH) {
   // adapters use `send_email`/`notion_write`; selecting the alias here changes the argument shape
   // (`to`/`subject`/`body` versus `recipient`) and makes an otherwise valid action look wrong.
   const emailTool = names.has("send_email") ? "send_email" : names.has("email_send") ? "email_send" : null;
-  if (
-    emailTool &&
-    /\b(?:email|e-mail|mail)\b/.test(low) &&
-    /\b(?:send|compose|write|draft|email|mail)\b/.test(low)
-  ) {
+  const explicitEmailWord = /\b(?:email|e-mail)\b/.test(low);
+  const emailAction = /\b(?:send|compose|write|draft)\b/.test(low);
+  const directEmailCommand = /^\s*(?:email|e-mail)\b/.test(low);
+  const explicitMailAction = /\bmail\b/.test(low) && emailAction;
+  if (emailTool && ((explicitEmailWord && (emailAction || directEmailCommand)) || explicitMailAction)) {
     return {
       name: emailTool,
       route: "app_action",
@@ -1966,11 +1977,13 @@ function productivityLexicalSelect(query, dispatch = DISPATCH) {
       selection_policy: "productivity_email_intent_guard",
     };
   }
-  if (
-    /\b(?:notion|save|note|page)\b/.test(low) &&
-    (names.has("notion_create_page") || names.has("notion_write"))
-  ) {
-    const name = names.has("notion_write") ? "notion_write" : "notion_create_page";
+  const notionIntent = /\bnotion\b/.test(low) ||
+    (/\b(?:save|write|add)\b/.test(low) && /\b(?:note|page)\b/.test(low));
+  if (notionIntent && (names.has("notion_create_page") || names.has("notion_write"))) {
+    const createPage = /\b(?:create|new|make)\b/.test(low) && names.has("notion_create_page");
+    const name = createPage
+      ? "notion_create_page"
+      : names.has("notion_write") ? "notion_write" : "notion_create_page";
     return {
       name,
       route: "app_action",
@@ -1979,6 +1992,24 @@ function productivityLexicalSelect(query, dispatch = DISPATCH) {
       selection_policy: "productivity_notion_intent_guard",
     };
   }
+  return null;
+}
+
+function statefulActionLexicalSelect(query, dispatch = DISPATCH) {
+  if (typeof query !== "string" || !/current state json\s*:/i.test(query)) return null;
+  const action = compactDispatchQuery(query).toLowerCase();
+  if (!action || action === query.toLowerCase()) return null;
+  const names = new Set(dispatch?.dense_selector?.tool_names || []);
+  const choose = (name) => names.has(name) ? {
+    name,
+    route: "computer_use",
+    conf: 1,
+    isStop: false,
+    selection_policy: "stateful_action_lexical_guard",
+  } : null;
+  if (/\b(?:press|hit)\s+(?:the\s+)?enter\b/.test(action)) return choose("key_press");
+  if (/\b(?:type|input|fill)\b/.test(action)) return choose("type_text");
+  if (/\b(?:click|select)\b/.test(action)) return choose("click");
   return null;
 }
 
@@ -1995,7 +2026,8 @@ function dispatchSelect(
   // lexical safety adapter ahead of the learned heads so an OOD URL cannot become a side-effecting
   // GUI click; the receipt records this policy separately from learned selector accuracy.
   const urlTool = dispatch?.dense_selector?.tool_names?.includes("open_url");
-  if (URL_LEXICAL_GUARD && urlTool && /\b(?:open|go to|navigate to|visit|pull up)\s+https?:\/\//i.test(String(query))) {
+  if (URL_LEXICAL_GUARD && urlTool &&
+      /\b(?:open|go to|navigate to|visit|pull up)\b[\s\S]{0,120}https?:\/\//i.test(String(query))) {
     return {
       name: "open_url",
       route: "web_search",
@@ -2024,6 +2056,8 @@ function dispatchSelect(
     const productivity = productivityLexicalSelect(query, dispatch);
     if (productivity) return productivity;
   }
+  const statefulAction = statefulActionLexicalSelect(query, dispatch);
+  if (statefulAction) return statefulAction;
   if (requestedSelector === "retrieval") {
     const retrieved = retrievalSelectFromSidecar(query, dispatch?.retrieval_selector);
     if (retrieved) return retrieved;
@@ -2156,7 +2190,7 @@ function groundingPools(prompt) {
   // Stateful prompts carry a goal and JSON observation before the actionable instruction.  Those
   // JSON keys/values are not argument candidates (for example, `"app"` must not become an
   // app_name).  Keep the legacy whole-prompt behavior for ordinary single-turn requests.
-  const actionMatch = prompt.match(/(?:next required action|instruction)\s*:\s*([\s\S]*)$/i);
+  const actionMatch = prompt.match(/(?:next required action|current step(?:\s+[^:]+)?|current action|instruction)\s*:\s*([\s\S]*)$/i);
   const source = actionMatch ? actionMatch[1] : prompt;
   const body = source.trim().split(/\s+/).slice(1).join(" ");
   const arithmetic = source.match(/\d+\s*[-+*/]\s*\d+(?:\s*[-+*/]\s*\d+)*/);
@@ -2185,14 +2219,15 @@ function popGrounding(pool) {
 }
 
 function stripGrounding(value) {
-  return value
+  const cleaned = value
     .replace(/^[^A-Za-z0-9'"]+/, "")
     .replace(/\s*(online|please)?\s*[.?!]*$/i, "")
     .trim();
+  return /^(['"])(.*)\1$/.test(cleaned) ? cleaned.slice(1, -1).trim() : cleaned;
 }
 
 function freeTextGrounding(prompt) {
-  const actionMatch = prompt.match(/(?:next required action|instruction)\s*:\s*([\s\S]*)$/i);
+  const actionMatch = prompt.match(/(?:next required action|current step(?:\s+[^:]+)?|current action|instruction)\s*:\s*([\s\S]*)$/i);
   const source = actionMatch ? actionMatch[1].trim() : prompt;
   const low = source.toLowerCase();
   const tails = [];
@@ -2213,11 +2248,53 @@ function cuePresent(prompt, cue) {
   return new RegExp(`\\b${escaped.replace(/\s+/g, "\\s+")}\\b`, "i").test(prompt);
 }
 
+function stateArgumentValue(prompt, name) {
+  const match = String(prompt).match(
+    /current state json\s*:\s*([\s\S]*?)(?=\s+(?:next required action|current step|current action|instruction)\s*:|$)/i
+  );
+  if (!match) return null;
+  let state;
+  try {
+    state = JSON.parse(match[1].trim());
+  } catch {
+    return null;
+  }
+  const visit = (value) => {
+    if (!value || typeof value !== "object") return null;
+    if (Object.hasOwn(value, name) && value[name] != null) return value[name];
+    for (const child of Object.values(value)) {
+      const found = visit(child);
+      if (found != null) return found;
+    }
+    return null;
+  };
+  const value = visit(state);
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+    ? value
+    : null;
+}
+
 function fillSchemaArg(prompt, name, schema, pools, required, pointerValue) {
   const type = schema.type || "string";
   const format = schema.format;
   const tail = () => required ? freeTextGrounding(prompt) : null;
-  const statefulPrompt = /(?:next required action|instruction)\s*:/i.test(prompt);
+  const statefulPrompt = /(?:next required action|current step(?:\s+[^:]+)?|current action|instruction)\s*:/i.test(prompt);
+  const actionText = compactDispatchQuery(prompt);
+  const action = actionText.toLowerCase();
+  if (statefulPrompt && /\b(?:send|submit|dispatch)\b/.test(action)) {
+    const stateValue = stateArgumentValue(prompt, name);
+    if (stateValue != null) return stateValue;
+  }
+
+  if (name === "target") {
+    const targetMatch = actionText.match(
+      /(?:click|select|tap)\s+(?:on\s+)?((?:the\s+)?[A-Za-z][A-Za-z ]*?)(?=\s+(?:in|on|at)\s+|\s*[.!?]|$)/i
+    );
+    if (targetMatch?.[1]) {
+      const target = stripGrounding(targetMatch[1]);
+      return target.toLowerCase().startsWith("the ") ? target : `the ${target}`;
+    }
+  }
 
   if (name === "app_name") {
     const appMatch = prompt.match(
@@ -3067,6 +3144,7 @@ if (typeof module !== "undefined" && module.exports) {
     groundingPools,
     manifestArtifactFor,
     mobileLexicalSelect,
+    statefulActionLexicalSelect,
     modelArtifactEvidence,
     retrievalEmbedding,
     retrievalCandidatesFromSidecar,

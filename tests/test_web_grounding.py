@@ -318,3 +318,55 @@ process.stdout.write(JSON.stringify(selected));
         "selection_policy": "dense_selector",
         "candidate_count": 2,
     }
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for browser parity")
+def test_stateful_dispatch_uses_latest_action_and_serialized_focus_state():
+    script = """
+global.window = { __localAgentSkipInit: true, location: { search: "" } };
+const { dispatchSelect } = require(process.argv[1]);
+const dispatch = {
+  dense_selector: {
+    tool_names: [
+      "mobile_click", "mobile_input_text", "email_send", "send_email",
+      "notion_create_page", "open_url", "click", "type_text", "key_press",
+    ],
+  },
+};
+const prefix = 'Goal: Open Gmail, compose an email, fill its fields, and send it. ' +
+  'Current state JSON: {"screen":"compose","focus":"to"} ';
+const fill = dispatchSelect(
+  null, 0, prefix + "Next required action: Type 'alice@example.com' into the focused recipient field.", dispatch
+);
+const send = dispatchSelect(
+  null, 0, prefix + "Next required action: Send the composed email now.", dispatch
+);
+const notion = dispatchSelect(
+  null, 0,
+  `Goal: Open Notion and create a page. Current state JSON: {"app":"Notion"} ` +
+  `Next required action: Create a Notion page titled 'Mobile pilot'.`,
+  dispatch
+);
+const browser = dispatchSelect(
+  null, 0,
+  'Goal: Open the local mail page. Current state JSON: {"page":null} ' +
+  'Next required action: Open https://example.local/mail in the browser.',
+  dispatch
+);
+process.stdout.write(JSON.stringify({fill, send, notion, browser}));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", script, str(WEB_APP)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(result.stdout)
+    assert payload["fill"]["name"] == "mobile_input_text"
+    assert payload["fill"]["selection_policy"] == "mobile_lexical_guard"
+    assert payload["send"]["name"] == "email_send"
+    assert payload["send"]["selection_policy"] == "mobile_lexical_guard"
+    assert payload["notion"]["name"] == "notion_create_page"
+    assert payload["notion"]["selection_policy"] == "productivity_notion_intent_guard"
+    assert payload["browser"]["name"] == "open_url"
+    assert payload["browser"]["selection_policy"] == "explicit_url_safety_guard"
