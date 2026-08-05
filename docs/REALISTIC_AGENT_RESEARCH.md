@@ -1966,6 +1966,23 @@ mobile/browser contracts.  The gate remains closed for AndroidWorld, MobileSafet
 OSWorld, OSWorld-V2, AgentNet, official ToolSandbox/MCPMark, EnterpriseOps-Gym, successful child RL,
 and public HF/demo URLs.
 
+### Current-child MCPMark filesystem easy service run (m433)
+
+The [m433 receipt](paper/results/raw/m433-mcpmark-filesystem-easy-native-child-v1.json) expands
+the earlier one-task MCPMark smoke to all ten public `filesystem/easy` fixtures at the pinned
+MCPMark revision. Each task used its public state archive, a fresh root, the real
+`@modelcontextprotocol/server-filesystem@2025.12.18` stdio server, and the repository's own
+verifier. The exact `6a6520…` child produced zero workspace changes and passed `0/10` verifiers;
+there were no MCP runtime crashes. The dominant failure is actionable: malformed path arguments
+and repeated `create_directory` calls instead of reading state, grounding paths, and performing
+the requested write/rename operation.
+
+This is the strongest current MCP service diagnostic, but it is still not an official MCPMark
+score: the MCPMark user simulator, standard/verified split, and Notion/GitHub/Postgres/Playwright
+services were not executed. The result therefore blocks promotion of the current child for
+general MCP tool use and points training toward tool-state observation, argument grounding,
+write verification, and recovery from MCP errors.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
