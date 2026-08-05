@@ -900,6 +900,10 @@ def test_sft_then_rl_invalidates_stale_structured_heads(tmp_path: Path) -> None:
     sft_overlap_audit = sft_checkpoint["data"]["conversation_overlap_audit"]
     assert sft_overlap_audit["semantic_overlap"] == 0
     assert sft_overlap_audit["rendered_prompt_overlap"] == 0
+    sft_function_masking = sft_checkpoint["data"].pop("function_masking")
+    assert sft_function_masking["enabled"] is False
+    assert sft_function_masking["main"]["enabled"] is False
+    assert sft_function_masking["decay"]["enabled"] is False
     assert sft_checkpoint["data"] == {
         "conversation_rows": 3,
         "single_turn_rows": 2,
