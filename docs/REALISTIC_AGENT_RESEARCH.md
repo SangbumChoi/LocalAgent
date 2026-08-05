@@ -2065,6 +2065,15 @@ canary reaches valid `browser_navigate` and `browser_snapshot` calls, then fails
 `0/1`; this separates protocol grounding progress from task completion. The child remains a
 low-rate initialization candidate only and is not exported to WebGPU.
 
+### Current-child local HF/WebGPU release verification (m449)
+
+The [m449 receipt](paper/results/raw/m449-hf-webgpu-local-release-v1.json) rebuilds the exact
+`6a6520…` checkpoint into a 10,524,544-parameter HF-format model and a 63-tool static WebGPU
+bundle. All generated files, byte hashes, checkpoint bindings, and fp32/fp16 ONNX parity checks
+pass; the local bundle identity is `ff0259b3…`. The release is intentionally not public:
+`hf auth whoami` reports no login, so publication, anonymous re-fetch, and public model/Space URLs
+remain unproven. The unpromoted m448 child is not used for the bundle.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
