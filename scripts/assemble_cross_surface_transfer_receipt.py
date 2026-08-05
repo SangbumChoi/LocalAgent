@@ -92,6 +92,9 @@ def assemble(*, warm_path: Path, random_path: Path, comparison_path: Path, outpu
             "environment": {"device": "cpu", "omp_num_threads": 1, "mkl_num_threads": 1},
         },
         "parent": warm["parent"],
+        # Keep an explicit alias for the fail-closed publication gate, which expects the
+        # checkpoint identity under ``parent_checkpoint`` for unified transfer receipts.
+        "parent_checkpoint": warm["parent"],
         "children": {"warm_start": warm["child"], "random_backbone": random["child"]},
         "reports": {
             "warm_start": _identity(warm_path),
@@ -106,11 +109,22 @@ def assemble(*, warm_path: Path, random_path: Path, comparison_path: Path, outpu
         "split_contract": warm["split_contract"],
         "hyperparameters": warm["hyperparameters"],
         "comparison": {
+            "arm_contract": comparison["arm_contract"],
             "aggregate": comparison["aggregate"],
             "surfaces": comparison["surfaces"],
             "decision": comparison["decision"],
             "warm_weight_groups": comparison["warm_weight_groups"],
             "random_weight_groups": comparison["random_weight_groups"],
+        },
+        "weight_transfer_analysis": {
+            "warm": {
+                "compatibility": warm["weight_transfer"]["compatibility"],
+                "groups": warm["weight_transfer"]["groups"],
+            },
+            "random": {
+                "compatibility": random["weight_transfer"]["compatibility"],
+                "groups": random["weight_transfer"]["groups"],
+            },
         },
         "interpretation": {
             "result": (
