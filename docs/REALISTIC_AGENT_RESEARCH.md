@@ -2283,6 +2283,31 @@ indicators, and QA yields one block plus two confirmations. This is useful evide
 messaging, URL, deletion, and calendar side-effect boundaries, but it is not Android/Appium
 execution, screenshot grounding, helpfulness, or the official MobileSafetyBench score.
 
+### Android-Control whole-episode transfer control (m475)
+
+The [m475 transfer receipt](paper/results/raw/m475-androidcontrol-current-warm-random-v1.json)
+uses the public `google/androidcontrol` source lineage through the pinned
+`OfficerChul/Android-Control-84k@train4096` mirror. The source has 4,096 text-only action rows
+and 3,483 recoverable episode ids. A reproducible SHA-256 episode bucket assigns complete
+episodes to 3,269 train rows/2,767 episodes and 827 eval rows/716 episodes; the split has zero
+episode overlap. On the bounded 32-row/8-row continuation, the exact current parent reaches
+63.39% held-out teacher-forced token accuracy after eight warm updates versus 0% for a matched
+random backbone (`+63.39` points). Exact assistant sequence accuracy remains 0% for both arms.
+Warm embedding/attention/FFN movement is only `0.099%/0.064%/0.075%`, so this supports parent
+initialization compatibility, not a claim that the child is a better mobile policy. Screenshots
+were omitted by the mirror projection and no official AndroidControl score was computed.
+
+### Android-Control child native MobileGym replay (m475)
+
+The [m475 MobileGym receipt](paper/results/raw/m475-androidcontrol-mobilegym-replay-v1.json)
+replays the m475 warm child and the exact current parent on the same four pinned official-test
+MobileGym ids, using the native simulator/state-diff judge for two steps per task. Both arms
+execute cleanly but score `0/4`, make zero progress, and emit only `mobile_input_text`. The
+offline Android-Control token gain therefore does not transfer to native mobile state completion;
+the child is retained as an initialization diagnostic only. This is a limit-4 text-projection
+replay, not the complete 256-task MobileGym score, visual Android grounding, or real-account
+execution.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
