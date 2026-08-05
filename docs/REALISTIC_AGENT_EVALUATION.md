@@ -362,6 +362,13 @@ the claim boundary: `ready` remains `false` because AndroidWorld, MobileSafetyBe
 OSWorld, OSWorld-V2, AgentNet, MCPMark, and EnterpriseOps-Gym still lack official native receipts,
 ToolSandbox is not official-split verified, and the public legacy model/demo manifest is stale.
 
+The [m380 stateful runtime receipt](paper/results/raw/m380-current-stateful-runtime-v1.json) then
+replayed five resettable email/Notion/browser/recovery/abstention tasks against the exact current
+checkpoint. The oracle reaches `5/5` tasks and `16/16` accepted steps, validating the verifier; the
+model reaches `0/5` tasks and `0/48` accepted attempts despite three retries per step. This is a
+useful negative checkpoint-in-loop result: the runtime and reward contract work, but the current
+model is not yet a productive closed-loop policy, and no native-account claim follows.
+
 ### ToolACE free-run parent/child control (m375)
 
 The [m375 receipt](paper/results/raw/m375-toolace-parent-warm-free-run-v1.json) runs the parent
