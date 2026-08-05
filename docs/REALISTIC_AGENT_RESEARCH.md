@@ -1761,6 +1761,31 @@ MCP-augmented workflows; [AgentNet](https://huggingface.co/datasets/xlangai/Agen
 These counts are source/release metadata, not LocalAgent scores.  We retain the exact revision,
 split, and native-run requirement for every benchmark rather than mixing counts across releases.
 
+### Four-source public continuation and weight-transfer control (m405)
+
+The [m405 receipt](paper/results/raw/m405-four-source-public-continuation-v1.json) is a fresh,
+source-local-disjoint continuation experiment over four public projections: AndroidControl, AITW,
+Mind2Web, and xLAM.  It trains `170` rows for `16` updates at `max_seq_len=128` from the current
+`10,524,544`-parameter BPE parent and compares that child with an identical-protocol,
+shape-matched random-backbone arm.  The receipt binds every normalized JSONL input, source
+revision/reference, parent and child checkpoint hash, and the warm/random comparator.
+
+The parent-initialized arm reaches `57.05%` aggregate teacher-forced assistant-token accuracy
+versus `0.76%` for the random control (`+56.29` percentage points) and is higher on each of the
+four source projections.  Source-level warm-minus-random gaps are `64.09` pp (AndroidControl),
+`22.22` pp (AITW), `62.59` pp (Mind2Web), and `52.73` pp (xLAM).  The warm child moves shared
+embedding/attention/FFN relative L2 by `0.202%/0.115%/0.139%`, normalization by `0.006%`, and
+leaves action heads unchanged.  This supports a compatible low-rate backbone/high-rate-head
+recipe and a useful transfer baseline; it does not establish optimality, executable action
+success, or native benchmark performance.
+
+The claim boundary is intentionally narrow: AndroidControl rows omit screenshots, AITW uses a
+small local train holdout, Mind2Web is a grounded-DOM projection, and xLAM is a function-calling
+derivative.  No official benchmark split, Android emulator, BrowserGym/desktop VM, screenshot
+grounding, MCP server, real email/Notion side effect, or external account was run.  The experiment
+therefore improves the reproducible training/transfer evidence while leaving the native and
+publication gates closed.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
