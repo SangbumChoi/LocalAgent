@@ -2400,6 +2400,34 @@ no public model URL, Space URL, or current public-artifact manifest. The m481 ca
 deployable locally but not presented as a published release or as evidence of email/Notion/browser
 task completion.
 
+### Larger MCPMark cross-surface warm/random transfer (m482)
+
+The [m482 receipt](paper/results/raw/m482-mcpmark-cross-surface-transfer-v1.json) expands the
+trajectory experiment beyond the two-row m479 slice: three redacted public MCPMark trajectory-log
+records (Notion, Playwright, and filesystem/messages) and eight MCPMark filesystem rows train the
+continuation, while twelve source-local parent/slot-disjoint rows are held out.  The same
+10,524,544-parameter parent, tokenizer, 16-step schedule, and learning rate are used for a warm
+child and a matched random-backbone control.  Warm held-out token accuracy is `38.87%` versus
+`0.38%` random (`+38.50` points); filesystem is `44.77%`, Playwright extraction `21.56%`, and
+travel `38.48%`.  Exact sequence accuracy is `0%` on both arms.  The paired movement audit shows
+the warm child changing the embedding/attention/FFN groups by only `0.181%`/`0.105%`/`0.125%`
+relative L2, while the random control moves them by `119.70%`/`77.88%`/`87.79%`.  This supports
+warm initialization for the bounded text-and-tool-sequence projection, not official MCPMark or
+native browser/productivity success.
+
+### Larger MCPMark child native replay and WebGPU evidence (m483)
+
+The [m483 receipt](paper/results/raw/m483-mcpmark-cross-surface-webgpu-evidence-v1.json) binds the
+exact m482 warm child to a real `@playwright/mcp@0.0.68` stdio server, Chromium, and the independent
+MCPMark verifier for `eval_web/extraction_table`.  The server runs cleanly (`0` runtime errors,
+`22` tools), but the child produces no CSV and the verifier remains `0/1`; the official split is
+not verified.  The same checkpoint exports to a local HF-format/WebGPU bundle with all four ONNX
+graphs passing hard parity.  Native Chromium reports Apple Metal-3, `573.07` input tokens/s p50,
+`24.30 ms` p50 latency, and `20.46 MB` conservative peak memory; three resettable local structured
+cases are exact, but closed-loop success is `0` because they execute no side effects.  HF/Space
+publication is still fail-closed without authentication, so this is a local release candidate,
+not a public model/demo or email/Notion account result.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
