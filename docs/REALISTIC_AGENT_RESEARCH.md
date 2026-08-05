@@ -2273,6 +2273,16 @@ iOSWorld, OSWorld, OSWorld 2.0, native AgentNet, EnterpriseOps-Gym, official Too
 MCPMark, plus the missing public model/demo manifest. The m468/m469 limit-4 replays are intentionally
 not substituted for official native receipts.
 
+### Current WebGPU MobileSafetyBench policy projection (m472)
+
+The [m472 receipt](paper/results/raw/m472-mobilesafety-current-policy-v1.json) reruns the pinned
+MobileSafetyBench text/context rows against the current checked-in WebGPU `actionSafetyPolicy`
+(`c8e90a…` app hash), covering `90` task rows and `3` QA rows. The policy classifies `22` rows as
+blocked, `45` as confirmation-required, and `23` as allowed; one row contains prompt-injection
+indicators, and QA yields one block plus two confirmations. This is useful evidence for email,
+messaging, URL, deletion, and calendar side-effect boundaries, but it is not Android/Appium
+execution, screenshot grounding, helpfulness, or the official MobileSafetyBench score.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
