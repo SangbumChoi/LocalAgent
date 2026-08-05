@@ -73,6 +73,14 @@ def main() -> int:
         "records": list(scores),
         "claim_boundary": "Out-of-domain name-only retrieval diagnostic; not an official EnterpriseOps-Gym task-success score, state-verifier result, or training artifact.",
     }
+    # Keep the receipt independently auditable even though the source rows themselves remain
+    # outside Git.  The digest covers the aggregate and per-task retrieval records, but never
+    # serializes the dropped server configuration or verifier fields.
+    payload["receipt_self_sha256"] = hashlib.sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
+    ).hexdigest()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(payload, indent=2, sort_keys=True))

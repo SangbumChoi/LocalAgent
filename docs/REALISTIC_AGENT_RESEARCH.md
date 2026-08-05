@@ -1688,6 +1688,48 @@ score was admitted to training or executed.  Historical metadata receipts that r
 rows (`169` standard, `70` easy) remain useful only as historical records and are not current
 MCPMark Verified evidence.
 
+### Current action-tail and grounded-argument continuation (m393)
+
+The [m393 receipt](paper/results/raw/m393-current-stateful-action-tail-lexical-grounding-v1.json)
+records the first bounded fix after the stateful-runtime trace audit.  The dense selector keeps the
+full state/history embedding but also queries the short `Next required action:` tail, while
+schema-grounded extraction takes precedence over a stale learned pointer for email, URL, app, and
+field values.  Training adds only deterministic, train-side UI paraphrases (`Select`/`Tap`,
+`Send`/`Submit`, and similar) and leaves evaluation prompts unchanged.
+
+On five disjoint local resettable tasks (email, Notion, browser, recovery, and abstention), the
+oracle completes `5/5` and the current child completes `4/5` (`80%`, `11/16` accepted steps after
+bounded retries).  Browser, Notion, recovery, and abstention complete; the email task remains a
+failure.  This is closed-loop synthetic state-machine evidence only: it is not AndroidWorld,
+BrowserGym, OSWorld, MCPMark, real email, Notion, or native WebGPU success, and the child was not
+exported to the deployed checkpoint.
+
+### Current EnterpriseOps-Gym email retrieval audit (m400)
+
+The [m400 receipt](paper/results/raw/m400-enterpriseopsgym-current-email-retrieval-v1.json)
+re-runs the frozen current `10,524,544`-parameter BPE parent over `67` public email rows with
+matched plus-15-tool candidates at the pinned ServiceNow-AI revision.  Name-only dense retrieval
+reaches hit@1/3/5 of `20.90%/53.73%/76.12%`; server configuration, SQL verifiers, and external
+execution are dropped, and the receipt is independently self-hashed.  This is retrieval evidence,
+not enterprise workflow completion or a training corpus.
+
+The current Hugging Face site also exposes a separate `EnterpriseAgents/EnterpriseOpsGym` mirror
+with `649` rows across eight domains (including `67` email rows).  It is not silently substituted
+for the pinned ServiceNow-AI revision: the two source identities, files, and licenses must remain
+separate until an upstream maintainer confirms equivalence.  The mirror is useful for research
+discovery, but its task/server/verifier fields remain evaluation-only here.
+
+### Upstream realism refresh (2026-08-05)
+
+The current source pages reinforce the release-specific evaluation policy.  [iOSWorld](https://iosworld.io/)
+reports `133` tasks across `26` persistent-identity iOS apps; [MobileWorld](https://tongyi-mai.github.io/MobileWorld/)
+reports `201` tasks across `20` Android applications and explicitly separates agent-user and
+MCP-augmented workflows; [AgentNet](https://huggingface.co/datasets/xlangai/AgentNet) now describes
+`22.6K` cross-platform desktop tasks; and [WebBench](https://www.webbench.ai/) currently advertises
+`5,750` tasks across `452` websites while the repository-era card used a smaller release count.
+These counts are source/release metadata, not LocalAgent scores.  We retain the exact revision,
+split, and native-run requirement for every benchmark rather than mixing counts across releases.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
