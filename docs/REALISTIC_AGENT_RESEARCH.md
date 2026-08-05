@@ -2154,6 +2154,19 @@ receipts as executed diagnostics but keeps both blocked by `official_split_not_v
 reduces the current publication blockers without converting text/DOM native results into visual
 computer-use or real-account email/Notion claims.
 
+### Longer current-parent Mind2Web SFT and weight audit (m461)
+
+The [m461 receipt](paper/results/raw/m461-mind2web-long-sft-weight-v1.json) extends the exact
+current `6a6520…` parent by 24 low-rate (`1e-5`) backbone updates on the pinned public Mind2Web
+train shard: 96 train rows and 32 source-disjoint eval rows. Held-out teacher-forced token
+accuracy improves `72.72% → 78.98%` and mean loss falls `1.830 → 1.310`, but exact multi-turn
+sequence accuracy remains `0%`; route/selector heads are intentionally frozen. The compatibility
+audit confirms identical configuration, shapes, and tokenizer. Relative movement is embedding
+`0.328%`, attention/mixer `0.173%`, FFN `0.206%`, and normalization `0.0075%`. Because the longer
+run moves the embedding/FFN groups more than the earlier low-rate candidate and has no native
+replay, its decision is to retain it as an initialization candidate only, require a matched
+no-transfer control, and forbid WebGPU export/promotion.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
