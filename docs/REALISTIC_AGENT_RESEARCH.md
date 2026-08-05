@@ -2201,6 +2201,18 @@ for embedding/attention/FFN. This is useful initialization evidence for tool-cal
 not an official xLAM/BFCL score, multi-call score, native MCP result, or live API capability.
 The child remains unexported pending native replay and a full tool-use evaluation.
 
+### Current-parent xLAM constrained-decoder free-run canary (m464)
+
+The [m464 receipt](paper/results/raw/m464-xlam-current-free-run-row-canary-v1.json) replays the
+same public-derived test shard through the actual constrained decoder after adding a bounded
+candidate-mode selector to `scripts/evaluate_xlam_public.py`. On eight rows under the explicit
+per-row candidate upper bound, both the current parent and m463 warm child route `4/8` tool names
+exactly, match `0/8` argument objects exactly, and produce `8/8` schema-valid calls. The warm
+child therefore shows no free-run improvement over the parent in this canary, despite its
+teacher-forced token gain. This is negative promotion evidence: the child remains a low-rate
+initialization candidate only, and the canary is not a global retriever, native MCP, or live
+browser/email/Notion score.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the

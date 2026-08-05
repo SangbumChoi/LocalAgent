@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,14 @@ from localagent.agent.tools import ToolRegistry
 from localagent.data.prompt_contract import schema_matches
 from localagent.data.public_agent import _xlam_tool
 from localagent.data.schema import ToolCall, ToolSpec
+
+
+ALL_MODES = (
+    "row_retriever",
+    "global_retriever",
+    "runtime_retriever_selector",
+    "global_selector",
+)
 
 
 def _identity(path: Path) -> dict[str, Any]:
@@ -181,17 +190,19 @@ def evaluate(
     *,
     max_rows: int,
     device: str,
+    modes: Sequence[str] = ALL_MODES,
 ) -> dict[str, Any]:
+    selected_modes = tuple(modes)
+    if not selected_modes:
+        raise ValueError("at least one candidate mode is required")
+    unknown_modes = sorted(set(selected_modes) - set(ALL_MODES))
+    if unknown_modes:
+        raise ValueError(f"unknown candidate mode(s): {unknown_modes}")
     rows = _load_rows(rows_path, max_rows=max_rows)
     registry = _registry(rows)
     agent = Agent.from_checkpoint(checkpoint, registry)
     by_mode: dict[str, dict[str, Any]] = {}
-    for mode in (
-        "row_retriever",
-        "global_retriever",
-        "runtime_retriever_selector",
-        "global_selector",
-    ):
+    for mode in selected_modes:
         counters = defaultdict(int)
         by_length: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         predictions: list[dict[str, Any]] = []
@@ -260,6 +271,7 @@ def evaluate(
         "checkpoint": _identity(checkpoint),
         "rows": len(rows),
         "modes": by_mode,
+        "candidate_modes": list(selected_modes),
         "candidate_policy": {
             "runtime_retriever_selector": "Agent.chat retrieval followed by selector over retrieved candidates",
             "retrieve_k": agent.retrieve_k,
@@ -283,6 +295,13 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--max-rows", type=int, default=128)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--mode",
+        dest="modes",
+        action="append",
+        choices=ALL_MODES,
+        help="candidate mode to run; repeat for multiple modes (default: all modes)",
+    )
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit(f"refusing to overwrite {args.output}")
@@ -292,6 +311,7 @@ def main() -> int:
         args.output,
         max_rows=args.max_rows,
         device=args.device,
+        modes=tuple(args.modes or ALL_MODES),
     )
     print(
         json.dumps(

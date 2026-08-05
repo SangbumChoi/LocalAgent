@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from scripts.evaluate_xlam_public import ALL_MODES
+
 
 def test_m115_receipt_distinguishes_public_derivative_from_gated_original() -> None:
     receipt = json.loads(
@@ -18,3 +20,12 @@ def test_m115_receipt_distinguishes_public_derivative_from_gated_original() -> N
     assert receipt["warm"]["row_retriever"]["schema_valid_rate"] == 1.0
     assert receipt["warm"]["row_retriever"]["first_arguments_exact_rate"] == 0.0
     assert receipt["warm"]["global_selector"]["first_tool_exact_rate"] > receipt["random_control"]["global_selector"]["first_tool_exact_rate"]
+
+
+def test_xlam_evaluator_exposes_bounded_candidate_mode_set() -> None:
+    assert ALL_MODES == (
+        "row_retriever",
+        "global_retriever",
+        "runtime_retriever_selector",
+        "global_selector",
+    )
