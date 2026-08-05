@@ -1941,6 +1941,31 @@ emulator or external account was touched.  The dominant failure mode is action c
 and argument grounding, followed by longer-horizon state transitions, not more teacher-forced
 Mind2Web token updates alone.
 
+### Current-child full BrowserGym/MiniWoB official test (m431)
+
+The [m431 receipt](paper/results/raw/m431-browsergym-native-child-full-v1.json) runs the exact
+`6a6520…` child through all `240` fixed-seed episodes of the pinned BrowserGym `0.14.3` /
+MiniWoB plan.  The simulator and independent rewards complete without errors, but success is
+`0/240` and total reward is zero.  Relative to the parent-bound m282 run, grounded steps rise from
+`320/2400` to `500/2400` (`+7.5` percentage points) and no-op actions fall from `2080` to `1900`,
+yet no task reaches completion.
+
+This separates a real transfer signal from end-to-end competence: the Mind2Web child is more often
+producing syntactically grounded DOM actions, but it still fills stale or semantically wrong
+targets and cannot solve even the bounded email/form tasks.  The next training target is therefore
+live-DOM identity/argument grounding plus action verification and recovery, not another blind
+teacher-forced continuation.  The run used `coordinate_fallback=false` and no screenshots, so it
+does not establish visual computer use, WebArena success, or real email/Notion access.
+
+### Current-child gate after complete mobile and browser runs (m432)
+
+The [m432 gate](paper/results/raw/m432-workshop-gate-current-child-browsergym-v1.json) now admits
+both the complete official MobileGym and BrowserGym/MiniWoB receipts for the same checkpoint.  This
+removes the stale-parent and missing-receipt ambiguity from the two most directly relevant public
+mobile/browser contracts.  The gate remains closed for AndroidWorld, MobileSafetyBench, iOSWorld,
+OSWorld, OSWorld-V2, AgentNet, official ToolSandbox/MCPMark, EnterpriseOps-Gym, successful child RL,
+and public HF/demo URLs.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
