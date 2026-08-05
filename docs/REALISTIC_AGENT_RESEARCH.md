@@ -2108,6 +2108,20 @@ current-checkpoint RL preflight, and public model/demo URLs bound to this checkp
 publication decision artifact: the local demo and synthetic trajectory are not silently promoted
 to workshop evidence.
 
+### Public realistic-source refresh: OSWorld email, world models, and cross-platform GUI data (m453)
+
+The [m453 receipt](paper/results/raw/m453-public-realistic-source-refresh-v1.json) adds four
+source-linked rows to the supplemental registry without changing the canonical gate or SFT inputs:
+[Computer Use Trajectories](https://huggingface.co/datasets/markov-ai/computer-use) (160 successful
+OSWorld trajectories, including Thunderbird email), [AgentWorldBench](https://huggingface.co/datasets/Qwen/AgentWorldBench)
+(2,170 grounded MCP/Android/Web/OS/terminal/SWE/search turn records), [ScaleCUA-Data](https://huggingface.co/datasets/OpenGVLab/ScaleCUA-Data)
+(six-platform GUI trajectories with a 1.07 TB image release), and [GUI-World](https://huggingface.co/datasets/ONE-Lab/GUI-World)
+(12,379 videos and roughly 100,000 GUI queries across desktop, mobile, web, and XR). The rows are
+evaluation/catalog-only because licenses, benchmark contamination boundaries, visual modalities,
+and release-matched runtimes are not yet frozen. They provide realistic email, MCP state, browser,
+Android, desktop, and temporal GUI coverage for the next modality-specific training/evaluation
+stage; none is claimed as a current score or admitted to SFT.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the

@@ -10,7 +10,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     assert payload["kind"] == "localagent_realistic_agent_supplemental_catalog"
     entries = payload["entries"]
-    assert len(entries) == 26
+    assert len(entries) == 30
     assert {entry["id"] for entry in entries} == {
         "androidworld",
         "browsergym_miniwob",
@@ -38,10 +38,19 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         "toolace",
         "vpi_bench",
         "agentcibench",
+        "markov_computer_use",
+        "agentworldbench",
+        "scalecua_data",
+        "gui_world",
     }
     for entry in entries:
         assert entry["source_url"].startswith(
-            ("https://github.com/", "https://huggingface.co/", "https://mobilesafetybench.github.io/")
+            (
+                "https://github.com/",
+                "https://huggingface.co/",
+                "https://mobilesafetybench.github.io/",
+                "https://gui-world.github.io/",
+            )
         )
         assert entry["split_policy"]
         assert entry["runtime"]

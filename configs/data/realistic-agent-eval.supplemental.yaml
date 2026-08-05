@@ -387,3 +387,66 @@ entries:
     webgpu_projection: text-only contextual-integrity refusal, consent, and disclosure probe; native UI execution remains pending
     metric: utility, raw_leakage, refusal, engagement_conditioned_leakage, and end_to_end_task_success
     notes: Each scenario explicitly distinguishes information that must be shared from information that must not be shared. The release is a generation pipeline plus a curated pool rather than a fixed annotation-only dataset; freeze the release and judge configuration before scoring.
+
+  - id: markov_computer_use
+    family: computer
+    name: Computer Use Trajectories (OSWorld successful runs)
+    source_url: https://huggingface.co/datasets/markov-ai/computer-use
+    project_url: https://github.com/ComputerRL/ComputerRL
+    license: dataset_card_does_not_declare_a_redistribution_license
+    source_revision: pin-before-use
+    scale: 160_successful_trajectories;_1378_steps;_10_OSWorld_domains
+    modalities: [instruction, screenshot, accessibility_tree, pyautogui_action, execution_status, recording]
+    split_policy: evaluation_only_until_license_source_task_identity_and_OSWorld_holdout_are_frozen
+    runtime: OSWorld_virtual_machine_and_release_matched_verifier
+    webgpu_projection: accessibility-tree/action-history analysis only; screenshots and pyautogui coordinates require a visual desktop bridge
+    metric: trajectory_success, action_validity, excess_steps, and domain_breakdown
+    notes: The public card filters to score-1.0 trajectories and includes Chrome, Thunderbird email, LibreOffice, VS Code, and multi-app workflows. Treat successful-only trajectories as selection-biased demonstrations; do not train or report a native OSWorld score without the original task split and VM release.
+
+  - id: agentworldbench
+    family: tool_api
+    name: Qwen AgentWorldBench
+    source_url: https://huggingface.co/datasets/Qwen/AgentWorldBench
+    paper_url: https://arxiv.org/abs/2606.24597
+    license: dataset_card_license_and_upstream_trajectory_terms_require_audit
+    source_revision: pin-before-use
+    scale: 2170_turn_records;_286_MCP;_200_Android;_200_Web;_200_OS;_354_terminal;_472_SWE;_458_search
+    modalities: [multi_turn_prompt_history, tool_response, MCP_state, Android_UI_state, browser_DOM, desktop_state, terminal_state]
+    split_policy: evaluation_only;_ground_truth_observations_and_frontier_trajectory_prompts_never_training
+    runtime: reference-grounded world-model evaluator plus domain-specific source environments
+    webgpu_projection: compact next-observation prediction and state-consistency probe; not a tool-call completion score
+    metric: format, factuality, consistency, realism, and quality across 7 domains
+    notes: Each record evaluates an observation at a turn in a multi-turn trajectory and is not an action-label dataset. Its MCP and browser/Android/OS coverage is valuable for state modeling, but the 257 MB release remains a holdout until terms and contamination policy are frozen.
+
+  - id: scalecua_data
+    family: computer
+    name: ScaleCUA-Data
+    source_url: https://huggingface.co/datasets/OpenGVLab/ScaleCUA-Data
+    code_url: https://github.com/OpenGVLab/ScaleCUA
+    paper_url: https://arxiv.org/abs/2509.15221
+    license: dataset_terms_and_1_07TB_image_archive_require_review
+    source_revision: pin-before-use
+    scale: 6_platforms;_screenshots_and_actions;_1_07TB_HF_release
+    modalities: [instruction, screenshot, temporal_context, mouse_keyboard_action, mobile_action, web_action]
+    split_policy: evaluation_only_until_annotation_license_platform_split_and_image_manifest_are_frozen
+    runtime: release-matched desktop_mobile_web_or_iOS_environment_for_closed_loop_scoring
+    webgpu_projection: annotation/action-schema audit only; the text-only model cannot claim screenshot grounding
+    metric: GUI grounding, action validity, trajectory completion, and cross-platform transfer
+    notes: The card describes Linux, macOS, Windows, Android, iOS, and Web data, with human-collected trajectories and model-assisted annotations. The archive is too large for the current WebGPU text-first bundle; use metadata-only profiling or a separately licensed, hashed shard.
+
+  - id: gui_world
+    family: computer
+    name: GUI-World
+    source_url: https://gui-world.github.io/
+    code_url: https://github.com/Dongping-Chen/GUI-World
+    data_url: https://huggingface.co/datasets/ONE-Lab/GUI-World
+    paper_url: https://arxiv.org/abs/2406.10819
+    license: dataset_release_terms_require_review;_project_website_CC-BY-SA-4.0
+    source_revision: pin-before-use
+    scale: 12379_GUI_videos;_about_100000_queries;_desktop_mobile_web_XR
+    modalities: [video, keyframes, operation_description, GUI_question_answering, sequential_context]
+    split_policy: evaluation_or_vision_pretraining_only_until_video_license_and_task_split_are_frozen
+    runtime: offline_video_or_release_matched_GUI_understanding_evaluator
+    webgpu_projection: temporal operation-history and QA probe only; no visual GUI-agent capability claim
+    metric: GUI understanding, temporal consistency, sequential instruction following, and cross-app reasoning
+    notes: The project reports videos spanning desktop, mobile, websites, software, and XR. It is useful for a future vision/temporal encoder, but it is not a text-only tool-call corpus and should not be mixed into the current 10M WebGPU SFT without a modality-specific adapter.
