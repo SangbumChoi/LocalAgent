@@ -1601,6 +1601,16 @@ points, but exact sequence accuracy remains `0%` for both. Warm shared-body move
 adoption decision is therefore “reuse the parent as an initialization candidate, keep native and
 official-split gates open,” not a WebGPU policy promotion.
 
+### ToolACE free-run parent/child control (m375)
+
+The [m375 receipt](paper/results/raw/m375-toolace-parent-warm-free-run-v1.json) evaluates the
+current parent and the 32-step warm continuation child on identical public ToolACE action-history
+rows. Parent tool exactness is `8/30` (`26.67%`), while the child is `7/30` (`23.33%`); both arms
+remain `0%` on argument, step, and episode exactness and `80%` schema-valid. The transfer therefore
+does not survive deployment-shaped free-run decoding. Keep the parent as a representation
+initialization candidate, but reject the child for policy export and require native verifier-backed
+controls before adoption.
+
 ### Current native ToolSandbox smoke (m366)
 
 The [m366 receipt](paper/results/raw/m366-toolsandbox-native-current-v1.json) executes three

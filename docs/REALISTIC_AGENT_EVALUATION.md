@@ -323,6 +323,15 @@ while the random control moves those groups by `0.78–1.20×`; action heads rem
 This supports parent-weight reuse as an initialization candidate only—no child is exported or
 promoted without native verifier-backed checks.
 
+### ToolACE free-run parent/child control (m375)
+
+The [m375 receipt](paper/results/raw/m375-toolace-parent-warm-free-run-v1.json) runs the parent
+checkpoint and the m370 warm child through the same 16-row, 30-step ToolACE action-history probe.
+The parent reaches `26.67%` tool exactness and `80%` schema validity; the warm child falls to
+`23.33%` tool exactness with unchanged `0%` argument, step, and episode exactness. No tools are
+dispatched and no external accounts are touched. This is negative free-run transfer evidence, so
+the child is explicitly rejected for full-policy/WebGPU promotion.
+
 ### Current native ToolSandbox smoke (m366)
 
 The [m366 receipt](paper/results/raw/m366-toolsandbox-native-current-v1.json) runs the current
