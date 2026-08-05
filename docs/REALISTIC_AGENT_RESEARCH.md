@@ -2213,6 +2213,16 @@ teacher-forced token gain. This is negative promotion evidence: the child remain
 initialization candidate only, and the canary is not a global retriever, native MCP, or live
 browser/email/Notion score.
 
+### Matched native BrowserGym canary for xLAM warm transfer (m465)
+
+The [m465 receipt](paper/results/raw/m465-browsergym-xlam-warm-parent-canary-v1.json) runs the
+current parent and m463 xLAM warm child through the pinned BrowserGym/MiniWoB environment with the
+same Chromium, accessibility/DOM observation path, four fixed seeds, and ten-step horizon. The
+environment executes all four episodes for each arm, but both score `0/4`, emit `40/40` noop
+actions, and ground `0` steps. This confirms the xLAM continuation does not transfer to native
+browser task completion. It is a limit-4 diagnostic, not the official 240-episode score, visual
+computer-use result, WebArena result, or live email/Notion account execution.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
