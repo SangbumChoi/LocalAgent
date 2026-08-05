@@ -1998,6 +1998,21 @@ This is negative promotion evidence. The random arm did not produce a valid repo
 memory pressure, so no matched-random claim is made; the transfer is retained only as a training
 diagnostic, not exported to WebGPU or counted toward official MCPMark readiness.
 
+### Faithful MCP closed-loop dispatch/grounding audit (m439)
+
+The [m439 receipt](paper/results/raw/m439-mcpmark-faithful-dispatch-grounding-v1.json) corrects the
+native harness so it continues after `write_file`/`move_file`, returns each MCP result to the model,
+and gives the independent verifier the final workspace. On five source-disjoint holdout tasks the
+exact child still passes `0/5`, changes `0/5` workspaces, and has zero MCP runtime errors. A top-3
+candidate probe is informative: the model selects the semantically correct `write_file`, but the
+path/content arguments are malformed. Route/selector-head adaptation improves route accuracy but
+reduces selector top-1 to `0%`; pointer SFT has no valid span gain because the public task prompts
+do not contain the full target strings.
+
+This moves the repair target from “more ordinary SFT” to a grounded action ABI: explicit state and
+argument spans, relative-path normalization at the MCP boundary, verifier-aware retries, and a
+matched-random control. No current child is promoted or exported.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
