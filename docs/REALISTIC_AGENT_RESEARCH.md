@@ -2223,6 +2223,16 @@ actions, and ground `0` steps. This confirms the xLAM continuation does not tran
 browser task completion. It is a limit-4 diagnostic, not the official 240-episode score, visual
 computer-use result, WebArena result, or live email/Notion account execution.
 
+### Matched native MobileGym canary for xLAM warm transfer (m466)
+
+The [m466 receipt](paper/results/raw/m466-mobilegym-xlam-warm-parent-canary-v1.json) runs the
+current parent and m463 xLAM warm child on the same four pinned public MobileGym test IDs with
+the same two-step budget, selector policy, and bounded DOM/text observation projection. The
+native simulator and state-diff judge execute cleanly for both arms, but both score `0/4`, make
+`0.0` aggregate progress, and emit only `mobile_input_text` on all four tasks. The warm child
+therefore shows no transfer to mobile task completion. This is a limit-4 diagnostic, not the
+official 256-task score, visual Android result, screenshot-grounding result, or real-account run.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
