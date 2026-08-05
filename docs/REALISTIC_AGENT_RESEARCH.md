@@ -2013,6 +2013,30 @@ This moves the repair target from “more ordinary SFT” to a grounded action A
 argument spans, relative-path normalization at the MCP boundary, verifier-aware retries, and a
 matched-random control. No current child is promoted or exported.
 
+### Current-child MCPMark Playwright native run and redacted transfer (m440)
+
+The [m440 receipt](paper/results/raw/m440-mcpmark-playwright-native-child-and-transfer-v1.json)
+extends the same exact `6a6520…` child to all four pinned public MCPMark Playwright standard
+fixtures (table extraction, Turnstile authentication, an X-profile birth-year search, and a
+DeepSeek R1 arXiv search). The runner discovered 22 tools from the pinned
+`@playwright/mcp@0.0.68` stdio server, executed headless browser calls, and ran every independent
+task verifier with zero runtime errors. The child passed `0/4`: it repeated an empty
+`browser_type` call on each task and never produced a verifier-valid final answer. This is native
+browser/MCP failure evidence, not a missing-server or synthetic-loop failure; the official
+MCPMark split, user simulator, and leaderboard aggregation were not executed.
+
+The same receipt records a deliberately redacted public trajectory continuation using one train
+row and two source-disjoint Playwright evaluation rows from
+[`Jakumetsu/mcpmark-trajectory-log`](https://huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log).
+Tool outputs and assistant free text are fixed-marker redacted, and absolute paths are suffix
+redacted. Eight warm updates from the current child improve held-out teacher-forced token accuracy
+from `31.88%` to `33.15%`; the matched random-backbone arm moves from `0.73%` to `0.73%`, leaving a
+`32.42`-point warm advantage after training. Exact multi-turn sequence accuracy remains `0%` for
+both arms. Warm backbone movement stays below `0.25%` per large group (embedding `0.248%`,
+attention `0.185%`, FFN `0.215%`), while the random embedding moves `119.71%`. This supports
+reusing the compatible pretrained body with low-rate updates, but it does not repair grounded
+tool selection or establish live browser/account competence; no child is promoted or exported.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
