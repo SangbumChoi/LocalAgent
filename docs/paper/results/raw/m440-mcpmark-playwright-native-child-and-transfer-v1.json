@@ -20,6 +20,13 @@
   },
   "checkpoint_sha256": "6a6520264f5f81fc68c54f80d462ddde64ac2f442e6e30077c909b702939dd45",
   "claim_boundary": "The current 10.52M child was run against four pinned MCPMark Playwright standard fixtures using a real @playwright/mcp stdio server and independent verifiers: 0/4 passes with zero runtime errors. A redacted public-trajectory continuation gives a source-disjoint teacher-forced warm-vs-random diagnostic, not an official MCPMark score, live-account/browser competence, screenshot grounding result, or WebGPU promotion. The official split and user simulator were not executed.",
+  "validity": {
+    "status": "superseded",
+    "superseded_by": "m445-mcpmark-playwright-schema-corrected-abi-guard-v1",
+    "reason": "The temporary native runner read inputSchema only, while the MCP Python SDK exposed input_schema; its native tool arguments were therefore not a valid capability measurement. The redacted teacher-forced transfer remains diagnostic.",
+    "native_claim_usable": false,
+    "trajectory_transfer_usable": true
+  },
   "dataset": {
     "name": "MCPMark",
     "revision": "cd45b7f57923b9b3985467f5139927575f83141c",
@@ -129,7 +136,7 @@
     "verifier_passes": 0
   },
   "official_split_verified": false,
-  "receipt_self_sha256": "28bf66cb87bd7a08d291e5dca64599ddc522da18abf3c91ec872be70b099f826",
+  "receipt_self_sha256": "b77cc89485b4ab9154eeeba15b4012a60e89393f710d8013a83b973ce898d45b",
   "schema_version": 1,
   "source_artifacts": {
     "native_report": {

@@ -2013,17 +2013,14 @@ This moves the repair target from “more ordinary SFT” to a grounded action A
 argument spans, relative-path normalization at the MCP boundary, verifier-aware retries, and a
 matched-random control. No current child is promoted or exported.
 
-### Current-child MCPMark Playwright native run and redacted transfer (m440)
+### Current-child MCPMark Playwright native run and redacted transfer (m440, superseded)
 
 The [m440 receipt](paper/results/raw/m440-mcpmark-playwright-native-child-and-transfer-v1.json)
 extends the same exact `6a6520…` child to all four pinned public MCPMark Playwright standard
 fixtures (table extraction, Turnstile authentication, an X-profile birth-year search, and a
-DeepSeek R1 arXiv search). The runner discovered 22 tools from the pinned
-`@playwright/mcp@0.0.68` stdio server, executed headless browser calls, and ran every independent
-task verifier with zero runtime errors. The child passed `0/4`: it repeated an empty
-`browser_type` call on each task and never produced a verifier-valid final answer. This is native
-browser/MCP failure evidence, not a missing-server or synthetic-loop failure; the official
-MCPMark split, user simulator, and leaderboard aggregation were not executed.
+DeepSeek R1 arXiv search). Its temporary runner discovered 22 tools but read the wrong MCP SDK
+schema key (`inputSchema` instead of the Python SDK's `input_schema`). The receipt is therefore
+superseded for native capability claims; its redacted teacher-forced transfer remains usable.
 
 The same receipt records a deliberately redacted public trajectory continuation using one train
 row and two source-disjoint Playwright evaluation rows from
@@ -2036,6 +2033,25 @@ both arms. Warm backbone movement stays below `0.25%` per large group (embedding
 attention `0.185%`, FFN `0.215%`), while the random embedding moves `119.71%`. This supports
 reusing the compatible pretrained body with low-rate updates, but it does not repair grounded
 tool selection or establish live browser/account competence; no child is promoted or exported.
+
+### Schema-corrected MCPMark Playwright ABI guard (m445)
+
+The [m445 receipt](paper/results/raw/m445-mcpmark-playwright-schema-corrected-abi-guard-v1.json)
+reruns the four pinned Playwright fixtures with the corrected `input_schema` bridge and the
+exact current `6a6520…` child, plus a selector-only warm child. Both real stdio-service runs
+execute all four verifiers with zero runtime errors and score `0/4`; the official split and user
+simulator remain unexecuted. The failure mode is now observable: the model can be forced to emit
+`browser_navigate` with the explicit URL and then `browser_snapshot`, but it abstains before
+grounding a table or page result. The new narrow adapter refuses to invent Playwright `ref` IDs or
+JavaScript `function` bodies; this is a deterministic ABI/safety guard, not learned benchmark
+performance. The selector child is not promoted, and m440's native section is explicitly marked
+invalid because of the schema-key bridge bug.
+
+The current [m447 workshop gate](paper/results/raw/m447-workshop-gate-current-child-mcpmark-schema-corrected-v1.json)
+recognizes this receipt's native contract and reduces the MCPMark blocker to the honest
+`official_split_not_verified` condition. That does not make the local four-task diagnostic an
+official score or make the model ready for public release: the gate still blocks on missing native
+mobile/desktop/enterprise families, child-bound RL, and a public artifact manifest.
 
 ### Current checkpoint-bound workshop gate refresh (m406)
 

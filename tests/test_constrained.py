@@ -156,6 +156,54 @@ def test_context_features_clamp_overlong_multi_turn_history():
     assert feats.shape[0] == cfg.max_seq_len
 
 
+def test_playwright_abi_forces_navigation_then_snapshot_without_inventing_refs():
+    from localagent.agent.constrained import (
+        _arg_options,
+        _playwright_lexical_tool,
+        _tool_bodies,
+    )
+    from localagent.data.schema import ToolSpec
+
+    tools = [
+        ToolSpec(
+            name="browser_navigate",
+            description="Navigate to a URL",
+            parameters={
+                "type": "object",
+                "properties": {"url": {"type": "string"}},
+                "required": ["url"],
+            },
+        ),
+        ToolSpec(
+            name="browser_snapshot",
+            description="Take an accessibility snapshot",
+            parameters={"type": "object", "properties": {}, "required": []},
+        ),
+        ToolSpec(
+            name="browser_click",
+            description="Click an exact snapshot reference",
+            parameters={
+                "type": "object",
+                "properties": {"ref": {"type": "string"}},
+                "required": ["ref"],
+            },
+        ),
+    ]
+    prompt = "Navigate to https://example.test/inbox and then inspect the page."
+    assert _playwright_lexical_tool(prompt, tools) == "browser_navigate"
+    nav = _tool_bodies(prompt, tools[0])
+    assert any('"url":"https://example.test/inbox"' in body for body in nav)
+    assert _playwright_lexical_tool(
+        prompt + '\nASSISTANT: <tool_call>{"name":"browser_navigate"}</tool_call>\n'
+        "TOOL_RESULT: page loaded",
+        tools,
+    ) == "browser_snapshot"
+    click = tools[2]
+    assert _tool_bodies(prompt, click) == []
+    grounded = prompt + "\nASSISTANT: browser_snapshot\nTOOL_RESULT: - button Save [ref=e12]"
+    assert _arg_options(grounded, "ref", {"type": "string"}, True) == ["e12"]
+
+
 def test_best_abstains_when_a_grounded_candidate_exceeds_context_window():
     from localagent.agent.constrained import _best
     from localagent.model import LocalAgentLM, ModelConfig

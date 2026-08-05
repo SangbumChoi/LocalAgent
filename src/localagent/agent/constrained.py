@@ -127,6 +127,35 @@ def _mobile_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
     return None
 
 
+def _playwright_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
+    """Return a narrow Playwright ABI hint for the safe, state-fetching prefix.
+
+    MCP/Playwright tools are unusual for this byte model: ``ref`` values only exist after a
+    browser snapshot, while a task's first instruction usually contains an explicit URL.  A
+    generic dense selector cannot reliably infer that protocol ordering from a long task
+    description.  This adapter therefore only forces the two side-effect-free protocol steps
+    that are unambiguously grounded in the request: navigate to an explicit URL, then fetch a
+    snapshot.  It deliberately does *not* invent element references or JavaScript bodies.
+    """
+
+    names = {tool.name for tool in tools}
+    browser_names = {name for name in names if name.startswith("browser_")}
+    if not browser_names:
+        return None
+    low = prompt.lower()
+    navigated = bool(re.search(r"(?:assistant|tool_call)[^\n]*browser_navigate", low))
+    snapshotted = bool(re.search(r"(?:assistant|tool_call)[^\n]*browser_snapshot", low))
+    has_url = bool(re.search(r"https?://[^\s)\]\"']+", prompt, re.I))
+    if "browser_navigate" in names and has_url and not navigated:
+        if re.search(r"\b(?:navigate|go to|open|visit)\b", low):
+            return "browser_navigate"
+    # A live result is needed before a ref-bearing click/type/fill can be grounded.  Only force
+    # the snapshot after the model has successfully emitted a navigation call.
+    if "browser_snapshot" in names and navigated and not snapshotted:
+        return "browser_snapshot"
+    return None
+
+
 # Argument names whose value is a proper-noun entity (take the capitalized span) vs free text
 # (take the whole tail, which may itself contain a proper noun, e.g. query "capital of Peru").
 ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place",
@@ -352,11 +381,35 @@ def _url(prompt: str) -> list[str]:
     return []
 
 
+def _browser_refs(prompt: str) -> list[str]:
+    """Extract only protocol references returned by a live Playwright snapshot."""
+
+    # ``ref=e12`` is the MCP wire format.  Restrict extraction to tool results so a task prose
+    # mention such as ``ref`` can never become an executable target.  Preserve order and remove
+    # duplicates because the constrained decoder will rank the resulting grounded candidates.
+    results = re.findall(r"TOOL_RESULT\s*:\s*(.*?)(?=\nASSISTANT\s*:|$)", prompt, re.I | re.S)
+    refs = re.findall(r"\bref\s*=\s*([A-Za-z][A-Za-z0-9_-]*)\b", "\n".join(results))
+    return list(dict.fromkeys(refs))
+
+
 def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None) -> list:
     """Candidate values for one argument. If a pointer head is given (`ptr`), string-typed args
     are filled by its learned copy span; otherwise schema/heuristic extractors are used."""
     fmt = schema.get("format")
-    if "enum" in schema:
+    if name == "ref":
+        # Browser/Mobile MCP references are opaque IDs from a prior observation.  Never fall back
+        # to ``_best_string`` (which would copy the whole task prompt into ``ref``).
+        opts = _browser_refs(prompt)
+    elif name == "element" and schema.get("type") == "string":
+        # ``element`` is optional in Playwright's evaluate/type tools; when required by a custom
+        # catalog it must still be grounded to a semantic snapshot label, not invented text.
+        opts = []
+    elif name == "function" and schema.get("type") == "string":
+        # Executable JavaScript cannot be safely synthesized from an untrusted task prompt.
+        opts = []
+    elif name in {"url", "href"}:
+        opts = _url(prompt)
+    elif "enum" in schema:
         opts = list(schema["enum"])
     elif fmt == "arithmetic" or "express" in name:
         opts = _arith(prompt)
@@ -591,6 +644,7 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
         if txt is not None:
             return _best(model, tok, score, txt, device)
     mobile_hint = _mobile_lexical_tool(grounding, tools)
+    playwright_hint = _playwright_lexical_tool(grounding, tools)
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
     selector_order: list[str] | None = None
     if selector is not None:
@@ -607,12 +661,14 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
             query_text=selector_query,
             lexical_weight=lexical_weight,
         )
-        if mobile_hint is not None:
-            selector_order = [mobile_hint] + [name for name in selector_order if name != mobile_hint]
+        hint = mobile_hint or playwright_hint
+        if hint is not None:
+            selector_order = [hint] + [name for name in selector_order if name != hint]
         keep = set(selector_order[:top_m])
     else:
         retriever = retriever or ToolRetriever(tools)
-        keep = {mobile_hint} if mobile_hint is not None else set(retriever.retrieve(grounding, k=k))
+        hint = mobile_hint or playwright_hint
+        keep = {hint} if hint is not None else set(retriever.retrieve(grounding, k=k))
     use = [t for t in tools if t.name in keep] or tools
     if selector_order is not None:
         order = {name: index for index, name in enumerate(selector_order)}
