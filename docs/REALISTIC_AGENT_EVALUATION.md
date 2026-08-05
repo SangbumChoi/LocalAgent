@@ -323,6 +323,19 @@ while the random control moves those groups by `0.78–1.20×`; action heads rem
 This supports parent-weight reuse as an initialization candidate only—no child is exported or
 promoted without native verifier-backed checks.
 
+### Six-source public continuation at 64 steps (m377)
+
+The [m377 receipt](paper/results/raw/m377-all-public-candidate-transfer-64step-v1.json) repeats
+the same six-source, `86`-train/`80`-eval, `512`-token protocol for `64` optimizer updates. The
+split validator now checks parent IDs and typed slots within each named source, while allowing
+generic slot values to recur across unrelated datasets. Warm held-out token accuracy rises from
+`51.31%` to `56.18%`; the matched random backbone rises from `0%` to `31.26%`, leaving a `24.91`
+point warm advantage and a warm win on all six surfaces. Exact sequence accuracy remains `0%`.
+Warm movement is largest in the embedding (`0.837%`), followed by FFN (`0.397%`) and
+attention/mixer (`0.329%`); random movement is `0.78–1.20×`. The result supports parent geometry
+as an initialization candidate only; no child is exported, and no official/native benchmark or
+email/Notion side effect is claimed.
+
 ### ToolACE free-run parent/child control (m375)
 
 The [m375 receipt](paper/results/raw/m375-toolace-parent-warm-free-run-v1.json) runs the parent

@@ -22,7 +22,7 @@ from localagent.agent.toolset import REALISTIC_BROWSER_TOOLS
 from localagent.train.stage_data import probe_decisions
 from scripts.analyze_weight_transfer import analyze as analyze_weight_transfer
 from scripts.train_cross_surface_continuation import (
-    _assert_disjoint,
+    _assert_source_disjoint,
     _checkpoint_tokenizer,
     _identity,
     _load_labeled_groups,
@@ -83,7 +83,7 @@ def main() -> int:
         raise SystemExit(f"source references must match labels; missing={missing}, extra={extra}")
     train_rows = [row for _label, _path, rows in train_groups for row in rows]
     eval_rows = [row for _label, _path, rows in eval_groups for row in rows]
-    _assert_disjoint(train_rows, eval_rows)
+    _assert_source_disjoint(train_groups, eval_groups)
 
     parent_identity = _identity(args.init)
     parent = torch.load(args.init, map_location="cpu", weights_only=False)

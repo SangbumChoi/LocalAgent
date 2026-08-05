@@ -91,6 +91,21 @@ def assemble(
         raise ValueError(f"expected row counts {expected_rows}, got {warm['rows']}")
     train_counts = {source["label"]: source["rows"] for source in warm["train_sources"]}
     eval_counts = {source["label"]: source["rows"] for source in warm["eval_sources"]}
+    split_contract = warm.get("split_contract")
+    if split_contract is None and random.get("split_contract") is None:
+        # Reports generated before the cross-surface split-contract field was added are still
+        # admissible when the caller supplies the same six-source protocol and the runner's
+        # source-local validator has already completed successfully.
+        split_contract = {
+            "mode": "source_local_parent_and_slot_disjoint",
+            "labels_checked": list(LABELS),
+            "cross_source_slot_reuse_allowed": True,
+            "inferred_from_legacy_reports": True,
+        }
+    if not isinstance(split_contract, dict) or split_contract.get("mode") != "source_local_parent_and_slot_disjoint":
+        raise ValueError("warm report must bind the source-local disjoint split contract")
+    if random.get("split_contract") is not None and random.get("split_contract") != split_contract:
+        raise ValueError("warm/random split contracts do not match")
     protocol = {
         "backbone_initializations": {"warm": "parent", "random": "deterministic_random"},
         "batch_size": warm["hyperparameters"]["batch_size"],
@@ -104,6 +119,7 @@ def assemble(
         "steps": warm["hyperparameters"]["steps"],
         "rows_per_source": {"train": train_counts, "eval": eval_counts},
         "source_count": 6,
+        "split_contract": split_contract,
     }
     projection_boundaries = {
         "androidcontrol": "Public text/accessibility action mirror; all selected rows omit screenshots and no Android emulator ran.",
@@ -113,6 +129,20 @@ def assemble(
         "toolace": "Source-record-disjoint function-call/action projection; no tool server, MCP verifier, or external account ran.",
         "xlam": "Derivative function-call projection from the public xLAM raw source; no external tool or account side effect ran.",
     }
+    warm_movement = [
+        float(warm["weight_transfer"]["groups"][group]["relative_delta_l2"])
+        for group in ("embedding", "attention_or_mixer", "ffn", "normalization")
+    ]
+    random_movement = [
+        float(random["weight_transfer"]["groups"][group]["relative_delta_l2"])
+        for group in ("embedding", "attention_or_mixer", "ffn", "normalization")
+    ]
+    warm_max = max(warm_movement)
+    random_min, random_max = min(random_movement), max(random_movement)
+    if warm_max < 0.005:
+        warm_bound = "less than 0.5%"
+    else:
+        warm_bound = f"approximately {warm_max * 100.0:.3f}%"
     body: dict[str, Any] = {
         "benchmark_id": benchmark_id,
         "claim_boundary": (
@@ -139,11 +169,11 @@ def assemble(
             "warm": warm["weight_transfer"],
             "random": random["weight_transfer"],
             "interpretation": (
-                "The parent-initialized arm changes shared embedding, mixer, and FFN tensors by less "
-                "than 0.5% relative L2 in this scaled continuation, while the deterministic-random arm "
-                "moves those groups by roughly "
-                "0.78-1.20x. Both arms leave the action heads unchanged in this continuation. This supports "
-                "parent geometry as a compatible initialization candidate, not an optimality or promotion claim."
+                f"The parent-initialized arm changes the largest shared-body tensor group by {warm_bound} "
+                "relative L2 in this continuation, while the deterministic-random arm moves those groups "
+                f"by roughly {random_min:.2f}-{random_max:.2f}x relative L2. Both arms leave the action "
+                "heads unchanged in this continuation. This supports parent geometry as a compatible "
+                "initialization candidate, not an optimality or promotion claim."
             ),
         },
         "decision": {

@@ -1601,6 +1601,17 @@ points, but exact sequence accuracy remains `0%` for both. Warm shared-body move
 adoption decision is therefore “reuse the parent as an initialization candidate, keep native and
 official-split gates open,” not a WebGPU policy promotion.
 
+### Six-source public continuation at 64 steps (m377)
+
+The [m377 receipt](paper/results/raw/m377-all-public-candidate-transfer-64step-v1.json) extends
+the same six-source public-train control to `64` updates while retaining `86` train and `80`
+source-local parent/slot-disjoint held-out rows at `512` tokens. Warm held-out token accuracy is
+`56.18%` versus `31.26%` for the matched random backbone (`+24.91` points), and warm wins every
+surface. Exact sequence accuracy remains `0%`. The warm child moves embedding/attention/FFN by
+`0.837%/0.329%/0.397%` relative L2, while the random body moves `0.78–1.20×`; action heads are
+unchanged. This is stronger initialization-lineage evidence, not an official score or policy
+promotion, and the child remains unexported.
+
 ### ToolACE free-run parent/child control (m375)
 
 The [m375 receipt](paper/results/raw/m375-toolace-parent-warm-free-run-v1.json) evaluates the

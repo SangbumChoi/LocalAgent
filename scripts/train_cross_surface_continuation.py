@@ -140,6 +140,24 @@ def _load_labeled_groups(
     return groups
 
 
+def _assert_source_disjoint(
+    train_groups: list[tuple[str, Path, list[Conversation]]],
+    eval_groups: list[tuple[str, Path, list[Conversation]]],
+) -> None:
+    """Check parent/slot leakage within each named source, not across sources.
+
+    Different public datasets legitimately reuse generic slot names and values (for example,
+    ``route=12``).  Treating those values as a global pool falsely rejects a cross-surface
+    mixture.  A source-local check still rejects leakage when the same dataset contributes both
+    train and evaluation rows.
+    """
+
+    train_by_label = {label: rows for label, _path, rows in train_groups}
+    eval_by_label = {label: rows for label, _path, rows in eval_groups}
+    for label in sorted(set(train_by_label) & set(eval_by_label)):
+        _assert_disjoint(train_by_label[label], eval_by_label[label])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--train-data", type=_parse_labeled_path, action="append", required=True)
@@ -199,7 +217,7 @@ def main() -> int:
         raise SystemExit(f"source references must match labels; missing={missing}, extra={extra}")
     train_rows = [row for _label, _path, rows in train_groups for row in rows]
     eval_rows = [row for _label, _path, rows in eval_groups for row in rows]
-    _assert_disjoint(train_rows, eval_rows)
+    _assert_source_disjoint(train_groups, eval_groups)
     parent_identity = _identity(args.init)
     parent = torch.load(args.init, map_location="cpu", weights_only=False)
     config = ModelConfig(**parent["cfg"])
@@ -289,6 +307,14 @@ def main() -> int:
             for label, path, rows in eval_groups
         ],
         "rows": {"train": len(train_rows), "eval": len(eval_rows)},
+        "split_contract": {
+            "mode": "source_local_parent_and_slot_disjoint",
+            "labels_checked": sorted(
+                {label for label, _path, _rows in train_groups}
+                | {label for label, _path, _rows in eval_groups}
+            ),
+            "cross_source_slot_reuse_allowed": True,
+        },
         "hyperparameters": {
             "steps": args.steps,
             "batch_size": args.batch_size,

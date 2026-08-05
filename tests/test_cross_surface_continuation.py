@@ -6,6 +6,7 @@ import json
 import pytest
 
 from scripts.train_cross_surface_continuation import (
+    _assert_source_disjoint,
     _parse_labeled_path,
     _parse_source_reference,
     _source_profile,
@@ -74,3 +75,31 @@ def test_source_reference_and_backbone_init_flags_are_explicit_in_cli_contract()
     assert _parse_source_reference("desktop=xlangai/AgentNet|https://example.test/agentnet")[1][
         "dataset"
     ] == "xlangai/AgentNet"
+
+
+def _row(parent_id: str, slot: str) -> Conversation:
+    return Conversation.from_json(
+        json.dumps(
+            {
+                "messages": [{"role": "user", "content": "act"}],
+                "tools": [],
+                "meta": {
+                    "parent_record_id": parent_id,
+                    "slot_values": {"route": [slot]},
+                },
+            }
+        )
+    )
+
+
+def test_source_disjoint_allows_same_slot_value_across_distinct_sources(tmp_path: Path) -> None:
+    train = [("mobile", tmp_path / "mobile-train.jsonl", [_row("mobile-train", "12")])]
+    evaluation = [("desktop", tmp_path / "desktop-eval.jsonl", [_row("desktop-eval", "12")])]
+    _assert_source_disjoint(train, evaluation)
+
+
+def test_source_disjoint_rejects_same_source_slot_leakage(tmp_path: Path) -> None:
+    train = [("mobile", tmp_path / "mobile-train.jsonl", [_row("mobile-train", "12")])]
+    evaluation = [("mobile", tmp_path / "mobile-eval.jsonl", [_row("mobile-eval", "12")])]
+    with pytest.raises(ValueError, match="train/eval slot overlap"):
+        _assert_source_disjoint(train, evaluation)
