@@ -1815,6 +1815,21 @@ receipt to the current checkpoint and still reports `ready: false` with ten non-
 This strengthens deployment evidence for the exact artifact while preserving the distinction
 between local structured capability and real-account/browser-agent completion.
 
+### Native WebGPU local browser/email/Notion trajectory (m412)
+
+The [m412 receipt](paper/results/raw/m412-webgpu-local-trajectory-v1.json) drives the exact current
+bundle through three resettable in-memory trajectories: Gmail compose/send (six steps), Notion
+capture (two), and browser mail search/open (five).  The independent fixture validator accepts all
+13 outputs as schema-valid, but only `4/13` actions are exact and `3/13` state transitions complete;
+trajectory pass@1 is `0/3` and closed-loop success is `23.08%`.  The failure pattern is informative:
+the email trajectory selects `send_email` where a text-entry action is required, while Notion and
+browser steps often collapse to the same email guard.
+
+This is a real Chromium/WebGPU execution with the current checkpoint, but it is deliberately a
+local state-machine diagnostic.  No account, browser navigation, Notion API, MCP service, or native
+mobile emulator was contacted.  The result therefore exposes the remaining multi-step routing and
+argument-grounding gap instead of being reported as a productivity benchmark score.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
