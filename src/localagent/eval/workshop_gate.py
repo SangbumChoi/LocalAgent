@@ -206,11 +206,17 @@ def _webgpu_check(path: Path | None, *, repo_root: Path) -> dict[str, Any]:
     )
 
 
-def _weight_check(paths: Sequence[Path], *, repo_root: Path) -> dict[str, Any]:
+def _weight_check(
+    paths: Sequence[Path],
+    *,
+    repo_root: Path,
+    current_checkpoint_sha256: str | None = None,
+) -> dict[str, Any]:
     requirement = "weights:transfer_and_no_transfer_ablation"
     if not paths:
         return _check(requirement, status="blocked", blockers=["two_reports_required"])
     reports: list[tuple[Path, dict[str, Any]]] = []
+    unified_reports: list[tuple[Path, dict[str, Any]]] = []
     blockers: list[str] = []
     for path in paths:
         resolved = path if path.is_absolute() else repo_root / path
@@ -218,7 +224,54 @@ def _weight_check(paths: Sequence[Path], *, repo_root: Path) -> dict[str, Any]:
         if payload is None:
             blockers.append(f"unreadable:{resolved}:{error}")
             continue
+        unified = payload.get("weight_transfer_analysis")
+        comparison = payload.get("comparison")
+        if isinstance(unified, Mapping) and isinstance(comparison, Mapping):
+            # The current cross-surface receipt nests the warm/random compatibility reports
+            # rather than using the legacy top-level ``ablation``/``held_out`` fields.
+            for arm in ("warm", "random"):
+                arm_report = unified.get(arm)
+                if not isinstance(arm_report, Mapping):
+                    blockers.append(f"missing_unified_arm:{resolved}:{arm}")
+                    continue
+                compatibility = arm_report.get("compatibility")
+                if not isinstance(compatibility, Mapping):
+                    blockers.append(f"missing_unified_compatibility:{resolved}:{arm}")
+                    continue
+                if compatibility.get("config_mismatches") not in ({}, None):
+                    blockers.append(f"config_mismatch:{resolved}:{arm}")
+                if compatibility.get("shape_mismatches") not in ({}, None):
+                    blockers.append(f"shape_mismatch:{resolved}:{arm}")
+                if compatibility.get("tokenizer_sha256_equal") is not True:
+                    blockers.append(f"tokenizer_mismatch:{resolved}:{arm}")
+                groups = arm_report.get("groups")
+                if not isinstance(groups, Mapping) or not groups:
+                    blockers.append(f"missing_unified_weight_groups:{resolved}:{arm}")
+            contract = comparison.get("arm_contract")
+            if not isinstance(contract, Mapping):
+                blockers.append(f"missing_unified_arm_contract:{resolved}")
+            else:
+                if contract.get("warm_backbone_init") != "parent":
+                    blockers.append(f"invalid_unified_warm_init:{resolved}")
+                if contract.get("random_backbone_init") != "random":
+                    blockers.append(f"invalid_unified_random_init:{resolved}")
+            parent = payload.get("parent_checkpoint")
+            if current_checkpoint_sha256 is not None:
+                parent_sha256 = parent.get("sha256") if isinstance(parent, Mapping) else None
+                if parent_sha256 is None:
+                    blockers.append(f"unified_current_checkpoint_not_bound:{resolved}")
+                elif parent_sha256 != current_checkpoint_sha256:
+                    blockers.append(f"unified_current_checkpoint_sha256_mismatch:{resolved}")
+            unified_reports.append((resolved, payload))
+            continue
         reports.append((resolved, payload))
+    if unified_reports and not reports:
+        return _check(
+            requirement,
+            status="pass" if not blockers else "blocked",
+            evidence=[f"{path}:{_sha256(path)}" for path, _ in unified_reports],
+            blockers=blockers,
+        )
     # A canonical combined receipt may carry both parent-head and random/no-transfer arms.  This
     # avoids making reviewers reconstruct an ablation from several opaque files while retaining
     # the same compatibility checks as the per-transition analyzer.
@@ -274,9 +327,16 @@ def _weight_check(paths: Sequence[Path], *, repo_root: Path) -> dict[str, Any]:
             blockers.append(f"missing_held_out_metrics:{resolved}")
     return _check(
         requirement,
-        status="pass" if not blockers and len(reports) >= 2 else "blocked",
-        evidence=[f"{path}:{_sha256(path)}" for path, _ in reports],
-        blockers=blockers,
+        status="pass" if not blockers and (len(reports) >= 2 or unified_reports) else "blocked",
+        evidence=[
+            *[f"{path}:{_sha256(path)}" for path, _ in reports],
+            *[f"{path}:{_sha256(path)}" for path, _ in unified_reports],
+        ],
+        blockers=(
+            blockers
+            if blockers or len(reports) >= 2 or unified_reports
+            else ["two_reports_required"]
+        ),
     )
 
 
@@ -464,6 +524,7 @@ def build_workshop_gate(
         _weight_check(
             [Path(path) for path in weight_reports],
             repo_root=root,
+            current_checkpoint_sha256=current_checkpoint_sha256,
         )
     )
     checks.append(

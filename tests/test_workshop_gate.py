@@ -271,6 +271,44 @@ def test_weight_gate_accepts_combined_parent_vs_random_receipt() -> None:
     assert check["status"] == "pass"
 
 
+def test_weight_gate_accepts_current_unified_cross_surface_receipt() -> None:
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        weight_reports=["docs/paper/results/raw/m377-all-public-candidate-transfer-64step-v1.json"],
+        current_checkpoint="runs/sft-webgpu-browser-context-adapter-20260802/latest.pt",
+    )
+    check = next(
+        item
+        for item in report["checks"]
+        if item["requirement"] == "weights:transfer_and_no_transfer_ablation"
+    )
+    assert check["status"] == "pass"
+
+
+def test_weight_gate_rejects_unified_cross_surface_checkpoint_mismatch(tmp_path: Path) -> None:
+    source = ROOT / "docs/paper/results/raw/m377-all-public-candidate-transfer-64step-v1.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload["parent_checkpoint"]["sha256"] = "0" * 64
+    receipt = tmp_path / "m377-mismatch.json"
+    receipt.write_text(json.dumps(payload), encoding="utf-8")
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"different-current-checkpoint")
+    report = build_workshop_gate(
+        CATALOG,
+        repo_root=ROOT,
+        weight_reports=[receipt],
+        current_checkpoint=checkpoint,
+    )
+    check = next(
+        item
+        for item in report["checks"]
+        if item["requirement"] == "weights:transfer_and_no_transfer_ablation"
+    )
+    assert check["status"] == "blocked"
+    assert any("unified_current_checkpoint_sha256_mismatch" in blocker for blocker in check["blockers"])
+
+
 def test_write_gate_refuses_overwrite(tmp_path: Path) -> None:
     report = build_workshop_gate(CATALOG, repo_root=ROOT)
     output = tmp_path / "gate.json"

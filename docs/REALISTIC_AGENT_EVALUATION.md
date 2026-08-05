@@ -336,6 +336,15 @@ attention/mixer (`0.329%`); random movement is `0.78–1.20×`. The result suppo
 as an initialization candidate only; no child is exported, and no official/native benchmark or
 email/Notion side effect is claimed.
 
+### Current publication gate with unified transfer evidence (m379)
+
+The [m379 gate receipt](paper/results/raw/m379-workshop-gate-current-v1.json) now accepts the
+nested warm/random compatibility report from m377 and verifies its parent SHA against the exact
+current checkpoint. This removes a schema-version ambiguity in the weight gate without changing
+the claim boundary: `ready` remains `false` because AndroidWorld, MobileSafetyBench, iOSWorld,
+OSWorld, OSWorld-V2, AgentNet, MCPMark, and EnterpriseOps-Gym still lack official native receipts,
+ToolSandbox is not official-split verified, and the public legacy model/demo manifest is stale.
+
 ### ToolACE free-run parent/child control (m375)
 
 The [m375 receipt](paper/results/raw/m375-toolace-parent-warm-free-run-v1.json) runs the parent
