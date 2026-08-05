@@ -39,14 +39,14 @@ entries:
     name: OSWorld 2.0 trajectories
     source_url: https://huggingface.co/datasets/xlangai/osworld2.0-trajectory
     license: Apache-2.0_task_card_with_gated_assets
-    source_revision: pin_before_use
+    source_revision: osworld-v2-2026.06.24;benchmark-release-osworld-v2-2026.06.24
     scale: 108_long_horizon_tasks
     modalities: [instruction, screenshot, desktop_action, trajectory]
     split_policy: test_only_and_gated; never train on benchmark trajectories
     runtime: OSWorld-V2_real_desktop_environment
     webgpu_projection: text-only replay/protocol audit; native desktop VM required for score
     metric: execution_success_and_long_horizon_task_completion
-    notes: The public repository contains multi-gigabyte trajectory archives and gated task assets; acquisition must record access status and exact archive hashes.
+    notes: The official release requires the v2026.06.24 code tag and the osworld-v2-2026.06.24 benchmark release. Public assets are incomplete; the gated asset snapshot must be downloaded locally and hashed before any run.
 
   - id: enterpriseopsgym
     family: tool_api
@@ -118,6 +118,34 @@ entries:
     webgpu_projection: text/accessibility-tree action dispatch with explicit DOM grounding adapter
     metric: episode_success_reward_and_action_error
     notes: Existing native receipts cover the pinned 240-episode MiniWoB plan, not visual WebArena or real accounts.
+
+  - id: online_mind2web
+    family: browser
+    name: Online-Mind2Web
+    source_url: https://github.com/OSU-NLP-Group/Online-Mind2Web
+    license: source_and_live_site_terms_require_audit
+    source_revision: pin-before-use;v2-submission-schema-2026-05-23
+    scale: release_dependent_live_web_tasks;_36_tasks_were_revised_for_site_drift
+    modalities: [goal, live_web, DOM, accessibility_tree, browser_action, human_or_judge_feedback]
+    split_policy: evaluation_only;_live_tasks_credentials_site_state_and_submission_traces_never_training
+    runtime: release_matched_live_browser_or_vendor_hosted_evaluator
+    webgpu_projection: DOM/action safety and online-submission protocol only; no live-account side effects
+    metric: task_success, action_validity, and human_or_judge_rubric_score
+    notes: The official repository documents a 2026 v2 submission schema and site-drift corrections. Freeze the task revision and evaluator endpoint before scoring; this is not a static Mind2Web training split.
+
+  - id: osworld_human_efficiency
+    family: computer
+    name: OSWorld-Human
+    source_url: https://github.com/WukLab/osworld-human
+    license: MIT_code;_OSWorld_assets_and_trajectory_terms_require_audit
+    source_revision: pin-before-use
+    scale: human_reference_trajectories_for_OSWorld_tasks;_release_dependent
+    modalities: [instruction, human_action_trajectory, step_count, desktop_state]
+    split_policy: evaluation_only;_upstream_warns_not_to_use_the_repository_for_training
+    runtime: OSWorld_desktop_VM_and_release_matched_result_directory
+    webgpu_projection: action-efficiency and excess-step analysis only; native desktop completion requires OSWorld
+    metric: steps_to_success, weighted_efficiency_score, and task_success
+    notes: This benchmark measures temporal efficiency against human reference trajectories. It must not be mixed into SFT or RL, and its result scorer is not a substitute for OSWorld task execution.
 
   - id: iosworld
     family: mobile

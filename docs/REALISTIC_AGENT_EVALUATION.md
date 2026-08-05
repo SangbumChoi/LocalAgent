@@ -40,6 +40,14 @@ defines a useful computer/mobile/grounding action contract. All four are evaluat
 references here: their screenshot assets, hidden profiles, app packages, and benchmark task text
 are not admitted to the text-only WebGPU SFT bundle.
 
+The current browser/desktop audit also records [Online-Mind2Web](https://github.com/OSU-NLP-Group/Online-Mind2Web)
+and [OSWorld-Human](https://github.com/WukLab/osworld-human). Online-Mind2Web is a live-web
+submission benchmark with a 2026 v2 schema and site-drift corrections; OSWorld-Human measures
+steps and efficiency against human reference trajectories and explicitly warns against training on
+its repository. Both are supplemental evaluation-only rows, not static SFT data. The OSWorld-V2
+row is tied to the upstream `v2026.06.24` code tag and `osworld-v2-2026.06.24` release; its public
+asset mirror is incomplete, so gated assets must be pinned and hashed before a native run.
+
 The browser audit now includes [WebBench](https://github.com/Halluminate/WebBench), which covers
 realistic live-site READ/CREATE/UPDATE/DELETE/file workflows, and [BU Bench V1](https://github.com/browser-use/benchmark),
 which combines 100 encrypted tasks from WebBench, Mind2Web 2, BrowseComp, GAIA, and custom

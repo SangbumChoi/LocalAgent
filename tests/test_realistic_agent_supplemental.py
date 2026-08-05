@@ -10,7 +10,7 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
     payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
     assert payload["kind"] == "localagent_realistic_agent_supplemental_catalog"
     entries = payload["entries"]
-    assert len(entries) == 24
+    assert len(entries) == 26
     assert {entry["id"] for entry in entries} == {
         "androidworld",
         "browsergym_miniwob",
@@ -23,6 +23,8 @@ def test_supplemental_realistic_sources_are_explicitly_catalog_only() -> None:
         "enterpriseopsgym",
         "mcpmark",
         "osworld2_trajectory",
+        "online_mind2web",
+        "osworld_human_efficiency",
         "toolsandbox",
         "webbench",
         "bu_bench_v1",
@@ -57,6 +59,26 @@ def test_toolsandbox_revision_matches_the_published_metadata_profile() -> None:
     entry = next(row for row in payload["entries"] if row["id"] == "toolsandbox")
     assert entry["source_revision"] == "165848b9a78cead7ca7fe7c89c688b58e6501219"
     assert entry["scale"].startswith("129_base_scenarios")
+
+
+def test_current_browser_and_desktop_additions_remain_evaluation_only() -> None:
+    payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
+    entries = {entry["id"]: entry for entry in payload["entries"]}
+    online = entries["online_mind2web"]
+    assert online["source_revision"] == "pin-before-use;v2-submission-schema-2026-05-23"
+    assert online["split_policy"].startswith("evaluation_only")
+    assert "live" in online["split_policy"]
+    human = entries["osworld_human_efficiency"]
+    assert human["source_revision"] == "pin-before-use"
+    assert human["split_policy"].startswith("evaluation_only")
+    assert "not_to_use" in human["split_policy"]
+
+
+def test_osworld_v2_release_pin_keeps_gated_assets_explicit() -> None:
+    payload = yaml.safe_load(SUPPLEMENTAL.read_text(encoding="utf-8"))
+    entry = next(row for row in payload["entries"] if row["id"] == "osworld2_trajectory")
+    assert entry["source_revision"] == "osworld-v2-2026.06.24;benchmark-release-osworld-v2-2026.06.24"
+    assert "gated" in entry["notes"]
 
 
 def test_live_browser_sources_are_eval_only_and_contamination_safe() -> None:
