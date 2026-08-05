@@ -1983,6 +1983,21 @@ services were not executed. The result therefore blocks promotion of the current
 general MCP tool use and points training toward tool-state observation, argument grounding,
 write verification, and recovery from MCP errors.
 
+### MCPMark state/argument transfer intervention (m434)
+
+The [m434 receipt](paper/results/raw/m434-mcpmark-filesystem-transfer-native-holdout-v1.json)
+tests that diagnosis with eight source-disjoint oracle decision rows from the file-context and
+file-property families, holding out ten decisions from folder-structure, legal-document, papers,
+and student-database tasks. A 24-step warm continuation improves held-out teacher-forced token
+accuracy `38.18% → 52.52%` (`+14.34` points), while shared-body movement stays small (embedding
+`0.696%`, attention/mixer `0.375%`, FFN `0.447%`, normalization `0.015%`; action heads unchanged).
+The stronger test is native: the warm child still passes `0/5` held-out MCP filesystem verifiers,
+changes `0/5` workspaces, and has zero MCP runtime errors.
+
+This is negative promotion evidence. The random arm did not produce a valid report under local CPU
+memory pressure, so no matched-random claim is made; the transfer is retained only as a training
+diagnostic, not exported to WebGPU or counted toward official MCPMark readiness.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
