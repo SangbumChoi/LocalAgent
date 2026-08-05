@@ -1786,6 +1786,21 @@ grounding, MCP server, real email/Notion side effect, or external account was ru
 therefore improves the reproducible training/transfer evidence while leaving the native and
 publication gates closed.
 
+### Current checkpoint-bound workshop gate refresh (m406)
+
+The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
+publication checklist against the exact `bc1aca…` checkpoint rather than relying on an older gate.
+It recognizes seven requirements as passing: realistic-family catalog coverage, no pending train
+adapter, official-split MobileGym, official-split BrowserGym/MiniWoB, native WebGPU capability and
+latency, the unified m405 warm/random weight ablation, and the current-checkpoint RL preflight.
+
+The gate remains fail-closed (`ready: false`) with ten blockers: AndroidWorld, MobileSafetyBench,
+iOSWorld, OSWorld, OSWorld 2.0, AgentNet native replay, ToolSandbox, MCPMark, EnterpriseOps-Gym,
+and the current public model/demo manifest. The m265 WebGPU receipt reports `3/3` exact local
+structured actions and `0` external side effects; it is capability/latency evidence, not real email,
+Notion, browser-account, or cross-device task success. The m406 result narrows the remaining
+publication work without converting local diagnostics into official leaderboard claims.
+
 ## Publication checklist
 
 - [ ] Official source revision, license, split, task IDs, and byte/hash receipt.
