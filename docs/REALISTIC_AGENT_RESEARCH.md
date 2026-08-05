@@ -1885,6 +1885,46 @@ trail without turning a three-task smoke, one failed MCP task, or a local-only e
 workshop-passing result.  The remaining blockers are now named against the child checkpoint and
 are actionable rather than hidden by stale parent evidence.
 
+### Current-child matched Mind2Web transfer ablation (m425)
+
+The [m425 receipt](paper/results/raw/m425-mind2web-child-transfer-ablation-v1.json) repeats the
+same parent-disjoint m420 Mind2Web continuation with a matched random-backbone control, now
+binding both arms to the exact `6a6520…` m420 child.  Eight CPU updates move held-out teacher-forced
+token accuracy from `69.65%` to `76.23%` for the warm arm, while the random arm moves from `0%` to
+`1.65%`; the warm-minus-random gap is `74.59` percentage points.  Warm embedding/attention/FFN
+movement is `0.183%/0.122%/0.139%` with unchanged action heads; the random arm moves those groups
+by `1.197×/0.779×/0.878×`.  Both sequence-exact rates remain zero.
+
+This is the strongest child-specific weight-transfer evidence so far: the BPE body is compatible
+and useful as an initialization, while surface-specific adaptation should remain concentrated in
+heads or low-rate body updates.  It still does not establish executable browser success, visual
+grounding, official Mind2Web test performance, or optimal hyperparameters.
+
+### Current-child stateful productivity RL preflight (m426)
+
+The [m426 receipt](paper/results/raw/m426-mind2web-child-rl-preflight-v1.json) runs the exact child
+through the bounded stateful productivity RL prefix.  The split audit is clean (`prompt_overlap=0`,
+`row_overlap=0`), the rollout produces two reward values (`0` and `0.1`) across two informative
+groups, and the nonzero learning-rate step executes.  However, no policy model tensor changes
+(`0/40`) and the runner fails with `isolated RL nonzero-LR prefix changed no policy model tensor`.
+
+The child therefore cannot inherit the parent’s RL readiness.  The correct next training work is
+to repair reward-to-gradient connectivity or the child’s action/route heads, then rerun this exact
+preflight; no RL child or deployment promotion is claimed from this failed receipt.
+
+### Current-child workshop gate after transfer and RL controls (m427)
+
+The [m427 gate](paper/results/raw/m427-workshop-gate-current-child-v1.json) is the first gate
+re-run that binds the transfer decision and all available diagnostics to the exact m420 child.  The
+m425 warm/random Mind2Web ablation now passes the weight-transfer requirement; the m426 RL receipt
+is correctly rejected because its nonzero-LR prefix changed no policy tensor.  ToolSandbox and
+MCPMark remain native diagnostic receipts only because their official splits/user simulators were
+not executed, and the local WebGPU bundle is not a public model/demo manifest.
+
+The gate therefore narrows the child-specific risk: pretrained-weight reuse is supported, but RL
+readiness and workshop publication are not.  This prevents a strong teacher-forced transfer number
+from being mistaken for end-to-end agent capability.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
