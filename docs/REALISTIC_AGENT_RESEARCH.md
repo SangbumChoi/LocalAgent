@@ -2371,6 +2371,35 @@ provenance and weight-transfer result, not an official MCPMark score or live ema
 effect. EnterpriseOps-Gym remains evaluation-only: its public email tasks are used for retrieval
 audits, not SFT admission.
 
+### Native MCPMark Playwright replay after installing the pinned MCP runtime (m480)
+
+The [m480 receipt](paper/results/raw/m480-mcpmark-native-playwright-replay-v1.json) removes the
+earlier infrastructure-only failure by running `@playwright/mcp@0.0.68` as a real stdio server,
+Chromium, and the independent MCPMark verifier for `eval_web/extraction_table`. The warm m479 child
+discovers `22` tools and executes `browser_navigate` plus `browser_snapshot` without a runtime error,
+but emits an abstention instead of the required CSV; verifier success is `0/1`. The exact parent
+baseline times out before tool discovery and also scores `0/1`, so the child is not promoted.
+
+This is stronger evidence than offline token accuracy because the MCP server and verifier actually
+ran, but it remains a one-task diagnostic: the official split is not verified, the task uses a public
+web fixture rather than an email/Notion account, and no external account side effect is claimed.
+
+### Warm-child local HF/WebGPU release candidate (m481)
+
+The [m481 receipt](paper/results/raw/m481-warm-child-hf-webgpu-release-candidate-v1.json) exports
+the exact m479 warm child (`10,524,544` parameters, checkpoint
+`1fc2d401…`) to a local Hugging Face-format model bundle and a static WebGPU Space candidate. All
+four ONNX graphs pass the hard PyTorch parity gate; the bundle contains the 63-tool dispatch pool.
+Native Chromium reports an Apple Metal-3 WebGPU adapter, `607.90` input tokens/s p50,
+`16.75 ms` wall-latency p50, and `20.46 MB` conservative peak memory across three structured
+cases (`3/3` exact local actions). Closed-loop success remains `0` because the fixture intentionally
+executes no real side effects.
+
+Hugging Face publication is still fail-closed: this environment is not authenticated, so there is
+no public model URL, Space URL, or current public-artifact manifest. The m481 candidate is therefore
+deployable locally but not presented as a published release or as evidence of email/Notion/browser
+task completion.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
