@@ -83,6 +83,15 @@ treats a protocol bridge, a synthetic state loop, SwiftShader, or a local checkp
 PYTHONPATH=src python scripts/workshop_gate.py --strict
 ```
 
+### Bounded multi-hop runtime contract
+
+The deployed Python runtime now honors `Agent.chat(max_tool_hops=...)` for model-backed agents:
+after each dispatch it appends the serialized `TOOL_RESULT` to the next prompt, stops at the hop
+budget, and refuses to dispatch an identical tool/argument pair twice. This is the control-loop
+primitive needed for workflows such as browser search followed by a staged Notion write. Tool
+registries remain responsible for confirmation and authorization, and this unit-tested loop is
+runtime evidence—not a native email, Notion, MCP, browser, or mobile benchmark score.
+
 The command without supplied receipts exits non-zero with fifteen blocking requirements.  Supplying
 the verified native WebGPU, full BrowserGym, MobileGym, and public-artifact receipts reduces this
 to ten when the current checkpoint is also bound (nine native requirements plus the stale-public-

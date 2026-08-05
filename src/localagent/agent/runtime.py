@@ -10,6 +10,7 @@ Every finished turn can be handed to the conversation store, which feeds the dat
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from localagent.agent.memory import Memory
@@ -171,28 +172,69 @@ class Agent:
         return list(self.catalog.values())
 
     def chat(self, user_message: str, max_tool_hops: int = 6) -> str:
+        """Run a bounded tool loop and return the rendered trace.
+
+        The model sees each tool result before choosing the next action.  A repeated identical
+        call is stopped before dispatch so a malformed policy cannot loop or repeat a side effect;
+        callers can set ``max_tool_hops=1`` for the historical single-call behavior.
+        """
+
+        if max_tool_hops < 1:
+            raise ValueError("max_tool_hops must be positive")
         from localagent.agent.constrained import _tool_bodies, grounded_decode, hybrid_decode
         from localagent.agent.parser import extract_tool_calls
 
-        specs = self._select_specs(user_message)
-        if self.model is not None and self.selector is not None:
-            # generable path: route gate -> dense selector -> pointer-copy args (scales to any pool)
-            out = hybrid_decode(self.model, self.tokenizer, user_message, specs,
-                                selector=self.selector, route_head=self.route_head,
-                                ptr_head=self.ptr_head, top_m=self.selector_top_m,
-                                selector_first=self.selector_first)
-        elif self.model is not None:
-            # legacy: rank the (retrieved) candidates' grounded bodies with the fixed-N tool head
-            out = grounded_decode(self.model, self.tokenizer, user_message, specs,
-                                  tool_head=self.tool_head, ptr_head=self.ptr_head)
-        else:
-            # no model: retriever order + schema-grounded args (works over 1000s of tools)
-            bodies = [b for t in specs for b in _tool_bodies(user_message, t)[:1]]
-            out = bodies[0] if bodies else ""
+        prompt = user_message
+        trace: list[str] = []
+        seen_calls: set[str] = set()
+        for hop in range(max_tool_hops):
+            specs = self._select_specs(prompt)
+            if self.model is not None and self.selector is not None:
+                # generable path: route gate -> dense selector -> pointer-copy args (scales to any pool)
+                out = hybrid_decode(
+                    self.model,
+                    self.tokenizer,
+                    prompt,
+                    specs,
+                    selector=self.selector,
+                    route_head=self.route_head,
+                    ptr_head=self.ptr_head,
+                    top_m=self.selector_top_m,
+                    selector_first=self.selector_first,
+                )
+            elif self.model is not None:
+                # legacy: rank the (retrieved) candidates' grounded bodies with the fixed-N tool head
+                out = grounded_decode(
+                    self.model,
+                    self.tokenizer,
+                    prompt,
+                    specs,
+                    tool_head=self.tool_head,
+                    ptr_head=self.ptr_head,
+                )
+            else:
+                # no model: retriever order + schema-grounded args (works over 1000s of tools)
+                bodies = [b for t in specs for b in _tool_bodies(prompt, t)[:1]]
+                out = bodies[0] if bodies else ""
 
-        calls = extract_tool_calls(out)
-        if not calls:
-            return out  # plain text / abstention
-        c = calls[0]
-        result = self.tools.dispatch(c.name, c.arguments)
-        return f"[{c.name}({c.arguments}) -> {result}]"
+            calls = extract_tool_calls(out)
+            if not calls:
+                return "\n".join([*trace, out]) if trace else out  # plain text / abstention
+            c = calls[0]
+            call_key = json.dumps(
+                {"name": c.name, "arguments": c.arguments}, sort_keys=True, separators=(",", ":")
+            )
+            if call_key in seen_calls:
+                trace.append(f"[loop_stopped: repeated {c.name}({c.arguments})]")
+                break
+            seen_calls.add(call_key)
+            result = self.tools.dispatch(c.name, c.arguments)
+            trace.append(f"[{c.name}({c.arguments}) -> {result}]")
+            if hop + 1 >= max_tool_hops or self.model is None:
+                break
+            prompt = (
+                f"{prompt}\nASSISTANT: {out}\nTOOL_RESULT: "
+                f"{json.dumps(result, ensure_ascii=False, sort_keys=True, default=str)}\n"
+                "Next required action:"
+            )
+        return "\n".join(trace)
