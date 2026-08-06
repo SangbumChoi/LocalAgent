@@ -2709,6 +2709,36 @@ unavailable, so the reproducible training path is CPU-only.  This explains the b
 caps and does not change the separate native WebGPU measurement, which runs in Chromium on the
 Apple Metal adapter.
 
+### Native BrowserGym environment refresh (m510)
+
+The [m510 receipt](paper/results/raw/m510-browsergym-current-canary-v1.json) re-runs one pinned
+MiniWoB episode against the exact current checkpoint (`6a6520…`) after installing BrowserGym
+`0.14.3`, Gymnasium `1.3.0`, and Playwright `1.44.0` in the project environment.  The live
+accessibility/DOM environment executed ten model steps without a runtime exception, but task success
+was `0/1`.  This is a bounded diagnostic (`official_split_verified=false`), not a replacement for
+the complete `240`-episode official receipt in m431; it verifies that the current environment can
+launch the native adapter and exposes the remaining MiniWoB action/argument grounding gap.
+
+### Current runtime dependency preflight (m511)
+
+The [m511 preflight](paper/results/raw/m511-current-realistic-agent-preflight-v1.json) updates the
+catalog probe after that install.  BrowserGym, Gymnasium, Playwright, Hugging Face Hub, and
+`datasets` now import successfully, but the catalog remains `4` runnable / `38` blocked because the
+remaining rows require ADB, Docker/QEMU, iOS/desktop VMs, MCP services, or restricted/evaluation-only
+assets.  This narrows the blocker from missing Python packages to native environment and access
+contracts; it does not admit evaluation data into training.
+
+### Current native mobile/browser workshop gate (m513)
+
+The [m513 gate](paper/results/raw/m513-workshop-gate-current-native-browsergym-mobilegym-v1.json)
+joins the current checkpoint with the complete official-split MobileGym (m428) and BrowserGym/
+MiniWoB (m431) receipts, native WebGPU capability (m451), warm/random transfer (m425), and RL
+preflight (m457).  Those checks now pass together.  The gate is still intentionally `ready=false`:
+AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld/OSWorld 2.0, AgentNet, ToolSandbox, MCPMark,
+EnterpriseOps-Gym, and a public HF model/demo manifest are still absent.  Passing the browser/mobile
+pair therefore means the publication evidence is more complete, not that every realistic computer-use
+surface or public artifact is ready.
+
 ### Official-source integrity refresh (m508)
 
 The [m508 source audit](paper/results/raw/m508-official-source-integrity-audit-v1.json) rechecks
