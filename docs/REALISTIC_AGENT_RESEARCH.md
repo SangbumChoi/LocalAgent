@@ -2700,3 +2700,15 @@ remain runnable (`androidcontrol`, `android_in_the_wild`, `xlam_function_calling
 ADB, Docker, QEMU, BrowserGym, Gymnasium, MCPMark, OSWorld, and Playwright in this runtime.  This
 is an environment fact, not a dataset omission, and it is why native benchmark receipts remain
 blocked while the public text/accessibility projections and local WebGPU fixture remain usable.
+
+### Official-source integrity refresh (m508)
+
+The [m508 source audit](paper/results/raw/m508-official-source-integrity-audit-v1.json) rechecks
+the original benchmark pages.  AndroidWorld currently describes live-emulator evaluation with 116
+tasks across 20 apps; BrowserGym lists MiniWoB, WebArena/Verified, VisualWebArena, WorkArena,
+AssistantBench, WebLINX, OpenApps, and TimeWarp; MCPMark documents isolated Notion, GitHub,
+filesystem, Postgres, and Playwright services with pinned server versions; iOSWorld documents 26
+iOS apps and 133 persistent-identity tasks; MobileSafetyBench requires Android emulator, ADB, and
+Appium; and the official EnterpriseOps-Gym card exposes 649 oracle rows across eight domains and
+512 tools.  These source facts reinforce the catalog’s training/evaluation boundary: they are
+native-runtime or verifier-backed evaluations, not static SFT text to ingest by default.
