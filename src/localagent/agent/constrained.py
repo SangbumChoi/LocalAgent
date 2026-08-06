@@ -626,6 +626,38 @@ def _filesystem_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
     return None
 
 
+def _browser_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
+    """Select a generic browser/UI action when the instruction states it explicitly.
+
+    The dense selector in a tiny checkpoint can over-rank unrelated productivity schemas (for
+    example ``jira_issue``) on a long accessibility prompt.  This guard only uses the action verb
+    and the schemas that are actually present; it does not inspect task IDs, page contents, or
+    verifier state.  It is therefore a deployment routing aid, not a learned benchmark score.
+    """
+
+    names = {tool.name for tool in tools}
+
+    def choose(*candidates: str) -> str | None:
+        return next((candidate for candidate in candidates if candidate in names), None)
+
+    action = _action_tail(prompt).lower()
+    if re.search(r"\b(?:double[ -]?click|double[- ]tap)\b", action):
+        return choose("double_click", "web_click")
+    if re.search(r"\b(?:type|fill|enter|write)\b", action):
+        return choose("type_text", "web_type")
+    if re.search(r"\b(?:select|choose)\b", action):
+        return choose("web_select", "click")
+    if re.search(r"\b(?:click|tap|press)\b", action):
+        return choose("click", "web_click")
+    if re.search(r"\bscroll(?:ing)?\b", action):
+        return choose("scroll")
+    if re.search(r"\b(?:key|keyboard)\s+(?:press|hit)\b", action):
+        return choose("key_press")
+    if re.search(r"\bdrag\b", action):
+        return choose("drag")
+    return None
+
+
 # Argument names whose value is a proper-noun entity (take the capitalized span) vs free text
 # (take the whole tail, which may itself contain a proper noun, e.g. query "capital of Peru").
 ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place",
@@ -1359,6 +1391,7 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
     mobile_hint = _mobile_lexical_tool(grounding, tools)
     playwright_hint = _playwright_lexical_tool(grounding, tools)
     filesystem_hint = _filesystem_lexical_tool(grounding, tools)
+    browser_hint = _browser_lexical_tool(grounding, tools)
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
     selector_order: list[str] | None = None
     if selector is not None:
@@ -1375,13 +1408,13 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
             query_text=selector_query,
             lexical_weight=lexical_weight,
         )
-        hint = mobile_hint or playwright_hint or filesystem_hint
+        hint = mobile_hint or playwright_hint or filesystem_hint or browser_hint
         if hint is not None:
             selector_order = [hint] + [name for name in selector_order if name != hint]
         keep = set(selector_order[:top_m])
     else:
         retriever = retriever or ToolRetriever(tools)
-        hint = mobile_hint or playwright_hint or filesystem_hint
+        hint = mobile_hint or playwright_hint or filesystem_hint or browser_hint
         keep = {hint} if hint is not None else set(retriever.retrieve(grounding, k=k))
     use = [t for t in tools if t.name in keep] or tools
     if selector_order is not None:

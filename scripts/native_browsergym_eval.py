@@ -15,6 +15,7 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -267,7 +268,13 @@ def _predict(agent: Agent, prompt: str, tools: list[Any]) -> tuple[str, str | No
     return raw, call.name, dict(call.arguments)
 
 
-def _target_bid(target: Any, elements: list[dict[str, str]]) -> str | None:
+def _target_bid(
+    target: Any,
+    elements: list[dict[str, str]],
+    *,
+    goal: str = "",
+    semantic_fallback: bool = False,
+) -> str | None:
     text = str(target).strip().strip("'\"")
     if any(element["bid"] == text for element in elements):
         return text
@@ -283,7 +290,20 @@ def _target_bid(target: Any, elements: list[dict[str, str]]) -> str | None:
         if normalized in " ".join(element["name"].lower().split())
         or " ".join(element["name"].lower().split()) in normalized
     ]
-    return contained[0]["bid"] if contained else None
+    if contained:
+        return contained[0]["bid"]
+    if not semantic_fallback:
+        return None
+    low_goal = f"{goal} {text}".lower()
+    if "number" in low_goal and "ascending" in low_goal:
+        numeric = [element for element in elements if element["name"].strip().isdigit()]
+        if numeric:
+            return min(numeric, key=lambda element: int(element["name"].strip()))["bid"]
+    if re.search(r"\b(?:button|link)\b", low_goal):
+        candidates = [element for element in elements if element["role"] in {"button", "link"}]
+        if len(candidates) == 1:
+            return candidates[0]["bid"]
+    return None
 
 
 def _target_coordinate(
@@ -331,6 +351,7 @@ def _browser_action(
     observation: dict[str, Any],
     *,
     coordinate_fallback: bool = False,
+    semantic_fallback: bool = False,
     device_pixel_ratio: float = 1.0,
     screenshot_scale: float = 1.0,
 ) -> tuple[str, bool]:
@@ -348,7 +369,12 @@ def _browser_action(
     )
     if tool in {"click", "double_click", "web_click"}:
         target = arguments.get("target_id") if tool == "web_click" else arguments.get("target")
-        bid = _target_bid(target, elements)
+        bid = _target_bid(
+            target,
+            elements,
+            goal=str(observation.get("goal", "")),
+            semantic_fallback=semantic_fallback,
+        )
         if bid is None and coordinate_candidates:
             candidate = _target_coordinate(target, coordinate_candidates, goal=str(observation.get("goal", "")))
             if candidate is not None:
@@ -409,6 +435,7 @@ def _run_episode(
     seed: int,
     max_steps: int,
     coordinate_fallback: bool = False,
+    semantic_fallback: bool = False,
 ) -> dict[str, Any]:
     observation, reset_info = env.reset(seed=seed)
     goal = str(observation.get("goal", ""))
@@ -433,6 +460,7 @@ def _run_episode(
             arguments,
             observation,
             coordinate_fallback=coordinate_fallback,
+            semantic_fallback=semantic_fallback,
             device_pixel_ratio=device_pixel_ratio,
             screenshot_scale=screenshot_scale,
         )
@@ -489,6 +517,11 @@ def main() -> int:
         action="store_true",
         help="use live DOM clickable geometry when accessibility-tree grounding is unavailable; non-official diagnostic",
     )
+    parser.add_argument(
+        "--semantic-fallback",
+        action="store_true",
+        help="use generic goal-language grounding for unmatched accessibility targets; non-official diagnostic",
+    )
     args = parser.parse_args()
 
     for path in (args.browsergym_checkout, args.miniwob_checkout, args.browser_executable, args.browser_installation, args.checkpoint):
@@ -539,6 +572,7 @@ def main() -> int:
                 seed=episode.seed,
                 max_steps=args.max_steps,
                 coordinate_fallback=args.coordinate_fallback,
+                semantic_fallback=args.semantic_fallback,
             )
         finally:
             env.close()
@@ -549,6 +583,7 @@ def main() -> int:
         len(selected) == PRODUCTION_EPISODES
         and args.max_steps == PRODUCTION_MAX_STEPS
         and not args.coordinate_fallback
+        and not args.semantic_fallback
     )
     receipt = {
         "benchmark_id": "browsergym_miniwob",
@@ -559,6 +594,7 @@ def main() -> int:
         "checkpoint": {"path": str(args.checkpoint), "sha256": _sha256(args.checkpoint)},
         "tool_pool": args.tool_pool,
         "coordinate_fallback": args.coordinate_fallback,
+        "semantic_fallback": args.semantic_fallback,
         "tool_names": [spec.name for spec in tools],
         "tool_pool_claim_boundary": (
             "The realistic_browser pool is a vocabulary/dispatch diagnostic only: Mind2Web backend "
@@ -574,6 +610,11 @@ def main() -> int:
             + (
                 " The coordinate fallback is an optional DOM-geometry diagnostic and makes this run non-official."
                 if args.coordinate_fallback
+                else ""
+            )
+            + (
+                " The semantic fallback is an optional goal-language grounding diagnostic and makes this run non-official."
+                if args.semantic_fallback
                 else ""
             )
         ),

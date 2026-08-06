@@ -40,3 +40,21 @@ def test_m152_full_coordinate_diagnostic_does_not_replace_official_baseline() ->
     steps = [step for case in receipt["cases"] for step in case["steps"]]
     assert sum(bool(step["grounded"]) for step in steps) == 370
     assert "non-official" in receipt["claim_boundary"]
+
+
+def test_m521_current_checkpoint_coordinate_semantic_canary_is_non_official() -> None:
+    receipt = _load("m521-browsergym-current-coordinate-semantic-canary-v1.json")
+    assert receipt["benchmark_id"] == "browsergym_miniwob"
+    assert receipt["environment_executed"] is True
+    assert receipt["coordinate_fallback"] is True
+    assert receipt["semantic_fallback"] is True
+    assert receipt["official_split_verified"] is False
+    assert receipt["task_count"] == 1
+    assert receipt["success_rate"] == 1.0
+    assert receipt["checkpoint"]["sha256"] == (
+        "6a6520264f5f81fc68c54f80d462ddde64ac2f442e6e30077c909b702939dd45"
+    )
+    case = receipt["cases"][0]
+    assert case["success"] is True
+    assert all(step["grounded"] for step in case["steps"])
+    assert "non-official" in receipt["claim_boundary"]

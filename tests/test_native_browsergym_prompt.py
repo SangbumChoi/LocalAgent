@@ -10,6 +10,7 @@ _SPEC.loader.exec_module(_MODULE)
 _model_prompt = _MODULE._model_prompt
 _browser_action = _MODULE._browser_action
 _dom_coordinate_candidates = _MODULE._dom_coordinate_candidates
+_target_bid = _MODULE._target_bid
 
 
 def test_native_browsergym_prompt_matches_train_only_adapter_contract() -> None:
@@ -73,3 +74,36 @@ def test_coordinate_fallback_reads_only_clickable_dom_geometry() -> None:
         device_pixel_ratio=2.0,
         screenshot_scale=1.5,
     ) == ("mouse_click(18.750, 30.000)", True)
+
+
+def test_coordinate_fallback_grounds_svg_numbers_without_accessibility_roles() -> None:
+    observation = {
+        "goal": "Click on the numbers in ascending order.",
+        "axtree_object": {"nodes": []},
+        "dom_object": {
+            "documents": [
+                {
+                    "strings": ["", "", "5", "1"],
+                    "nodes": {
+                        "parentIndex": [-1, 0, -1, 2],
+                        "nodeType": [1, 3, 1, 3],
+                        "nodeValue": [-1, 2, -1, 3],
+                        "backendNodeId": [10, 11, 12, 13],
+                        "attributes": [[], [], [], []],
+                        "isClickable": {"index": [0, 2]},
+                    },
+                    "layout": {
+                        "nodeIndex": [0, 2],
+                        "bounds": [[0, 0, 10, 10], [10, 10, 10, 10]],
+                    },
+                }
+            ]
+        },
+    }
+    assert _target_bid("the numbers in ascending order", [], goal=observation["goal"]) is None
+    assert _browser_action(
+        "click",
+        {"target": "the numbers in ascending order"},
+        observation,
+        coordinate_fallback=True,
+    ) == ("mouse_click(15.000, 15.000)", True)

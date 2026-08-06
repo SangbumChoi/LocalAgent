@@ -204,6 +204,20 @@ def test_playwright_abi_forces_navigation_then_snapshot_without_inventing_refs()
     assert _arg_options(grounded, "ref", {"type": "string"}, True) == ["e12"]
 
 
+def test_browser_lexical_action_guard_prefers_present_ui_schema():
+    from localagent.agent.constrained import _browser_lexical_tool
+    from localagent.data.schema import ToolSpec
+
+    tools = [
+        ToolSpec(name="jira_issue", description="Create an issue", parameters={}),
+        ToolSpec(name="click", description="Click a UI element", parameters={}),
+        ToolSpec(name="type_text", description="Type text", parameters={}),
+    ]
+    assert _browser_lexical_tool("Browser task: Click the Send button.", tools) == "click"
+    assert _browser_lexical_tool("Browser task: Type the recipient.", tools) == "type_text"
+    assert _browser_lexical_tool("Make a plan for the project.", tools) is None
+
+
 def test_best_abstains_when_a_grounded_candidate_exceeds_context_window():
     from localagent.agent.constrained import _best
     from localagent.model import LocalAgentLM, ModelConfig

@@ -1,8 +1,16 @@
 # Realistic agent evaluation research memo
 
-Status: protocol refresh on 2026-08-03. This memo records the public benchmark methods that
+Status: protocol refresh on 2026-08-06. This memo records the public benchmark methods that
 matter for a sub-100M text-first WebGPU agent. It is a source and protocol guide, not a claim that
 the repository has completed every benchmark.
+
+The current checkpoint-bound BrowserGym finding is a useful modality boundary.  The accessibility-
+only MiniWoW canary remains `0/1` because SVG number controls expose no actionable accessibility
+roles; a routing guard now selects `click`, but the adapter correctly fails closed when it cannot
+ground a target.  A separate non-official canary with a live DOM-geometry sidecar reaches `1/1`
+on the same pinned ascending-numbers task.  The receipt is [m521](paper/results/raw/m521-browsergym-current-coordinate-semantic-canary-v1.json):
+it validates the WebGPU deployment bridge, not visual-agent competence, WebArena, or real email/
+Notion control.  Keep the official score and the coordinate diagnostic separate in all reports.
 
 ## What the public benchmarks actually measure
 

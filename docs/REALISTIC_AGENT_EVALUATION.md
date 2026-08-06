@@ -26,6 +26,16 @@ public Hub model/Space URLs are still missing.  See the current [m513 gate](pape
 [m515 bundle verification](paper/results/raw/m515-current-webgpu-deploy-verify-v1.json), and
 [m516 local HF preparation](paper/results/raw/m516-hf-release-local-prepare-v1.json); older sections
 below are retained as historical experiment records.
+
+The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
+one-episode diagnostic [m519](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
+live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG
+number controls have no actionable accessibility role, so fail-closed grounding produces `noop`.
+The non-official [m521 coordinate/semantic canary](paper/results/raw/m521-browsergym-current-coordinate-semantic-canary-v1.json)
+replays the same pinned task with DOM geometry as a sidecar and reaches `1/1` (five grounded
+clicks).  This is evidence for the deployment bridge and its tests, not an official BrowserGym
+score or visual-agent claim; the full 240-episode gate still requires the accessibility contract
+without either fallback.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
 It now adds twenty-four high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
