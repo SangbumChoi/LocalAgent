@@ -2456,6 +2456,25 @@ requires Android emulator/ADB/Appium state; [AgentNet](https://huggingface.co/da
 is a 22.6K-task desktop trajectory source; and [MCPMark](https://mcpmark.ai/docs/introduction)
 isolates service environments and verifies final state independently.
 
+### Balanced public cross-surface continuation canary (m485)
+
+The [m485 receipt](paper/results/raw/m485-realistic-cross-surface-transfer-v1.json) is the next
+matched warm/random experiment after the source-method audit.  It uses the exact current 10.52M
+parent (`6a6520…`), the same tokenizer, two optimizer updates, and a balanced cap of 16 train rows
+per source and four held-out rows per source.  The train side contains 59 rows from AndroidControl,
+AgentNet, Mind2Web, and MCPMark; the held-out side contains 18 rows across AndroidControl, AgentNet,
+Mind2Web, MCPMark filesystem, and two Playwright trajectory cases.  The split contract is source-local
+parent/slot disjoint, and MCPMark's official split remains explicitly unverified.
+
+Warm held-out token accuracy is `43.50%` versus `0%` for the matched random backbone (`+43.50`
+points), with warm ahead on all six held-out surfaces: AndroidControl `60.91%`, AgentNet `50.34%`,
+Mind2Web `66.67%`, filesystem `37.07%`, Playwright extraction `11.82%`, and travel `40.79%`.
+Exact sequence accuracy is `0%` for both arms.  The warm child moves embedding/attention/FFN by
+`0.025%`/`0.019%`/`0.022%` relative L2, while the random arm moves them by about
+`119.70%`/`77.88%`/`87.79%`.  This supports reusing the pretrained backbone with a low-rate
+continuation and separately controlled heads, but the cap and two-step horizon make it a canary,
+not a final model-selection result or a native mobile/browser/desktop/MCP score.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
