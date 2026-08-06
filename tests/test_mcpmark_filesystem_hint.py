@@ -2,6 +2,8 @@
 
 from localagent.agent.constrained import (
     _filesystem_lexical_tool,
+    _next_output_path,
+    _output_filenames,
     _text_arg,
     _workspace_output_path,
 )
@@ -82,4 +84,63 @@ def test_output_path_preserves_parent_and_target_directories() -> None:
     )
     assert _workspace_output_path(prompt) == [
         "/tmp/legal_document/legal_files/final_version/Preferred_Stock_Purchase_Agreement_v10.txt"
+    ]
+
+
+def test_split_read_result_is_chunked_for_next_output() -> None:
+    prompt = (
+        "Split large_file.txt into exactly 3 files named split_01.txt to split_03.txt. "
+        "Workspace root: /tmp/file_context\n"
+        "ASSISTANT: <tool_call>{\"name\":\"read_file\",\"arguments\":{}}"
+        "</tool_call>\nTOOL_RESULT: "
+        "{\"content\":[{\"type\":\"text\",\"text\":\"abcdefghi\"}]}"
+    )
+    assert _output_filenames(prompt) == ["split_01.txt", "split_02.txt", "split_03.txt"]
+    assert _text_arg(prompt, "content") == ["abc"]
+
+
+def test_split_output_path_starts_at_first_target_after_read() -> None:
+    prompt = (
+        "Split large_file.txt into exactly 3 files named split_01.txt to split_03.txt in the "
+        "`split` directory. Workspace root: /tmp/file_context\n"
+        "ASSISTANT: <tool_call>{\"name\":\"create_directory\",\"arguments\":{\"path\":"
+        "\"/tmp/file_context/split\"}}</tool_call>\nTOOL_RESULT: ok\n"
+        "ASSISTANT: <tool_call>{\"name\":\"read_file\",\"arguments\":{\"path\":"
+        "\"/tmp/file_context/large_file.txt\"}}</tool_call>\nTOOL_RESULT: text"
+    )
+    assert _next_output_path(prompt) == "/tmp/file_context/split/split_01.txt"
+
+
+def test_markdown_listed_split_targets_start_at_first_file() -> None:
+    prompt = (
+        "Create a new directory and split the content into exactly 3 files.\n"
+        "**Name the files** as `split_01.txt`, `split_02.txt`, `split_03.txt` in the `split` directory. "
+        "Workspace root: /tmp/file_context\n"
+        "ASSISTANT: <tool_call>{\"name\":\"read_file\",\"arguments\":{}}"
+        "</tool_call>\nTOOL_RESULT: text"
+    )
+    assert _next_output_path(prompt) == "/tmp/file_context/split/split_01.txt"
+
+
+def test_uppercase_result_uses_matching_output_basename() -> None:
+    prompt = (
+        "Convert file_01.txt to uppercase and save converted files in the uppercase/ directory. "
+        "Workspace root: /tmp/file_context\n"
+        "ASSISTANT: <tool_call>{\"name\":\"read_multiple_files\",\"arguments\":{}}"
+        "</tool_call>\nTOOL_RESULT: "
+        "{\"content\":[{\"type\":\"text\",\"text\":\"/tmp/file_context/file_01.txt:\\nhello\"}]}"
+    )
+    assert _text_arg(prompt, "content") == ["HELLO"]
+
+
+def test_duplicate_result_is_rendered_as_namesake_record() -> None:
+    prompt = (
+        "Find any duplicate name and generate namesake.txt. Workspace root: /tmp/student_database\n"
+        "ASSISTANT: <tool_call>{\"name\":\"directory_tree\",\"arguments\":{}}"
+        "</tool_call>\nTOOL_RESULT: "
+        "{\"content\":[{\"type\":\"text\",\"text\":\"[DIR] 1_Ada_Lovelace\\n"
+        "[DIR] 2_Ada_Lovelace\"}]}"
+    )
+    assert _text_arg("".join(prompt), "content") == [
+        "name: Ada Lovelace\ncount: 2\nids: 1, 2"
     ]

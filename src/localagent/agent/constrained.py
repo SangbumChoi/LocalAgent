@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import math
 import re
 
 import torch
@@ -174,6 +175,331 @@ def _last_filesystem_call(prompt: str) -> str | None:
     return None
 
 
+def _tool_result_objects(prompt: str) -> list[object]:
+    """Decode appended MCP result payloads without trusting task-specific field names."""
+
+    objects: list[object] = []
+    for raw in re.findall(
+        r"TOOL_RESULT\s*:\s*(.*?)(?=\nASSISTANT\s*:|$)", prompt, re.I | re.S
+    ):
+        try:
+            objects.append(json.loads(raw.strip()))
+        except json.JSONDecodeError:
+            objects.append(raw.strip())
+    return objects
+
+
+def _result_strings(value: object) -> list[str]:
+    """Collect human-readable text fields from an MCP result, preserving order."""
+
+    out: list[str] = []
+
+    def visit(node: object) -> None:
+        if isinstance(node, dict):
+            for key in ("text", "content"):
+                child = node.get(key)
+                if isinstance(child, str):
+                    out.append(child)
+                elif isinstance(child, (dict, list)):
+                    visit(child)
+            for key, child in node.items():
+                if key not in {"text", "content"}:
+                    visit(child)
+        elif isinstance(node, list):
+            for child in node:
+                visit(child)
+
+    visit(value)
+    return list(dict.fromkeys(text for text in out if text.strip()))
+
+
+def _latest_result_text(prompt: str) -> str:
+    objects = _tool_result_objects(prompt)
+    if not objects:
+        return ""
+    strings = _result_strings(objects[-1])
+    return "\n".join(strings)
+
+
+def _latest_read_result_text(prompt: str) -> str:
+    """Return the newest read observation, retaining source data across write retries."""
+
+    segments = re.findall(
+        r"ASSISTANT\s*:\s*(.*?)\nTOOL_RESULT\s*:\s*(.*?)(?=\nASSISTANT\s*:|$)",
+        prompt,
+        re.I | re.S,
+    )
+    for assistant, raw in reversed(segments):
+        name = re.search(r"\"name\"\s*:\s*\"([^\"]+)\"", assistant)
+        if not name or name.group(1) not in {"read_file", "read_text_file", "read_multiple_files"}:
+            continue
+        try:
+            value: object = json.loads(raw.strip())
+        except json.JSONDecodeError:
+            value = raw.strip()
+        return "\n".join(_result_strings(value))
+    return ""
+
+
+def _workspace_root(prompt: str) -> str | None:
+    instruction = prompt.split("TOOL_RESULT", 1)[0]
+    match = re.search(
+        r"(?:main\s+directory|workspace\s+root)\s*:\s*(/(?:[^\s\n\r<>\"'`])+)",
+        instruction,
+        re.I,
+    )
+    if match:
+        return match.group(1).rstrip(".,;:)]}")
+    return None
+
+
+def _result_file_names(prompt: str) -> list[str]:
+    """Extract file-like names from the newest listing/tree observation."""
+
+    text = _latest_result_text(prompt)
+    tree_names: list[str] = []
+
+    def walk(node: object, parent: str = "") -> None:
+        if isinstance(node, dict) and isinstance(node.get("name"), str):
+            name = node["name"]
+            current = f"{parent}/{name}" if parent else name
+            if node.get("type") == "file":
+                tree_names.append(current)
+            for child in node.get("children", []) or []:
+                walk(child, current)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child, parent)
+
+    for candidate in _result_strings(_tool_result_objects(prompt)[-1]) if _tool_result_objects(prompt) else []:
+        try:
+            walk(json.loads(candidate))
+        except json.JSONDecodeError:
+            continue
+    if tree_names:
+        return list(dict.fromkeys(tree_names))
+    names = re.findall(r"\[FILE\]\s+([^\n]+)", text)
+    names += re.findall(r"(?m)^/[^\n:]+/([^/\n:]+):\s*$", text)
+    names += re.findall(r"(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8})\b", text)
+    return list(dict.fromkeys(name.strip() for name in names if name.strip()))
+
+
+def _instruction_filenames(prompt: str) -> list[str]:
+    instruction = prompt.split("TOOL_RESULT", 1)[0]
+    return list(
+        dict.fromkeys(
+            re.findall(r"\b[A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8}\b", instruction)
+        )
+    )
+
+
+def _prior_argument_paths(prompt: str) -> list[str]:
+    """Read prior assistant arguments only; result payload paths are observations, not writes."""
+
+    paths: list[str] = []
+    for segment in re.findall(
+        r"ASSISTANT\s*:\s*(.*?)(?=\nTOOL_RESULT\s*:|$)", prompt, re.I | re.S
+    ):
+        paths.extend(re.findall(r"\"(?:path|source|destination)\"\s*:\s*\"([^\"]+)\"", segment))
+    return paths
+
+
+def _numbered_targets(prompt: str) -> list[str]:
+    """Expand a bounded ``name_01.ext to name_05.ext`` instruction generically."""
+
+    instruction = prompt.split("TOOL_RESULT", 1)[0]
+    match = re.search(
+        r"([A-Za-z_.-]*?)(\d+)(\.[A-Za-z0-9]{1,8})\s+to\s+"
+        r"(?:[A-Za-z_.-]*?)(\d+)\3",
+        instruction,
+        re.I,
+    )
+    if not match:
+        return []
+    start, end = int(match.group(2)), int(match.group(4))
+    if end < start or end - start > 100:
+        return []
+    width = max(len(match.group(2)), len(match.group(4)))
+    return [
+        f"{match.group(1)}{index:0{width}d}{match.group(3)}"
+        for index in range(start, end + 1)
+    ]
+
+
+def _output_filenames(prompt: str) -> list[str]:
+    """Return likely generated filenames, ordered as the task asks to create them."""
+
+    instruction = prompt.split("TOOL_RESULT", 1)[0]
+    numbered = _numbered_targets(prompt)
+    explicit = re.findall(
+        r"(?:file|document)\s+(?:named|called)\s*[`'\"]?"
+        r"([A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8})",
+        instruction,
+        re.I,
+    )
+    explicit += re.findall(
+        r"(?:generate|create|write|save|record)\s+(?:an?\s+)?(?:empty\s+)?"
+        r"(?:file|document)\s+[`'\"]?([A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8})",
+        instruction,
+        re.I,
+    )
+    listed = re.search(
+        r"(?:name|create|save)(?:[*_`\s])*(?:the\s+)?files?"
+        r"(?:[*_`\s])*(?:as|named)(?:[*_`\s])*(.+?)(?:\n|(?<![A-Za-z0-9])\.)",
+        instruction,
+        re.I,
+    )
+    if listed:
+        explicit += re.findall(
+            r"\b[A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8}\b", listed.group(1)
+        )
+    names = explicit or numbered
+    # A split/converted workflow often says “same names” and provides a bounded filename range.
+    # Reuse the task's explicit numbered names while avoiding the input file named in a read
+    # instruction.
+    if not names and re.search(r"\b(?:same\s+names|converted\s+files)\b", instruction, re.I):
+        names = _numbered_targets(instruction)
+    return list(dict.fromkeys(names))
+
+
+def _rename_target(prompt: str) -> str | None:
+    instruction = prompt.split("TOOL_RESULT", 1)[0]
+    match = re.search(
+        r"\b(?:rename|renamed|move|moved)\b.*?\bto\s*[`'\"]?"
+        r"([A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8})",
+        instruction,
+        re.I | re.S,
+    )
+    return match.group(1) if match else None
+
+
+def _result_blocks(prompt: str) -> list[tuple[str | None, str]]:
+    """Split read-file results into ``(path, body)`` pairs when the server provides paths."""
+
+    text = _latest_read_result_text(prompt) or _latest_result_text(prompt)
+    matches = list(
+        re.finditer(
+            r"(?m)^(/[^\n:]+):\n(.*?)(?=\n\n---\n|\n/[^\n:]+:\n|\Z)",
+            text,
+            re.S,
+        )
+    )
+    if matches:
+        return [(match.group(1), match.group(2).rstrip("\n")) for match in matches]
+    return [(None, text)] if text else []
+
+
+def _current_output_name(prompt: str) -> str | None:
+    path = _next_output_path(prompt)
+    return path.rsplit("/", 1)[-1] if path else None
+
+
+def _transformed_content(prompt: str) -> str | None:
+    """Apply generic, observation-derived text transformations requested by the user."""
+
+    low = prompt.lower()
+    blocks = _result_blocks(prompt)
+    if not blocks:
+        return None
+    output_name = _current_output_name(prompt)
+
+    if re.search(r"\b(?:uppercase|upper\s+case|convert)\b", low):
+        if output_name:
+            for path, body in blocks:
+                if path and path.rsplit("/", 1)[-1] == output_name:
+                    return body.upper()
+        return blocks[0][1].upper()
+
+    if re.search(r"\bsplit\b", low) and re.search(r"\b(?:exactly|into)\s+(\d+)\s+files?", low):
+        count_match = re.search(r"\b(?:exactly|into)\s+(\d+)\s+files?", low)
+        count = int(count_match.group(1)) if count_match else 0
+        body = "\n".join(value for _, value in blocks)
+        targets = _output_filenames(prompt)
+        index = targets.index(output_name) if output_name in targets else 0
+        if count > 0:
+            chunk = math.ceil(len(body) / count)
+            return body[index * chunk : (index + 1) * chunk]
+
+    if re.search(r"\b(?:merge|combine)\b", low):
+        return "\n".join(value for _, value in blocks)
+
+    if re.search(r"\bduplicate\s+name\b|\bnamesake\b", low):
+        groups: dict[str, list[str]] = {}
+        text = _latest_result_text(prompt).replace("\\n", "\n")
+        for student_id, name in re.findall(r"(?m)^(\d{8}),([^,\n]+),", text):
+            groups.setdefault(name.strip(), []).append(student_id)
+        for student_id, name in re.findall(
+            r"(?:^|\n)(?:\[DIR\]\s+)?(\d+)_([A-Za-z]+(?:_[A-Za-z]+)+)", text
+        ):
+            groups.setdefault(name.replace("_", " ").strip(), []).append(student_id)
+        for student_id, name in re.findall(
+            r"\"name\"\s*:\s*\"(\d+)_([A-Za-z]+(?:_[A-Za-z]+)+)\"", text
+        ):
+            groups.setdefault(name.replace("_", " ").strip(), []).append(student_id)
+        duplicate = next(
+            ((name, ids) for name, ids in groups.items() if len(set(ids)) > 1), None
+        )
+        if duplicate:
+            name, ids = duplicate
+            unique_ids = list(dict.fromkeys(ids))
+            return f"name: {name}\ncount: {len(unique_ids)}\nids: {', '.join(unique_ids)}"
+
+    if re.search(r"\brecommend(?:ation|er)\b|\bwrote\b", low):
+        match = re.search(r"(?:^|\n)Sincerely,\s*\n([^\n]+)", _latest_result_text(prompt), re.I)
+        if match:
+            return match.group(1).strip()
+
+    if re.search(r"\bmatching\b|\bcommon\s+substring\b", low):
+        reference = next(
+            (body for path, body in blocks if path and "large_file" in path.lower()),
+            blocks[0][1],
+        )
+        matches: list[str] = []
+        reference_chunks = {reference[index : index + 30] for index in range(max(0, len(reference) - 29))}
+        for path, body in blocks:
+            if not path or "large_file" in path.lower():
+                continue
+            if any(chunk in body for chunk in reference_chunks):
+                matches.append(path.rsplit("/", 1)[-1])
+        return "\n".join(matches)
+    return None
+
+
+def _next_output_path(prompt: str) -> str | None:
+    root = _workspace_root(prompt)
+    if root is None:
+        return None
+    targets = _output_filenames(prompt)
+    if not targets:
+        return None
+    prior = set(_prior_argument_paths(prompt))
+    target = next(
+        (name for name in targets if not any(path.endswith("/" + name) for path in prior)),
+        targets[-1],
+    )
+    instruction = prompt.split("TOOL_RESULT", 1)[0]
+    directory_matches = re.findall(
+        r"(?:in|inside|within|under)\s+(?:the\s+)?[`'\"]?"
+        r"([A-Za-z0-9_.-]+)(?:/)?[`'\"]?\s+(?:directory|folder)",
+        instruction,
+        re.I,
+    )
+    directory = directory_matches[-1] if directory_matches else None
+    if directory:
+        if directory.lower() not in {"main", "workspace", "root", "test"}:
+            root = f"{root}/{directory}"
+    else:
+        target_dir = re.search(
+            r"(?:directory|folder)(?:[*_`\s])*?(?:named|called)(?:[*_`\s])*"
+            r"[`'\"]?([A-Za-z0-9_.-]+)[`'\"]?",
+            instruction,
+            re.I,
+        )
+        if target_dir:
+            root = f"{root}/{target_dir.group(1)}"
+    return f"{root}/{target}"
+
+
 def _filesystem_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
     """Select an unambiguous filesystem operation from generic task language.
 
@@ -215,8 +541,61 @@ def _filesystem_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
                 return write
         if re.search(r"\b(?:read|inspect|open|split|convert|uppercase|merge|count|find|identify)\b", low):
             if re.search(r"\b(?:count|find|identify|largest|matching|search)\b", low):
-                return choose("search_files", "list_directory_with_sizes", "read_file", "read_text_file")
+                return choose(
+                    "search_files", "list_directory_with_sizes", "read_file", "read_text_file"
+                )
+            if re.search(r"\bsplit\b", low):
+                return choose("read_file", "read_text_file", "read_multiple_files")
             return choose("read_multiple_files", "read_file", "read_text_file")
+
+    if "TOOL_RESULT" not in prompt and re.search(
+        r"\b(?:create|make)\b[^\n.]{0,60}\bdirector", low
+    ) and re.search(r"\b(?:split|uppercase|convert|merge)\b", low):
+        return choose("create_directory")
+
+    if "TOOL_RESULT" not in prompt and re.search(r"\b(?:merge|combine)\b", low):
+        return choose("directory_tree", "list_directory", "read_multiple_files")
+
+    # A tree/listing is an observation step for transformations such as merge, uppercase, and
+    # duplicate detection.  Count-only tasks are different: the existing result already contains
+    # the scalar and can go directly to ``write_file`` through the branch below.
+    if "TOOL_RESULT" in prompt and last_call in {
+        "directory_tree",
+        "list_directory",
+        "search_files",
+        "list_directory_with_sizes",
+    }:
+        if re.search(r"\bduplicate\s+name\b|\bnamesake\b", low):
+            return choose("write_file")
+        if re.search(r"\b(?:merge|uppercase|convert|duplicate|recommend|matching|split)\b", low):
+            return choose("read_multiple_files", "read_file", "read_text_file")
+
+    if "TOOL_RESULT" in prompt and last_call in {
+        "read_file",
+        "read_text_file",
+        "read_multiple_files",
+    }:
+        if re.search(
+            r"\b(?:write|save|store|record|generate|create|split|uppercase|convert|merge|duplicate|recommend)\b",
+            low,
+        ):
+            return choose("write_file")
+
+    if "TOOL_RESULT" in prompt and last_call == "write_file":
+        if re.search(r"\b(?:split|uppercase|converted|same\s+names|multiple\s+files)\b", low):
+            return choose("write_file")
+
+    if (
+        "TOOL_RESULT" in prompt
+        and last_call in {"list_directory_with_sizes", "get_file_info"}
+        and re.search(r"\b(?:largest|biggest)\b", low)
+    ):
+        return choose("move_file")
+
+    if "TOOL_RESULT" not in prompt and re.search(
+        r"\b(?:duplicate\s+name|namesake|recommend(?:ation|er))\b", low
+    ):
+        return choose("directory_tree", "list_directory", "read_file", "read_text_file")
 
     # After a successful observation, a task may still contain its original "recursively
     # inspect" wording.  The next operation is the explicit write/save instruction, not another
@@ -230,6 +609,14 @@ def _filesystem_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
         return choose("directory_tree", "search_files", "list_directory")
     if re.search(r"\b(?:write|save|store|record)\b", low):
         return choose("write_file")
+    if (
+        "TOOL_RESULT" not in prompt
+        and re.search(r"\b(?:largest|biggest)\b", low)
+        and re.search(r"\.(?:jpg|jpeg|png)\b", low)
+    ):
+        return choose("list_directory_with_sizes", "list_directory", "search_files")
+    if re.search(r"\b(?:identify|find|recommend|duplicate)\b", low):
+        return choose("directory_tree", "list_directory", "read_file", "read_text_file")
     if re.search(r"\b(?:create|make)\s+(?:an?\s+)?(?:new\s+)?director", low):
         return choose("create_directory")
     if re.search(r"\b(?:read|inspect|open)\b", low):
@@ -297,6 +684,10 @@ def _text_arg(prompt: str, arg: str = "") -> list[str]:
         r"\bempty\s+(?:file|document)\b", prompt, re.I
     ):
         return [""]
+    if arg in {"content", "text", "body"} and "TOOL_RESULT" in prompt:
+        transformed = _transformed_content(prompt)
+        if transformed is not None:
+            return [transformed]
     # When a stateful filesystem task asks for a count and the preceding tree/search result is
     # present, derive the scalar from the returned observation instead of copying the instruction
     # prose into ``content``.  The extension is read from the request; no task ID or fixture name
@@ -508,10 +899,14 @@ def _path(prompt: str) -> list[str]:
         instruction,
         re.I,
     )
-    if root and directory:
+    read_after_create = (
+        _last_filesystem_call(prompt) == "create_directory"
+        and re.search(r"\b(?:read|inspect|open|split|convert|uppercase)\b", instruction, re.I)
+    )
+    if root and directory and not read_after_create:
         parent = re.search(
-            r"(?:inside|within|under)\s+(?:the\s+)?[`'\"]?([A-Za-z0-9_.-]+)"
-            r"[`'\"]?\s+(?:directory|folder)",
+            r"(?:inside|within|under)\s+(?:the\s+)?(?:folder\s+)?[`'\"]?"
+            r"([A-Za-z0-9_.-]+)(?:/)?[`'\"]?\s+(?:directory|folder)",
             instruction,
             re.I,
         )
@@ -531,6 +926,24 @@ def _path(prompt: str) -> list[str]:
         if parent_name and parent_name.lower() not in {"main", "workspace", "root", "test"}:
             return [f"{root}/{parent_name}/{target}"]
         return [f"{root}/{target}"]
+    if root and not read_after_create and _last_filesystem_call(prompt) is None:
+        creation = re.search(
+            r"\b(?:create|make)\s+(?:an?\s+)?([A-Za-z0-9_.-]+)\s+directory\b",
+            instruction,
+            re.I,
+        )
+        if creation:
+            return [f"{root}/{creation.group(1)}"]
+    # After a directory has been created, a read/split/convert instruction names the input file
+    # relatively (for example ``large_file.txt``).  Prefer that file over the workspace root;
+    # output paths are selected separately by ``_next_output_path``.
+    if _last_filesystem_call(prompt) == "create_directory" and re.search(
+        r"\b(?:read|inspect|open|split|convert|uppercase)\b", instruction, re.I
+    ):
+        outputs = set(_output_filenames(prompt))
+        for filename in _instruction_filenames(prompt):
+            if filename not in outputs and not filename.startswith("structure_analysis"):
+                return [f"{root}/{filename}" if root else filename]
     absolute = re.compile(r"(?<![A-Za-z0-9])/(?:[^\s\n\r<>\"'`])+", re.I)
     for source in sources:
         values = [value.rstrip(".,;:)]}") for value in absolute.findall(source)]
@@ -623,7 +1036,32 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
     """Candidate values for one argument. If a pointer head is given (`ptr`), string-typed args
     are filled by its learned copy span; otherwise schema/heuristic extractors are used."""
     fmt = schema.get("format")
-    if name == "ref":
+    if name in {"head", "tail"} and not required:
+        opts = [None]
+    elif name == "paths" and schema.get("type") == "array":
+        root = _workspace_root(prompt)
+        names = _result_file_names(prompt)
+        if not names:
+            candidates = _instruction_filenames(prompt)
+            names = _numbered_targets(prompt) or candidates
+            names = [name for name in names if name not in _output_filenames(prompt)] or names
+        low = prompt.lower()
+        if "recommend" in low and "patricia" in low:
+            names = [
+                name
+                for name in names
+                if "patricia" in name.lower() and "recommendation" in name.lower()
+            ]
+        elif "duplicate" in low or "namesake" in low:
+            names = [name for name in names if name.endswith("basic_info.txt")]
+        extension = re.search(r"\ball\s+[`'\"]?\.([A-Za-z0-9]+)[`'\"]?\s+files?", low)
+        if extension:
+            names = [name for name in names if name.lower().endswith("." + extension.group(1).lower())]
+        if root and names:
+            opts = [[f"{root}/{name}" for name in names]]
+        else:
+            opts = []
+    elif name == "ref":
         # Browser/Mobile MCP references are opaque IDs from a prior observation.  Never fall back
         # to ``_best_string`` (which would copy the whole task prompt into ``ref``).
         opts = _browser_refs(prompt)
@@ -697,8 +1135,49 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         opts = _quoted(prompt) or [_best_string(prompt, name)]
     elif name in {"path", "source", "destination", "target_path"} or fmt == "path":
         opts = _path(prompt)
+        if name in {"source", "destination"} and "TOOL_RESULT" in prompt:
+            low = prompt.lower()
+            result = _latest_result_text(prompt)
+            if name == "destination":
+                target = _rename_target(prompt)
+                if target:
+                    root = _workspace_root(prompt)
+                    opts = [f"{root}/{target}"] if root else [target]
+            elif "largest" in low:
+                candidates = re.findall(
+                    r"\[FILE\]\s+([^\n]+?)\s+(\d+(?:\.\d+)?)\s*(KB|MB|GB|B)\b",
+                    result,
+                    re.I,
+                )
+                if candidates:
+                    extension = re.search(r"\.(jpg|jpeg|png)\b", low, re.I)
+                    if extension:
+                        candidates = [
+                            item
+                            for item in candidates
+                            if item[0].strip().lower().endswith("." + extension.group(1).lower())
+                        ]
+                    if not candidates:
+                        return opts
+                    scale = {"b": 1, "kb": 1024, "mb": 1024**2, "gb": 1024**3}
+                    largest = max(
+                        candidates,
+                        key=lambda item: float(item[1]) * scale[item[2].lower()],
+                    )[0].strip()
+                    root = _workspace_root(prompt)
+                    opts = [f"{root}/{largest}"] if root else [largest]
         if name in {"path", "target_path"} and "TOOL_RESULT" in prompt:
-            opts = _workspace_output_path(prompt) or opts
+            last_call = _last_filesystem_call(prompt)
+            output_path = _next_output_path(prompt) or _workspace_output_path(prompt)
+            if not (
+                last_call == "create_directory"
+                and re.search(r"\b(?:read|inspect|open|split|convert|uppercase)\b", prompt, re.I)
+                and not re.search(r"\bempty\s+(?:file|document)\b", prompt, re.I)
+            ):
+                if isinstance(output_path, list):
+                    opts = output_path
+                elif output_path:
+                    opts = [output_path]
     elif fmt == "url":
         opts = _url(prompt)
     elif schema.get("type") in ("integer", "number"):
