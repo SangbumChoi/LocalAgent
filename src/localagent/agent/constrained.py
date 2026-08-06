@@ -261,20 +261,25 @@ def _text_arg(prompt: str, arg: str = "") -> list[str]:
     # prose into ``content``.  The extension is read from the request; no task ID or fixture name
     # is consulted.
     count_match = re.search(
-        r"count\s+(?:the\s+total\s+number\s+of\s+)?[^\n.]*\.(\w+)\s+files?",
+        r"\bcount\s+(?:the\s+(?:total\s+)?number\s+of\s+)?[^\n.]*?"
+        r"[`'\"]?\.?([A-Za-z0-9_]+)[`'\"]?\s+files?",
         prompt,
         re.I,
     )
     if arg in {"content", "text", "message", "body"} and count_match and "TOOL_RESULT" in prompt:
-        extension = re.escape(count_match.group(1))
+        extension = re.escape(count_match.group(1).lstrip("."))
         results = "\n".join(
             re.findall(r"TOOL_RESULT\s*:\s*(.*?)(?=\nASSISTANT\s*:|$)", prompt, re.I | re.S)
         )
+        # MCP directory-tree implementations vary between structured ``{"name": ...}``
+        # entries and a plain indented text tree.  Count only basenames in the result, never
+        # filenames from the task prose or the serialized prompt history.
         matches = re.findall(
-            rf'\\?"name\\?"\s*:\s*\\?"([^\"]+\.{extension})\\?"',
+            rf'\\?["\']name\\?["\']\s*:\s*\\?["\']([^"\']+\.{extension})\\?["\']',
             results,
             re.I,
         )
+        matches += re.findall(rf"(?<![A-Za-z0-9_./-])[^\s\\\"']+\.{extension}\b", results, re.I)
         if matches:
             return [str(len(set(matches)))]
     for source in (action, goal):
@@ -445,6 +450,31 @@ def _path(prompt: str) -> list[str]:
     label, and only then fall back to a relative path or filename.
     """
     sources = (_action_tail(prompt), prompt)
+    # Directory creation tasks often name a relative child while also carrying an absolute
+    # workspace root.  Prefer the explicitly named child (and an explicitly named parent) over
+    # returning the root itself.  This remains schema/task-language based; it does not inspect a
+    # benchmark ID or fixture contents.
+    instruction = _action_tail(prompt)
+    root_match = re.search(
+        r"(?:main\s+directory|workspace\s+root)\s*:\s*(/(?:[^\s\n\r<>\"'`])+)",
+        prompt,
+        re.I,
+    )
+    root = root_match.group(1).rstrip(".,;:)]}") if root_match else None
+    directory = re.search(
+        r"(?:directory|folder)\s+(?:named|called)\s*[`'\"]?([A-Za-z0-9_.-]+)[`'\"]?",
+        instruction,
+        re.I,
+    )
+    if root and directory:
+        parent = re.search(
+            r"(?:inside|within|under)\s+(?:the\s+)?[`'\"]?([A-Za-z0-9_.-]+)"
+            r"[`'\"]?\s+(?:directory|folder)",
+            instruction,
+            re.I,
+        )
+        target = directory.group(1)
+        return [f"{root}/{parent.group(1)}/{target}" if parent else f"{root}/{target}"]
     absolute = re.compile(r"(?<![A-Za-z0-9])/(?:[^\s\n\r<>\"'`])+", re.I)
     for source in sources:
         values = [value.rstrip(".,;:)]}") for value in absolute.findall(source)]

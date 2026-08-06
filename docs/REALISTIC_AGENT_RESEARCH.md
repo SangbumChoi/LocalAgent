@@ -2524,6 +2524,23 @@ and the official MCPMark split is still unverified.  The other missing native re
 AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld, OSWorld 2.0, AgentNet, and EnterpriseOps-Gym;
 ToolSandbox is still non-official-split, and the public HF/Space model-demo manifest is absent.
 
+### Current-checkpoint MCPMark easy replay after generic grounding repair (m494)
+
+The [m494 receipt](paper/results/raw/m494-mcpmark-current-filesystem-easy-grounded-v1.json) is a
+separate current-parent replay, not the m489 adapted child.  It runs ten isolated public MCPMark
+filesystem/easy fixtures through the pinned local `@modelcontextprotocol/server-filesystem@2025.12.18`
+stdio server and each task's independent verifier.  The exact checkpoint is bound by SHA-256
+(`6a6520…`): `folder_structure` and `papers` pass (`2/10`, `20%`), while the remaining eight
+tasks fail through operation sequencing or content/argument grounding.  The generic repair
+correctly handles backtick-delimited extensions and joins named directory targets to the workspace
+root; it does not make the model a general filesystem planner.
+
+The [m495 gate](paper/results/raw/m495-workshop-gate-after-current-mcpmark-easy-v1.json) now
+recognizes MCPMark as a current-checkpoint native receipt and leaves only
+`official_split_not_verified` for that requirement.  The result is still `ready: false`: the
+official MCPMark split, user simulator, standard tasks, other services, and email/Notion workflows
+remain unexecuted.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the

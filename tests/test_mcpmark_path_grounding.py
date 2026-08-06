@@ -17,3 +17,11 @@ def test_unformatted_path_schema_uses_path_extractor() -> None:
     assert _arg_options(prompt, "path", schema, True) == [
         "/private/tmp/mcpmark-fs-transfer/workspace/split"
     ]
+
+
+def test_named_directory_is_joined_to_workspace_root() -> None:
+    prompt = (
+        "Create a new directory named `split` in the test directory. "
+        "Workspace root: /private/tmp/mcpmark-fs-transfer/workspace"
+    )
+    assert _path(prompt) == ["/private/tmp/mcpmark-fs-transfer/workspace/split"]

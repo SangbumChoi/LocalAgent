@@ -43,3 +43,13 @@ def test_filesystem_output_path_ignores_filenames_in_tool_result() -> None:
     assert _workspace_output_path(prompt) == [
         "/private/tmp/mcpmark-fs-state/extracted/folder_structure/structure_analysis.txt"
     ]
+
+
+def test_count_parser_accepts_backtick_extension_and_structured_tree() -> None:
+    prompt = (
+        "Count the total number of `.py` files in all subdirectories. Write the answer to "
+        "structure_analysis.txt. Main directory: /tmp/workspace\n"
+        "TOOL_RESULT: [{\"name\":\"a.py\",\"type\":\"file\"}, "
+        "{\"name\":\"b.py\",\"type\":\"file\"}]"
+    )
+    assert _text_arg(prompt, "content") == ["2"]
