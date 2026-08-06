@@ -25,3 +25,11 @@ def test_named_directory_is_joined_to_workspace_root() -> None:
         "Workspace root: /private/tmp/mcpmark-fs-transfer/workspace"
     )
     assert _path(prompt) == ["/private/tmp/mcpmark-fs-transfer/workspace/split"]
+
+
+def test_main_directory_label_is_not_treated_as_child_path() -> None:
+    prompt = (
+        "Traverse the folder structure under the main directory and inspect the folder named "
+        "`complex_structure`. Main directory: /private/tmp/mcpmark-fs-transfer/workspace"
+    )
+    assert _path(prompt) == ["/private/tmp/mcpmark-fs-transfer/workspace/complex_structure"]

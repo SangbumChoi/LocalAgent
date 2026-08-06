@@ -474,7 +474,12 @@ def _path(prompt: str) -> list[str]:
             re.I,
         )
         target = directory.group(1)
-        return [f"{root}/{parent.group(1)}/{target}" if parent else f"{root}/{target}"]
+        parent_name = parent.group(1) if parent else None
+        # ``main directory``/``workspace root`` are labels for the supplied root, not literal
+        # child folders.  Only join a parent when the instruction names a concrete directory.
+        if parent_name and parent_name.lower() not in {"main", "workspace", "root", "test"}:
+            return [f"{root}/{parent_name}/{target}"]
+        return [f"{root}/{target}"]
     absolute = re.compile(r"(?<![A-Za-z0-9])/(?:[^\s\n\r<>\"'`])+", re.I)
     for source in sources:
         values = [value.rstrip(".,;:)]}") for value in absolute.findall(source)]
