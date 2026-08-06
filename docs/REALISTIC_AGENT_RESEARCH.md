@@ -2690,3 +2690,13 @@ preflight pass.  The gate remains `ready: false` because the eleven native bench
 AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym) are not supplied and the HF model/Space
 manifest is not public or bound to an uploaded URL.  This is the release decision, not a claim that
 the local WebGPU fixture or offline projections are native benchmark results.
+
+### Current environment preflight (m506)
+
+The [m506 preflight receipt](paper/results/raw/m506-current-realistic-agent-preflight-v1.json)
+rechecks the exact 42-entry catalog in the `.venv` used for the current model runs.  Four adapters
+remain runnable (`androidcontrol`, `android_in_the_wild`, `xlam_function_calling`, and
+`mind2web_train`); 38 rows are blocked or evaluation-only.  The decisive missing capabilities are
+ADB, Docker, QEMU, BrowserGym, Gymnasium, MCPMark, OSWorld, and Playwright in this runtime.  This
+is an environment fact, not a dataset omission, and it is why native benchmark receipts remain
+blocked while the public text/accessibility projections and local WebGPU fixture remain usable.
