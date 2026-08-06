@@ -156,6 +156,24 @@ def _playwright_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
     return None
 
 
+def _last_filesystem_call(prompt: str) -> str | None:
+    """Return the most recent tool name emitted before an appended tool result.
+
+    The runtime stores assistant calls as ``<tool_call>{...}`` blocks.  Restricting the search to
+    the assistant-to-result segments avoids treating ``name`` fields inside a JSON observation as
+    a previous call.  The helper is intentionally protocol-only and works for any MCP service.
+    """
+
+    segments = re.findall(
+        r"ASSISTANT\s*:\s*(.*?)(?=\nTOOL_RESULT\s*:|$)", prompt, re.I | re.S
+    )
+    for segment in reversed(segments):
+        match = re.search(r"\"name\"\s*:\s*\"([^\"]+)\"", segment)
+        if match:
+            return match.group(1)
+    return None
+
+
 def _filesystem_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
     """Select an unambiguous filesystem operation from generic task language.
 
@@ -183,6 +201,22 @@ def _filesystem_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
 
     def choose(*candidates: str) -> str | None:
         return next((candidate for candidate in candidates if candidate in names), None)
+
+    # A filesystem task is presented as one long instruction, but the MCP loop appends each
+    # observation to that instruction.  Once a directory-create call has succeeded, repeating
+    # the same call is almost always an invalid retry: tasks that mention an empty output file
+    # need ``write_file`` next.  This is derived from the protocol history and the generic task
+    # language, not from a fixture/task identifier.
+    last_call = _last_filesystem_call(prompt)
+    if "TOOL_RESULT" in prompt and last_call == "create_directory":
+        if re.search(r"\bempty\s+(?:file|document)\b", low):
+            write = choose("write_file")
+            if write is not None:
+                return write
+        if re.search(r"\b(?:read|inspect|open|split|convert|uppercase|merge|count|find|identify)\b", low):
+            if re.search(r"\b(?:count|find|identify|largest|matching|search)\b", low):
+                return choose("search_files", "list_directory_with_sizes", "read_file", "read_text_file")
+            return choose("read_multiple_files", "read_file", "read_text_file")
 
     # After a successful observation, a task may still contain its original "recursively
     # inspect" wording.  The next operation is the explicit write/save instruction, not another
@@ -256,6 +290,13 @@ def _text_arg(prompt: str, arg: str = "") -> list[str]:
     """Extract a text slot from generic delimiters or field-labelled quoted values."""
     action = _action_tail(prompt)
     goal = prompt.split(" Current state JSON:", 1)[0]
+    # ``write_file`` requires a content string even when the requested artifact is deliberately
+    # empty (for example, a placeholder document in a new folder).  Preserve that explicit
+    # zero-length value instead of falling back to copied task prose.
+    if arg in {"content", "text", "body"} and re.search(
+        r"\bempty\s+(?:file|document)\b", prompt, re.I
+    ):
+        return [""]
     # When a stateful filesystem task asks for a count and the preceding tree/search result is
     # present, derive the scalar from the returned observation instead of copying the instruction
     # prose into ``content``.  The extension is read from the request; no task ID or fixture name
@@ -462,7 +503,8 @@ def _path(prompt: str) -> list[str]:
     )
     root = root_match.group(1).rstrip(".,;:)]}") if root_match else None
     directory = re.search(
-        r"(?:directory|folder)\s+(?:named|called)\s*[`'\"]?([A-Za-z0-9_.-]+)[`'\"]?",
+        r"(?:directory|folder)(?:[*_`\s])*?(?:named|called)(?:[*_`\s])*"
+        r"[`'\"]?([A-Za-z0-9_.-]+)[`'\"]?",
         instruction,
         re.I,
     )
@@ -473,6 +515,15 @@ def _path(prompt: str) -> list[str]:
             instruction,
             re.I,
         )
+        # Some task descriptions introduce the parent as a quoted relative directory (for
+        # example, ``the folder \"legal_files/\"``) and refer to the target in a later numbered
+        # step.  Preserve that explicit hierarchy when grounding the target path.
+        if parent is None:
+            parent = re.search(
+                r"(?:folder|directory)\s*[`'\"]?([A-Za-z0-9_.-]+)/[`'\"]?",
+                instruction,
+                re.I,
+            )
         target = directory.group(1)
         parent_name = parent.group(1) if parent else None
         # ``main directory``/``workspace root`` are labels for the supplied root, not literal
@@ -506,10 +557,42 @@ def _workspace_output_path(prompt: str) -> list[str]:
     roots = [labeled_root.group(1)] if labeled_root else re.findall(
         r"(?<![A-Za-z0-9])/(?:[^\s\n\r<>\"'`])+", instruction
     )
-    filenames = re.findall(r"\b[A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8}\b", instruction)
+    # Prefer a filename explicitly introduced as the generated artifact.  Source files listed
+    # for inspection (``file_01.txt`` … ``file_20.txt``) must never displace ``answer.txt`` or
+    # ``merge.txt`` simply because they occur later in the prose.
+    explicit = re.findall(
+        r"(?:file|document)\s+(?:named|called)\s*[`'\"]?"
+        r"([A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8})",
+        instruction,
+        re.I,
+    )
+    explicit += re.findall(
+        r"(?:generate|create|write|save|record)\s+(?:an?\s+)?(?:empty\s+)?"
+        r"(?:file|document)\s+[`'\"]?([A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8})",
+        instruction,
+        re.I,
+    )
+    filenames = explicit or re.findall(
+        r"\b[A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8}\b", instruction
+    )
     if not roots or not filenames:
         return []
     root = roots[-1].rstrip(".,;:)]}")
+    parent = re.search(
+        r"(?:folder|directory)\s*[`'\"]?([A-Za-z0-9_.-]+)/[`'\"]?",
+        instruction,
+        re.I,
+    )
+    if parent and parent.group(1).lower() not in {"main", "workspace", "root", "test"}:
+        root = f"{root}/{parent.group(1)}"
+    target_dir = re.search(
+        r"(?:directory|folder)(?:[*_`\s])*?(?:named|called)(?:[*_`\s])*"
+        r"[`'\"]?([A-Za-z0-9_.-]+)[`'\"]?",
+        instruction,
+        re.I,
+    )
+    if target_dir and target_dir.group(1).lower() not in {"main", "workspace", "root", "test"}:
+        root = f"{root}/{target_dir.group(1)}"
     # The last filename in these instructions is the named output; source filenames appear
     # earlier in the task description or in the observation.
     filename = filenames[-1].rstrip(".")

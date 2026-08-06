@@ -27,9 +27,27 @@ def test_named_directory_is_joined_to_workspace_root() -> None:
     assert _path(prompt) == ["/private/tmp/mcpmark-fs-transfer/workspace/split"]
 
 
+def test_markdown_named_directory_is_joined_to_workspace_root() -> None:
+    prompt = (
+        "**Create a new directory** named `split` in the test directory. "
+        "Workspace root: /private/tmp/mcpmark-fs-transfer/workspace"
+    )
+    assert _path(prompt) == ["/private/tmp/mcpmark-fs-transfer/workspace/split"]
+
+
 def test_main_directory_label_is_not_treated_as_child_path() -> None:
     prompt = (
         "Traverse the folder structure under the main directory and inspect the folder named "
         "`complex_structure`. Main directory: /private/tmp/mcpmark-fs-transfer/workspace"
     )
     assert _path(prompt) == ["/private/tmp/mcpmark-fs-transfer/workspace/complex_structure"]
+
+
+def test_nested_quoted_parent_directory_is_preserved() -> None:
+    prompt = (
+        'Create a folder named `final_version` inside the folder "legal_files/" directory. '
+        "Workspace root: /private/tmp/mcpmark-fs-transfer/legal_document"
+    )
+    assert _path(prompt) == [
+        "/private/tmp/mcpmark-fs-transfer/legal_document/legal_files/final_version"
+    ]

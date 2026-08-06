@@ -53,3 +53,33 @@ def test_count_parser_accepts_backtick_extension_and_structured_tree() -> None:
         "{\"name\":\"b.py\",\"type\":\"file\"}]"
     )
     assert _text_arg(prompt, "content") == ["2"]
+
+
+def test_create_directory_then_empty_file_switches_to_write() -> None:
+    prompt = (
+        "Create a folder named `final_version`, then create an empty file named "
+        "`agreement_v10.txt` inside it. Workspace root: /tmp/legal_files\n"
+        "ASSISTANT: <tool_call>{\"name\":\"create_directory\",\"arguments\":{}}"
+        "</tool_call>\nTOOL_RESULT: directory created"
+    )
+    assert _filesystem_lexical_tool(prompt, _tools()) == "write_file"
+    assert _text_arg(prompt, "content") == [""]
+
+
+def test_output_path_prefers_explicit_artifact_over_source_files() -> None:
+    prompt = (
+        "Read file_01.txt through file_20.txt and create a file named `answer.txt`. "
+        "Workspace root: /tmp/file_context\nTOOL_RESULT: done"
+    )
+    assert _workspace_output_path(prompt) == ["/tmp/file_context/answer.txt"]
+
+
+def test_output_path_preserves_parent_and_target_directories() -> None:
+    prompt = (
+        'Create a folder named `final_version` inside the folder "legal_files/" directory. '
+        "Create an empty file with the same name as Preferred_Stock_Purchase_Agreement_v10.txt. "
+        "Workspace root: /tmp/legal_document\nTOOL_RESULT: directory created"
+    )
+    assert _workspace_output_path(prompt) == [
+        "/tmp/legal_document/legal_files/final_version/Preferred_Stock_Purchase_Agreement_v10.txt"
+    ]
