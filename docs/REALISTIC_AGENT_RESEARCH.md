@@ -2701,6 +2701,14 @@ ADB, Docker, QEMU, BrowserGym, Gymnasium, MCPMark, OSWorld, and Playwright in th
 is an environment fact, not a dataset omission, and it is why native benchmark receipts remain
 blocked while the public text/accessibility projections and local WebGPU fixture remain usable.
 
+### Training acceleration preflight (m509)
+
+The [m509 receipt](paper/results/raw/m509-acceleration-preflight-v1.json) records the local
+PyTorch backend used for continuation runs: PyTorch `2.13.0` is MPS-built, but MPS and CUDA are
+unavailable, so the reproducible training path is CPU-only.  This explains the bounded continuation
+caps and does not change the separate native WebGPU measurement, which runs in Chromium on the
+Apple Metal adapter.
+
 ### Official-source integrity refresh (m508)
 
 The [m508 source audit](paper/results/raw/m508-official-source-integrity-audit-v1.json) rechecks
