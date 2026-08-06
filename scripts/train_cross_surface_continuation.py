@@ -191,6 +191,14 @@ def main() -> int:
     parser.add_argument("--lr", type=float, default=1.0e-5)
     parser.add_argument("--max-seq-len", type=int, default=2048)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--disable-dynamo-wrapper",
+        action="store_true",
+        help=(
+            "skip PyTorch's lazy optimizer dynamo wrapper; useful for bounded eager CPU runs "
+            "where importing torch._dynamo is disproportionately slow"
+        ),
+    )
     args = parser.parse_args()
     if args.output.exists() or args.report.exists():
         raise SystemExit("refusing to overwrite continuation outputs")
@@ -238,6 +246,11 @@ def main() -> int:
     before_by_source = _evaluate_by_source(
         eval_groups, model, tokenizer, max_seq_len=args.max_seq_len, batch_size=args.batch_size, device=args.device
     )
+    if args.disable_dynamo_wrapper and hasattr(torch, "_disable_dynamo"):
+        # PyTorch 2.13 lazily imports the full torch._dynamo/sympy stack on the first AdamW
+        # construction.  The continuation script is eager-only; making this opt-in keeps the
+        # default behavior unchanged while allowing reproducible CPU canaries to start training.
+        torch._disable_dynamo = lambda fn, *unused_args, **unused_kwargs: fn  # type: ignore[attr-defined]
     loss_history, _, _, training = sft(
         model,
         [],
