@@ -2639,3 +2639,23 @@ native requirements.
       artifact must not satisfy the current-release gate.
 - [ ] Warm-start, low-rate, and matched-random transfer arms with per-group weight movement.
 - [ ] No real email, Notion, GitHub, or browser side effect without an isolated resettable fixture.
+
+### Current public-evaluation and WebGPU audit (m500/m501)
+
+The current public-evaluation matrix audit contains 27 source-linked rows across mobile, browser,
+computer, terminal, and tool-API families.
+Only five rows are explicitly train-policy rows; 18 are evaluation-only, three have no static data,
+and one is restricted.  The audit is metadata-only: it does not silently download evaluation text,
+screenshots, credentials, VM assets, or verifier state.
+
+The [m500 gate receipt](paper/results/raw/m500-workshop-gate-current-audit-v1.json) binds the exact
+current checkpoint (`6a6520…`) and reports 12 blockers: the eleven required native benchmark receipts
+and a public model/demo manifest.  The static bundle itself is internally consistent and its parity
+gate passes, but it is not a public Hub/Space release.
+
+The [m501 receipt](paper/results/raw/m501-webgpu-local-trajectory-current-v1.json) records a fresh
+Chrome WebGPU run of the resettable local productivity fixture: Gmail compose/send (6 steps),
+Notion capture (2), and browser search/open (5).  All 13 actions were exact, schema-valid, and
+state-transition-valid (`3/3` trajectories, pass@1 `1.0`).  This is stronger deployment-shaped
+evidence than the earlier negative controls, but remains a local fixture diagnostic—not native
+AndroidWorld, BrowserGym, OSWorld, MCPMark, or real-account success.
