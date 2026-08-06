@@ -2428,6 +2428,34 @@ cases are exact, but closed-loop success is `0` because they execute no side eff
 publication is still fail-closed without authentication, so this is a local release candidate,
 not a public model/demo or email/Notion account result.
 
+### Official realistic-agent source/method audit (m484)
+
+The [m484 receipt](paper/results/raw/m484-realistic-source-method-audit-v1.json) records the
+evaluation method from the current public source pages rather than treating every JSONL projection
+as an official score.  The training/evaluation boundary is now explicit:
+
+- AndroidControl and AITW are public demonstration sources for training only on their official
+  training partitions; app/task/platform holdouts remain untouched.
+- AndroidWorld, MobileSafetyBench, and iOSWorld require native Android/iOS simulator state and
+  independent success/safety rubrics.  iOSWorld adds persistent identity, cross-app workflows, and
+  an optional MCP server, so a text-only or WebGPU dispatch result cannot satisfy its score.
+- Mind2Web and AgentNet provide browser/desktop action trajectories, but DOM/coordinate projections
+  are training or offline diagnostics; native BrowserGym and desktop/VM replay are separate gates.
+- OSWorld and OSWorld 2.0 require release-matched VMs, screenshots/accessibility/terminal state,
+  final-state evaluators, and (for 2.0) gated assets and long-horizon completion.  MCPMark requires
+  an isolated service workspace and its independent task verifier across Notion, GitHub, filesystem,
+  Postgres, and Playwright.
+
+This method audit is deliberately source evidence, not a benchmark result.  The official pages
+support the protocol choices: [AndroidWorld](https://google-research.github.io/android_world/)
+uses dynamic parameterized tasks and durable system-state rewards; [iOSWorld](https://iosworld.io/)
+uses 26 apps and 133 persistent-identity tasks with an MCP tool-use option; [OSWorld](https://github.com/xlang-ai/OSWorld)
+uses real VMs and execution-based evaluators; [OSWorld 2.0](https://github.com/xlang-ai/OSWorld-V2)
+pins code/tasks/assets to a release; [MobileSafetyBench](https://github.com/jylee425/mobilesafetybench)
+requires Android emulator/ADB/Appium state; [AgentNet](https://huggingface.co/datasets/xlangai/AgentNet)
+is a 22.6K-task desktop trajectory source; and [MCPMark](https://mcpmark.ai/docs/introduction)
+isolates service environments and verifies final state independently.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
