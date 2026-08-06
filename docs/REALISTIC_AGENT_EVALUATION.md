@@ -24,7 +24,11 @@ static 63-tool WebGPU bundle plus HF-compatible model export pass local parity. 
 publication gate remains `ready=false`: nine additional native benchmark receipts and authenticated
 public Hub model/Space URLs are still missing.  See the current [m513 gate](paper/results/raw/m513-workshop-gate-current-native-browsergym-mobilegym-v1.json),
 [m515 bundle verification](paper/results/raw/m515-current-webgpu-deploy-verify-v1.json), and
-[m516 local HF preparation](paper/results/raw/m516-hf-release-local-prepare-v1.json); older sections
+[m516 local HF preparation](paper/results/raw/m516-hf-release-local-prepare-v1.json).  The refreshed
+[m523 gate](paper/results/raw/m523-workshop-gate-current-m522-v2.json) now passes the explicit
+transfer/no-transfer weight requirement using the current checkpoint, but still reports the nine
+missing native receipts, the unbound current-checkpoint RL preflight, and unauthenticated public
+artifacts.  Older sections
 below are retained as historical experiment records.
 
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
@@ -36,6 +40,10 @@ replays the same pinned task with DOM geometry as a sidecar and reaches `1/1` (f
 clicks).  This is evidence for the deployment bridge and its tests, not an official BrowserGym
 score or visual-agent claim; the full 240-episode gate still requires the accessibility contract
 without either fallback.
+The current warm/random weight audit [m522](paper/results/raw/m522-realistic-cross-surface-warm-random-2step-comparison-v1.json)
+also binds the same checkpoint to four public source projections.  It is intentionally a bounded
+training canary, with `8` train and `4` held-out rows, and must not be substituted for the missing
+full native Android, browser, desktop, and MCP receipts.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
 It now adds twenty-four high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0

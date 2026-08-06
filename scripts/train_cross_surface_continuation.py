@@ -158,6 +158,36 @@ def _assert_source_disjoint(
         _assert_disjoint(train_by_label[label], eval_by_label[label])
 
 
+def _disable_lazy_torch_dynamo() -> None:
+    """Keep eager CPU continuation runs from importing TorchDynamo on optimizer calls.
+
+    Recent PyTorch releases decorate optimizer construction/state methods with a lazy Dynamo
+    wrapper.  The wrapper imports the full ``torch._dynamo``/SymPy stack the first time AdamW is
+    constructed, which can dominate a bounded CPU experiment and is unnecessary for this eager
+    training script.  Unwrap the methods after importing ``torch.optim``; the original functions
+    remain numerically identical and this helper is only used behind the explicit CLI flag.
+    """
+
+    import torch.optim
+
+    add_param_group = getattr(torch.optim.Optimizer.add_param_group, "__wrapped__", None)
+    if add_param_group is not None:
+        torch.optim.Optimizer.add_param_group = add_param_group
+
+    # Adam's differentiability wrapper normally toggles no-grad around the in-place parameter
+    # update.  Calling its wrapped body directly avoids Dynamo but would make leaf updates illegal,
+    # so preserve the eager no-grad behavior explicitly.
+    for owner in (torch.optim.Adam, torch.optim.AdamW):
+        method = getattr(owner, "step")
+        wrapped = getattr(method, "__wrapped__", None)
+        if wrapped is not None:
+            def eager_step(self, closure=None, _wrapped=wrapped):
+                with torch.no_grad():
+                    return _wrapped(self, closure)
+
+            setattr(owner, "step", eager_step)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--train-data", type=_parse_labeled_path, action="append", required=True)
@@ -251,6 +281,7 @@ def main() -> int:
         # construction.  The continuation script is eager-only; making this opt-in keeps the
         # default behavior unchanged while allowing reproducible CPU canaries to start training.
         torch._disable_dynamo = lambda fn, *unused_args, **unused_kwargs: fn  # type: ignore[attr-defined]
+        _disable_lazy_torch_dynamo()
     loss_history, _, _, training = sft(
         model,
         [],

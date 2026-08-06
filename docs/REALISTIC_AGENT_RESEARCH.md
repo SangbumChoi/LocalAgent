@@ -12,6 +12,20 @@ on the same pinned ascending-numbers task.  The receipt is [m521](paper/results/
 it validates the WebGPU deployment bridge, not visual-agent competence, WebArena, or real email/
 Notion control.  Keep the official score and the coordinate diagnostic separate in all reports.
 
+The first reproducible current-checkpoint warm/random continuation after that audit is [m522](paper/results/raw/m522-realistic-cross-surface-warm-random-2step-comparison-v1.json).
+It uses only source-linked public train projections from AndroidControl, OpenCUA-AgentNet,
+Mind2Web-train, and MCPMark filesystem, with source-local parent/slot-disjoint rows.  On the
+bounded 8-row train / 4-row eval canary, the warm arm improves held-out assistant-token accuracy
+from `39.13%` to `40.22%` while the matched random arm stays at `0%`; exact sequence accuracy is
+`0%` for both.  Warm shared-body movement is below `0.03%` relative L2, versus `77.9–119.7%`
+for random initialization.  This supports warm-start adoption as a representation-transfer
+candidate, not as a native benchmark or live email/Notion/browser result.
+The refreshed [m523 workshop gate](paper/results/raw/m523-workshop-gate-current-m522-v2.json)
+accepts this warm/random report as a structurally valid current-checkpoint weight ablation.  The
+gate remains fail-closed because native AndroidWorld/MobileSafetyBench/iOSWorld/OSWorld/AgentNet/
+ToolSandbox/MCPMark/EnterpriseOps-Gym receipts, a checkpoint-bound RL preflight, and authenticated
+public artifacts are still absent.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |
