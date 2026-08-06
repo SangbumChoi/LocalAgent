@@ -2541,6 +2541,21 @@ recognizes MCPMark as a current-checkpoint native receipt and leaves only
 official MCPMark split, user simulator, standard tasks, other services, and email/Notion workflows
 remain unexecuted.
 
+### Current MCPMark Verified source profile (m496)
+
+The [m496 profile](paper/results/raw/m496-mcpmark-current-source-profile-v1.json) re-reads only
+`meta.json` from the pinned public checkout `cd45b7f57923b9b3985467f5139927575f83141c`.  It freezes
+`239` metadata rows: `169` standard and `70` easy.  The service memberships are filesystem `40`,
+Notion `38`, browser (`playwright` plus `playwright_webarena`) `35`, GitHub `33`, and database
+(`postgres`, `supabase`, `insforge`) `93`.  No prompt text, state asset, verifier source, trajectory,
+or training row is retained.  This supersedes older source-audit prose that reported `127` standard
+and `50` easy tasks for an earlier tree interpretation.
+
+The source README calls the standard suite MCPMark Verified, but a source profile alone is not a
+native score.  The current native receipt covers only the filesystem easy/standard boundary that
+has actually been executed; Notion, GitHub, Postgres, Playwright, user simulation, and external
+accounts remain separate runtime requirements.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
