@@ -2666,3 +2666,14 @@ directory.  ONNX fp32/fp16 and action-model parity all passed, and the regenerat
 bound the same `6a6520…` checkpoint.  The upload step was intentionally not run because Hugging Face
 authentication is absent; the receipt therefore records `published: false` rather than inventing
 public URLs.
+
+### Current warm/random continuation control (m503)
+
+The [m503 receipt](paper/results/raw/m503-current-mind2web-warm-random-v1.json) runs the same
+four-update continuation from the exact `6a6520…` checkpoint twice on a source-disjoint Mind2Web
+slice.  The parent-initialized arm improves held-out teacher-forced token accuracy from `72.33%` to
+`77.75%`; the matched random-backbone arm remains at `0%`.  Parent embedding, mixer, and FFN groups
+move by roughly `0.05%` relative L2, while the random arm moves by approximately `0.78–1.20x`.
+This supports warm initialization and differential learning rates as the current engineering choice,
+but it remains a text/accessibility transfer diagnostic until the browser/mobile/tool projections
+are evaluated with their own held-out rows and native runtimes.
