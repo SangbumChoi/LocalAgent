@@ -2659,3 +2659,10 @@ Notion capture (2), and browser search/open (5).  All 13 actions were exact, sch
 state-transition-valid (`3/3` trajectories, pass@1 `1.0`).  This is stronger deployment-shaped
 evidence than the earlier negative controls, but remains a local fixture diagnostic—not native
 AndroidWorld, BrowserGym, OSWorld, MCPMark, or real-account success.
+
+The [m502 staging receipt](paper/results/raw/m502-local-hf-space-stage-current-v1.json) then rebuilt
+the exact checkpoint into a 10,524,544-parameter HF-compatible model directory and a static Space
+directory.  ONNX fp32/fp16 and action-model parity all passed, and the regenerated WebGPU bundle
+bound the same `6a6520…` checkpoint.  The upload step was intentionally not run because Hugging Face
+authentication is absent; the receipt therefore records `published: false` rather than inventing
+public URLs.
