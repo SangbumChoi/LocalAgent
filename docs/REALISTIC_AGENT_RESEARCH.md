@@ -2674,6 +2674,19 @@ four-update continuation from the exact `6a6520…` checkpoint twice on a source
 slice.  The parent-initialized arm improves held-out teacher-forced token accuracy from `72.33%` to
 `77.75%`; the matched random-backbone arm remains at `0%`.  Parent embedding, mixer, and FFN groups
 move by roughly `0.05%` relative L2, while the random arm moves by approximately `0.78–1.20x`.
-This supports warm initialization and differential learning rates as the current engineering choice,
-but it remains a text/accessibility transfer diagnostic until the browser/mobile/tool projections
-are evaluated with their own held-out rows and native runtimes.
+This supports warm initialization and differential learning rates as the current engineering choice.
+The larger matched cross-surface canary is recorded separately in the m486 receipt above; both
+receipts remain text/accessibility transfer diagnostics until native browser/mobile/tool runtimes
+and independent verifiers are supplied.
+
+### Refreshed publication gate (m505)
+
+The [m505 gate receipt](paper/results/raw/m505-workshop-gate-current-m486-v1.json) re-runs the
+fail-closed checklist against the exact current checkpoint, the current native WebGPU capability
+receipt, the current warm/random transfer ablation, the RL preflight, and the public-artifact
+manifest.  Catalog coverage, WebGPU capability/performance, transfer compatibility, and RL
+preflight pass.  The gate remains `ready: false` because the eleven native benchmark receipts
+(AndroidWorld, MobileGym, MobileSafetyBench, iOSWorld, BrowserGym/MiniWoB, OSWorld, OSWorld 2.0,
+AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym) are not supplied and the HF model/Space
+manifest is not public or bound to an uploaded URL.  This is the release decision, not a claim that
+the local WebGPU fixture or offline projections are native benchmark results.
