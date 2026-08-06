@@ -7,7 +7,7 @@ desktop workflows, and stateful API/MCP tools.  The source-linked inventory is
 It is deliberately a catalog, not a downloader: every acquired byte must be recorded in a local
 provenance manifest with an upstream revision, byte count, and SHA-256.
 
-The current canonical catalog contains 40 source-linked rows (four train-eligible and 36 evaluation
+The current canonical catalog contains 42 source-linked rows (four train-eligible and 38 evaluation
 or restricted) and has a canonical SHA-256 fingerprint recorded by the preflight command below.
 The separate 27-row public evaluation matrix marks five research train candidates, adding the
 supplemental ToolACE adapter; its current byte and canonical hashes are bound by the [m359 matrix
@@ -15,6 +15,17 @@ audit](paper/results/raw/m359-public-realistic-eval-matrix-audit-v1.json). These
 different layers: the canonical catalog controls acquisition configs, while the matrix records the
 broader source-linked research plan.
 The fingerprint is generated from the canonical catalog by the preflight command below.
+
+Current release status (2026-08-06): the exact 10,524,544-parameter BPE checkpoint is
+`runs/sft-mind2web-public-continuation-20260805/latest.pt` with SHA-256
+`6a6520264f5f81fc68c54f80d462ddde64ac2f442e6e30077c909b702939dd45`.  The complete current
+checkpoint-bound MobileGym and BrowserGym/MiniWoB receipts pass their native contracts, and the
+static 63-tool WebGPU bundle plus HF-compatible model export pass local parity.  The fail-closed
+publication gate remains `ready=false`: nine additional native benchmark receipts and authenticated
+public Hub model/Space URLs are still missing.  See the current [m513 gate](paper/results/raw/m513-workshop-gate-current-native-browsergym-mobilegym-v1.json),
+[m515 bundle verification](paper/results/raw/m515-current-webgpu-deploy-verify-v1.json), and
+[m516 local HF preparation](paper/results/raw/m516-hf-release-local-prepare-v1.json); older sections
+below are retained as historical experiment records.
 The post-freeze public-source audit is kept separately in
 [`configs/data/realistic-agent-eval.supplemental.yaml`](../configs/data/realistic-agent-eval.supplemental.yaml).
 It now adds twenty-four high-value sources—Computer Agent Arena, CUA-Lite AgentNet, OSWorld 2.0
@@ -66,7 +77,7 @@ Run the read-only readiness report before acquiring or evaluating anything:
 PYTHONPATH=src python scripts/realistic_agent_preflight.py
 ```
 
-The report currently identifies the four local text-first adapters as runnable and all 36
+The report currently identifies the four local text-first adapters as runnable and all 38
 environment/evaluation rows as blocked by their pending integration status (for example, no
 `adb`, Docker, VM, or upstream BrowserGym checkout).  `--strict` intentionally exits non-zero
 until those external runners are installed and pinned; this is a readiness gate, not a benchmark

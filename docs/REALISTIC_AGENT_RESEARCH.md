@@ -2739,6 +2739,24 @@ EnterpriseOps-Gym, and a public HF model/demo manifest are still absent.  Passin
 pair therefore means the publication evidence is more complete, not that every realistic computer-use
 surface or public artifact is ready.
 
+### Current WebGPU bundle verification (m515)
+
+The [m515 receipt](paper/results/raw/m515-current-webgpu-deploy-verify-v1.json) verifies the tracked
+static bundle against the exact `6a6520…` checkpoint.  All eight generated artifacts match their
+manifest byte counts and SHA-256 values, the 63-tool metadata contract is present, and the hard
+PyTorch/export parity gate passes.  This makes the local WebGPU package deployable once copied to an
+authenticated Hub Space; it does not create a public URL or turn the local fixture into native
+email/Notion/browser-account success.
+
+### Current HF/WebGPU release preparation (m516)
+
+The [m516 receipt](paper/results/raw/m516-hf-release-local-prepare-v1.json) rebuilds the
+Hugging-Face-compatible safetensors model and static Space from the same `6a6520…` checkpoint in
+local-only mode.  The `10,524,544`-parameter model, 63-tool WebGPU metadata, fp32/fp16 ONNX graphs,
+and action graph all export and pass parity; the preparation reports `published=false` because no
+Hub token is present.  This closes the local release-reproducibility step without claiming a public
+model or demo URL.
+
 ### Official-source integrity refresh (m508)
 
 The [m508 source audit](paper/results/raw/m508-official-source-integrity-audit-v1.json) rechecks

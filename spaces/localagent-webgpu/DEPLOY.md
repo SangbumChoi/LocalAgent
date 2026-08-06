@@ -4,13 +4,13 @@ Everything here is **prepared but not pushed** — publishing to your HF account
 Requires `huggingface_hub` (installed) and a write token. Set `HF_USER` to your own namespace;
 the commands below deliberately do not assume a public account or URL. The current release target
 is the 10,524,544-parameter BPE checkpoint at
-`runs/sft-webgpu-browser-context-adapter-20260802/latest.pt` (SHA-256
-`bc1aca209ec08df1483a3c6d088366a68f8d8f4f0766e2b4350a2ef473c16361`).
+`runs/sft-mind2web-public-continuation-20260805/latest.pt` (SHA-256
+`6a6520264f5f81fc68c54f80d462ddde64ac2f442e6e30077c909b702939dd45`).
 
 The current publisher binds the model and WebGPU bundle to one 63-tool pool (50 standard tools,
 11 mobile actions, and 2 full-field email/Notion schemas). The pool is inferred from the
-checkpoint's 51-class fixed head using `scripts/publish_hf_release.py`; the local parity and
-artifact audit is [`m336-hf-paired-release-local-current-63-tool-v1.json`](../../docs/paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json).
+checkpoint's 51-class fixed head using `scripts/publish_hf_release.py`; the current local staging
+and parity audit is [`m502-local-hf-space-stage-current-v1.json`](../../docs/paper/results/raw/m502-local-hf-space-stage-current-v1.json).
 The app (`app.js`) uses the structured route head → dense selector → pointer-copy dispatch over the
 63-tool release surface plus named, bounded URL/search/planner safety adapters. It also applies the
 versioned `side_effect_confirmation_v1` boundary: read-only actions may proceed, state-changing
@@ -38,7 +38,7 @@ without a token or `--audit-output`:
 
 ```bash
 PYTHONPATH=src python scripts/publish_hf_release.py \
-  --checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt \
+  --checkpoint runs/sft-mind2web-public-continuation-20260805/latest.pt \
   --model-repo "$HF_USER/localagent-webgpu-10m" \
   --space-repo "$HF_USER/localagent-webgpu" \
   --model-out build/hf-current \
@@ -53,7 +53,7 @@ current release unless the final anonymous audit records `current_checkpoint_mat
 
 ## 1. Export the inference bundle from the current checkpoint
 ```bash
-CURRENT_CHECKPOINT=runs/sft-webgpu-browser-context-adapter-20260802/latest.pt
+CURRENT_CHECKPOINT=runs/sft-mind2web-public-continuation-20260805/latest.pt
 python -c "from localagent.inference.export.to_onnx import export_web; \
            export_web('${CURRENT_CHECKPOINT}', 'build/web', action_only=True)"
 # writes the full logits graph, hidden-only action graph, heads/meta, and bundle-manifest.json
@@ -127,7 +127,7 @@ static app before copying anything into the Space:
 PYTHONPATH=src python scripts/verify_demo_deploy.py \
   --demo-dir spaces/localagent-webgpu \
   --bundle-dir build/web \
-  --checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt \
+  --checkpoint runs/sft-mind2web-public-continuation-20260805/latest.pt \
   --expected-tool-count 63
 ```
 
@@ -140,15 +140,15 @@ deployable copy, use the explicit sync operation and then verify the target itse
 PYTHONPATH=src python scripts/verify_demo_deploy.py \
   --demo-dir spaces/localagent-webgpu \
   --bundle-dir build/web --sync \
-  --checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt \
+  --checkpoint runs/sft-mind2web-public-continuation-20260805/latest.pt \
   --expected-tool-count 63
 PYTHONPATH=src python scripts/verify_demo_deploy.py \
   --demo-dir spaces/localagent-webgpu \
-  --checkpoint runs/sft-webgpu-browser-context-adapter-20260802/latest.pt \
+  --checkpoint runs/sft-mind2web-public-continuation-20260805/latest.pt \
   --expected-tool-count 63
 ```
 
-The current local paired Space staging was regenerated and verified by the [`m336 receipt`](../../docs/paper/results/raw/m336-hf-paired-release-local-current-63-tool-v1.json): all model/WebGPU artifacts pass the hard parity gate, the model and dispatch metadata each contain 63 tools, and the bundle identity is `e0e19a8d…`. This remains a local pre-upload receipt until the same files are uploaded to an authenticated Hub Space.
+The current local paired Space staging was regenerated and verified by the [`m502 receipt`](../../docs/paper/results/raw/m502-local-hf-space-stage-current-v1.json), and the tracked static bundle is independently rechecked by [`m515`](../../docs/paper/results/raw/m515-current-webgpu-deploy-verify-v1.json): the exact `6a6520…` checkpoint, ONNX parity, and WebGPU bundle all match. This remains a local pre-upload receipt until the same files are uploaded to an authenticated Hub Space.
 
 Do not hand-create `bundle-manifest.json` or upload a partial bundle. A verified local export is
 still not native WebGPU capability evidence; the workshop gate separately requires a hardware
