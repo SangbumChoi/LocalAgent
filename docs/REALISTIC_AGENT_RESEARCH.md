@@ -2475,6 +2475,25 @@ Exact sequence accuracy is `0%` for both arms.  The warm child moves embedding/a
 continuation and separately controlled heads, but the cap and two-step horizon make it a canary,
 not a final model-selection result or a native mobile/browser/desktop/MCP score.
 
+### Longer matched realistic-agent transfer canary (m486)
+
+The [m486 receipt](paper/results/raw/m486-realistic-cross-surface-transfer-v1.json) repeats the
+same source-local parent/slot-disjoint contract with 16 low-rate updates, keeping the current
+10.52M parent (`6a6520…`), tokenizer, 59 training rows, and 18 held-out rows fixed between a
+warm-start and random-backbone arm.  This is deliberately a bounded canary: AndroidControl
+screenshots are omitted, AgentNet and Mind2Web are text/accessibility projections, and the MCPMark
+rows are not the official split or live service state.
+
+Warm held-out assistant-token accuracy rises from `43.36%` to `46.61%`, while the matched random
+arm remains `0%` after training (`+46.61` points).  Warm is ahead on every surface: AgentNet
+`53.06%`, AndroidControl `64.55%`, MCPMark filesystem `41.46%`, Playwright extraction `11.82%`,
+Playwright travel `43.42%`, and Mind2Web `71.11%`.  Exact sequence accuracy remains `0%`.  The
+warm embedding/attention/FFN/normalization movement is only `0.190%`/`0.115%`/`0.136%`/`0.0042%`,
+versus random `119.70%`/`77.88%`/`87.79%`/`8.57%`.  The evidence supports a low-rate transferred
+backbone plus separately controlled action heads as the next training configuration; it does not
+establish native completion, screenshot grounding, real email/Notion side effects, or workshop
+publication readiness.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
