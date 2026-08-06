@@ -28,7 +28,7 @@ public Hub model/Space URLs are still missing.  See the current [m513 gate](pape
 below are retained as historical experiment records.
 
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
-one-episode diagnostic [m519](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
+one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
 live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG
 number controls have no actionable accessibility role, so fail-closed grounding produces `noop`.
 The non-official [m521 coordinate/semantic canary](paper/results/raw/m521-browsergym-current-coordinate-semantic-canary-v1.json)
