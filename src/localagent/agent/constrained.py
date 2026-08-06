@@ -156,6 +156,55 @@ def _playwright_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
     return None
 
 
+def _filesystem_lexical_tool(prompt: str, tools: list[ToolSpec]) -> str | None:
+    """Select an unambiguous filesystem operation from generic task language.
+
+    MCP filesystem catalogs expose a stable vocabulary (tree/search/read/write/create).  A tiny
+    model can confuse these tools even when the instruction states the operation plainly, so use
+    a narrow schema-aware guard before dense ranking.  It never invents a tool and does not use a
+    benchmark task ID or fixture-specific filename.
+    """
+    names = {tool.name for tool in tools}
+    filesystem_names = {
+        "directory_tree",
+        "search_files",
+        "list_directory",
+        "list_directory_with_sizes",
+        "read_file",
+        "read_text_file",
+        "read_multiple_files",
+        "write_file",
+        "create_directory",
+        "move_file",
+    }
+    if not names.intersection(filesystem_names):
+        return None
+    low = _action_tail(prompt).lower()
+
+    def choose(*candidates: str) -> str | None:
+        return next((candidate for candidate in candidates if candidate in names), None)
+
+    # After a successful observation, a task may still contain its original "recursively
+    # inspect" wording.  The next operation is the explicit write/save instruction, not another
+    # tree walk.  Restrict this override to a prompt containing a tool result so the initial turn
+    # still selects the inspection operation.
+    if "TOOL_RESULT" in prompt and re.search(r"\b(?:write|save|store|record)\b", low):
+        write = choose("write_file")
+        if write is not None:
+            return write
+    if re.search(r"\b(?:recurs|tree|all\s+subdirector|count\s+.*files?|find\s+all\s+files?)\b", low):
+        return choose("directory_tree", "search_files", "list_directory")
+    if re.search(r"\b(?:write|save|store|record)\b", low):
+        return choose("write_file")
+    if re.search(r"\b(?:create|make)\s+(?:an?\s+)?(?:new\s+)?director", low):
+        return choose("create_directory")
+    if re.search(r"\b(?:read|inspect|open)\b", low):
+        return choose("read_file", "read_text_file", "read_multiple_files")
+    if re.search(r"\b(?:rename|move)\b", low):
+        return choose("move_file")
+    return None
+
+
 # Argument names whose value is a proper-noun entity (take the capitalized span) vs free text
 # (take the whole tail, which may itself contain a proper noun, e.g. query "capital of Peru").
 ENTITY_ARGS = {"city", "location", "name", "person", "artist", "song", "album", "place",
@@ -207,6 +256,27 @@ def _text_arg(prompt: str, arg: str = "") -> list[str]:
     """Extract a text slot from generic delimiters or field-labelled quoted values."""
     action = _action_tail(prompt)
     goal = prompt.split(" Current state JSON:", 1)[0]
+    # When a stateful filesystem task asks for a count and the preceding tree/search result is
+    # present, derive the scalar from the returned observation instead of copying the instruction
+    # prose into ``content``.  The extension is read from the request; no task ID or fixture name
+    # is consulted.
+    count_match = re.search(
+        r"count\s+(?:the\s+total\s+number\s+of\s+)?[^\n.]*\.(\w+)\s+files?",
+        prompt,
+        re.I,
+    )
+    if arg in {"content", "text", "message", "body"} and count_match and "TOOL_RESULT" in prompt:
+        extension = re.escape(count_match.group(1))
+        results = "\n".join(
+            re.findall(r"TOOL_RESULT\s*:\s*(.*?)(?=\nASSISTANT\s*:|$)", prompt, re.I | re.S)
+        )
+        matches = re.findall(
+            rf'\\?"name\\?"\s*:\s*\\?"([^\"]+\.{extension})\\?"',
+            results,
+            re.I,
+        )
+        if matches:
+            return [str(len(set(matches)))]
     for source in (action, goal):
         match = re.search(r"(?:saying|with message|message|text|content)\s*:\s*(.+)", source, re.I)
         if match:
@@ -366,10 +436,49 @@ def _quoted(prompt: str) -> list[str]:
 
 
 def _path(prompt: str) -> list[str]:
-    """First file-path/-name token (has a slash or a file extension)."""
-    m = re.search(r"[A-Za-z0-9_.\-/]+/[A-Za-z0-9_.\-/]*|[A-Za-z0-9_.\-/]+\.[A-Za-z0-9]{1,5}\b",
-                  prompt)
-    return [m.group(0).rstrip(".")] if m else []
+    """Return the most specific path-like value from the current instruction.
+
+    MCP/filesystem prompts commonly contain both a task identifier (for example,
+    ``file_context/file_splitting``) and an absolute workspace root.  Choosing the first slash
+    token copied the task identifier into ``path`` arguments, and the generic string fallback
+    copied the whole instruction.  Prefer an explicit absolute path, then a workspace/root
+    label, and only then fall back to a relative path or filename.
+    """
+    sources = (_action_tail(prompt), prompt)
+    absolute = re.compile(r"(?<![A-Za-z0-9])/(?:[^\s\n\r<>\"'`])+", re.I)
+    for source in sources:
+        values = [value.rstrip(".,;:)]}") for value in absolute.findall(source)]
+        if values:
+            return [values[-1]]
+    relative = re.compile(
+        r"(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+|[A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,5}\b"
+    )
+    for source in sources:
+        match = relative.search(source)
+        if match:
+            return [match.group(0).rstrip(".")]
+    return []
+
+
+def _workspace_output_path(prompt: str) -> list[str]:
+    """Join a named output file to the explicit workspace root after an observation."""
+    instruction = prompt.split("TOOL_RESULT", 1)[0]
+    labeled_root = re.search(
+        r"(?:main\s+directory|workspace\s+root)\s*:\s*(/(?:[^\s\n\r<>\"'`])+)",
+        instruction,
+        re.I,
+    )
+    roots = [labeled_root.group(1)] if labeled_root else re.findall(
+        r"(?<![A-Za-z0-9])/(?:[^\s\n\r<>\"'`])+", instruction
+    )
+    filenames = re.findall(r"\b[A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8}\b", instruction)
+    if not roots or not filenames:
+        return []
+    root = roots[-1].rstrip(".,;:)]}")
+    # The last filename in these instructions is the named output; source filenames appear
+    # earlier in the task description or in the observation.
+    filename = filenames[-1].rstrip(".")
+    return [f"{root}/{filename}"]
 
 
 def _url(prompt: str) -> list[str]:
@@ -419,7 +528,12 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         opts = _phone(prompt)
     elif name in ID_ARGS or name.endswith("_id"):
         opts = _identifier(prompt, name)
-    elif ptr is not None and name in ptr[0].arg_idx:        # learned pointer/copy span
+    elif ptr is not None and name in ptr[0].arg_idx and name not in {
+        "path",
+        "source",
+        "destination",
+        "target_path",
+    }:        # learned pointer/copy span
         ph, feats_row, framed_ids, tok = ptr[:4]
         span_bounds = ptr[4] if len(ptr) > 4 else None
         s, e = ph.predict_span(feats_row, name, span_bounds=span_bounds)
@@ -463,8 +577,10 @@ def _arg_options(prompt: str, name: str, schema: dict, required: bool, ptr=None)
         # the generic string heuristic instead of forcing a learned pointer to copy a malformed
         # span that includes the state observation.
         opts = _quoted(prompt) or [_best_string(prompt, name)]
-    elif fmt == "path":
+    elif name in {"path", "source", "destination", "target_path"} or fmt == "path":
         opts = _path(prompt)
+        if name in {"path", "target_path"} and "TOOL_RESULT" in prompt:
+            opts = _workspace_output_path(prompt) or opts
     elif fmt == "url":
         opts = _url(prompt)
     elif schema.get("type") in ("integer", "number"):
@@ -645,6 +761,7 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
             return _best(model, tok, score, txt, device)
     mobile_hint = _mobile_lexical_tool(grounding, tools)
     playwright_hint = _playwright_lexical_tool(grounding, tools)
+    filesystem_hint = _filesystem_lexical_tool(grounding, tools)
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
     selector_order: list[str] | None = None
     if selector is not None:
@@ -661,13 +778,13 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
             query_text=selector_query,
             lexical_weight=lexical_weight,
         )
-        hint = mobile_hint or playwright_hint
+        hint = mobile_hint or playwright_hint or filesystem_hint
         if hint is not None:
             selector_order = [hint] + [name for name in selector_order if name != hint]
         keep = set(selector_order[:top_m])
     else:
         retriever = retriever or ToolRetriever(tools)
-        hint = mobile_hint or playwright_hint
+        hint = mobile_hint or playwright_hint or filesystem_hint
         keep = {hint} if hint is not None else set(retriever.retrieve(grounding, k=k))
     use = [t for t in tools if t.name in keep] or tools
     if selector_order is not None:

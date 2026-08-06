@@ -2494,6 +2494,36 @@ backbone plus separately controlled action heads as the next training configurat
 establish native completion, screenshot grounding, real email/Notion side effects, or workshop
 publication readiness.
 
+### Native MCPMark filesystem head adaptation (m489)
+
+The [m489 receipt](paper/results/raw/m489-mcpmark-filesystem-native-head-adaptation-v1.json)
+connects the offline and native layers that the earlier canaries deliberately kept separate.  The
+m486 warm child received 64 additional low-rate updates on eight public MCPMark filesystem train
+rows, improving the ten-row source-disjoint teacher-forced token accuracy from `41.09%` to
+`57.75%`.  A second pass froze every backbone tensor and adapted only the route/selector heads;
+the route probe moved from `0%` to `100%` on the held-out rows, while selector top-1 remained a
+weak `10%`, so the head child is not promoted on offline metrics alone.
+
+The important result is the isolated native replay: the same head child ran a real pinned
+`@modelcontextprotocol/server-filesystem@2025.12.18` stdio server, issued `directory_tree` with
+the allowed workspace root, then issued `write_file` with the grounded `structure_analysis.txt`
+path and the count `1`.  The independent MCPMark verifier exited `0`.  This validates one
+stateful side effect in a public easy fixture, not the official MCPMark split; the user simulator,
+other MCP services, email/Notion accounts, and leaderboard matrix remain unexecuted.  The generic
+path/operation/count guards are retained as runtime safety/grounding adapters, not as evidence that
+the tiny backbone has learned unrestricted filesystem planning.
+
+### Workshop gate after native MCPMark filesystem replay (m490)
+
+The [m490 gate](paper/results/raw/m490-workshop-gate-after-mcpmark-filesystem-v1.json) re-runs the
+fail-closed publication checklist with the m489 native receipt joined to the exact current
+checkpoint, WebGPU capability, transfer ablation, RL preflight, catalog, MobileGym, and BrowserGym
+evidence.  The result remains `ready: false`.  MCPMark is now represented by a native diagnostic,
+but the gate correctly keeps it blocked because the receipt is not bound to the current checkpoint
+and the official MCPMark split is still unverified.  The other missing native receipts are
+AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld, OSWorld 2.0, AgentNet, and EnterpriseOps-Gym;
+ToolSandbox is still non-official-split, and the public HF/Space model-demo manifest is absent.
+
 ### Current checkpoint-bound workshop gate refresh (m406)
 
 The [m406 gate receipt](paper/results/raw/m406-workshop-gate-current-evidence-v1.json) recomputes the
