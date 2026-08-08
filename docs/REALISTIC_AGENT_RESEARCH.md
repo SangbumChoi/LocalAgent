@@ -3019,6 +3019,20 @@ joins that 28-entry matrix with the 42-entry executable catalog. It still passes
 checkpoint's measured evidence and remains `ready: false` for the same nine native benchmark and
 public-artifact blockers; adding a source link never promotes a runtime benchmark to a score.
 
+### Canonical plus supplemental source-registry reconciliation (m606)
+
+The [m606 audit](paper/results/raw/m606-realistic-source-registry-audit-v1.json) reconciles the
+two public-source inventories that had previously been described with historical counts. The
+current canonical evaluation matrix contains `28` rows and the supplemental catalog contains `30`
+catalog-only rows. They overlap on `9` IDs, yielding `49` unique source IDs across mobile (`13`),
+browser (`7`), computer (`17`), tool/API (`11`), and terminal (`1`) families. The audit finds five
+metadata conflicts that must be resolved before acquisition (BrowserGym revision, iOSWorld and
+MCPMark license wording, MobileSafetyBench URL, and ToolSandbox license wording); it does not
+silently choose a winner. Exactly six canonical rows remain train-eligible, while all 30
+supplemental rows remain catalog-only. No benchmark payloads, screenshots, credentials, VM/APK
+images, MCP state, or verifier traces entered the repository. This is the authoritative inventory
+for selecting the next hash-bound public acquisition and native evaluation run.
+
 ### xLAM derivative training and weight-transfer control (m574)
 
 The gated original Salesforce xLAM snapshot was unavailable without Hub authentication, so the
