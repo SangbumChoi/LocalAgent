@@ -685,6 +685,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m577 public-audit gate](raw/m577-workshop-gate-current-m553-public-audit-v1.json) | Workshop gate with the public legacy audit supplied | Artifact check reaches `current_checkpoint_not_bound`; native receipts remain blocked |
 | [m578 ToolSandbox native smoke](raw/m578-toolsandbox-native-m553-v1.json) | Current m553 pinned simulator/verifier scenarios | 3/3 similarity 1.0; official split/user simulator not run |
 | [m579 ToolSandbox gate](raw/m579-workshop-gate-current-m553-toolsandbox-v1.json) | Workshop gate with current ToolSandbox receipt | Native blocker narrows to `official_split_not_verified` |
+| [m580 ToolSandbox interactive stress](raw/m580-toolsandbox-m553-interactive-stress-v1.json) | Current m553 multi-user-turn/state-dependency scenarios | 0/3 similarity; concrete stateful-chaining negative control |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

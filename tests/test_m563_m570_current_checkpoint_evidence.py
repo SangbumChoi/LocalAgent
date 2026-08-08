@@ -166,3 +166,14 @@ def test_m579_gate_records_toolsandbox_official_split_blocker() -> None:
     assert payload["checks"]["native_toolsandbox_blocker"] == "official_split_not_verified"
     assert payload["evidence"]["toolsandbox_current_checkpoint_bound"] is True
     assert "native:toolsandbox" in payload["blocking_requirements"]
+
+
+def test_m580_toolsandbox_interactive_stress_is_a_negative_control() -> None:
+    payload = _load_verified("m580-toolsandbox-m553-interactive-stress-v1.json")
+    assert payload["checkpoint_sha256"] == CURRENT_SHA
+    assert payload["protocol"] == "bounded_multi_step_scripted_user"
+    assert payload["official_split_verified"] is False
+    assert payload["task_count"] == 3
+    assert payload["success_count"] == 0
+    assert payload["success_rate"] == 0.0
+    assert max(item["turn_count"] for item in payload["scenarios"]) == 13

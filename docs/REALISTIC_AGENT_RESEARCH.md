@@ -3066,3 +3066,10 @@ the scripted one-turn user is not the upstream model-based user simulator and th
 not verified. Accordingly, the [m579 gate](paper/results/raw/m579-workshop-gate-current-m553-toolsandbox-v1.json)
 records the blocker precisely as `official_split_not_verified` rather than promoting the smoke to a
 ToolSandbox leaderboard score.
+
+The follow-up [m580 stress receipt](paper/results/raw/m580-toolsandbox-m553-interactive-stress-v1.json)
+uses three explicit multi-user-turn/state-dependency scenarios. The verifier reports `0/3` similarity
+(two tasks stop after one turn and the relationship task consumes 13 turns), which is a useful
+negative control: the current text-first policy does not yet reliably chain stateful mobile-style
+tool calls even inside the native simulator. This result is kept separate from the 3/3 single-step
+smoke and is not promoted to an official score.
