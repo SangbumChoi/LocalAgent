@@ -74,6 +74,9 @@ messages.json files, and emits the [m532 acquisition manifest](paper/results/raw
 The manifest contains 15 file identities and hash
 14b897092a9ba10d66f418b9c291c880a1ab6f59b4fe4992ffa7fbb3b4cf648c; normalization remains explicit
 and redacts tool output and assistant prose before training.
+The [m533 reproducibility receipt](paper/results/raw/m533-mcpmark-acquisition-normalization-reproducibility-v1.json)
+re-runs that manifest through the normalizer and reproduces the exact train/eval output hashes
+used by the 64-step audit.
 
 ## What the public benchmarks actually measure
 

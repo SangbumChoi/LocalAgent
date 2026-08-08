@@ -59,6 +59,8 @@ with the pinned revision, then pass the selected files through the redacting nor
 [m532 manifest](paper/results/raw/m532-mcpmark-trajectory-acquisition-v1.json) records the
 surface-balanced 10/5 train/eval selection and every downloaded file hash; no raw trajectory
 archive is committed to the repository.
+The [m533 receipt](paper/results/raw/m533-mcpmark-acquisition-normalization-reproducibility-v1.json)
+binds those normalized bytes to the same acquisition manifest used by the transfer experiment.
 
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the

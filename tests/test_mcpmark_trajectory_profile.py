@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -111,3 +112,23 @@ def test_m532_acquisition_manifest_is_pinned_and_surface_balanced() -> None:
     assert receipt["selection"]["train_per_surface"] == 2
     assert receipt["selection"]["eval_per_surface"] == 1
     assert receipt["content_policy"].startswith("Acquisition only")
+
+
+def test_m533_reproduces_normalized_output_hashes() -> None:
+    receipt = json.loads(
+        Path(
+            "docs/paper/results/raw/m533-mcpmark-acquisition-normalization-reproducibility-v1.json"
+        ).read_text(encoding="utf-8")
+    )
+    body = dict(receipt)
+    recorded = body.pop("receipt_self_sha256")
+    digest = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    assert recorded == digest
+    assert receipt["normalized_outputs"]["train"]["sha256"] == (
+        "21322d7218dd1f5906c4ae22162f1ef3e9ecb988d5633ca6a8f6d2943b8314d6"
+    )
+    assert receipt["normalized_outputs"]["eval"]["sha256"] == (
+        "34c8e24ec58994f97372d9702fca54709a62140a2fef4a4d5e3099f6f4dcca89"
+    )
