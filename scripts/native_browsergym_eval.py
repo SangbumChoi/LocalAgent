@@ -287,8 +287,9 @@ def _target_bid(
     contained = [
         element
         for element in elements
-        if normalized in " ".join(element["name"].lower().split())
-        or " ".join(element["name"].lower().split()) in normalized
+        for element_name in [" ".join(element["name"].lower().split())]
+        if element_name
+        and (normalized in element_name or element_name in normalized)
     ]
     if contained:
         return contained[0]["bid"]

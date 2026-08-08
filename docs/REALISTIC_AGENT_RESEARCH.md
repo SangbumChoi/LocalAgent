@@ -125,6 +125,22 @@ then executes the pinned BrowserGym `0.14.3`/MiniWoB runtime without coordinate 
 fallbacks. All 16 bounded episodes fail (`0/16`), exposing the remaining accessibility grounding
 gap; because 224 planned episodes were not run, this is deliberately not an official split score.
 
+The [m542 grounding canary](paper/results/raw/m542-browsergym-realistic-pool-grounding-canary-v1.json)
+first fixes a protocol bug rather than changing weights: BrowserGym's instruction suffix was being
+treated as the target, and an empty accessibility name could match every element. With the
+lexical guard ordered before route-head abstention and those parser fixes, the same m540 child moves
+from `0/16` to `4/16` bounded episodes, with four grounded clicks and all successes confined to
+`miniwob.click-button`. This is a genuine closed-loop improvement, but only `4/124` steps are
+grounded and the full 240-episode split remains unrun.
+
+The [m544 DOM-enriched continuation](paper/results/raw/m544-grounded-mind2web-webgpu-browsergym-v1.json)
+uses the public Mind2Web train/eval records with deterministic, capped candidate snapshots derived
+from the source HTML. On 186 disjoint held-out decisions, exact pointer spans improve from `0/186`
+to `13/186` (`6.99%`), while the 10.52M child passes all four ONNX/PyTorch parity graphs. Native
+BrowserGym remains `4/16` on the same diagnostic, so this is evidence that DOM grounding is the
+right training interface—not evidence of general browser competence. The child is rejected for
+promotion until multi-step task families and a complete official evaluation are available.
+
 ### Current publication audit (2026-08-09)
 
 The fail-closed gate was rerun against the strongest current evidence: the full 256-task MobileGym

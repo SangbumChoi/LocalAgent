@@ -217,6 +217,68 @@ def test_browser_lexical_action_guard_prefers_present_ui_schema():
     assert _browser_lexical_tool("Browser task: Type the recipient.", tools) == "type_text"
     assert _browser_lexical_tool("Make a plan for the project.", tools) is None
 
+    realistic_tools = [
+        *tools,
+        ToolSpec(name="web_select", description="Select a web option", parameters={}),
+    ]
+    prompt = (
+        "Browser task: Click the Okay button.\n\n"
+        "Live accessibility elements (quoted names are valid targets):\n"
+        '[13] button: "Okay"\n\nChoose exactly one grounded computer action or abstain.'
+    )
+    assert _browser_lexical_tool(prompt, realistic_tools) == "click"
+
+    from localagent.agent.constrained import _target
+
+    assert _target('Browser task: Click on the "Okay" button.') == ["the Okay"]
+
+
+def test_hybrid_browser_guard_runs_before_text_route(monkeypatch):
+    """An explicit BrowserGym UI action must not be turned into an abstention by route noise."""
+
+    import torch
+
+    import localagent.agent.constrained as constrained
+    from localagent.data.schema import ToolSpec
+
+    click = ToolSpec(
+        name="click",
+        description="Click a UI element",
+        parameters={
+            "type": "object",
+            "properties": {"target": {"type": "string", "format": "quoted"}},
+            "required": ["target"],
+        },
+    )
+
+    class _TextRoute:
+        def __call__(self, _features):
+            return torch.tensor([10.0, 0.0, 0.0, 0.0, 0.0])
+
+    class _Selector:
+        def rank(self, _features, *, allowed_names, query_text=None, lexical_weight=0.5):
+            del query_text, lexical_weight
+            assert allowed_names == {"click"}
+            return ["click"]
+
+    monkeypatch.setattr(
+        constrained,
+        "_ctx_feats",
+        lambda *_args, **_kwargs: (torch.zeros(1, 2), [1, 2]),
+    )
+    monkeypatch.setattr(constrained, "_tool_bodies", lambda *_args, **_kwargs: ["grounded"])
+
+    output = constrained.hybrid_decode(
+        None,
+        None,
+        "Browser task: Click the Okay button.\nLive accessibility elements:",
+        [click],
+        route_head=_TextRoute(),
+        selector=_Selector(),
+        selector_first=True,
+    )
+    assert output == "grounded"
+
 
 def test_best_abstains_when_a_grounded_candidate_exceeds_context_window():
     from localagent.agent.constrained import _best

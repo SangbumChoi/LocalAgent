@@ -46,6 +46,13 @@ def _strip(s: str) -> str:
 def _action_tail(prompt: str) -> str:
     """Return the current-step instruction, excluding earlier goal/state slots when present."""
 
+    browser = re.search(
+        r"\bBrowser task:\s*(.*?)(?:\n\s*Live accessibility elements\b|\n\s*Choose exactly one\b|$)",
+        prompt,
+        re.I | re.S,
+    )
+    if browser:
+        return browser.group(1).strip()
     match = re.search(
         r"(?:Next required action|Current step(?:\s+[^:]+)?|Current action|Instruction):\s*"
         r"(.*?)(?:\s+Last tool result:|$)",
@@ -817,7 +824,11 @@ def _app_name(prompt: str) -> list[str]:
 def _target(prompt: str) -> list[str]:
     """Extract a semantic UI target from click/select/tap wording."""
     for source in (_action_tail(prompt), prompt):
-        quoted = re.search(r"(?:click|select|tap)\s+['\"]([^'\"]+)['\"]", source, re.I)
+        quoted = re.search(
+            r"(?:click|select|tap)\s+(?:on\s+)?(?:the\s+)?['\"]([^'\"]+)['\"]",
+            source,
+            re.I,
+        )
         if quoted:
             value = quoted.group(1).strip()
             return [value if value.lower().startswith("the ") else f"the {value}"]
@@ -1371,12 +1382,23 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
     score = prompt if not framed else ctx
     grounding = prompt if grounding_prompt is None else grounding_prompt
     feats = ids = None
+    # Compute surface-specific lexical guards before the route gate.  BrowserGym/MiniWoB prompts
+    # are short and often contain little natural-language context, so a tiny route head can
+    # confidently call them ``text`` even when the instruction is an explicit UI action.  The
+    # guard is deliberately schema- and cue-based (it only fires for a browser/UI action when the
+    # corresponding tool is present), so this does not invent a target or bypass grounding.
+    mobile_hint = _mobile_lexical_tool(grounding, tools)
+    playwright_hint = _playwright_lexical_tool(grounding, tools)
+    filesystem_hint = _filesystem_lexical_tool(grounding, tools)
+    browser_hint = _browser_lexical_tool(grounding, tools)
     # 0. route gate (text vs tool) — falls back to the heuristic text detector when no head given
     if route_head is not None or selector is not None:
         feats, ids = _ctx_feats(model, tok, ctx, device)
     if route_head is not None:
         from localagent.agent.routes import ROUTES
-        if ROUTES[int(route_head(feats[-1]).argmax(-1))] == "text":
+        if ROUTES[int(route_head(feats[-1]).argmax(-1))] == "text" and not (
+            mobile_hint or playwright_hint or filesystem_hint or browser_hint
+        ):
             # Fail open for prompts that contain no recognized text intent.  A small route head
             # can misclassify a long state-conditioned tool prompt as ``text``; turning that into
             # an unconditional abstention makes retries impossible and hides the selector's
@@ -1388,10 +1410,6 @@ def hybrid_decode(model, tok, prompt: str, tools: list[ToolSpec], device="cpu", 
         txt = _text_candidates(grounding)
         if txt is not None:
             return _best(model, tok, score, txt, device)
-    mobile_hint = _mobile_lexical_tool(grounding, tools)
-    playwright_hint = _playwright_lexical_tool(grounding, tools)
-    filesystem_hint = _filesystem_lexical_tool(grounding, tools)
-    browser_hint = _browser_lexical_tool(grounding, tools)
     # 1. selection: trained dense selector (top-m) if given, else retrieval top-k
     selector_order: list[str] | None = None
     if selector is not None:

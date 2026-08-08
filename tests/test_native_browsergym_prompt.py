@@ -41,6 +41,14 @@ def test_realistic_browser_tools_map_grounded_ids_to_high_level_actions() -> Non
     )
 
 
+def test_empty_accessibility_names_do_not_capture_contained_targets() -> None:
+    elements = [
+        {"bid": "textbox-1", "role": "textbox", "name": ""},
+        {"bid": "button-1", "role": "button", "name": "Okay"},
+    ]
+    assert _target_bid("the Okay", elements) == "button-1"
+
+
 def test_coordinate_fallback_reads_only_clickable_dom_geometry() -> None:
     observation = {
         "goal": "Click Send",
