@@ -3459,6 +3459,21 @@ embedding/attention/FFN movement is `0.435%/0.228%/0.281%`, versus `0.697%/0.238
 random control; action heads remain unchanged. Test rows are explicitly excluded from training,
 and neither child is promoted to WebGPU or native sandbox evaluation.
 
+### ClawsBench productivity and safety source audit (m620)
+
+The [ClawsBench metadata release](https://huggingface.co/datasets/benchflow/ClawsBench), [original
+repository](https://github.com/benchflow-ai/ClawsBench), and [paper](https://arxiv.org/abs/2604.05172)
+cover the requested productivity surfaces directly: Gmail, Google Calendar, Docs, Drive, and Slack.
+The pinned release describes `44` tasks (`30` single-service and `14` multi-service), including
+`24` safety-critical tasks, and `7,834` agent traces. Email contributes `8` tasks and multi-service
+workflows contribute `12` tasks.
+
+This is a source/protocol audit, not a score. The public snapshot exposes task metadata, traces, and
+results, but not the Dockerized mock services and verifiers needed for native state evaluation; it
+also has no static train/test split. The addendum therefore remains `eval_only`, and no ClawsBench
+task, trace, safety label, credential, service state, or external side effect was used for training
+or WebGPU execution.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
