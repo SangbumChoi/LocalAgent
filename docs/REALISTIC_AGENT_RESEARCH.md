@@ -158,6 +158,13 @@ Apple Metal-3 WebGPU probe at `1,290` input tokens/s p50, `7.45 ms` p50, and `20
 conservative memory. These are teacher-forced and local-dispatch measurements: sequence exactness
 is `0%`, no external side effect ran, and native Android/desktop replay is still required.
 
+The [m547 native MobileGym receipt](paper/results/raw/m547-m546-mobilegym-native-full-v1.json)
+finally binds the current m546 checkpoint to the complete pinned MobileGym test split. All 256
+official test tasks execute with zero runner errors and the upstream state-diff judge, but only
+`1/256` passes (`0.39%`). The model emits `255` `mobile_input_text` actions, confirming that the
+text-projection policy is not yet a general mobile controller; this is a required native negative
+control, not a visual Android score or a reason to promote the checkpoint.
+
 ### Current publication audit (2026-08-09)
 
 The fail-closed gate was rerun against the strongest current evidence: the full 256-task MobileGym
