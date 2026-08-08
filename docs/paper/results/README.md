@@ -681,6 +681,8 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m573 refreshed workshop gate](raw/m573-workshop-gate-current-m553-matrix-refresh-v1.json) | 42-entry executable catalog joined to m553 evidence | `ready: false`; nine native receipts + public manifest missing |
 | [m574 xLAM transfer](raw/m574-xlam-derived-warm-random-transfer-v1.json) | Public derivative, source-disjoint warm/random continuation | Warm +31.32 pp teacher-forced accuracy; sequence exactness 0 |
 | [m575 xLAM gate refresh](raw/m575-workshop-gate-current-m553-xlam-v1.json) | Workshop gate with both transfer ablations | Transfer check passes; publication remains fail-closed |
+| [m576 public release audit](raw/m576-public-release-audit-v1.json) | Anonymous audit of existing HF model/Space plus fresh m553 local candidate | Existing public release is legacy; current candidate is parity-verified but unpublished |
+| [m577 public-audit gate](raw/m577-workshop-gate-current-m553-public-audit-v1.json) | Workshop gate with the public legacy audit supplied | Artifact check reaches `current_checkpoint_not_bound`; native receipts remain blocked |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

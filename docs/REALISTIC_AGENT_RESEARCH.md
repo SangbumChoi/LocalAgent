@@ -3039,3 +3039,19 @@ The [m575 gate](paper/results/raw/m575-workshop-gate-current-m553-xlam-v1.json) 
 transfer receipt alongside the AndroidControl/AgentNet ablation; the overall publication decision is
 unchanged because native AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld variants, AgentNet,
 ToolSandbox, MCPMark, EnterpriseOps-Gym, and the public HF/demo manifest are still absent.
+
+### Public deployment audit and m553 release candidate (m576)
+
+The [m576 audit](paper/results/raw/m576-public-release-audit-v1.json) anonymously rechecks the
+existing public [model](https://huggingface.co/danelcsb/localagent-tiny-30m-byte) and
+[WebGPU Space](https://huggingface.co/spaces/danelcsb/localagent-webgpu). Both are reachable, but
+their pinned revisions expose the older byte-level release and do not match the current m553
+checkpoint. A fresh m553 export is now locally reproducible: 10,524,544 parameters, BPE tokenizer,
+verified ONNX parity, and WebGPU bundle identity `91ac74b3…`; it remains unpublished because Hub
+write authentication is absent. The audit therefore upgrades the deployment blocker from “unknown
+public artifact” to “known legacy public artifact plus verified local candidate,” without claiming a
+current public URL.
+
+The [m577 gate](paper/results/raw/m577-workshop-gate-current-m553-public-audit-v1.json) now consumes
+that public audit. It correctly reports the artifact blocker as `current_checkpoint_not_bound`
+rather than “manifest absent”; the nine native benchmark requirements remain independently blocked.

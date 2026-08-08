@@ -126,3 +126,24 @@ def test_m575_gate_accepts_xlam_transfer_without_claiming_public_readiness() -> 
         in payload["weight_reports"]
     )
     assert "artifacts_public_model_demo_manifest" in payload["checks"]
+
+
+def test_m576_public_release_audit_rejects_legacy_url_as_current() -> None:
+    payload = _load_verified("m576-public-release-audit-v1.json")
+    assert payload["public"] is True
+    assert payload["current_checkpoint"]["sha256"] == CURRENT_SHA
+    assert payload["public_existing_release"]["current_checkpoint_match"] is False
+    assert payload["local_candidate"]["published"] is False
+    assert payload["local_candidate"]["webgpu_bundle_verified"] is True
+    assert payload["local_candidate"]["onnx_parity_gate"] is True
+    assert payload["current_checkpoint_sha256"] is None
+
+
+def test_m577_gate_distinguishes_public_legacy_artifact_from_current_candidate() -> None:
+    payload = _load_verified("m577-workshop-gate-current-m553-public-audit-v1.json")
+    assert payload["ready"] is False
+    assert payload["checks"]["artifacts_public_model_demo_manifest"] == "blocked"
+    assert payload["checks"]["public_artifact_blocker"] == "current_checkpoint_not_bound"
+    assert payload["evidence"]["local_candidate_checkpoint_match"] is True
+    assert payload["evidence"]["existing_public_release_checkpoint_match"] is False
+    assert "native:androidworld" in payload["blocking_requirements"]

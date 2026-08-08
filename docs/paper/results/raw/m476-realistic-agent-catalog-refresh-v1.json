@@ -43,7 +43,7 @@
       "timewarp"
     ],
     "path": "configs/data/realistic-agent-eval.catalog.yaml",
-    "sha256": "04bdd515e080c4e7fedab935ae9a31a01a77ca73268645719e5c9129d2eb3c61",
+    "sha256": "dac55d7f025ebf6e523ef81869dd615b381e2d6e0ee7d7051a0ab3c8627137f6",
     "train_entries": [
       "androidcontrol",
       "android_in_the_wild",
@@ -114,6 +114,6 @@
       "training_policy": "eval_only"
     }
   ],
-  "receipt_self_sha256": "b89308924091e7441f7a268a602c4c829336a05b452c8fd765380d2b00d30326",
+  "receipt_self_sha256": "11783378119b25d9b96cae0e5d68005a1123125c8183251aae70ab268d7730e1",
   "schema_version": 1
 }
