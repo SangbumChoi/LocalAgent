@@ -125,6 +125,21 @@ then executes the pinned BrowserGym `0.14.3`/MiniWoB runtime without coordinate 
 fallbacks. All 16 bounded episodes fail (`0/16`), exposing the remaining accessibility grounding
 gap; because 224 planned episodes were not run, this is deliberately not an official split score.
 
+### Current publication audit (2026-08-09)
+
+The fail-closed gate was rerun against the strongest current evidence: the full 256-task MobileGym
+receipt, the full 240-episode BrowserGym/MiniWoB receipt, the hardware WebGPU capability receipt,
+the matched warm/random transfer comparison, the current-checkpoint RL preflight, and the existing
+public artifact manifest. The catalog, WebGPU, transfer, RL, MobileGym, and BrowserGym checks pass;
+the gate remains `ready=false` for nine absent native receipts (AndroidWorld, MobileSafetyBench,
+iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym) plus the
+unbound public manifest. This is the exact workshop blocker set, not a model-quality estimate.
+
+Repository verification is also explicit: `ruff check src tests` passes and the full suite reports
+`2164 passed`; two unrelated fixture tests remain environment-blocked because their private
+`/private/tmp` AppWorld output and pinned MobileWorld checkout are not present. The focused
+realistic/WebGPU/RL/release suite passes `38/38`.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |
