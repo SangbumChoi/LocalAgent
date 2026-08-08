@@ -3073,3 +3073,17 @@ uses three explicit multi-user-turn/state-dependency scenarios. The verifier rep
 negative control: the current text-first policy does not yet reliably chain stateful mobile-style
 tool calls even inside the native simulator. This result is kept separate from the 3/3 single-step
 smoke and is not promoted to an official score.
+
+### Stateful head-transfer bridge (m581–m583)
+
+The [m581 probe](paper/results/raw/m583-stateful-head-transfer-toolsandbox-v1.json) trains only
+route, dense-selector, and pointer heads on the deterministic local productivity state machine,
+with the m553 backbone frozen and a matched random-backbone control. The warm arm improves local
+selector top-1 from `46.67%` to `53.33%` and route accuracy from `81.25%` to `87.5%`, but closed-loop
+completion remains `68.75%` (task completion `40%`) for both arms. This is intentionally labeled a
+local synthetic probe: it uses no public benchmark rows or real accounts.
+
+The native bridge is unchanged. The m553 parent and m581 child both pass the bounded single-step
+ToolSandbox smoke (`3/3`), while both score `0/3` on the explicit multi-user-turn/state-dependency
+stress. Thus selector-head fitting alone does not transfer to stateful native chaining; the child
+is not promoted and the official ToolSandbox split/user simulator gate remains open.

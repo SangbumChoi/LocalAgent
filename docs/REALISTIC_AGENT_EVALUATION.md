@@ -35,6 +35,13 @@ receipt into the same fail-closed gate.  The local actions intentionally execute
 URL navigation, or Notion side effect.  Older sections
 below are retained as historical experiment records.
 
+The latest stateful transfer bridge is recorded in the [m583 receipt](paper/results/raw/m583-stateful-head-transfer-toolsandbox-v1.json).
+Head-only fitting raises local selector top-1 from `46.67%` to `53.33%`, but warm and matched-random
+closed-loop completion are both `68.75%` (task completion `40%`). The m553 parent and m581 child
+both pass the bounded single-step ToolSandbox smoke (`3/3`) and both fail the bounded multi-turn
+stress (`0/3`). This is a negative transfer diagnostic, not an official ToolSandbox or real-account
+result.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres

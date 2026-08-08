@@ -177,3 +177,13 @@ def test_m580_toolsandbox_interactive_stress_is_a_negative_control() -> None:
     assert payload["success_count"] == 0
     assert payload["success_rate"] == 0.0
     assert max(item["turn_count"] for item in payload["scenarios"]) == 13
+
+
+def test_m583_stateful_head_transfer_is_negative_native_bridge() -> None:
+    payload = _load_verified("m583-stateful-head-transfer-toolsandbox-v1.json")
+    assert payload["parent_checkpoint"]["sha256"] == CURRENT_SHA
+    assert payload["local_probe"]["warm"]["selector_top1"] > payload["local_probe"]["matched_random"]["selector_top1"]
+    assert payload["local_probe"]["warm"]["closed_loop_success_rate"] == payload["local_probe"]["matched_random"]["closed_loop_success_rate"]
+    assert payload["native_toolsandbox_bridge"]["parent_success_rate"] == 0.0
+    assert payload["native_toolsandbox_bridge"]["child_success_rate"] == 0.0
+    assert payload["native_toolsandbox_bridge"]["single_step_child_success_rate"] == 1.0
