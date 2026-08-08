@@ -3410,6 +3410,12 @@ screenshot score, native Android/OS/browser/MCP execution, or a claim that the m
 on the benchmark. The low exactness is an honest negative control: realistic environment coverage
 is now source-bound, but native execution and public artifact publication remain open gates.
 
+The [m616 catalog addendum](paper/results/raw/m616-agentworldbench-catalog-addendum-v1.json)
+now makes this source discoverable through a validated, separate catalog file. It is intentionally
+not merged into the frozen 42-entry publication gate catalog, so historical gate fingerprints stay
+reproducible; the addendum is pinned to the same AgentWorldBench revision and explicitly sets
+`train_policy: eval_only` and `training_admission: false`.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
