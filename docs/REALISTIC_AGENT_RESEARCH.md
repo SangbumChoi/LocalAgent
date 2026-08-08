@@ -84,6 +84,14 @@ ToolSandbox, and EnterpriseOps-Gym. It records current public URLs, pinned revis
 available, runtime requirements, and the explicit WebGPU claim boundary; it deliberately does not
 convert source documentation into benchmark scores.
 
+The current-checkpoint [m535 ToolSandbox smoke](paper/results/raw/m535-toolsandbox-native-current-v1.json)
+now boots the pinned `165848b9a78cead7ca7fe7c89c688b58e6501219` simulator in an isolated Python
+environment. All three bounded single-step scenarios pass the upstream milestone verifier (`3/3`,
+similarity `1.0`) without external API calls. This is a runtime-integrity result only: the scripted
+user, full scenario matrix, official split, model-based user simulator, and optional RapidAPI tools
+were not run, so the [m536 gate](paper/results/raw/m536-workshop-gate-current-m535-v1.json) correctly
+keeps `native:toolsandbox` blocked on `official_split_not_verified`.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |

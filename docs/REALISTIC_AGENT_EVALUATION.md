@@ -64,6 +64,13 @@ binds those normalized bytes to the same acquisition manifest used by the transf
 The dated [m534 source audit](paper/results/raw/m534-official-realistic-source-integrity-audit-v1.json)
 keeps the external benchmark contracts and release pins reviewable alongside the local receipts.
 
+The current-checkpoint [m535 ToolSandbox smoke](paper/results/raw/m535-toolsandbox-native-current-v1.json)
+executes the pinned upstream simulator in an isolated environment: the three bounded one-step
+scenarios pass the milestone verifier (`3/3`, similarity `1.0`) and make no external API calls.
+Because this is still a scripted-user smoke rather than the official split with the model-based user
+simulator and full scenario matrix, the [m536 gate](paper/results/raw/m536-workshop-gate-current-m535-v1.json)
+records the evidence but remains blocked on `official_split_not_verified`.
+
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
 live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG
