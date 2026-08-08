@@ -102,6 +102,12 @@ remain `76.12%` and `91.04%`. The result is explicitly out-of-domain name-only r
 server, SQL verifier, email account, or stateful execution ran, so the official enterprise gate
 remains open.
 
+The [m593 MCPMark router control](paper/results/raw/m593-mcpmark-m585-warm-parent-router-control-v1.json)
+adds the pinned standard/easy task-description suites. Parent and warm results are identical:
+`25/169` standard and `10/70` easy, with `0/28` Notion routes on standard and `25/25` Playwright
+routes. This confirms that the m585 transfer did not improve Notion service selection; official
+MCP execution, verifier success, and account-backed state transitions remain untested.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres

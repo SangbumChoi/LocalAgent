@@ -3200,3 +3200,16 @@ This is the first current-lineage email-specific transfer gain in the refreshed 
 replay, but it is only a selector-ranking diagnostic: verifiers, MCP servers, database state,
 credentials, and email side effects were dropped. It does not establish stateful email control or
 real-account readiness.
+
+### Matched MCPMark service-router control (m593)
+
+The [m593 receipt](paper/results/raw/m593-mcpmark-m585-warm-parent-router-control-v1.json)
+evaluates the pinned MCPMark task-description catalog at revision `cd45b7f…`: `169` standard and
+`70` easy rows. The m553 parent and m585 warm child are identical: standard routing is `25/169`
+(`14.79%`) and easy routing is `10/70` (`14.29%`). On the standard service breakdown, both route
+all `25/25` Playwright rows correctly but score `0/28` Notion, `0/30` filesystem, `0/23` GitHub,
+and `0/63` Postgres.
+
+This is a direct Notion-related negative control: the public continuation does not change service
+routing, and static task descriptions do not establish live MCP execution. Servers, verifiers,
+accounts, and external side effects were not used.
