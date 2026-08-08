@@ -165,15 +165,38 @@ official test tasks execute with zero runner errors and the upstream state-diff 
 text-projection policy is not yet a general mobile controller; this is a required native negative
 control, not a visual Android score or a reason to promote the checkpoint.
 
+The [m550 native BrowserGym receipt](paper/results/raw/m550-m546-browsergym-native-full-v1.json)
+now binds the same m546 checkpoint to the complete pinned BrowserGym 0.14.3/MiniWoB++ split:
+`240/240` episodes, `60` task variants, four fixed seeds, and zero action errors. The model passes
+`5/240` tasks (`2.08%`) with `211` grounded actions; four successes are `miniwob.click-button` and
+one is `miniwob.sign-agreement`. This is a real accessibility-tree environment run with no
+coordinate or semantic fallback, but it uses no screenshots and does not establish visual browser
+control, WebArena competence, or real-account email/Notion execution. The result is retained as a
+native negative control and the m546 checkpoint is not promoted.
+
 ### Current publication audit (2026-08-09)
 
-The fail-closed gate was rerun against the strongest current evidence: the full 256-task MobileGym
-receipt, the full 240-episode BrowserGym/MiniWoB receipt, the hardware WebGPU capability receipt,
-the matched warm/random transfer comparison, the current-checkpoint RL preflight, and the existing
-public artifact manifest. The catalog, WebGPU, transfer, RL, MobileGym, and BrowserGym checks pass;
-the gate remains `ready=false` for nine absent native receipts (AndroidWorld, MobileSafetyBench,
-iOSWorld, OSWorld, OSWorld-V2, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym) plus the
-unbound public manifest. This is the exact workshop blocker set, not a model-quality estimate.
+The fail-closed gate was rerun against the current m546 checkpoint with the full 256-task MobileGym
+receipt, the full 240-episode BrowserGym/MiniWoB receipt, and the hardware WebGPU capability receipt.
+MobileGym, BrowserGym, WebGPU, and catalog checks pass. The gate remains `ready=false`: nine other
+native receipts are absent (AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet,
+ToolSandbox, MCPMark, and EnterpriseOps-Gym), the required warm/random transfer-and-no-transfer
+ablation is not bound to m546, the current m546 RL preflight failed closed because the diagnostic
+child lacks lineage metadata, and no public Hub/Space manifest is authenticated or bound to this
+checkpoint. This is the exact workshop blocker set, not a model-quality estimate.
+
+The attempted m549 RL preflight receipt (captured outside the repository at
+`/private/tmp/m549-m546-rl-preflight.json`) was intentionally fail-closed before any update: the
+m546 diagnostic checkpoint has no lineage metadata,
+so it cannot be accepted as the parent of the strict stateful-RL protocol. No lineage was fabricated,
+and no production checkpoint was modified. A fresh lineage-preserving continuation is required
+before RL can satisfy the publication gate.
+
+The [m551 gate receipt](paper/results/raw/m551-workshop-gate-current-m546-v1.json) records this
+decision in a compact, hash-bound form: `ready=false` despite valid current MobileGym, BrowserGym,
+WebGPU, and catalog checks. This prevents the strong local throughput result (`1,290` input tok/s
+p50 on Apple Metal-3) and the two native text-environment scores from being mistaken for a complete
+workshop submission.
 
 Repository verification is also explicit: `ruff check src tests` passes and the full suite reports
 `2164 passed`; two unrelated fixture tests remain environment-blocked because their private
