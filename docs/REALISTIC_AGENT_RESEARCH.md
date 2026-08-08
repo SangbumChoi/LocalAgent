@@ -3055,3 +3055,14 @@ current public URL.
 The [m577 gate](paper/results/raw/m577-workshop-gate-current-m553-public-audit-v1.json) now consumes
 that public audit. It correctly reports the artifact blocker as `current_checkpoint_not_bound`
 rather than “manifest absent”; the nine native benchmark requirements remain independently blocked.
+
+### Current-checkpoint ToolSandbox native smoke (m578–m579)
+
+The [m578 receipt](paper/results/raw/m578-toolsandbox-native-m553-v1.json) runs the pinned
+ToolSandbox simulator and milestone verifier against m553 using the real `cellular_off`, `wifi_off`,
+and `send_message_with_phone_number_and_content` scenarios. All three complete with similarity
+`1.0`, no external API calls, and the exact current-checkpoint hash. This is native execution, but
+the scripted one-turn user is not the upstream model-based user simulator and the official split is
+not verified. Accordingly, the [m579 gate](paper/results/raw/m579-workshop-gate-current-m553-toolsandbox-v1.json)
+records the blocker precisely as `official_split_not_verified` rather than promoting the smoke to a
+ToolSandbox leaderboard score.

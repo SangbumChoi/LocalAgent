@@ -147,3 +147,22 @@ def test_m577_gate_distinguishes_public_legacy_artifact_from_current_candidate()
     assert payload["evidence"]["local_candidate_checkpoint_match"] is True
     assert payload["evidence"]["existing_public_release_checkpoint_match"] is False
     assert "native:androidworld" in payload["blocking_requirements"]
+
+
+def test_m578_toolsandbox_smoke_is_current_but_not_official_split() -> None:
+    payload = _load_verified("m578-toolsandbox-native-m553-v1.json")
+    assert payload["checkpoint_sha256"] == CURRENT_SHA
+    assert payload["environment_executed"] is True
+    assert payload["verifier_executed"] is True
+    assert payload["official_split_verified"] is False
+    assert payload["success_rate"] == 1.0
+    assert payload["task_count"] == 3
+
+
+def test_m579_gate_records_toolsandbox_official_split_blocker() -> None:
+    payload = _load_verified("m579-workshop-gate-current-m553-toolsandbox-v1.json")
+    assert payload["ready"] is False
+    assert payload["checks"]["native_toolsandbox"] == "blocked"
+    assert payload["checks"]["native_toolsandbox_blocker"] == "official_split_not_verified"
+    assert payload["evidence"]["toolsandbox_current_checkpoint_bound"] is True
+    assert "native:toolsandbox" in payload["blocking_requirements"]
