@@ -53,6 +53,13 @@ evidence, but it remains text/accessibility-only and cannot substitute for nativ
 live email/Notion verification. The [m531 gate](paper/results/raw/m531-workshop-gate-current-m530-v1.json)
 binds it and correctly passes both official BrowserGym/MiniWoB and MobileGym receipt checks.
 
+The MCPMark acquisition itself is now deterministic and auditable: run
+PYTHONPATH=.:src python scripts/download_mcpmark_trajectory.py --output <dir>
+with the pinned revision, then pass the selected files through the redacting normalizer. The
+[m532 manifest](paper/results/raw/m532-mcpmark-trajectory-acquisition-v1.json) records the
+surface-balanced 10/5 train/eval selection and every downloaded file hash; no raw trajectory
+archive is committed to the repository.
+
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
 live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG

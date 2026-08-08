@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from scripts.download_mcpmark_trajectory import SURFACES, select_paths
 from scripts.profile_mcpmark_trajectory import profile
 
 
@@ -78,3 +79,35 @@ def test_profile_accepts_legacy_user_event_and_rejects_unpaired_calls(tmp_path: 
         assert "pairing" in str(error)
     else:  # pragma: no cover - the profiler must fail closed
         raise AssertionError("unpaired MCPMark call was accepted")
+
+
+def test_select_paths_is_sorted_surface_balanced_and_source_disjoint() -> None:
+    files = [
+        f"root/model__{surface}/run-1/task-{index}/messages.json"
+        for surface in SURFACES
+        for index in range(4)
+    ]
+    files += ["root/model__filesystem/run-1/task-0/meta.json", "README.md"]
+    selected = select_paths(files, train_per_surface=2, eval_per_surface=1)
+    assert len(selected["train"]) == 2 * len(SURFACES)
+    assert len(selected["eval"]) == len(SURFACES)
+    assert set(selected["train"]).isdisjoint(selected["eval"])
+    for surface in SURFACES:
+        train = [path for path in selected["train"] if f"__{surface}/" in path]
+        evaluation = [path for path in selected["eval"] if f"__{surface}/" in path]
+        assert train == sorted(train)
+        assert evaluation == [sorted(train + evaluation)[2]]
+
+
+def test_m532_acquisition_manifest_is_pinned_and_surface_balanced() -> None:
+    receipt = json.loads(
+        Path("docs/paper/results/raw/m532-mcpmark-trajectory-acquisition-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert receipt["dataset"] == "Jakumetsu/mcpmark-trajectory-log"
+    assert receipt["revision"] == "e50578f0ab904d8e6a7c576c387c1e76ae482c89"
+    assert len(receipt["entries"]) == 15
+    assert receipt["selection"]["train_per_surface"] == 2
+    assert receipt["selection"]["eval_per_surface"] == 1
+    assert receipt["content_policy"].startswith("Acquisition only")

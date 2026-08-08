@@ -66,6 +66,15 @@ random arm, and leads on every surface: AndroidControl `66.82%`, AgentNet `63.32
 binds this stronger ablation but remains fail-closed for the same missing native surfaces and
 public Hub manifest.
 
+The public MCPMark slice is now reproducible with
+[download_mcpmark_trajectory.py](../scripts/download_mcpmark_trajectory.py). At the pinned
+trajectory-log revision it selects sorted, surface-balanced paths (two train and one held-out file
+per filesystem, Notion, GitHub, Playwright, and Postgres surface), downloads only those
+messages.json files, and emits the [m532 acquisition manifest](paper/results/raw/m532-mcpmark-trajectory-acquisition-v1.json).
+The manifest contains 15 file identities and hash
+14b897092a9ba10d66f418b9c291c880a1ab6f59b4fe4992ffa7fbb3b4cf648c; normalization remains explicit
+and redacts tool output and assistant prose before training.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |
