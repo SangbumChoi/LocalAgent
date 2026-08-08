@@ -697,6 +697,9 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m592 EnterpriseOps email control](raw/m592-enterpriseopsgym-m585-warm-parent-email-control-v1.json) | 67 public email rows with 20-tool candidate sets, matched m553 vs m585 | Warm top-1 +13.43 pp; top-3/top-5 unchanged; no server/verifier execution |
 | [m593 MCPMark router control](raw/m593-mcpmark-m585-warm-parent-router-control-v1.json) | 169 standard + 70 easy pinned MCPMark task descriptions, matched m553 vs m585 | Identical 25/169 standard and 10/70 easy; Notion 0/28; Playwright 25/25 |
 | [m594 current RL preflight](raw/m594-m585-stateful-rl-preflight-v1.json) | Strict isolated two-update RL prefix on current m585 warm child over disjoint email/Notion/browser rows | Passed lineage/optimizer/40-tensor movement; held-out reward 0.08125, exact success 0; simulator-only |
+| [m596 warm-child GRPO/runtime](raw/m596-m585-stateful-grpo-runtime-v1.json) | 32 SFT + 8 GRPO updates from m585, then deployment-shaped reset/retry runtime | Reward 0.0344→0.1625; 1/5 local tasks; email 6/6 steps; browser/recovery/abstention 0; heads frozen |
+| [m597 canonical WebGPU](raw/m597-m585-webgpu-capability-canonical-v1.json) | Gate-shaped adapter for m585 Apple WebGPU structured probes | 3/3 exact actions; 1,367.5 tok/s p50; 7.4 ms p50; 20.5 MB; no side effects |
+| [m598 current m585 workshop gate](raw/m598-workshop-gate-current-m585-v1.json) | Fail-closed gate over current m585 catalog, native receipts, WebGPU, RL, and public artifact checks | Six checks pass; native benchmark, current ablation, and current public-manifest blockers remain |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

@@ -3229,3 +3229,28 @@ embedding (`0.0003716`); normalization is nearly frozen (`0.0000143`). This supp
 pretrained backbone and using small continuation updates, but it is only a local simulator
 diagnostic—not native API control, real-account execution, public benchmark success, or workshop
 readiness.
+
+### Actual warm-child GRPO continuation and local runtime (m596)
+
+The [m596 receipt](paper/results/raw/m596-m585-stateful-grpo-runtime-v1.json) records a real
+32-update SFT prelude followed by 8 pure-PyTorch GRPO updates from m585, with `128` attempted
+rollouts and `27` informative groups. Shaped reward rises from `0.0344` to `0.1625`, while exact
+sequence success remains `0`. The deployment-shaped resettable runtime reaches the oracle's
+`100%` contract and the model completes `1/5` tasks (`20%`): email completes `6/6` steps, Notion
+accepts `1/2`, and browser search, browser recovery, and abstention complete `0` tasks.
+
+The m585-to-m596 weight audit shows `0.02819` overall relative L2 movement, almost entirely from
+the SFT prelude. FFN (`0.02461`) and attention (`0.01912`) move far more than normalization
+(`0.000519`), while all deployment heads remain frozen. The pointer-vocabulary metadata bug
+found during evaluation is fixed in the training runner and covered by a regression test; the
+child now loads in the deployment-shaped evaluator. These are still local state-machine results,
+not public benchmark or real-account control.
+
+### Current m585 workshop gate (m598)
+
+The [m598 gate](paper/results/raw/m598-workshop-gate-current-m585-v1.json) rebinds the current
+m585 checkpoint to the canonical WebGPU receipt, BrowserGym/MiniWoB, MobileGym, and m594 RL
+preflight. Those six checks pass. Readiness remains fail-closed: AndroidWorld, MobileSafetyBench,
+iOSWorld, OSWorld/OSWorld-V2, native AgentNet, MCPMark, and EnterpriseOps-Gym receipts are absent;
+ToolSandbox is still only a non-official smoke; the current matched weight ablation is not in the
+gate schema; and the public model/demo artifact is not bound to m585.

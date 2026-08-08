@@ -280,6 +280,11 @@ def _preserve_deployment_heads(parent: Path, child: Path) -> list[str]:
             continue
         child_checkpoint[name] = copy.deepcopy(value)
         preserved.append(name)
+    # ``ptr_head`` is coupled to its argument vocabulary.  RL writes only the language-model
+    # state dict, so preserve the metadata that lets deployment reconstruct the same pointer
+    # shape instead of silently falling back to the legacy 17-argument vocabulary.
+    if "ptr_args" not in child_checkpoint and "ptr_args" in parent_checkpoint:
+        child_checkpoint["ptr_args"] = copy.deepcopy(parent_checkpoint["ptr_args"])
     child_checkpoint["stateful_productivity_rl"] = {
         "deployment_heads": preserved,
         "deployment_heads_trainable": False,

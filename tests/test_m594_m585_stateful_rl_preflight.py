@@ -21,6 +21,7 @@ def _load_verified() -> dict:
 
 def test_m594_rl_preflight_is_bound_to_current_warm_checkpoint() -> None:
     payload = _load_verified()
+    assert payload["kind"] == "localagent_one_update_training_preflight"
     assert payload["status"] == "passed"
     assert payload["current_checkpoint"]["sha256"] == M585_WARM_SHA
     assert payload["lineage"]["parent_checkpoint_sha256"] == M585_WARM_SHA

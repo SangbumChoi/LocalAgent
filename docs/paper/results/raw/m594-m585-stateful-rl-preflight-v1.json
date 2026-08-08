@@ -1,5 +1,5 @@
 {
-  "kind": "localagent_current_checkpoint_stateful_rl_preflight",
+  "kind": "localagent_one_update_training_preflight",
   "schema_version": 1,
   "status": "passed",
   "current_checkpoint": {
@@ -42,6 +42,11 @@
     "heldout_post_exact_match": 0.0,
     "heldout_post_tool_format_valid_rate": 0.0
   },
+  "metrics": {
+    "lineage": {
+      "parent_checkpoint_sha256": "6553dc2b161c03a916379fb77f174866143da6ef87173be07a12b57c4417b1ff"
+    }
+  },
   "weight_transition": {
     "comparison": "m585 warm parent -> isolated RL post-checkpoint",
     "contract": "exact_named_policy_parameter_comparison_v1",
@@ -60,5 +65,5 @@
     "sha256": "ddb704b7239beceba0f4305c6a6270e2e86f61ed7f1e34d6d80fda9a96256740"
   },
   "claim_boundary": "Strict one-update RL simulation over deterministic local email/Notion/browser conversations. It proves current-checkpoint lineage, isolated execution, optimizer transition, and measured weight movement only; it is not native API control, real-account execution, a public benchmark score, or evidence of workshop readiness.",
-  "receipt_self_sha256": "ad669d4bb99587d4f6db6e3cbe97217b60b467df8e9b46b04d01f60f5f32eb2d"
+  "receipt_self_sha256": "35231bdd50a8157889dcc6fa9766aa9ee4ca226edf63cbac145ebfc9808388f1"
 }
