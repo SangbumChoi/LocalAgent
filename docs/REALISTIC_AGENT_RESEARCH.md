@@ -3128,3 +3128,6 @@ This is a useful native browser-control receipt, but it remains a text/accessibi
 diagnostic: vision is disabled, and it is not a WebArena, OSWorld, real-account email/Notion, or
 general computer-use score. The low grounded-step fraction is an explicit failure signal for
 future data collection and RL rather than a publication-ready capability claim.
+The receipt also satisfies the gate's canonical native schema for `browsergym_miniwob`; an isolated
+gate join therefore marks this one requirement `pass` while leaving the overall publication decision
+fail-closed.

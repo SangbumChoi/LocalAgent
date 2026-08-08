@@ -1,6 +1,12 @@
 {
   "kind": "localagent_browsergym_m585_warm_full_receipt",
   "schema_version": 1,
+  "benchmark_id": "browsergym_miniwob",
+  "environment_executed": true,
+  "official_split_verified": true,
+  "task_count": 240,
+  "success_rate": 0.020833333333333332,
+  "checkpoint_sha256": "6553dc2b161c03a916379fb77f174866143da6ef87173be07a12b57c4417b1ff",
   "checkpoint": {
     "parent_path": "/private/tmp/m553-multisurface-lineage-child.pt",
     "parent_sha256": "43b32b15899bcd97d7a822ef8441b04521d863b30c23c17080dbfaf4f0a14d7c",
@@ -43,5 +49,5 @@
     "sha256": "4fa5a34d424a2176f738fe42ad21c5521f843f42ec36fcf08923a0e75896cdef"
   },
   "claim_boundary": "Native pinned BrowserGym/MiniWoB execution on the official 240-task plan using text/accessibility-tree observations. This is not a visual-agent, WebArena, OSWorld, real-account email/Notion, or general computer-use result; no external side effects were used.",
-  "receipt_self_sha256": "e253fa91f74b0cabd52b80bc7ad7855073adbf685c724245a8d2aee8a7632576"
+  "receipt_self_sha256": "89e3302fb8774a27e93b522251e2cce21afd07d5df667e7ac6082b06c12c641f"
 }

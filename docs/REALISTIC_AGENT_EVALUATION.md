@@ -65,6 +65,9 @@ only, with no coordinate or semantic fallback and no external side effects. The 
 noop/ungrounded steps and absent visual grounding keep this diagnostic rather than a general
 browser/computer-use result, and the AndroidWorld, iOS, desktop, official stateful-tool, and
 authenticated-Hub gates remain open.
+The receipt is emitted in the canonical native schema, and the fail-closed gate independently
+recognizes `native:browsergym_miniwob` as `pass` when supplied; this does not waive the remaining
+requirements.
 
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
