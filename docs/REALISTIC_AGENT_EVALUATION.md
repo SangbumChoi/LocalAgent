@@ -75,6 +75,12 @@ current warm child from a text-only continuation to a complete native MobileGym 
 `native:mobilegym=pass`, but the unchanged score shows that representation transfer alone did not
 improve closed-loop mobile control.
 
+The [m589 ToolSandbox smoke](paper/results/raw/m589-m585-toolsandbox-native-smoke-v1.json) also
+passes `3/3` bounded scenarios at similarity `1.0` on the same warm child. It is explicitly
+non-official (`official_split_verified=false`, no model-based user simulator) and does not change
+the ToolSandbox publication blocker; it only confirms current-checkpoint one-turn tool-contract
+preservation.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres

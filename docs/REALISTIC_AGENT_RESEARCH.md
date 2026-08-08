@@ -3145,3 +3145,16 @@ The run uses two model steps per task and a bounded DOM/text projection (`255` i
 `6` home navigations, `1` app open); it uses no screenshots, Android emulator, credentials, or
 external side effects. This is a current-checkpoint native mobile receipt and a concrete negative
 control for the weight-transfer hypothesis, not visual mobile-agent readiness.
+
+### Current warm-child ToolSandbox native smoke (m589)
+
+The [m589 receipt](paper/results/raw/m589-m585-toolsandbox-native-smoke-v1.json) executes the
+warm m585 checkpoint in the pinned ToolSandbox simulator and independent milestone verifier on
+`cellular_off`, `wifi_off`, and `send_message_with_phone_number_and_content`. All three scenarios
+reach similarity `1.0`, with no external API calls. This confirms that the public continuation
+preserves the parent’s one-turn tool-call contract across settings and a message action.
+
+The protocol is intentionally bounded: the scripted user terminates after the first response, so
+stateful multi-turn chaining, the model-based user simulator, the official split, and the broader
+MCP service matrix were not executed. It is therefore native diagnostic evidence, not an official
+ToolSandbox score or real-account email/Notion result.

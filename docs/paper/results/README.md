@@ -691,6 +691,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m585 public multisurface transfer](raw/m585-public-multisurface-transfer-webgpu-v1.json) | 202 public train rows across mobile/browser/desktop/tool projections with warm/random control and WebGPU bridge | Warm +21.65 pp held-out token accuracy; 3/3 WebGPU actions at 1,367.5 tok/s p50; 13/13 local state transitions |
 | [m586 BrowserGym continuation](raw/m586-browsergym-m585-warm-full-v1.json) | Pinned BrowserGym/MiniWoB official 240-task plan on the warm m585 child | 5/240 (2.08%); 219 grounded steps; 0 action errors; accessibility-tree text only |
 | [m588 MobileGym continuation](raw/m588-m585-mobilegym-native-full-v1.json) | Pinned MobileGym official 256-task test split on the warm m585 child | 1/256 (0.39%), same as m553 parent; 0 runtime errors; DOM/text only |
+| [m589 ToolSandbox warm smoke](raw/m589-m585-toolsandbox-native-smoke-v1.json) | Pinned simulator/verifier on settings and message scenarios | 3/3 similarity 1.0; official split/user simulator not run |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
