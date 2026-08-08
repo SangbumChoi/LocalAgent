@@ -694,6 +694,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m589 ToolSandbox warm smoke](raw/m589-m585-toolsandbox-native-smoke-v1.json) | Pinned simulator/verifier on settings and message scenarios | 3/3 similarity 1.0; official split/user simulator not run |
 | [m590 Computer Agent Arena control](raw/m590-computer-agent-arena-m585-warm-parent-control-v1.json) | 256 public instruction-only desktop trajectories, matched m553 parent vs m585 warm child | Both 1.56% tool exact; 1.95% family exact; 96.88% abstention; no vision/runtime |
 | [m591 AgentNet trajectory control](raw/m591-agentnet-m585-warm-parent-control-v1.json) | 16 public AgentNet holdout parent tasks / 257 projected actions, matched m553 vs m585 | Byte-identical predictions; 75% first-action type; 0% exact trajectories; text projection only |
+| [m592 EnterpriseOps email control](raw/m592-enterpriseopsgym-m585-warm-parent-email-control-v1.json) | 67 public email rows with 20-tool candidate sets, matched m553 vs m585 | Warm top-1 +13.43 pp; top-3/top-5 unchanged; no server/verifier execution |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

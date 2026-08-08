@@ -95,6 +95,13 @@ and byte-identical predictions. This is an evaluation-only text projection—not
 OSWorld, visual grounding, or native desktop success—and it confirms that the current weight
 transfer has not solved computer-use trajectory execution.
 
+The [m592 email control](paper/results/raw/m592-enterpriseopsgym-m585-warm-parent-email-control-v1.json)
+replays all 67 public EnterpriseOps-Gym email rows with the current m553 parent and m585 warm child.
+Warm top-1 tool retrieval improves from `43.28%` to `56.72%` (`+13.43 pp`), while top-3 and top-5
+remain `76.12%` and `91.04%`. The result is explicitly out-of-domain name-only retrieval: no MCP
+server, SQL verifier, email account, or stateful execution ran, so the official enterprise gate
+remains open.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres

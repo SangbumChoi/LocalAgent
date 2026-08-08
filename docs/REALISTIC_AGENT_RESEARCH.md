@@ -3186,3 +3186,17 @@ This is stronger than an instruction-only action-prior check because it includes
 observation and multi-step projected action sequence, yet it still omits screenshots and native
 Ubuntu state. The result is a clean negative transfer control: the m585 teacher-forced gain does
 not translate into AgentNet trajectory behavior without visual grounding and a desktop runtime.
+
+### Matched EnterpriseOps-Gym email retrieval control (m592)
+
+The [m592 receipt](paper/results/raw/m592-enterpriseopsgym-m585-warm-parent-email-control-v1.json)
+reacquires the public email Parquet shards at revision `c8e538e…` and evaluates all `67` rows with
+the leakage-safe name-only dense-selector adapter. The m553 parent reaches `43.28%` top-1,
+`76.12%` top-3, and `91.04%` top-5 retrieval; the m585 warm child reaches `56.72%`, `76.12%`,
+and `91.04%`, respectively. Thus warm transfer adds `+13.43` percentage points at top-1 while
+leaving top-3/top-5 coverage unchanged.
+
+This is the first current-lineage email-specific transfer gain in the refreshed public shard
+replay, but it is only a selector-ranking diagnostic: verifiers, MCP servers, database state,
+credentials, and email side effects were dropped. It does not establish stateful email control or
+real-account readiness.
