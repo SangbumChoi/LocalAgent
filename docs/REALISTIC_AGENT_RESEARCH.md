@@ -3474,6 +3474,22 @@ also has no static train/test split. The addendum therefore remains `eval_only`,
 task, trace, safety label, credential, service state, or external side effect was used for training
 or WebGPU execution.
 
+### ClawBench live-web task source audit (m621)
+
+The [ClawBench release](https://huggingface.co/datasets/TIGER-Lab/ClawBench), [official repository](https://github.com/TIGER-AI-Lab/ClawBench),
+and [paper](https://arxiv.org/abs/2604.08523) add a complementary end-to-end browser surface. The
+Apache-2.0 Hub revision contains a V1 test corpus of `153` tasks across `144` platforms and a V2
+test corpus of `130` tasks across `63` platforms. The audit binds both Parquet files, `eval.yaml`,
+and the shared dummy profile by SHA-256; V1 has `32` extra-context tasks and V2 has `15`.
+
+The protocol is materially different from a static tool-call dataset: a live browser harness must
+execute the instruction, intercept the final HTTP request, and optionally invoke the benchmark's
+LLM judge. V1 contains `71/153` placeholder interception schemas, V2 contains `0/130`, and the
+corpora share `51` task IDs, so neither corpus is admitted to training or treated as a disjoint
+train/test split. The [m621 receipt](paper/results/raw/m621-clawbench-source-audit-v1.json) is
+therefore provenance and protocol evidence only—no live site, credential, judge, or irreversible
+request was executed, and no ClawBench score is claimed.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
