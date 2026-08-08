@@ -103,3 +103,26 @@ def test_m573_gate_binds_refreshed_catalog_without_promoting_runtime_rows() -> N
     assert payload["checks"]["catalog_realistic_family_coverage"] == "pass"
     assert payload["checks"]["training_rl_preflight"] == "pass"
     assert "native:androidworld" in payload["blocking_requirements"]
+
+
+def test_m574_xlam_derivative_transfer_is_explicitly_non_official() -> None:
+    payload = _load_verified("m574-xlam-derived-warm-random-transfer-v1.json")
+    assert payload["parent_checkpoint"]["sha256"] == CURRENT_SHA
+    assert payload["source"]["original_dataset"] == "Salesforce/xlam-function-calling-60k"
+    assert payload["source"]["original_access"] == "gated_in_current_environment"
+    assert payload["source"]["normalization"]["train_records"] == 256
+    assert payload["source"]["normalization"]["eval_records"] == 128
+    assert payload["metrics"]["warm_start_better_after"] is True
+    assert payload["metrics"]["warm_minus_random_after_pp"] == 31.32127955493741
+    assert payload["metrics"]["sequence_exact_warm"] == 0.0
+
+
+def test_m575_gate_accepts_xlam_transfer_without_claiming_public_readiness() -> None:
+    payload = _load_verified("m575-workshop-gate-current-m553-xlam-v1.json")
+    assert payload["ready"] is False
+    assert payload["checks"]["weights_transfer_and_no_transfer_ablation"] == "pass"
+    assert (
+        "docs/paper/results/raw/m574-xlam-derived-warm-random-transfer-v1.json"
+        in payload["weight_reports"]
+    )
+    assert "artifacts_public_model_demo_manifest" in payload["checks"]

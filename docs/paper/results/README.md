@@ -679,6 +679,8 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m570 workshop gate](raw/m570-workshop-gate-current-m553-v1.json) | Current publication checklist | `ready: false`; nine native receipts + public manifest missing |
 | [m571 public matrix audit](raw/m571-public-realistic-eval-matrix-audit-v1.json) | 28 source-linked realistic evaluation entries | 6 train-eligible; runtime/eval rows fail closed |
 | [m573 refreshed workshop gate](raw/m573-workshop-gate-current-m553-matrix-refresh-v1.json) | 42-entry executable catalog joined to m553 evidence | `ready: false`; nine native receipts + public manifest missing |
+| [m574 xLAM transfer](raw/m574-xlam-derived-warm-random-transfer-v1.json) | Public derivative, source-disjoint warm/random continuation | Warm +31.32 pp teacher-forced accuracy; sequence exactness 0 |
+| [m575 xLAM gate refresh](raw/m575-workshop-gate-current-m553-xlam-v1.json) | Workshop gate with both transfer ablations | Transfer check passes; publication remains fail-closed |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

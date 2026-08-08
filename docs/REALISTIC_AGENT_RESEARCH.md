@@ -3018,3 +3018,24 @@ The refreshed [m573 gate](paper/results/raw/m573-workshop-gate-current-m553-matr
 joins that 28-entry matrix with the 42-entry executable catalog. It still passes the current
 checkpoint's measured evidence and remains `ready: false` for the same nine native benchmark and
 public-artifact blockers; adding a source link never promotes a runtime benchmark to a score.
+
+### xLAM derivative training and weight-transfer control (m574)
+
+The gated original Salesforce xLAM snapshot was unavailable without Hub authentication, so the
+experiment uses the publicly downloadable Apache-2.0
+[product-science derivative](https://huggingface.co/datasets/product-science/xlam-function-calling-60k-raw),
+while retaining the original Salesforce URL and explicitly marking the split as non-official. The
+[m574 receipt](paper/results/raw/m574-xlam-derived-warm-random-transfer-v1.json) binds two upstream
+Parquet shards, deterministic normalization (256 train / 128 test rows; four schema-invalid rows
+recorded and skipped), and a slot-disjoint 96/64 continuation from m553.
+
+Warm initialization improves held-out teacher-forced token accuracy from `52.18%` to `54.35%`; the
+matched random-backbone control reaches `23.03%`, so warm transfer leads by `31.32` percentage
+points. Warm shared-backbone movement is small (embedding `0.80%`, attention `0.22%`, FFN `0.28%`)
+versus random movement near `119.48%`, `77.88%`, and `87.79%`. Sequence exactness remains zero,
+and the result is not an official xLAM/BFCL score or live API execution.
+
+The [m575 gate](paper/results/raw/m575-workshop-gate-current-m553-xlam-v1.json) accepts this second
+transfer receipt alongside the AndroidControl/AgentNet ablation; the overall publication decision is
+unchanged because native AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld variants, AgentNet,
+ToolSandbox, MCPMark, EnterpriseOps-Gym, and the public HF/demo manifest are still absent.
