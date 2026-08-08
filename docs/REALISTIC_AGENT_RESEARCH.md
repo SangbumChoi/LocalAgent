@@ -3506,6 +3506,21 @@ Consequently the [m622 receipt](paper/results/raw/m622-mcp-persona-source-audit-
 MCP-Persona as `eval_only` provenance. No task, persona context, ground-truth checkpoint, or
 simulator state was admitted to WebGPU training, and no native MCP-Persona score is claimed.
 
+### MCP-Persona held-out tool-chain transfer (m623)
+
+To quantify the source without contaminating it, the English `173`-task release was projected to
+the canonical `Conversation` schema as `instruction → compact JSON tool_chain`; persona contexts,
+ground-truth checkpoint values, tool outputs, and simulator state were excluded. The existing
+m607 policy-aligned warm child reaches `15.771%` teacher-forced assistant-token accuracy on this
+eval-only projection versus `0%` for the matched random child (`+15.771` points); mean loss is
+`6.3478` versus `9.6137`. Exact sequence accuracy is `0%` for both, including the Notion-first
+subset (`23.339%` warm token accuracy) and universal-email-first subset (`16.761%`).
+
+The [m623 receipt](paper/results/raw/m623-mcp-persona-tool-chain-projection-v1.json) is a transfer
+diagnostic, not a personalized MCP capability score: no MCP server, context tree, checkpoint judge,
+or external side effect ran, and the projection remains eval-only because MCP-Persona publishes no
+train/test partition.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
