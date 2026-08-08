@@ -42,6 +42,18 @@ p50 latency is `19.95 ms`, p50 throughput is `674.7` input tokens/s, and conserv
 is `20.46 MB`.  The action graph never touches a real account or external page, so this is a
 hardware/deployment capability result, not email, browser, or Notion task completion.
 
+The expanded [m526 continuation audit](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
+reacquires public AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and MCPMark trajectory-log
+projections. MCPMark covers filesystem, Notion, GitHub, Playwright, and Postgres traces; tool
+outputs and assistant prose are redacted, and train/eval files are source-disjoint. Across 16
+training rows and 8 held-out rows, the warm arm reaches `50.92%` assistant-token accuracy versus
+`0%` for the matched random arm, with warm ahead on AndroidControl (`71.70%`), AgentNet (`50.00%`),
+Mind2Web (`73.08%`), and MCPMark (`27.17%`). Exact sequence accuracy remains `0%`; this is
+representation-transfer evidence only, not native computer-use or live email/Notion success.
+The [m528 gate](paper/results/raw/m528-workshop-gate-current-m526-v1.json) records the expanded
+ablation as a pass, while the overall publication gate remains fail-closed for missing native
+benchmark receipts and authenticated public artifacts.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |

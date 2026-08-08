@@ -35,6 +35,16 @@ receipt into the same fail-closed gate.  The local actions intentionally execute
 URL navigation, or Notion side effect.  Older sections
 below are retained as historical experiment records.
 
+The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
+uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
+trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres
+traces; the 16-row train/8-row held-out cap is source-disjoint. Warm initialization scores
+`50.92%` held-out assistant-token accuracy against `0%` for the matched random control, but exact
+sequence accuracy is `0%` on both arms. This supports checkpoint reuse as a transfer candidate,
+not a native benchmark or live-account claim. The [m528 gate](paper/results/raw/m528-workshop-gate-current-m526-v1.json)
+passes the weight ablation and WebGPU checks but remains `ready=false` until the required native
+mobile, browser, desktop, stateful-tool, RL, and public-artifact evidence is complete.
+
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
 live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG

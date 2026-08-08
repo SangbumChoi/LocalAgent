@@ -34,7 +34,7 @@ def test_normalize_redacts_paths_outputs_and_keeps_zero_argument_tools(tmp_path:
                     "type": "function_call",
                     "call_id": "c1",
                     "name": "list_allowed_directories",
-                    "arguments": "{}",
+                    "arguments": "",
                 },
                 {"type": "function_call_output", "call_id": "c1", "output": "secret"},
                 {

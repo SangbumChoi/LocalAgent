@@ -40,6 +40,10 @@ def file_identity(path: Path) -> dict[str, Any]:
 
 def _parse_arguments(value: Any, *, label: str) -> dict[str, Any]:
     if isinstance(value, str):
+        # MCPMark emits an empty string for zero-argument calls in some public traces.
+        # Normalize that equivalent representation to the canonical empty object.
+        if not value.strip():
+            return {}
         try:
             value = json.loads(value)
         except json.JSONDecodeError as error:
