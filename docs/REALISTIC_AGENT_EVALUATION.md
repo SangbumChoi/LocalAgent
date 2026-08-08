@@ -16,7 +16,7 @@ different layers: the canonical catalog controls acquisition configs, while the 
 broader source-linked research plan.
 The fingerprint is generated from the canonical catalog by the preflight command below.
 
-Current release status (2026-08-06): the exact 10,524,544-parameter BPE checkpoint is
+Current release status (2026-08-08): the exact 10,524,544-parameter BPE checkpoint is
 `runs/sft-mind2web-public-continuation-20260805/latest.pt` with SHA-256
 `6a6520264f5f81fc68c54f80d462ddde64ac2f442e6e30077c909b702939dd45`.  The complete current
 checkpoint-bound MobileGym and BrowserGym/MiniWoB receipts pass their native contracts, and the

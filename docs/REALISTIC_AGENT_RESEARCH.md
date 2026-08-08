@@ -1,8 +1,19 @@
 # Realistic agent evaluation research memo
 
-Status: protocol refresh on 2026-08-06. This memo records the public benchmark methods that
+Status: protocol refresh on 2026-08-08. This memo records the public benchmark methods that
 matter for a sub-100M text-first WebGPU agent. It is a source and protocol guide, not a claim that
 the repository has completed every benchmark.
+
+Official source refresh (2026-08-08): [AndroidWorld](https://github.com/google-research/android_world)
+documents a live Android-emulator benchmark with 116 hand-crafted tasks across 20 apps and durable
+rewards; [BrowserGym](https://github.com/ServiceNow/BrowserGym) exposes MiniWoB, WebArena,
+WorkArena, VisualWebArena, WebLINX, OpenApps, and TimeWarp through Gymnasium/Playwright;
+[MCPMark](https://github.com/eval-sys/mcpmark) evaluates isolated Notion, GitHub, filesystem,
+Postgres, and Playwright MCP services with strict verification and pass@k aggregation; and
+[EnterpriseOps-Gym](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym) is the public
+HF source for enterprise tool/SQL-verifier workflows. These links are protocol references only:
+the catalog continues to keep benchmark tasks, credentials, emulator/VM assets, and verifier state
+out of SFT and WebGPU bundles.
 
 The current checkpoint-bound BrowserGym finding is a useful modality boundary.  The accessibility-
 only MiniWoW canary remains `0/1` because SVG number controls expose no actionable accessibility
