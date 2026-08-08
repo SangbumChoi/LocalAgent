@@ -3254,3 +3254,19 @@ preflight. Those six checks pass. Readiness remains fail-closed: AndroidWorld, M
 iOSWorld, OSWorld/OSWorld-V2, native AgentNet, MCPMark, and EnterpriseOps-Gym receipts are absent;
 ToolSandbox is still only a non-official smoke; the current matched weight ablation is not in the
 gate schema; and the public model/demo artifact is not bound to m585.
+
+### Current m585 matched warm/random transfer ablation (m601–m602)
+
+The [m601 receipt](paper/results/raw/m601-m585-current-transfer-ablation-v1.json) anchors both
+arms to the m585 checkpoint and replays the same `202` public train rows and `53` source-local
+held-out rows from AndroidControl, AgentNet, Mind2Web, and MCPMark. After `64` identical updates,
+the warm arm reaches `69.65%` held-out assistant-token accuracy versus `25.34%` for the random
+control (`+44.31` points), with warm ahead on every source: AndroidControl `+45.85`, AgentNet
+`+55.41`, Mind2Web `+53.62`, and MCPMark `+18.01` points.
+
+The weight audit is consistent with transfer rather than relearning: warm movement is `0.823%`
+embedding, `0.301%` FFN, `0.233%` attention, and `0.026%` normalization relative L2, while the
+random arm moves `119.25%`, `87.78%`, `77.84%`, and `8.62%`. Action heads stay frozen in both
+arms. The [m602 gate](paper/results/raw/m602-workshop-gate-current-m585-transfer-v1.json) now
+passes the current transfer/ablation requirement, while retaining the native-benchmark and public
+artifact blockers.

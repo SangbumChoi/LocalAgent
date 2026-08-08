@@ -700,6 +700,8 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m596 warm-child GRPO/runtime](raw/m596-m585-stateful-grpo-runtime-v1.json) | 32 SFT + 8 GRPO updates from m585, then deployment-shaped reset/retry runtime | Reward 0.0344→0.1625; 1/5 local tasks; email 6/6 steps; browser/recovery/abstention 0; heads frozen |
 | [m597 canonical WebGPU](raw/m597-m585-webgpu-capability-canonical-v1.json) | Gate-shaped adapter for m585 Apple WebGPU structured probes | 3/3 exact actions; 1,367.5 tok/s p50; 7.4 ms p50; 20.5 MB; no side effects |
 | [m598 current m585 workshop gate](raw/m598-workshop-gate-current-m585-v1.json) | Fail-closed gate over current m585 catalog, native receipts, WebGPU, RL, and public artifact checks | Six checks pass; native benchmark, current ablation, and current public-manifest blockers remain |
+| [m601 current transfer ablation](raw/m601-m585-current-transfer-ablation-v1.json) | 64 matched warm/random updates anchored to m585 over 202 public train and 53 held-out rows | Warm 69.65% vs random 25.34% (+44.31 pp); warm wins all four sources; action heads frozen |
+| [m602 current transfer gate](raw/m602-workshop-gate-current-m585-transfer-v1.json) | Workshop gate refreshed with the m585-bound matched ablation | Seven checks pass; native benchmark and current public-manifest blockers remain |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
