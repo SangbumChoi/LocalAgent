@@ -42,6 +42,13 @@ both pass the bounded single-step ToolSandbox smoke (`3/3`) and both fail the bo
 stress (`0/3`). This is a negative transfer diagnostic, not an official ToolSandbox or real-account
 result.
 
+The [m584 public-source snapshot audit](paper/results/raw/m584-public-dataset-snapshot-audit-v1.json)
+now binds eight current Hugging Face revisions to their original source repositories and records
+the train/evaluation boundary. It confirms that AndroidControl, AgentNet, Mind2Web, and xLAM are
+the only rows in this snapshot eligible for text-first continuation; Computer Agent Arena, OSWorld
+2.0/Verified trajectories, and EnterpriseOps-Gym stay evaluation/provenance-only. The audit is
+metadata-only and does not claim a native benchmark result.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres

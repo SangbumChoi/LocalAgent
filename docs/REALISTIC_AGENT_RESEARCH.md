@@ -3087,3 +3087,13 @@ The native bridge is unchanged. The m553 parent and m581 child both pass the bou
 ToolSandbox smoke (`3/3`), while both score `0/3` on the explicit multi-user-turn/state-dependency
 stress. Thus selector-head fitting alone does not transfer to stateful native chaining; the child
 is not promoted and the official ToolSandbox split/user simulator gate remains open.
+
+### Current public-source snapshot audit (m584)
+
+The [m584 audit](paper/results/raw/m584-public-dataset-snapshot-audit-v1.json) resolves eight
+public Hub datasets to immutable revisions without downloading payloads: AndroidControl, AgentNet,
+Mind2Web, xLAM, Computer Agent Arena, OSWorld 2.0 trajectories, OSWorld-Verified trajectories,
+and EnterpriseOps-Gym. Each row retains its original repository link and an explicit policy. The
+four train-eligible projections remain AndroidControl, AgentNet, Mind2Web, and xLAM; the desktop
+arena, OSWorld trajectory archives, and EnterpriseOps-Gym remain evaluation/provenance-only. This
+prevents mutable Hub revisions or benchmark trajectories from silently entering WebGPU SFT.
