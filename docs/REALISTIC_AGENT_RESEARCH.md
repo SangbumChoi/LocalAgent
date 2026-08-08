@@ -3437,3 +3437,12 @@ user policy. This is useful failure-driven evidence for stateful tool routing, b
 does not claim ToolSandbox leaderboard performance: the upstream user simulator, all 1,032
 augmentation variants, and external RapidAPI services were not executed, and the source audit
 confirms there is no published train/test split.
+
+### Current fail-closed workshop gate (m615)
+
+The [m615 gate receipt](paper/results/raw/m615-workshop-gate-current-m614-v1.json) refreshes the
+publication checklist with the current m585 checkpoint and the 129-scenario native diagnostic.
+Readiness remains `false` with ten blockers: eight missing native suites, ToolSandbox's
+source-grounded `official_split_not_verified`, and the absent authenticated public model/demo
+manifest. This is the correct outcome: the new native evidence strengthens diagnosis but does not
+turn a scripted-user simulator run into an official benchmark result.

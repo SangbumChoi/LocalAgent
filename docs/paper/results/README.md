@@ -714,6 +714,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m612 AgentWorldBench projection](raw/m612-m585-agentworldbench-text-projection-v1.json) | Pinned Qwen/AgentWorldBench test-only projection across Android, Web, OS, MCP, terminal, SWE, and search | 224 rows (32/domain); 6.257% teacher-forced token accuracy, 0% exact sequences; not an official judge/native score and never used for training |
 | [m613 ToolSandbox protocol audit](raw/m613-toolsandbox-protocol-audit-v1.json) | Pinned Apple ToolSandbox source/protocol audit | 1,032 generated scenarios (129 base × 8); no published train/test split; official user-simulator/native score remains unverified |
 | [m614 current ToolSandbox base diagnostic](raw/m614-m585-toolsandbox-base-native-v1.json) | m585 native simulator/verifier run over all 129 unaugmented base scenarios with a bounded scripted user | 30/129 exact (23.26%), mean similarity 0.2577; insufficient-information 13/14; not an official leaderboard score |
+| [m615 current workshop gate](raw/m615-workshop-gate-current-m614-v1.json) | Fail-closed gate refreshed with m614 native evidence and m613 source protocol audit | `ready: false`; ten blockers remain, including missing native suites, ToolSandbox split protocol, and unauthenticated public artifacts |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
