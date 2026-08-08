@@ -3213,3 +3213,19 @@ and `0/63` Postgres.
 This is a direct Notion-related negative control: the public continuation does not change service
 routing, and static task descriptions do not establish live MCP execution. Servers, verifiers,
 accounts, and external side effects were not used.
+
+### Current m585 warm-child stateful RL preflight (m594)
+
+The [m594 receipt](paper/results/raw/m594-m585-stateful-rl-preflight-v1.json) runs the strict
+isolated RL preflight against the current m585 warm checkpoint, using disjoint deterministic
+email/Notion/browser Conversation rows. It completes two optimizer updates at learning rates
+`0` and `2e-5`, changes all `40/40` named policy tensors, and leaves the production output and
+source artifacts untouched. Held-out shaped reward rises from `0.0` to `0.08125`, but exact
+match and strict tool-format validity remain `0`; there are zero exact-success rollouts.
+
+The checkpoint-bound weight audit measures an overall relative L2 movement of `0.0003815`.
+Relative movement is largest in FFN (`0.0006888`) and attention (`0.0005829`), followed by the
+embedding (`0.0003716`); normalization is nearly frozen (`0.0000143`). This supports keeping the
+pretrained backbone and using small continuation updates, but it is only a local simulator
+diagnostic—not native API control, real-account execution, public benchmark success, or workshop
+readiness.

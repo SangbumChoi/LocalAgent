@@ -696,6 +696,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m591 AgentNet trajectory control](raw/m591-agentnet-m585-warm-parent-control-v1.json) | 16 public AgentNet holdout parent tasks / 257 projected actions, matched m553 vs m585 | Byte-identical predictions; 75% first-action type; 0% exact trajectories; text projection only |
 | [m592 EnterpriseOps email control](raw/m592-enterpriseopsgym-m585-warm-parent-email-control-v1.json) | 67 public email rows with 20-tool candidate sets, matched m553 vs m585 | Warm top-1 +13.43 pp; top-3/top-5 unchanged; no server/verifier execution |
 | [m593 MCPMark router control](raw/m593-mcpmark-m585-warm-parent-router-control-v1.json) | 169 standard + 70 easy pinned MCPMark task descriptions, matched m553 vs m585 | Identical 25/169 standard and 10/70 easy; Notion 0/28; Playwright 25/25 |
+| [m594 current RL preflight](raw/m594-m585-stateful-rl-preflight-v1.json) | Strict isolated two-update RL prefix on current m585 warm child over disjoint email/Notion/browser rows | Passed lineage/optimizer/40-tensor movement; held-out reward 0.08125, exact success 0; simulator-only |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
