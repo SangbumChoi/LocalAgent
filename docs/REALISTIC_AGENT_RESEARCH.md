@@ -3131,3 +3131,17 @@ future data collection and RL rather than a publication-ready capability claim.
 The receipt also satisfies the gate's canonical native schema for `browsergym_miniwob`; an isolated
 gate join therefore marks this one requirement `pass` while leaving the overall publication decision
 fail-closed.
+
+### Full native MobileGym continuation on the warm child (m588)
+
+The [m588 receipt](paper/results/raw/m588-m585-mobilegym-native-full-v1.json) runs the same warm
+m585 checkpoint through the pinned MobileGym simulator and independent state-diff judge on all `256`
+official test tasks. The text-first policy passes `1/256` (`0.39%`) with no runtime errors; its only
+success is `crossapp_life.RestaurantRatingInviteCalendar`. The matched m553 parent also passed
+`1/256`, so the warm public continuation changes closed-loop mobile success by `0.00` percentage
+points despite improving held-out teacher-forced token accuracy in m585.
+
+The run uses two model steps per task and a bounded DOM/text projection (`255` input-text calls,
+`6` home navigations, `1` app open); it uses no screenshots, Android emulator, credentials, or
+external side effects. This is a current-checkpoint native mobile receipt and a concrete negative
+control for the weight-transfer hypothesis, not visual mobile-agent readiness.

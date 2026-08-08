@@ -69,6 +69,12 @@ The receipt is emitted in the canonical native schema, and the fail-closed gate 
 recognizes `native:browsergym_miniwob` as `pass` when supplied; this does not waive the remaining
 requirements.
 
+The [m588 MobileGym receipt](paper/results/raw/m588-m585-mobilegym-native-full-v1.json) upgrades the
+current warm child from a text-only continuation to a complete native MobileGym test-split run:
+`1/256` tasks pass (`0.39%`), matching the m553 parent exactly. It is now consumable by the gate as
+`native:mobilegym=pass`, but the unchanged score shows that representation transfer alone did not
+improve closed-loop mobile control.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres
