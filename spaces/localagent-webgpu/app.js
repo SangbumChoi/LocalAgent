@@ -1995,6 +1995,26 @@ function productivityLexicalSelect(query, dispatch = DISPATCH) {
   return null;
 }
 
+// A tiny fail-closed boundary for unmistakable direct-answer requests.  This is intentionally
+// lexical and narrow: it prevents an OOD definition/acknowledgement prompt from becoming a GUI
+// click, while all tool-shaped requests continue through the learned route and selector heads.
+function semanticTextLexicalSelect(query) {
+  if (typeof query !== "string") return null;
+  const low = query.toLowerCase().trim();
+  if (!low || /\b(?:email|e-mail|send|search|look up|open|visit|click|tap|type|write|save|create|run|execute|schedule)\b/.test(low)) {
+    return null;
+  }
+  const directAnswer = /\bwhat does\b[\s\S]*\bmean\b|\bdefine\b|\bwhat is\b[\s\S]*\?|\bexplain\b/.test(low);
+  const acknowledgement = /\b(?:thanks|thank you)\b[\s\S]*\b(?:all|done|no more|finished)\b|\bno action is needed\b|\bjust acknowledge\b/.test(low);
+  if (!directAnswer && !acknowledgement) return null;
+  return {
+    isStop: true,
+    route: "text",
+    conf: 1,
+    selection_policy: "semantic_text_safety_guard",
+  };
+}
+
 function statefulActionLexicalSelect(query, dispatch = DISPATCH) {
   if (typeof query !== "string" || !/current state json\s*:/i.test(query)) return null;
   const action = compactDispatchQuery(query).toLowerCase();
@@ -2056,6 +2076,8 @@ function dispatchSelect(
     const productivity = productivityLexicalSelect(query, dispatch);
     if (productivity) return productivity;
   }
+  const semanticText = semanticTextLexicalSelect(query);
+  if (semanticText) return semanticText;
   const statefulAction = statefulActionLexicalSelect(query, dispatch);
   if (statefulAction) return statefulAction;
   if (requestedSelector === "retrieval") {

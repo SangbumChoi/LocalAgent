@@ -3372,3 +3372,21 @@ dispatched as a `computer_use/click` action (1,309 ms) instead of a text answer 
 Therefore the local bundle/runtime and safety boundary are verified, but `publish_ready` and the
 quality gate remain false. This is not a native email/Notion score, a BrowserGym result, or a public
 Hugging Face/Space deployment.
+
+### Route-abstention calibration and guarded WebGPU rerun (m610–m611)
+
+The [m610 receipt](paper/results/raw/m610-m585-route-abstention-calibration-v1.json) tests the
+actual failure mode from m609 with the m585 backbone and dense selector frozen. It adds public
+AndroidControl, Mind2Web, xLAM, and ToolACE projections plus explicit no-tool/semantic rows and
+trains matched warm/random route heads. The warm arm fixes the definition, explanation, and
+acknowledgement probes and keeps email, Notion, and web-search routing correct on the seven-probe
+set (`6/7`), but maps the GUI click probe to `app_action`. Its route-head movement is `178.36%`
+relative L2 with zero backbone/selector movement, so it is not adopted or exported; this is a
+useful negative transfer result, not a candidate model.
+
+The [m611 receipt](paper/results/raw/m611-webgpu-semantic-guard-probe-v1.json) then adds a narrow,
+explicit `semantic_text_safety_guard` in the browser adapter for unmistakable direct-answer or
+acknowledgement prompts. A cache-busted browser rerun verified `What does ephemeral mean?` now
+abstains as `text`, while email still requires confirmation and the two-step search→Notion plan
+still stops before the Notion write. This guard is policy, not learned semantic competence; no
+public HF upload, native benchmark, account, MCP service, or external side effect ran.
