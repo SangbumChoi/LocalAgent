@@ -3594,3 +3594,43 @@ deployment result, not end-to-end productivity success: the calls were local pre
 `closed_loop_success=0`, and no real account, navigation, MCP server, or external side effect ran.
 The candidate is therefore locally WebGPU-adopted but not publicly published; authenticated Hub
 upload and the remaining native mobile/desktop/service-backed benchmark gates are still required.
+
+### AndroidControl mobile transfer from the m624 child (m626)
+
+The next source-bound continuation uses the public [Android-Control-84k mirror](https://huggingface.co/datasets/OfficerChul/Android-Control-84k),
+whose original project is [Google Research AndroidControl](https://github.com/google-research/google-research/tree/master/android_control).
+The pinned Apache-2.0 mirror contributes `512` train rows and `256` test rows; the train/test
+manifests and source hashes are recorded in the [m626 receipt](paper/results/raw/m626-androidcontrol-warm-random-transfer-v1.json).
+Every row is explicitly screenshot-omitted, so this is a text/action projection rather than
+visual mobile control.
+
+Matched 64-step continuation from the m624 warm child raises held-out teacher-forced token
+accuracy from `73.165%` to `82.406%`. The random-backbone control rises from `0%` to `63.126%`,
+leaving a `19.280`-point warm advantage. Warm movement is `0.862%` embedding, `0.326%`
+attention/mixer, `0.422%` FFN, and `0.027%` normalization; the random body moves `119.173%`,
+`77.884%`, `87.793%`, and `8.615%` respectively. Deployment action heads remain unchanged.
+This supports reusing the m624 weights as a mobile initialization candidate, but it does not
+authorize WebGPU promotion or claim Android emulator, screenshot-grounding, AndroidWorld, or
+MobileGym success.
+
+### Current m624 workshop gate (m627)
+
+The [m627 gate receipt](paper/results/raw/m627-workshop-gate-current-m624-v1.json) binds the
+publication checklist to the exact m624 warm checkpoint rather than an older parent. Four checks
+pass: realistic catalog coverage, runnable train adapters, native WebGPU capability, and the
+m626 warm/random ablation. Readiness remains `false` with `13` explicit blockers: eleven native
+mobile/browser/desktop/tool suites, current-checkpoint RL preflight, and the authenticated public
+model/demo manifest. This is the correct publication decision; a fast local WebGPU action graph
+and strong text-projection transfer are not substitutes for native stateful task success or a
+publicly verifiable artifact URL.
+
+### AndroidControl-adapted WebGPU child (m628)
+
+The AndroidControl warm child was exported separately to ensure the mobile transfer itself, not
+only its m624 parent, survives the deployment ABI. The [m628 receipt](paper/results/raw/m628-androidcontrol-webgpu-adoption-v1.json)
+binds checkpoint `d6b5df…`, the 10,524,544-parameter model, all eight bundle artifacts, and the
+hard ONNX/PyTorch parity gate. Chromium’s native WebGPU provider again reports Apple Metal-3:
+`3/3` exact structured local actions, `1,242.2` input tokens/s p50, `7.70 ms` p50 latency, and
+`20.46 MB` conservative peak memory. The adapted child therefore passes local export and native
+capability checks, but remains unpublished and is not a native AndroidControl score: screenshots,
+an emulator, real accounts, and external side effects were absent.
