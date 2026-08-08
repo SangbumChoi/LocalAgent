@@ -3521,6 +3521,27 @@ diagnostic, not a personalized MCP capability score: no MCP server, context tree
 or external side effect ran, and the projection remains eval-only because MCP-Persona publishes no
 train/test partition.
 
+### MCP trajectory benchmark internal training and transfer (m624)
+
+The public [MCP Agent Trajectory Benchmark](https://huggingface.co/datasets/obaydata/mcp-agent-trajectory-benchmark)
+adds executable-looking tool-call arguments to the training analysis: `38` single-pass trajectories,
+`282` recorded tool calls, and domains including finance, health, HR, logistics, marketing, and email
+marketing. Because the Hub exposes only a `train` split, the adapter creates a deterministic
+agent-disjoint internal holdout: `30` agent trajectories (`86` normalized decisions) for SFT and `8`
+agents (`21` decisions) for evaluation. Eleven multi-conversation records were audited separately;
+one is malformed JSON and none was admitted to training.
+
+After matched 32-step continuation from m607, the warm child improves internal held-out tool-call
+token accuracy from `38.564%` to `54.702%` (`+16.138` points). The matched random child improves
+from `0%` to `10.907%`; warm remains `43.795` points ahead after training. Exact sequence accuracy
+is `0%` for both. Warm shared-body movement stays small—embedding `0.431%`, attention/mixer
+`0.243%`, FFN `0.301%`, normalization `0.011%`—while random movement reaches `119.261%`,
+`77.883%`, `87.789%`, and `8.633%` respectively; action heads remain frozen.
+
+The [m624 receipt](paper/results/raw/m624-mcp-trajectory-transfer-v1.json) is explicitly an
+internal structural holdout, not an official benchmark split or native MCP score. Tool outputs,
+reasoning traces, MCP servers, and external side effects were excluded.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
