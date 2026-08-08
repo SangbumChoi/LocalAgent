@@ -3298,3 +3298,17 @@ The backbone relative L2 movement is exactly `0`; route, selector, and pointer h
 This isolates the remaining browser/recovery failures as stateful grounding and retry problems,
 not evidence that the pretrained backbone should be discarded. The runtime remains a local
 simulator, not a native browser, email, or Notion account.
+
+### Reset/retry replay of the m604 child (m605)
+
+The [m605 receipt](paper/results/raw/m605-m604-stateful-runtime-retry-v1.json) reruns the exact
+m604 child through the deployment-shaped evaluator, where a rejected tool call does not advance
+state and the decoder receives the same state plus an error observation. The oracle reaches `5/5`
+tasks and `16/16` accepted steps. The model also reaches `5/5` tasks and `16/16` accepted steps,
+but uses `28` attempts, for `57.14%` attempt success and a mean shaped reward of `0.7015`.
+The result is deterministic across repeated invocations because the constrained decoder and
+in-memory runtime are deterministic; it is still only a synthetic local result. In particular,
+task completion under bounded retry must not be reported as a native BrowserGym, AndroidWorld,
+MCPMark, email, or Notion score. The high rejection rate is the actionable deployment signal:
+the next iteration should improve state-conditioned action grounding and error recovery rather
+than claim that the model is ready for external side effects.

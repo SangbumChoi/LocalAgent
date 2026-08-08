@@ -704,6 +704,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m602 current transfer gate](raw/m602-workshop-gate-current-m585-transfer-v1.json) | Workshop gate refreshed with the m585-bound matched ablation | Seven checks pass; native benchmark and current public-manifest blockers remain |
 | [m603 HF/Space preparation](raw/m603-m585-hf-space-preparation-v1.json) | Local checkpoint-bound safetensors, heads, ONNX graphs, tokenizer, and static Space staging | Parity passed; publication remains false because HF authentication is absent |
 | [m604 stateful head adaptation](raw/m604-m585-stateful-head-adaptation-v1.json) | 320 route/selector/pointer updates with m585 backbone frozen on local email/Notion/browser runtime | 68.75% step success, 40% task completion; email/abstention pass; browser/recovery remain incomplete |
+| [m605 reset/retry runtime](raw/m605-m604-stateful-runtime-retry-v1.json) | Deterministic checkpoint-in-loop replay of the m604 child over local email, Notion, browser, recovery, and abstention tasks | Oracle and model complete 5/5 tasks and 16/16 accepted steps; model needs 28 bounded attempts (57.14% attempt success); synthetic in-memory evidence only |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
