@@ -3446,6 +3446,19 @@ state-diff verifier, credentials, or external side effect ran. The separate Agen
 keeps the source discoverable while leaving the frozen workshop catalog and WebGPU export gate
 unchanged.
 
+### Agent-Diff train-split continuation and weight audit (m619)
+
+The [m619 receipt](paper/results/raw/m619-agentdiff-training-v1.json) runs a matched 32-step SFT
+continuation on the public 179-row Agent-Diff train split, with all 45 test rows held out. The warm
+child improves from `25.493%` to `35.421%` assertion-token accuracy (`+9.928` points); the random
+control improves from `17.814%` to `20.262%` (`+2.448` points). Warm remains ahead after training
+by `15.160` points. Exact sequence accuracy is still `0%`, so this is not task completion.
+
+The weight audit shows the expected transfer pattern for this short continuation: warm
+embedding/attention/FFN movement is `0.435%/0.228%/0.281%`, versus `0.697%/0.238%/0.305%` for the
+random control; action heads remain unchanged. Test rows are explicitly excluded from training,
+and neither child is promoted to WebGPU or native sandbox evaluation.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
