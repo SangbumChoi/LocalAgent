@@ -3158,3 +3158,17 @@ The protocol is intentionally bounded: the scripted user terminates after the fi
 stateful multi-turn chaining, the model-based user simulator, the official split, and the broader
 MCP service matrix were not executed. It is therefore native diagnostic evidence, not an official
 ToolSandbox score or real-account email/Notion result.
+
+### Matched Computer Agent Arena action-prior control (m590)
+
+The [m590 receipt](paper/results/raw/m590-computer-agent-arena-m585-warm-parent-control-v1.json)
+downloads the audited public `xlangai/computer-agent-arena` JSONL at revision `897b9f4…` (4,641
+trajectories; 50.6 MB) and evaluates the same 256 unique tasks on both the m553 parent and m585
+warm child. The instruction-only probe yields identical route accuracy (`100%`), tool exactness
+(`1.56%`), family exactness (`1.95%`), and abstention (`96.88%`) on both arms.
+
+This matched result is a useful weight-transfer negative control: the m585 teacher-forced gains do
+not alter the desktop action prior when screenshots, accessibility trees, arguments, and later
+trajectory state are absent. Pointer exactness is only `1.80%`; keyboard, observation, scroll,
+type, and wait exactness are all `0%`. It is not a native desktop or visual-grounding score, and
+the source remains evaluation-only.

@@ -81,6 +81,13 @@ non-official (`official_split_verified=false`, no model-based user simulator) an
 the ToolSandbox publication blocker; it only confirms current-checkpoint one-turn tool-contract
 preservation.
 
+The [m590 matched Computer Agent Arena control](paper/results/raw/m590-computer-agent-arena-m585-warm-parent-control-v1.json)
+uses 256 unique tasks from the pinned public JSONL and runs the m553 parent and m585 warm child
+under the identical instruction-only evaluator. Both arms produce `1.56%` tool exactness,
+`1.95%` action-family exactness, `100%` route accuracy, and `96.88%` abstention. This is a
+checkpoint-bound desktop action-prior result, not AgentNetBench, OSWorld, visual grounding, or
+native desktop success; the image-backed and runtime gates remain open.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres
