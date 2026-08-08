@@ -3578,3 +3578,19 @@ Readiness remains `false` with ten blockers: eight missing native suites, ToolSa
 source-grounded `official_split_not_verified`, and the absent authenticated public model/demo
 manifest. This is the correct outcome: the new native evidence strengthens diagnosis but does not
 turn a scripted-user simulator run into an official benchmark result.
+
+### m624 warm child WebGPU adoption check (m625)
+
+The m624 warm child is now bound to a local release candidate rather than only a training receipt.
+The exact `10,524,544`-parameter checkpoint (`984152…`) exports to an eight-artifact, 63-tool
+bundle with the hard ONNX/PyTorch parity gate passing. The [m625 adoption receipt](paper/results/raw/m625-mcp-trajectory-webgpu-adoption-v1.json)
+records the full lineage: the [public MCP Agent Trajectory Benchmark](https://huggingface.co/datasets/obaydata/mcp-agent-trajectory-benchmark)
+revision and m624 warm/random transfer, the model and bundle hashes, and the native browser run.
+
+Chromium 145 with the native WebGPU provider reports an Apple Metal-3 adapter, `3/3` exact local
+structured actions (email, URL, and Notion-shaped dispatch), `1,290.3` input tokens/s p50,
+`7.75 ms` p50 latency, and `20.46 MB` conservative peak memory. This is a capability and
+deployment result, not end-to-end productivity success: the calls were local predictions only,
+`closed_loop_success=0`, and no real account, navigation, MCP server, or external side effect ran.
+The candidate is therefore locally WebGPU-adopted but not publicly published; authenticated Hub
+upload and the remaining native mobile/desktop/service-backed benchmark gates are still required.
