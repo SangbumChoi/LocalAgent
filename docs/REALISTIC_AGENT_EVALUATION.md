@@ -28,7 +28,11 @@ public Hub model/Space URLs are still missing.  See the current [m513 gate](pape
 [m523 gate](paper/results/raw/m523-workshop-gate-current-m522-v2.json) now passes the explicit
 transfer/no-transfer weight requirement using the current checkpoint, but still reports the nine
 missing native receipts, the unbound current-checkpoint RL preflight, and unauthenticated public
-artifacts.  Older sections
+artifacts.  The latest [m524 WebGPU rerun](paper/results/raw/m524-webgpu-current-bundle-rerun-v1.json)
+passes the native hardware check on Apple Metal-3 with 3/3 exact local structured actions at
+`674.7` p50 tokens/s; [m525](paper/results/raw/m525-workshop-gate-current-m524-v1.json) binds that
+receipt into the same fail-closed gate.  The local actions intentionally execute no real email,
+URL navigation, or Notion side effect.  Older sections
 below are retained as historical experiment records.
 
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official

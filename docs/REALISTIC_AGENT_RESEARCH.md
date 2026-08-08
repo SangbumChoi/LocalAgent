@@ -25,6 +25,11 @@ accepts this warm/random report as a structurally valid current-checkpoint weigh
 gate remains fail-closed because native AndroidWorld/MobileSafetyBench/iOSWorld/OSWorld/AgentNet/
 ToolSandbox/MCPMark/EnterpriseOps-Gym receipts, a checkpoint-bound RL preflight, and authenticated
 public artifacts are still absent.
+The current [m524 native WebGPU receipt](paper/results/raw/m524-webgpu-current-bundle-rerun-v1.json)
+replays the exact local bundle on an Apple Metal-3 adapter: 3/3 structured tool actions are exact,
+p50 latency is `19.95 ms`, p50 throughput is `674.7` input tokens/s, and conservative peak memory
+is `20.46 MB`.  The action graph never touches a real account or external page, so this is a
+hardware/deployment capability result, not email, browser, or Notion task completion.
 
 ## What the public benchmarks actually measure
 
