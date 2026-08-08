@@ -114,6 +114,13 @@ also passes the one-update contract: two realized optimizer updates, nonzero lea
 40 changed policy tensors, disjoint train/eval rows, and reward `0.00→0.10625`. Exact held-out
 tool match remains `0%`, so this validates RL plumbing and weight movement rather than capability.
 
+The [m540 head-preserved RL promotion audit](paper/results/raw/m540-head-preserved-rl-webgpu-promotion-audit-v1.json)
+exposes an important deployment constraint. A raw RL checkpoint invalidates the structured action
+heads and cannot be exported to WebGPU (`KeyError: 'tool_head'`). The head-preserving recipe copies
+the five frozen deployment heads from the SFT parent, keeps body movement below `0.05%` relative
+L2, exports successfully, and retains `13/13` local trajectory actions plus `3/3` WebGPU probes.
+The raw child is rejected; only the head-preserved child remains a candidate.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |

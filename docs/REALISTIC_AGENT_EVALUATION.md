@@ -91,6 +91,12 @@ The candidate also passes the isolated RL preflight with two realized updates an
 movement; mean held-out reward rises `0.00→0.10625`, but exact tool match remains `0%`. This is RL
 simulation evidence only and is not a reason to promote the child to the public release.
 
+The [m540 promotion audit](paper/results/raw/m540-head-preserved-rl-webgpu-promotion-audit-v1.json)
+also tests exportability. Raw RL output is intentionally non-deployable because its structured
+heads are invalidated; preserving the five frozen deployment-head groups restores WebGPU export,
+without changing action-head weights. The resulting child still passes the bounded local suite,
+but remains a candidate rather than a public release.
+
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
 live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG
