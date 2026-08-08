@@ -3097,3 +3097,20 @@ and EnterpriseOps-Gym. Each row retains its original repository link and an expl
 four train-eligible projections remain AndroidControl, AgentNet, Mind2Web, and xLAM; the desktop
 arena, OSWorld trajectory archives, and EnterpriseOps-Gym remain evaluation/provenance-only. This
 prevents mutable Hub revisions or benchmark trajectories from silently entering WebGPU SFT.
+
+### Fresh public multisurface continuation and WebGPU bridge (m585)
+
+The [m585 receipt](paper/results/raw/m585-public-multisurface-transfer-webgpu-v1.json) runs a
+fresh 128-update continuation from m553 over 202 source-bound rows spanning mobile AndroidControl,
+desktop AgentNet, browser Mind2Web, and MCPMark tool trajectories. On 53 source-local held-out
+rows, warm initialization reaches `68.39%` teacher-forced token accuracy versus `46.74%` for the
+matched random child (`+21.65` percentage points), with warm ahead on every surface. Exact sequence
+accuracy remains `0%`, so this is representation-transfer evidence rather than end-to-end tool
+success. Shared backbone movement is small for warm transfer (embedding `1.70%`, attention `0.52%`,
+FFN `0.66%`) and large for random training (roughly `78–119%`), while action heads remain frozen.
+
+The warm child is export/parity verified at `10,524,544` parameters. Native Apple Metal-3 WebGPU
+dispatch reaches `3/3` structured actions at `1,367.5` input tok/s p50, `7.4 ms` p50 latency, and
+`20.5 MB` conservative peak memory. The resettable local Gmail/Notion/browser state machine also
+passes `13/13` transitions. No real accounts, screenshots, official benchmark environments, or
+external side effects were used; the public native gates remain separate.

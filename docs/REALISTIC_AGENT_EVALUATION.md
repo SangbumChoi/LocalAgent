@@ -49,6 +49,14 @@ the only rows in this snapshot eligible for text-first continuation; Computer Ag
 2.0/Verified trajectories, and EnterpriseOps-Gym stay evaluation/provenance-only. The audit is
 metadata-only and does not claim a native benchmark result.
 
+The [m585 continuation bridge](paper/results/raw/m585-public-multisurface-transfer-webgpu-v1.json)
+repeats the warm/random protocol with 202 public train-projection rows and 53 source-local held-out
+rows across AndroidControl, AgentNet, Mind2Web, and MCPMark. Warm accuracy is `68.39%` versus
+`46.74%` for random, but exact sequence accuracy remains zero. The warm child is checkpoint-bound
+to a parity-verified WebGPU bundle: `3/3` structured probes, `1,367.5` tok/s p50, `7.4 ms` p50,
+and `13/13` local email/Notion/browser state transitions. These are text/accessibility and
+resettable local-fixture results, not official native benchmark or real-account scores.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres
