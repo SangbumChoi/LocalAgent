@@ -677,6 +677,8 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m567 MobileGym](raw/m567-m553-mobilegym-native-full-v1.json) | Official 256-task native split | 1/256; negative control |
 | [m568 BrowserGym](raw/m568-m553-browsergym-native-full-v1.json) | Official 240-task MiniWoB split | 5/240; negative control |
 | [m570 workshop gate](raw/m570-workshop-gate-current-m553-v1.json) | Current publication checklist | `ready: false`; nine native receipts + public manifest missing |
+| [m571 public matrix audit](raw/m571-public-realistic-eval-matrix-audit-v1.json) | 28 source-linked realistic evaluation entries | 6 train-eligible; runtime/eval rows fail closed |
+| [m573 refreshed workshop gate](raw/m573-workshop-gate-current-m553-matrix-refresh-v1.json) | 42-entry executable catalog joined to m553 evidence | `ready: false`; nine native receipts + public manifest missing |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

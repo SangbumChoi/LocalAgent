@@ -71,3 +71,35 @@ def test_m570_workshop_gate_is_fail_closed_with_passed_current_checks() -> None:
     assert payload["checks"]["training_rl_preflight"] == "pass"
     assert "native:androidworld" in payload["blocking_requirements"]
     assert "artifacts:public_model_demo_manifest" in payload["blocking_requirements"]
+
+
+def test_m571_public_matrix_audit_preserves_train_eval_boundary() -> None:
+    payload = _load_verified("m571-public-realistic-eval-matrix-audit-v1.json")
+    assert payload["matrix"]["entries"] == 28
+    assert payload["coverage"]["families"] == {
+        "browser": 4,
+        "computer": 4,
+        "mobile": 9,
+        "terminal": 1,
+        "tool_api": 10,
+    }
+    assert payload["coverage"]["train_eligible"] == [
+        "androidcontrol",
+        "android_in_the_wild",
+        "mind2web",
+        "agentnet",
+        "xlam_function_calling",
+        "toolace",
+    ]
+    assert len(payload["upstream"]) == 10
+    assert all(row["revision"] for row in payload["upstream"])
+
+
+def test_m573_gate_binds_refreshed_catalog_without_promoting_runtime_rows() -> None:
+    payload = _load_verified("m573-workshop-gate-current-m553-matrix-refresh-v1.json")
+    assert payload["ready"] is False
+    assert payload["catalog"]["entries"] == 42
+    assert payload["matrix_audit"]["entries"] == 28
+    assert payload["checks"]["catalog_realistic_family_coverage"] == "pass"
+    assert payload["checks"]["training_rl_preflight"] == "pass"
+    assert "native:androidworld" in payload["blocking_requirements"]

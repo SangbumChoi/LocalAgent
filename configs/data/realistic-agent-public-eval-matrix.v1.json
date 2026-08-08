@@ -345,6 +345,23 @@
       "notes": "The public card reconciles 512 tools, eight domains, 649 oracle rows, and 637 rows per distractor mode; local work has no server run."
     },
     {
+      "id": "xlam_function_calling",
+      "family": "tool_api",
+      "name": "xLAM Function Calling 60K",
+      "source_url": "https://huggingface.co/datasets/Salesforce/xlam-function-calling-60k",
+      "paper_url": "https://huggingface.co/Salesforce/xLAM-7b-fc-r",
+      "source_revision": "a88aa3aeddbc2d7d6aa7a87687d1a085c34e2aec",
+      "license": "CC-BY-4.0",
+      "access_status": "public_download",
+      "train_policy": "train",
+      "modalities": ["instruction", "tool_schema", "multi_turn_dialogue"],
+      "webgpu_projection": "Compact tool schemas plus canonical JSON calls; no external side effects.",
+      "primary_metric": "Held-out tool, argument, and JSON validity accuracy under an AST checker.",
+      "split_rule": "Use only the official train partition for SFT; exclude BFCL and evaluation prompts by exact denylist.",
+      "local_status": "adapter_ready",
+      "notes": "Public 60K function-calling corpus used as a schema/argument training source; acquisition must record dataset revision and row hashes before use."
+    },
+    {
       "id": "toolace",
       "family": "tool_api",
       "name": "Team-ACE/ToolACE",

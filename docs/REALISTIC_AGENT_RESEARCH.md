@@ -2995,3 +2995,26 @@ It remains `ready: false`: nine additional native benchmark receipts (AndroidWor
 MobileSafetyBench, iOSWorld, OSWorld/OSWorld 2.0, AgentNet, ToolSandbox, MCPMark, and
 EnterpriseOps-Gym) and a public Hugging Face model/demo manifest are still missing. No public URL,
 leaderboard score, or workshop-ready claim is made until those blockers are resolved.
+
+### Public realistic-evaluation matrix refresh (m571)
+
+The [m571 source audit](paper/results/raw/m571-public-realistic-eval-matrix-audit-v1.json) validates
+the separate [public evaluation matrix](../configs/data/realistic-agent-public-eval-matrix.v1.json):
+28 source-linked entries span mobile (9), browser (4), computer (4), tool/API (10), and terminal (1)
+families. Only six rows are train-eligible—AndroidControl, Android in the Wild, Mind2Web, AgentNet,
+xLAM Function Calling, and ToolACE—and all other rows are explicitly evaluation-only, runtime-only, restricted, or
+metadata-only. This prevents benchmark prompts, screenshots, credentials, VM images, MCP service
+state, and verifier outputs from entering SFT/RL by accident.
+
+The audit re-resolves current upstream heads and records the operational contracts that matter for a
+WebGPU agent: AndroidWorld is a live emulator benchmark with 116 tasks across 20 apps; BrowserGym
+unifies MiniWoB, WebArena, VisualWebArena, WorkArena, AssistantBench, WebLINX, OpenApps, and
+TimeWarp; OpenCUA's AgentNet supplies 22.6K cross-OS human tasks with AgentNetBench; ToolSandbox and
+MCPMark require stateful simulators/services and verifiers; MobileSafetyBench requires Android,
+ADB, and Appium; MobileWorld covers 201 tasks across 20 apps with agent-user and MCP workflows; and
+OSWorld requires a release-matched desktop VM. These are source/protocol facts, not scores.
+
+The refreshed [m573 gate](paper/results/raw/m573-workshop-gate-current-m553-matrix-refresh-v1.json)
+joins that 28-entry matrix with the 42-entry executable catalog. It still passes the current
+checkpoint's measured evidence and remains `ready: false` for the same nine native benchmark and
+public-artifact blockers; adding a source link never promotes a runtime benchmark to a score.

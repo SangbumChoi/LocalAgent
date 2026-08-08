@@ -22,6 +22,7 @@ def test_public_matrix_is_source_linked_and_split_explicit() -> None:
         "android_in_the_wild",
         "mind2web",
         "agentnet",
+        "xlam_function_calling",
         "toolace",
     }
     assert all(row["source_url"].startswith("https://") for row in matrix["entries"])
