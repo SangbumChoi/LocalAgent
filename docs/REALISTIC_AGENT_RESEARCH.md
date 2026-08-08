@@ -3283,3 +3283,18 @@ Publication is deliberately recorded as `published: false`: this environment has
 and `hf auth` reports `Not logged in`, so no upload or public URL was invented. An authenticated
 Hub upload followed by anonymous checkpoint-binding verification is still required before the
 public-artifact gate can pass.
+
+### Stateful head adaptation on m585 (m604)
+
+The [m604 receipt](paper/results/raw/m604-m585-stateful-head-adaptation-v1.json) trains only the
+route, dense-selector, and pointer heads for `320` updates while freezing the m585 backbone. On
+the five-task local email/Notion/browser/recovery/abstention runtime, the warm arm reaches `68.75%`
+closed-loop step success and `40%` task completion, with `100%` schema validity. Email and
+abstention complete; browser reaches `3/4` steps but does not complete, Notion reaches `1/2`, and
+recovery reaches `0/3`. A matched random-backbone control has the same end-to-end completion but
+lower selector top-1 (`53.33%` vs `66.67%`).
+
+The backbone relative L2 movement is exactly `0`; route, selector, and pointer heads move instead.
+This isolates the remaining browser/recovery failures as stateful grounding and retry problems,
+not evidence that the pretrained backbone should be discarded. The runtime remains a local
+simulator, not a native browser, email, or Notion account.
