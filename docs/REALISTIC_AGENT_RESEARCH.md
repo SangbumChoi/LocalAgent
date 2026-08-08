@@ -3634,3 +3634,33 @@ hard ONNX/PyTorch parity gate. Chromium’s native WebGPU provider again reports
 `20.46 MB` conservative peak memory. The adapted child therefore passes local export and native
 capability checks, but remains unpublished and is not a native AndroidControl score: screenshots,
 an emulator, real accounts, and external side effects were absent.
+
+### Full native MobileGym result for the m626 child (m629)
+
+The [m629 receipt](paper/results/raw/m629-androidcontrol-child-mobilegym-native-v1.json) runs
+the AndroidControl-adapted checkpoint through the complete pinned MobileGym test split: `256/256`
+tasks, official split verified, zero runner errors, and the official state-diff judge enabled. It
+passes only `1/256` tasks (`0.3906%`). The dominant emitted action is `mobile_input_text`
+(`255` calls), with only six `mobile_navigate_home` and one `mobile_open_app` calls. This exposes
+the actual deployment gap: text/action token transfer and WebGPU dispatch do not provide mobile
+state grounding or multi-step action planning. The result is therefore a native diagnostic and a
+hard blocker for mobile promotion, not a visual-agent success claim.
+
+### Current m626 workshop gate with native MobileGym (m630)
+
+The [m630 gate receipt](paper/results/raw/m630-workshop-gate-current-m626-v1.json) updates the
+checklist to the AndroidControl-adapted checkpoint. Four checks pass: catalog coverage, native
+MobileGym split execution, native WebGPU capability, and runnable train adapters. Readiness is
+still `false`, now with `12` blockers. A fresh m626-parent MCP trajectory ablation is included, so
+the current weight gate passes alongside catalog, MobileGym, and WebGPU checks. The remaining
+blockers are the ten missing native suites, current-checkpoint RL preflight, and authenticated
+public model/demo artifacts. This prevents a native MobileGym result from being combined with
+stale transfer evidence to manufacture workshop approval.
+
+The fresh [m631 ablation receipt](paper/results/raw/m631-m626-mcp-warm-random-transfer-v1.json)
+continues the m626 child on the MCP trajectory projection: warm held-out accuracy rises from
+`49.304%` to `56.093%`, while the matched random body reaches `10.907%`, a `45.186`-point warm
+advantage. Warm shared-body movement is `0.442%` embedding, `0.204%` attention/mixer, `0.259%`
+FFN, and `0.010%` normalization; action heads remain frozen. This is the current-checkpoint
+weight evidence used by m630, while still remaining an internal projection rather than a live MCP
+score.
