@@ -3425,3 +3425,15 @@ subset. Therefore `official_split_verified` remains false by design; the existin
 native smoke is not promoted to an official score, and the evaluation gate retains an explicit
 protocol blocker rather than inventing a split. The audit is eval-only provenance and protocol
 evidence, not a model result or a user-simulator execution.
+
+### Current m585 ToolSandbox native base diagnostic (m614)
+
+Using the pinned simulator and milestone verifier, the current m585 checkpoint was run on all
+`129` unaugmented base scenarios. The bounded scripted-user diagnostic completes `30/129`
+scenarios exactly (`23.26%`) with mean milestone similarity `0.2577`; all failures are recorded
+per scenario. Insufficient-information tasks are the strongest slice (`13/14` exact), while state
+dependency, multiple-user-turn, and canonicalization slices remain near zero under the one-step
+user policy. This is useful failure-driven evidence for stateful tool routing, but it deliberately
+does not claim ToolSandbox leaderboard performance: the upstream user simulator, all 1,032
+augmentation variants, and external RapidAPI services were not executed, and the source audit
+confirms there is no published train/test split.
