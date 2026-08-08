@@ -3326,3 +3326,34 @@ task completion under bounded retry must not be reported as a native BrowserGym,
 MCPMark, email, or Notion score. The high rejection rate is the actionable deployment signal:
 the next iteration should improve state-conditioned action grounding and error recovery rather
 than claim that the model is ready for external side effects.
+
+### Current policy-aligned public transfer and held-out desktop test (m607)
+
+The [m607 receipt](paper/results/raw/m607-m585-policy-aligned-transfer-v1.json) runs a fresh
+matched warm/random continuation from the exact m585 checkpoint. The warm arm trains `32` rows
+from each of AndroidControl, Mind2Web, the public xLAM derivative, and ToolACE action-history
+projections; it evaluates `8` source-disjoint rows from each of those sources plus `8` held-out
+AgentNet desktop-projection rows. AgentNet is not used for training because the executable catalog
+still keeps it evaluation-only pending terms/split review.
+
+Warm held-out token accuracy is `73.45%` versus `10.56%` for the matched random backbone, a
+`+62.90` point gap, and warm wins every surface: AgentNet `+74.90`, AndroidControl `+74.19`,
+Mind2Web `+70.33`, ToolACE `+45.61`, and xLAM `+48.79` points. Exact sequence accuracy remains
+`0%` for both arms. The weight audit shows transfer-shaped movement: warm embedding/attention/FFN
+relative L2 is `0.418%/0.152%/0.183%` (normalization `0.009%`), while random movement is
+`119.29%/77.88%/87.79%` (normalization `8.63%`); action heads are unchanged. This supports the
+m585 body as an initialization candidate, not a policy export. ToolACE remains a matrix train
+candidate but is explicitly not promoted into the executable catalog until its terms/split
+metadata conflict is resolved. No emulator, browser, desktop VM, MCP service, email/Notion account,
+screenshots, or external side effect ran.
+
+### Current m607 workshop-gate refresh (m608)
+
+The [m608 gate](paper/results/raw/m608-workshop-gate-current-m607-v1.json) binds the new m607
+warm/random transfer receipt to the m585 checkpoint and reruns the fail-closed publication checks.
+Seven requirements pass: catalog family coverage, no pending catalog adapter, native MobileGym,
+native BrowserGym/MiniWoB, native WebGPU capability/latency, the m607 transfer ablation, and the
+current RL preflight. Readiness remains `false` with ten blockers: AndroidWorld, MobileSafetyBench,
+iOSWorld, OSWorld, OSWorld-V2, native AgentNet, MCPMark, EnterpriseOps-Gym, the official
+ToolSandbox split, and a public model/demo manifest bound to m585. This confirms that the stronger
+offline transfer result does not erase the native-environment or publication requirements.
