@@ -3416,6 +3416,20 @@ not merged into the frozen 42-entry publication gate catalog, so historical gate
 reproducible; the addendum is pinned to the same AgentWorldBench revision and explicitly sets
 `train_policy: eval_only` and `training_admission: false`.
 
+### AgentWorldBench held-out warm/random transfer (m617)
+
+The [m617 receipt](paper/results/raw/m617-agentworldbench-transfer-v1.json) evaluates the two
+matched m607 continuation children on the same 224 AgentWorldBench test rows without training on
+that benchmark. The warm child reaches `6.407%` teacher-forced assistant-token accuracy versus
+`0.184%` for the random-backbone control (`+6.223` points); exact sequence accuracy is `0%` for
+both. Warm wins every domain, with the largest gaps on MCP (`+8.758` points) and OS (`+9.094`
+points). This is a held-out transfer signal, not an official AgentWorldBench judge/native score.
+
+The paired m607 weight audit remains transfer-shaped: warm embedding/attention/FFN movement is
+`0.418%/0.152%/0.183%`, while random movement is `119.290%/77.882%/87.790%`; action heads stay
+frozen. The receipt therefore supports reusing the m585 body as an initialization candidate, but
+does not authorize WebGPU export or native benchmark promotion.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
