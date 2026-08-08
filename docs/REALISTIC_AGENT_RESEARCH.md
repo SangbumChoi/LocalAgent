@@ -3172,3 +3172,17 @@ not alter the desktop action prior when screenshots, accessibility trees, argume
 trajectory state are absent. Pointer exactness is only `1.80%`; keyboard, observation, scroll,
 type, and wait exactness are all `0%`. It is not a native desktop or visual-grounding score, and
 the source remains evaluation-only.
+
+### Matched AgentNet trajectory-projection control (m591)
+
+The [m591 receipt](paper/results/raw/m591-agentnet-m585-warm-parent-control-v1.json) evaluates
+the normalized public OpenCUA AgentNet holdout at revision `d76ee50…`: `16` held-out parent tasks
+and `257` action rows, with the source-parent-disjoint train projection retained only for lineage.
+The m553 parent and m585 warm child have identical prediction bytes and identical aggregate scores:
+`75%` first-action type rate, `0%` exact trajectories, `0.02326` mean total score, and `0%`
+task success.
+
+This is stronger than an instruction-only action-prior check because it includes the public text
+observation and multi-step projected action sequence, yet it still omits screenshots and native
+Ubuntu state. The result is a clean negative transfer control: the m585 teacher-forced gain does
+not translate into AgentNet trajectory behavior without visual grounding and a desktop runtime.

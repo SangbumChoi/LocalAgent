@@ -88,6 +88,13 @@ under the identical instruction-only evaluator. Both arms produce `1.56%` tool e
 checkpoint-bound desktop action-prior result, not AgentNetBench, OSWorld, visual grounding, or
 native desktop success; the image-backed and runtime gates remain open.
 
+The [m591 AgentNet control](paper/results/raw/m591-agentnet-m585-warm-parent-control-v1.json)
+adds the normalized public trajectory holdout: 16 parent tasks and 257 projected actions, matched
+between m553 and m585. Both arms have `0%` exact trajectories, `75%` first-action type accuracy,
+and byte-identical predictions. This is an evaluation-only text projection—not AgentNetBench,
+OSWorld, visual grounding, or native desktop success—and it confirms that the current weight
+transfer has not solved computer-use trajectory execution.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres
