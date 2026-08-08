@@ -3409,3 +3409,19 @@ projection over the public test rows, not the official AgentWorldBench judge, ac
 screenshot score, native Android/OS/browser/MCP execution, or a claim that the model was trained
 on the benchmark. The low exactness is an honest negative control: realistic environment coverage
 is now source-bound, but native execution and public artifact publication remain open gates.
+
+### ToolSandbox protocol audit (m613)
+
+The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
+[Apple ToolSandbox source](https://github.com/apple/ToolSandbox/tree/165848b9a78cead7ca7fe7c89c688b58e6501219)
+without copying its scenarios into training. The official CLI resolves all `1,032` generated
+scenarios when no scenario filter is supplied: `129` base scenarios plus seven tool/argument
+augmentation families. The source exposes categories such as state dependency (`192`), multiple
+user turns (`224`), canonicalization (`472`), and insufficient information (`224`), and its
+protocol requires a user simulator for the official conversational run.
+
+Crucially, this pinned repository does not publish a train/test split or a static leaderboard
+subset. Therefore `official_split_verified` remains false by design; the existing three-scenario
+native smoke is not promoted to an official score, and the evaluation gate retains an explicit
+protocol blocker rather than inventing a split. The audit is eval-only provenance and protocol
+evidence, not a model result or a user-simulator execution.

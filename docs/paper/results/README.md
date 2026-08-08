@@ -712,6 +712,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m610 route-abstention calibration](raw/m610-m585-route-abstention-calibration-v1.json) | Frozen m585 route-head warm/random calibration using public AndroidControl, Mind2Web, xLAM, and ToolACE projections plus explicit no-tool rows | Warm semantic routing 6/7 and +23.30 pp aggregate vs random, but click collapsed to `app_action`; warm head not adopted or exported |
 | [m611 semantic WebGPU guard](raw/m611-webgpu-semantic-guard-probe-v1.json) | Cache-busted browser rerun after a narrow lexical direct-answer guard | Definition request abstains as `text`; email confirmation and two-step Notion confirmation remain intact; zero side effects; public/official readiness remains false |
 | [m612 AgentWorldBench projection](raw/m612-m585-agentworldbench-text-projection-v1.json) | Pinned Qwen/AgentWorldBench test-only projection across Android, Web, OS, MCP, terminal, SWE, and search | 224 rows (32/domain); 6.257% teacher-forced token accuracy, 0% exact sequences; not an official judge/native score and never used for training |
+| [m613 ToolSandbox protocol audit](raw/m613-toolsandbox-protocol-audit-v1.json) | Pinned Apple ToolSandbox source/protocol audit | 1,032 generated scenarios (129 base × 8); no published train/test split; official user-simulator/native score remains unverified |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
