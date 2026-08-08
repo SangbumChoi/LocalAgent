@@ -87,6 +87,9 @@ On the repository's resettable in-memory trajectory suite, the same child reache
 actions and state transitions across Gmail, Notion, and browser flows (`3/3` trajectories pass@1).
 This strengthens the local deployment case but does not upgrade the result to real-account or
 official benchmark success.
+The candidate also passes the isolated RL preflight with two realized updates and nonzero policy
+movement; mean held-out reward rises `0.00→0.10625`, but exact tool match remains `0%`. This is RL
+simulation evidence only and is not a reason to promote the child to the public release.
 
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the

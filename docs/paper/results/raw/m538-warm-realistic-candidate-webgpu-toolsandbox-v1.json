@@ -11,9 +11,20 @@
     "training_rows": {"train": 58, "held_out": 29},
     "held_out_assistant_token_accuracy": 0.550303848750844
   },
+  "rl_preflight": {
+    "receipt": "docs/paper/results/raw/m539-warm-realistic-candidate-rl-preflight-v1.json",
+    "receipt_self_sha256": "15b56a07a0dc161699285a2174ac1c01e0a63755c92c59b157d5818efb5b2bce",
+    "status": "passed",
+    "realized_optimizer_updates": 2,
+    "mean_reward_before": 0.0,
+    "mean_reward_after": 0.10625000000000001,
+    "exact_match_after": 0.0,
+    "changed_model_parameter_count": 40,
+    "truncated_rollouts": 0
+  },
   "claim_boundary": "Warm-start realistic-source continuation candidate only. The candidate was trained on source-disjoint AndroidControl, AgentNet, Mind2Web, and redacted MCPMark projections, then checked with local WebGPU and a bounded pinned ToolSandbox smoke. No official leaderboard split, screenshot/desktop/mobile VM score, live email/Notion side effect, or public Hugging Face URL is implied.",
   "kind": "localagent_warm_realistic_candidate_webgpu_toolsandbox",
-  "receipt_self_sha256": "4d53e6a1274a396b997b0e597b77796915b504894ad40e97e3f86d4d51eb825c",
+  "receipt_self_sha256": "77635cccc93c57c621335a1eb31810925d845837f10d4131005af11940b54faf",
   "schema_version": 1,
   "trajectory": {
     "receipt_self_sha256": "c479a131ecd6791dfde62a977c264c995bead7f6406553055579818c61563703",

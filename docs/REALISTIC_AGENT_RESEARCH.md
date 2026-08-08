@@ -109,6 +109,10 @@ and packaging—not a workshop-ready public release.
 The same child also passes the resettable local WebGPU trajectory suite: `13/13` exact actions,
 `13/13` state transitions, and `3/3` complete Gmail, Notion, and browser trajectories at pass@1.
 Those are in-memory fixtures, not real accounts or official mobile/browser benchmarks.
+The candidate's [m539 RL preflight](paper/results/raw/m539-warm-realistic-candidate-rl-preflight-v1.json)
+also passes the one-update contract: two realized optimizer updates, nonzero learning rate,
+40 changed policy tensors, disjoint train/eval rows, and reward `0.00→0.10625`. Exact held-out
+tool match remains `0%`, so this validates RL plumbing and weight movement rather than capability.
 
 ## What the public benchmarks actually measure
 
