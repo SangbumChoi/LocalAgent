@@ -78,6 +78,12 @@ The [m533 reproducibility receipt](paper/results/raw/m533-mcpmark-acquisition-no
 re-runs that manifest through the normalizer and reproduces the exact train/eval output hashes
 used by the 64-step audit.
 
+The [m534 official-source audit](paper/results/raw/m534-official-realistic-source-integrity-audit-v1.json)
+rechecks the release contracts for AndroidWorld, BrowserGym, MCPMark, OSWorld, OSWorld-V2,
+ToolSandbox, and EnterpriseOps-Gym. It records current public URLs, pinned revisions where
+available, runtime requirements, and the explicit WebGPU claim boundary; it deliberately does not
+convert source documentation into benchmark scores.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |

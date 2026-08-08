@@ -61,6 +61,8 @@ surface-balanced 10/5 train/eval selection and every downloaded file hash; no ra
 archive is committed to the repository.
 The [m533 receipt](paper/results/raw/m533-mcpmark-acquisition-normalization-reproducibility-v1.json)
 binds those normalized bytes to the same acquisition manifest used by the transfer experiment.
+The dated [m534 source audit](paper/results/raw/m534-official-realistic-source-integrity-audit-v1.json)
+keeps the external benchmark contracts and release pins reviewable alongside the local receipts.
 
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
