@@ -3390,3 +3390,22 @@ acknowledgement prompts. A cache-busted browser rerun verified `What does epheme
 abstains as `text`, while email still requires confirmation and the two-step search→Notion plan
 still stops before the Notion write. This guard is policy, not learned semantic competence; no
 public HF upload, native benchmark, account, MCP service, or external side effect ran.
+
+### AgentWorldBench public world-model projection (m612)
+
+The [AgentWorldBench dataset](https://huggingface.co/datasets/Qwen/AgentWorldBench) and its
+[Qwen-AgentWorld source](https://github.com/QwenLM/Qwen-AgentWorld) add a distinct public
+realistic-evaluation surface: Android, Web, OS, MCP, terminal, SWE, and search trajectories.
+The official test release contains 2,170 reference-grounded turns and reports format, factuality,
+consistency, realism, and quality through its own judge; it is test-only here and is never a
+training input. At pinned revision `6b8d28437042434dcdd168434227ca0de408c5ba`, the adapter selects
+32 rows per domain (224 total), preserves each prior prompt/response pair as context, and binds
+the normalized JSONL to its source-file SHA-256 values in the [m612 receipt](paper/results/raw/m612-m585-agentworldbench-text-projection-v1.json).
+
+On the current m585 checkpoint, the bounded projection obtains `6.257%` assistant-token accuracy,
+`7.2024` mean loss, and `0%` exact sequences overall; per-domain token accuracy ranges from
+`4.475%` (search) to `9.424%` (OS). These numbers are a teacher-forced text/world-model
+projection over the public test rows, not the official AgentWorldBench judge, action success,
+screenshot score, native Android/OS/browser/MCP execution, or a claim that the model was trained
+on the benchmark. The low exactness is an honest negative control: realistic environment coverage
+is now source-bound, but native execution and public artifact publication remain open gates.
