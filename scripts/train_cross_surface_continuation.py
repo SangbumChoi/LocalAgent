@@ -21,6 +21,10 @@ import torch
 from localagent.data.schema import Conversation
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.train.sft import _evaluate_conversations, sft
+from localagent.train.stage_data import (
+    build_continuation_lineage,
+    tokenizer_identity,
+)
 from scripts.analyze_weight_transfer import analyze as analyze_weight_transfer
 from scripts.train_public_agent_continuation import (
     _assert_disjoint,
@@ -266,6 +270,13 @@ def main() -> int:
     if args.backbone_init == "parent":
         model.load_state_dict(parent["state_dict"])
     tokenizer = _checkpoint_tokenizer(parent)
+    tokenizer_meta = parent.get("tokenizer") or {"kind": "byte"}
+    tokenizer_path = tokenizer_meta.get("path")
+    tokenizer_lineage = tokenizer_identity(
+        tokenizer_meta.get("kind", "byte"),
+        vocab_size=config.vocab_size,
+        path=tokenizer_path if tokenizer_path is not None else None,
+    )
 
     before_all = _evaluate_conversations(
         model, train_rows, tokenizer, max_seq_len=args.max_seq_len, batch_size=args.batch_size, device=args.device
@@ -307,20 +318,50 @@ def main() -> int:
         eval_groups, model, tokenizer, max_seq_len=args.max_seq_len, batch_size=args.batch_size, device=args.device
     )
 
+    train_source_profiles = [
+        _source_profile(label, path, rows, references[label])
+        for label, path, rows in train_groups
+    ]
+    eval_source_profiles = [
+        _source_profile(label, path, rows, references[label])
+        for label, path, rows in eval_groups
+    ]
+    lineage = build_continuation_lineage(
+        parent=parent,
+        parent_checkpoint_sha256=parent_identity["sha256"],
+        config={
+            "stage": "sft_cross_surface_public_continuation",
+            "backbone_init": args.backbone_init,
+            "random_backbone_seed": args.random_backbone_seed,
+            "steps": args.steps,
+            "batch_size": args.batch_size,
+            "learning_rate": args.lr,
+            "max_seq_len": args.max_seq_len,
+            "seed": 2027,
+        },
+        model_config=config.__dict__,
+        data_identity={
+            "train_sources": train_source_profiles,
+            "eval_sources": eval_source_profiles,
+            "rows": {"train": len(train_rows), "eval": len(eval_rows)},
+        },
+        tokenizer=tokenizer_lineage,
+        workspace=Path(__file__).resolve(),
+    )
+
     child = dict(parent)
     child.update(
         {
             "state_dict": model.state_dict(),
             "stage": "sft_cross_surface_public_continuation",
             "parent_checkpoint_sha256": parent_identity["sha256"],
+            "lineage": lineage,
             "cross_surface_training": {
                 "train_sources": [
-                    _source_profile(label, path, rows, references[label])
-                    for label, path, rows in train_groups
+                    *train_source_profiles,
                 ],
                 "eval_sources": [
-                    _source_profile(label, path, rows, references[label])
-                    for label, path, rows in eval_groups
+                    *eval_source_profiles,
                 ],
                 "steps": args.steps,
                 "batch_size": args.batch_size,

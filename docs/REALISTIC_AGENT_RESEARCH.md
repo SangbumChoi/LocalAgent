@@ -2967,3 +2967,31 @@ iOS apps and 133 persistent-identity tasks; MobileSafetyBench requires Android e
 Appium; and the official EnterpriseOps-Gym card exposes 649 oracle rows across eight domains and
 512 tools.  These source facts reinforce the catalog’s training/evaluation boundary: they are
 native-runtime or verifier-backed evaluations, not static SFT text to ingest by default.
+
+### Current checkpoint lineage, transfer, and native-device audit (m552–m570)
+
+The fresh continuation chain is now metadata-preserving: verified m540 RL → grounded m552 SFT →
+multisurface m553 SFT, with exact tokenizer, parent-checkpoint, and public train/eval hashes in
+the [lineage receipt](paper/results/raw/m563-m553-lineage-training-v1.json). Legacy checkpoints
+without lineage are rejected rather than repaired. The matched warm/random [transfer ablation]
+(paper/results/raw/m565-m553-transfer-ablation-v1.json) binds to m553 and reports a +62.13-point
+teacher-forced token-accuracy advantage for warm initialization across AndroidControl and AgentNet;
+this is transfer evidence, not native task success.
+
+The strict [RL preflight](paper/results/raw/m564-m553-stateful-rl-preflight-v1.json) now passes its
+gate-visible lineage contract and performs two real optimizer updates, while remaining a local
+simulation with zero exact-success rollouts. On a real Apple WebGPU page, the m553 export reaches
+1,311.5 tokens/s p50, 7.4 ms latency p50, and 20.5 MB peak memory for structured probes; no email,
+browser, or Notion side effect ran ([receipt](paper/results/raw/m566-m553-webgpu-capability-v1.json)).
+
+The complete pinned native splits are also recorded: MobileGym 1/256 and BrowserGym/MiniWoB 5/240,
+both with zero runtime errors and no coordinate/semantic fallback ([MobileGym](paper/results/raw/m567-m553-mobilegym-native-full-v1.json),
+[BrowserGym](paper/results/raw/m568-m553-browsergym-native-full-v1.json)). They are deliberately
+reported as negative controls, not broad computer-use capability claims.
+
+The current [m570 workshop gate](paper/results/raw/m570-workshop-gate-current-m553-v1.json) passes
+catalog coverage, MobileGym, BrowserGym/MiniWoB, WebGPU capability, transfer, and RL preflight.
+It remains `ready: false`: nine additional native benchmark receipts (AndroidWorld,
+MobileSafetyBench, iOSWorld, OSWorld/OSWorld 2.0, AgentNet, ToolSandbox, MCPMark, and
+EnterpriseOps-Gym) and a public Hugging Face model/demo manifest are still missing. No public URL,
+leaderboard score, or workshop-ready claim is made until those blockers are resolved.

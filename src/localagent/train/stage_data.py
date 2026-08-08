@@ -284,6 +284,51 @@ def build_stage_lineage(
     return lineage
 
 
+def build_continuation_lineage(
+    *,
+    parent: Mapping[str, Any],
+    parent_checkpoint_sha256: str,
+    config: Mapping[str, Any],
+    model_config: Mapping[str, Any],
+    data_identity: Mapping[str, Any],
+    tokenizer: Mapping[str, Any],
+    workspace: str | Path,
+) -> dict[str, Any]:
+    """Build a strict SFT lineage for a bounded continuation script.
+
+    Diagnostic continuation scripts historically copied checkpoint dictionaries and silently
+    dropped (or stale-copied) lineage.  A continuation is only safe for a later strict RL stage
+    when its parent already has v1 lineage and the tokenizer identity agrees with the new child.
+    This helper makes that boundary explicit: it never repairs or invents metadata for a legacy
+    parent, and it hashes the exact parent bytes supplied by the caller.
+    """
+
+    recorded = parent.get("lineage")
+    if not isinstance(recorded, Mapping):
+        raise TypeError("continuation parent checkpoint has no lineage metadata")
+    if recorded.get("version") != LINEAGE_VERSION:
+        raise ValueError(
+            "continuation parent checkpoint has unsupported lineage version: "
+            f"{recorded.get('version')!r}"
+        )
+    expected_tokenizer = checkpoint_tokenizer_sha256(parent)
+    actual_tokenizer = tokenizer.get("sha256")
+    if actual_tokenizer != expected_tokenizer:
+        raise ValueError(
+            "continuation tokenizer identity disagrees with parent lineage: "
+            f"parent={expected_tokenizer!r}, child={actual_tokenizer!r}"
+        )
+    return build_stage_lineage(
+        stage="sft",
+        config=config,
+        model_config=model_config,
+        data_identity=data_identity,
+        tokenizer=tokenizer,
+        workspace=workspace,
+        parent_checkpoint_sha256=parent_checkpoint_sha256,
+    )
+
+
 def assert_resume_lineage(checkpoint: Mapping[str, Any], expected: Mapping[str, Any]) -> None:
     """Fail closed when a resume checkpoint cannot prove the same training lineage."""
 

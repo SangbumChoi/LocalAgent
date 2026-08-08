@@ -27,7 +27,11 @@ from localagent.data.schema import Conversation
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.model.tokenizer import load_tokenizer
 from localagent.train.sft import _evaluate_conversations, sft
-from localagent.train.stage_data import probe_decisions
+from localagent.train.stage_data import (
+    build_continuation_lineage,
+    probe_decisions,
+    tokenizer_identity,
+)
 
 
 def _identity(path: Path) -> dict[str, Any]:
@@ -211,6 +215,13 @@ def main() -> int:
     model = LocalAgentLM(config)
     model.load_state_dict(parent["state_dict"])
     tokenizer = _checkpoint_tokenizer(parent)
+    tokenizer_meta = parent.get("tokenizer") or {"kind": "byte"}
+    tokenizer_path = tokenizer_meta.get("path")
+    tokenizer_lineage = tokenizer_identity(
+        tokenizer_meta.get("kind", "byte"),
+        vocab_size=config.vocab_size,
+        path=tokenizer_path if tokenizer_path is not None else None,
+    )
     selector_tools = STANDARD_TOOLS if args.selector_pool == "standard" else REALISTIC_BROWSER_TOOLS
     route, selector = _load_heads(
         parent,
@@ -278,6 +289,36 @@ def main() -> int:
         )
     heads_after = _head_metrics(model, tokenizer, route, selector, eval_rows)
 
+    lineage = build_continuation_lineage(
+        parent=parent,
+        parent_checkpoint_sha256=parent_identity["sha256"],
+        config={
+            "stage": "sft_public_agent_continuation",
+            "source_dataset": args.source_dataset,
+            "source_revision": args.source_revision,
+            "steps": args.steps,
+            "head_steps": args.head_steps,
+            "head_init": args.head_init,
+            "selector_pool": args.selector_pool,
+            "batch_size": args.batch_size,
+            "learning_rate": args.lr,
+            "max_seq_len": args.max_seq_len,
+            "seed": 2027,
+        },
+        model_config=config.__dict__,
+        data_identity={
+            "train_inputs": [_identity(path) for path in args.data],
+            "eval_inputs": [_identity(path) for path in args.eval_data],
+            "source_manifest": (
+                _identity(args.source_manifest) if args.source_manifest else None
+            ),
+            "train_rows": len(train_rows),
+            "eval_rows": len(eval_rows),
+        },
+        tokenizer=tokenizer_lineage,
+        workspace=Path(__file__).resolve(),
+    )
+
     child = dict(parent)
     child.update(
         {
@@ -286,6 +327,7 @@ def main() -> int:
             "dense_selector": selector.model.state_dict(),
             "stage": "sft_public_agent_continuation",
             "parent_checkpoint_sha256": parent_identity["sha256"],
+            "lineage": lineage,
             "steps": args.steps,
             "public_agent_training": {
                 "dataset": args.source_dataset,

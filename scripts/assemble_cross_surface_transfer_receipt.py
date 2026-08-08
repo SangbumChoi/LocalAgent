@@ -78,18 +78,25 @@ def assemble(*, warm_path: Path, random_path: Path, comparison_path: Path, outpu
     if comparison.get("random_backbone_receipt") != random.get("child"):
         raise ValueError("comparison is not bound to the random child")
 
+    source_labels = [source["label"] for source in warm["train_sources"]]
+    aggregate = comparison["aggregate"]
+    warm_after = float(aggregate["warm_after_token_accuracy"])
+    random_after = float(aggregate["random_after_token_accuracy"])
+    warm_groups = warm["weight_transfer"]["groups"]
     body: dict[str, Any] = {
-        "kind": "localagent_four_source_public_transfer_receipt",
+        "kind": "localagent_cross_surface_public_transfer_receipt",
         "schema_version": 1,
         "experiment": {
-            "id": "four_source_public_continuation_128token_v1",
-            "surfaces": ["androidcontrol", "aitw", "mind2web", "xlam"],
+            "id": "cross_surface_public_continuation_v1",
+            "surfaces": source_labels,
             "protocol": (
-                "Matched 16-step continuation from the deployed BPE parent and a shape-matched "
+                f"Matched {warm['hyperparameters']['steps']}-step continuation from the deployed "
+                "BPE parent and a shape-matched "
                 "random-backbone control. Source-local parent/slot disjointness is enforced; "
-                "evaluation is teacher-forced assistant-token accuracy at max_seq_len=128."
+                f"evaluation is teacher-forced assistant-token accuracy at "
+                f"max_seq_len={warm['hyperparameters']['max_seq_len']}."
             ),
-            "environment": {"device": "cpu", "omp_num_threads": 1, "mkl_num_threads": 1},
+            "environment": {"device": warm["hyperparameters"]["device"]},
         },
         "parent": warm["parent"],
         # Keep an explicit alias for the fail-closed publication gate, which expects the
@@ -128,22 +135,24 @@ def assemble(*, warm_path: Path, random_path: Path, comparison_path: Path, outpu
         },
         "interpretation": {
             "result": (
-                "The parent-initialized arm beats the matched random-backbone control on all four "
-                "source projections after 16 updates, with aggregate teacher-forced token accuracy "
-                "of 57.05% versus 0.76% (+56.29 percentage points)."
+                f"The parent-initialized arm reaches {warm_after:.4%} versus "
+                f"{random_after:.4%} for the matched random-backbone control after "
+                f"{warm['hyperparameters']['steps']} updates "
+                f"({float(aggregate['warm_minus_random_after_pp']):+.2f} percentage points)."
             ),
             "weight_transfer": (
-                "The warm child moves the shared embedding, attention/mixer, and FFN groups by "
-                "0.202%, 0.115%, and 0.139% relative L2 respectively; normalization moves 0.006% "
-                "and action heads remain unchanged. This supports compatibility and a lower-rate "
+                "The warm child moves shared groups by "
+                f"embedding {float(warm_groups['embedding']['relative_delta_l2']):.3%}, "
+                f"attention/mixer {float(warm_groups['attention_or_mixer']['relative_delta_l2']):.3%}, "
+                f"FFN {float(warm_groups['ffn']['relative_delta_l2']):.3%}, and "
+                f"normalization {float(warm_groups['normalization']['relative_delta_l2']):.3%}; "
+                "action heads remain unchanged. This supports compatibility and a lower-rate "
                 "backbone/high-rate-head recipe, not optimality."
             ),
         },
         "claim_boundary": (
-            "Diagnostic public-train-only text/accessibility continuation across mobile, browser, "
-            "and function-calling projections. AndroidControl is a screenshot-omitted mirror; "
-            "AITW uses a tiny local train holdout; Mind2Web is a grounded DOM projection; xLAM is "
-            "a derivative function-calling projection. No official benchmark score, native Android, "
+            "Diagnostic public-train-only text/accessibility continuation across "
+            f"{', '.join(source_labels)} projections. No official benchmark score, native Android, "
             "BrowserGym, desktop VM, screenshot grounding, MCP server, real email/Notion side effect, "
             "or external-account claim is made."
         ),

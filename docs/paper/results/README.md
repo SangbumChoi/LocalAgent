@@ -666,6 +666,18 @@ entire prefix for every output token and report `decode_cache: false` with
 
 ## Integrity and training status
 
+### Current m553 evidence chain (m563–m570)
+
+| Receipt | Scope | Result |
+|---|---|---|
+| [m563 lineage training](raw/m563-m553-lineage-training-v1.json) | m540 RL → m552 grounded → m553 multisurface | Exact lineage and dataset hashes; teacher-forced only |
+| [m564 RL preflight](raw/m564-m553-stateful-rl-preflight-v1.json) | Stateful local optimizer transition | Passed; 2 updates, zero exact-success rollouts |
+| [m565 transfer](raw/m565-m553-transfer-ablation-v1.json) | Warm vs matched random, AndroidControl + AgentNet | Warm +62.13 pp token accuracy |
+| [m566 WebGPU](raw/m566-m553-webgpu-capability-v1.json) | Apple WebGPU structured probes | 1,311.5 tok/s p50; 3/3 exact; no side effects |
+| [m567 MobileGym](raw/m567-m553-mobilegym-native-full-v1.json) | Official 256-task native split | 1/256; negative control |
+| [m568 BrowserGym](raw/m568-m553-browsergym-native-full-v1.json) | Official 240-task MiniWoB split | 5/240; negative control |
+| [m570 workshop gate](raw/m570-workshop-gate-current-m553-v1.json) | Current publication checklist | `ready: false`; nine native receipts + public manifest missing |
+
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
 independently verify those declarations and calculations.

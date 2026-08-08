@@ -22,6 +22,10 @@ from localagent.data.schema import Conversation, Role
 from localagent.model import LocalAgentLM, ModelConfig
 from localagent.model.tokenizer import ASSISTANT, USER, load_tokenizer
 from localagent.train.sft import sft
+from localagent.train.stage_data import (
+    build_continuation_lineage,
+    tokenizer_identity,
+)
 
 
 def _identity(path: Path) -> dict[str, Any]:
@@ -211,6 +215,13 @@ def main() -> int:
     train_samples = _head_samples(train_rows)
     eval_samples = _head_samples(eval_rows)
     pointer_args = _pointer_args(parent)
+    parent_identity = _identity(args.init)
+    tokenizer_path = tokenizer_meta.get("path")
+    tokenizer_lineage = tokenizer_identity(
+        tokenizer_meta.get("kind", "byte"),
+        vocab_size=cfg.vocab_size,
+        path=tokenizer_path if tokenizer_path is not None else None,
+    )
     # Preserve stateful/productivity rows from current parents and add browser target/value rows.
     warm_ptr = PointerHead(cfg.d_model, args=pointer_args)
     warm_ptr.load_state_dict(_warm_pointer(parent, cfg.d_model, pointer_args))
@@ -236,6 +247,30 @@ def main() -> int:
     )
     assert tool_head is not None and ptr_head is not None
     after = _pointer_metrics(model, ptr_head, tokenizer, eval_samples)
+    lineage = build_continuation_lineage(
+        parent=parent,
+        parent_checkpoint_sha256=parent_identity["sha256"],
+        config={
+            "stage": "sft_grounded_mind2web",
+            "steps": args.steps,
+            "batch_size": args.batch_size,
+            "learning_rate": args.lr,
+            "device": args.device,
+            "max_seq_len": min(1024, cfg.max_seq_len),
+            "pointer_args": pointer_args,
+        },
+        model_config=cfg.__dict__,
+        data_identity={
+            "train_inputs": [_identity(path) for path in args.train],
+            "eval_inputs": [_identity(path) for path in args.eval],
+            "train_conversations": len(train_rows),
+            "eval_conversations": len(eval_rows),
+            "train_decisions": len(train_samples),
+            "eval_decisions": len(eval_samples),
+        },
+        tokenizer=tokenizer_lineage,
+        workspace=Path(__file__).resolve(),
+    )
     child = {
         "cfg": cfg.__dict__,
         "state_dict": model.state_dict(),
@@ -250,7 +285,8 @@ def main() -> int:
         "stage": "sft_grounded_mind2web",
         "step": args.steps,
         "data": {"train": [_identity(path) for path in args.train], "eval": [_identity(path) for path in args.eval]},
-        "parent_checkpoint_sha256": _identity(args.init)["sha256"],
+        "parent_checkpoint_sha256": parent_identity["sha256"],
+        "lineage": lineage,
         "training_metrics": metrics,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

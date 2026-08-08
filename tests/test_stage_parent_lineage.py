@@ -10,6 +10,7 @@ from localagent.model import LocalAgentLM, ModelConfig
 from localagent.train import stage_data
 from localagent.train.stage_data import (
     LINEAGE_VERSION,
+    build_continuation_lineage,
     build_stage_lineage,
     load_stage_parent_checkpoint,
     tokenizer_identity,
@@ -131,6 +132,45 @@ def test_rl_parent_loader_accepts_specialized_sft_stage_with_sft_lineage(tmp_pat
         expected_tokenizer_sha256=tokenizer_sha256,
     )
     assert checkpoint["stage"] == "sft_browser_context"
+
+
+def test_continuation_lineage_requires_valid_parent_and_hashes_child_contract() -> None:
+    cfg = _config()
+    tokenizer_sha256 = _tokenizer_sha256()
+    parent = _checkpoint(
+        cfg,
+        stage="rl",
+        lineage_stage="rl",
+        lineage_tokenizer_sha256=tokenizer_sha256,
+        tokenizer_sha256=tokenizer_sha256,
+    )
+    lineage = build_continuation_lineage(
+        parent=parent,
+        parent_checkpoint_sha256="a" * 64,
+        config={"stage": "sft_public_agent_continuation", "steps": 2},
+        model_config=cfg.__dict__,
+        data_identity={"train": {"sha256": "b" * 64}},
+        tokenizer={"kind": "byte", "sha256": tokenizer_sha256},
+        workspace=Path(__file__).resolve(),
+    )
+
+    assert lineage["stage"] == "sft"
+    assert lineage["parent_checkpoint_sha256"] == "a" * 64
+    assert lineage["tokenizer_sha256"] == tokenizer_sha256
+
+
+def test_continuation_lineage_rejects_legacy_parent() -> None:
+    cfg = _config()
+    with pytest.raises(TypeError, match="no lineage metadata"):
+        build_continuation_lineage(
+            parent={"cfg": cfg.__dict__},
+            parent_checkpoint_sha256="a" * 64,
+            config={"stage": "sft_public_agent_continuation"},
+            model_config=cfg.__dict__,
+            data_identity={},
+            tokenizer={"kind": "byte", "sha256": _tokenizer_sha256()},
+            workspace=Path(__file__).resolve(),
+        )
 
 
 @pytest.mark.parametrize(
