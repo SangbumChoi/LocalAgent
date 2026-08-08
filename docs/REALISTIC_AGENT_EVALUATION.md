@@ -45,6 +45,14 @@ not a native benchmark or live-account claim. The [m528 gate](paper/results/raw/
 passes the weight ablation and WebGPU checks but remains `ready=false` until the required native
 mobile, browser, desktop, stateful-tool, RL, and public-artifact evidence is complete.
 
+The stronger [m530 transfer receipt](paper/results/raw/m530-realistic-cross-surface-warm-random-64step-comparison-v1.json)
+extends the same source-disjoint protocol to 58 train and 29 held-out rows. Warm-start accuracy is
+`55.03%` versus `24.58%` for random, with warm ahead on AndroidControl, AgentNet, Mind2Web, and
+MCPMark; exact sequence accuracy is still `0%`. This is the best current representation-transfer
+evidence, but it remains text/accessibility-only and cannot substitute for native computer-use or
+live email/Notion verification. The [m531 gate](paper/results/raw/m531-workshop-gate-current-m530-v1.json)
+binds it and correctly passes both official BrowserGym/MiniWoB and MobileGym receipt checks.
+
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
 live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG

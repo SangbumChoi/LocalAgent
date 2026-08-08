@@ -54,6 +54,18 @@ The [m528 gate](paper/results/raw/m528-workshop-gate-current-m526-v1.json) recor
 ablation as a pass, while the overall publication gate remains fail-closed for missing native
 benchmark receipts and authenticated public artifacts.
 
+The corrected [m529 gate](paper/results/raw/m529-workshop-gate-current-m526-corrected-v1.json)
+also binds the official 240-episode BrowserGym/MiniWoB receipt under its canonical benchmark ID;
+the earlier gate had supplied the same receipt under a shorthand alias. The larger [m530 transfer
+audit](paper/results/raw/m530-realistic-cross-surface-warm-random-64step-comparison-v1.json)
+uses 58 public training rows and 29 source-disjoint held-out rows across the four surfaces. Warm
+initialization reaches `55.03%` held-out assistant-token accuracy versus `24.58%` for the matched
+random arm, and leads on every surface: AndroidControl `66.82%`, AgentNet `63.32%`, Mind2Web
+`77.14%`, and MCPMark `24.85%`. Exact sequence accuracy remains `0%`; shared-body movement is
+`0.80%` or less for warm versus `119.7%` for random. The [m531 gate](paper/results/raw/m531-workshop-gate-current-m530-v1.json)
+binds this stronger ablation but remains fail-closed for the same missing native surfaces and
+public Hub manifest.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |
