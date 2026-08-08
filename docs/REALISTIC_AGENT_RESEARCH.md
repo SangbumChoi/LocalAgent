@@ -99,6 +99,17 @@ bound, and the WebGPU bundle identity is `ff0259b3f86c08de56533a32bd3db61783a807
 This closes local packaging reproducibility, but publication remains intentionally false until a
 maintainer supplies HF write authentication and the anonymous post-upload checkpoint audit passes.
 
+The [m538 warm candidate audit](paper/results/raw/m538-warm-realistic-candidate-webgpu-toolsandbox-v1.json)
+keeps the stronger 64-step warm continuation as a deployable candidate rather than silently
+promoting it: its source-disjoint held-out assistant-token accuracy is `55.03%`, the regenerated
+WebGPU action graph reaches `3/3` exact local probes at `1,311.5` input tok/s p50 on Apple Metal-3,
+and the pinned ToolSandbox smoke reaches `3/3` milestone matches. The candidate still has zero
+closed-loop side effects by design and no official ToolSandbox split, so it is evidence for transfer
+and packaging—not a workshop-ready public release.
+The same child also passes the resettable local WebGPU trajectory suite: `13/13` exact actions,
+`13/13` state transitions, and `3/3` complete Gmail, Notion, and browser trajectories at pass@1.
+Those are in-memory fixtures, not real accounts or official mobile/browser benchmarks.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |

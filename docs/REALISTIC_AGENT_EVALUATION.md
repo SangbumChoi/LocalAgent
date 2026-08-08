@@ -77,6 +77,17 @@ directory. The hard ONNX/PyTorch parity gate passes for logits, hidden, and acti
 dispatch tools. No upload or public URL is claimed: HF authentication and the anonymous post-upload
 current-checkpoint audit are still required.
 
+The [m538 candidate audit](paper/results/raw/m538-warm-realistic-candidate-webgpu-toolsandbox-v1.json)
+binds the warm realistic continuation child to both deployment and native-runtime smoke evidence.
+It preserves the source-disjoint `55.03%` held-out token result, passes all three local WebGPU
+structured probes at `1,311.5` p50 input tok/s, and passes three bounded ToolSandbox milestone
+checks. This child is not promoted to the current release because the ToolSandbox official split,
+live-account side effects, and public Hub upload remain unverified.
+On the repository's resettable in-memory trajectory suite, the same child reaches `13/13` exact
+actions and state transitions across Gmail, Notion, and browser flows (`3/3` trajectories pass@1).
+This strengthens the local deployment case but does not upgrade the result to real-account or
+official benchmark success.
+
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
 live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG
