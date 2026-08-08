@@ -120,6 +120,10 @@ heads and cannot be exported to WebGPU (`KeyError: 'tool_head'`). The head-prese
 the five frozen deployment heads from the SFT parent, keeps body movement below `0.05%` relative
 L2, exports successfully, and retains `13/13` local trajectory actions plus `3/3` WebGPU probes.
 The raw child is rejected; only the head-preserved child remains a candidate.
+The [m541 BrowserGym canary](paper/results/raw/m541-head-preserved-rl-browsergym-canary-v1.json)
+then executes the pinned BrowserGym `0.14.3`/MiniWoB runtime without coordinate or semantic
+fallbacks. All 16 bounded episodes fail (`0/16`), exposing the remaining accessibility grounding
+gap; because 224 planned episodes were not run, this is deliberately not an official split score.
 
 ## What the public benchmarks actually measure
 

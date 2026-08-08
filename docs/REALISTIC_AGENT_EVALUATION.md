@@ -96,6 +96,9 @@ also tests exportability. Raw RL output is intentionally non-deployable because 
 heads are invalidated; preserving the five frozen deployment-head groups restores WebGPU export,
 without changing action-head weights. The resulting child still passes the bounded local suite,
 but remains a candidate rather than a public release.
+The pinned BrowserGym runtime also executes cleanly for a 16-episode canary, but success is `0/16`
+with both grounding fallbacks disabled. The canary is diagnostic only; the 240-episode official
+split remains unfulfilled for this child.
 
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the

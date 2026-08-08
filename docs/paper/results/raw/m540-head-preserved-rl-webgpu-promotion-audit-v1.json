@@ -17,6 +17,13 @@
     }
   },
   "kind": "localagent_head_preserved_rl_webgpu_promotion_audit",
+  "browsergym_canary": {
+    "receipt": "docs/paper/results/raw/m541-head-preserved-rl-browsergym-canary-v1.json",
+    "receipt_self_sha256": "5849e707a078b5a4e48aa175627608315dba3ab6ea7b9dc2ef7a74769e7f6cce",
+    "episodes": 16,
+    "success_rate": 0.0,
+    "official_split_verified": false
+  },
   "local_trajectory": {
     "receipt_self_sha256": "efa043092c672862dbeba49f8fb3fbbca3fa264bcc74a449b978c620bd3a0fbc",
     "trajectories": 3,
@@ -42,7 +49,7 @@
       "action_heads": 0.0
     }
   },
-  "receipt_self_sha256": "5624ddfd693ec1810a09d6c34a244d8688be53a9a1a3d6c551409a12ed8a2e3b",
+  "receipt_self_sha256": "4df58f1296b2b63a2cd7e1a32d0496077b5547f2fe7d2d327c63b9a5d237ed51",
   "schema_version": 1,
   "webgpu": {
     "receipt_self_sha256": "72357686bd43b295fe7d2d4c4f0d970733d8c7e7d5824075ac92e68833762f79",
