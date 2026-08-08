@@ -141,6 +141,23 @@ BrowserGym remains `4/16` on the same diagnostic, so this is evidence that DOM g
 right training interface—not evidence of general browser competence. The child is rejected for
 promotion until multi-step task families and a complete official evaluation are available.
 
+The [m545 long continuation](paper/results/raw/m545-grounded-mind2web-128step-transfer-v1.json)
+repeats the same source-disjoint DOM protocol for 128 updates. Held-out exact pointer spans rise
+to `80/186` (`43.01%`) and WebGPU parity remains exact, but the native diagnostic stays at `4/16`
+(`4/124` grounded steps), with no success outside `miniwob.click-button`. This is a useful
+weight-transfer result—the backbone moves only `0.76%` in embedding L2 and `0.42%` in attention/
+mixer L2—but it is also a decisive transfer boundary: offline DOM copying has not yet become
+multi-step browser competence, so this child is not promoted.
+
+The [m546 multi-surface continuation](paper/results/raw/m546-multisurface-public-transfer-webgpu-v1.json)
+then continues that parent on source-disjoint AndroidControl and AgentNet projections. Held-out
+assistant-token accuracy improves `58.72%→69.27%`, route accuracy is `100%`, selector top-1 is
+`70.04%`, and all 51 tensors remain shape-compatible; embedding/attention movement is only
+`0.435%/0.186%`. The exact 10.52M child exports with all four ONNX parity graphs and a native
+Apple Metal-3 WebGPU probe at `1,290` input tokens/s p50, `7.45 ms` p50, and `20.46 MB`
+conservative memory. These are teacher-forced and local-dispatch measurements: sequence exactness
+is `0%`, no external side effect ran, and native Android/desktop replay is still required.
+
 ### Current publication audit (2026-08-09)
 
 The fail-closed gate was rerun against the strongest current evidence: the full 256-task MobileGym
