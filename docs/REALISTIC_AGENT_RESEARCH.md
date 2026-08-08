@@ -3490,6 +3490,22 @@ train/test split. The [m621 receipt](paper/results/raw/m621-clawbench-source-aud
 therefore provenance and protocol evidence only—no live site, credential, judge, or irreversible
 request was executed, and no ClawBench score is claimed.
 
+### MCP-Persona personalized MCP source audit (m622)
+
+The [MCP-Persona repository](https://github.com/wwh0411/MCP-Persona) and [paper](https://arxiv.org/abs/2606.02470)
+cover the requested personalized-tool setting directly: email, Notion-like content, Lark
+calendar/collaboration, Slack, Obsidian, Reddit, Instagram, and Xiaohongshu. The pinned public
+revision contains `173` English tasks and a matching `173` Chinese translation, `139` unique tools,
+`18` task-chain server prefixes, and chains up to `18` calls. Its ground-truth records contain `118`
+personalized-search checkpoints and `222` operate checkpoints; `24` tasks have no `gt` checkpoint.
+
+The audit found that the English and Chinese releases are duplicate language views, not a train/test
+split. The repository also ships static simulator directories for only `8` of the `18` chain-server
+prefixes, and its README carries an MIT badge but the pinned checkout has no root `LICENSE` file.
+Consequently the [m622 receipt](paper/results/raw/m622-mcp-persona-source-audit-v1.json) records
+MCP-Persona as `eval_only` provenance. No task, persona context, ground-truth checkpoint, or
+simulator state was admitted to WebGPU training, and no native MCP-Persona score is claimed.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
