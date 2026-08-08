@@ -57,6 +57,15 @@ to a parity-verified WebGPU bundle: `3/3` structured probes, `1,367.5` tok/s p50
 and `13/13` local email/Notion/browser state transitions. These are text/accessibility and
 resettable local-fixture results, not official native benchmark or real-account scores.
 
+The [m586 BrowserGym receipt](paper/results/raw/m586-browsergym-m585-warm-full-v1.json) now binds
+that warm child to a fresh native run over the verified official 240-task MiniWoB plan. It passes
+`5/240` tasks (`2.08%`) with `219` grounded steps and zero action errors; four successes are
+`miniwob.click-button` and one is `miniwob.sign-agreement`. The runner used accessibility-tree text
+only, with no coordinate or semantic fallback and no external side effects. The `1,960`
+noop/ungrounded steps and absent visual grounding keep this diagnostic rather than a general
+browser/computer-use result, and the AndroidWorld, iOS, desktop, official stateful-tool, and
+authenticated-Hub gates remain open.
+
 The latest public continuation [m526 comparison](paper/results/raw/m526-realistic-cross-surface-warm-random-8step-comparison-v1.json)
 uses reacquired AndroidControl, OpenCUA-AgentNet, Mind2Web-train, and redacted MCPMark
 trajectory-log slices. MCPMark contributes filesystem, Notion, GitHub, Playwright, and Postgres

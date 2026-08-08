@@ -689,6 +689,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m583 stateful head-transfer bridge](raw/m583-stateful-head-transfer-toolsandbox-v1.json) | Local state-machine head fitting bridged to native ToolSandbox | Selector top-1 improves, but local completion and native multi-turn stress do not |
 | [m584 public-source snapshot audit](raw/m584-public-dataset-snapshot-audit-v1.json) | Eight current public Hub revisions with original links and train/eval policy | Metadata-only; four train projections, four evaluation/provenance-only |
 | [m585 public multisurface transfer](raw/m585-public-multisurface-transfer-webgpu-v1.json) | 202 public train rows across mobile/browser/desktop/tool projections with warm/random control and WebGPU bridge | Warm +21.65 pp held-out token accuracy; 3/3 WebGPU actions at 1,367.5 tok/s p50; 13/13 local state transitions |
+| [m586 BrowserGym continuation](raw/m586-browsergym-m585-warm-full-v1.json) | Pinned BrowserGym/MiniWoB official 240-task plan on the warm m585 child | 5/240 (2.08%); 219 grounded steps; 0 action errors; accessibility-tree text only |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

@@ -3114,3 +3114,17 @@ dispatch reaches `3/3` structured actions at `1,367.5` input tok/s p50, `7.4 ms`
 `20.5 MB` conservative peak memory. The resettable local Gmail/Notion/browser state machine also
 passes `13/13` transitions. No real accounts, screenshots, official benchmark environments, or
 external side effects were used; the public native gates remain separate.
+
+### Full native BrowserGym continuation on the warm child (m586)
+
+The [m586 receipt](paper/results/raw/m586-browsergym-m585-warm-full-v1.json) executes the warm
+m585 child in the pinned BrowserGym/MiniWoB environment at BrowserGym revision `9e779f0…` and
+MiniWoB revision `7fd85d7…`. The official 240-task plan is verified and runs to completion without
+coordinate or semantic fallback: `5/240` tasks pass (`2.08%`), with `219` grounded model steps,
+`1,960` noop/ungrounded steps, and zero action errors. The successful families are
+`miniwob.click-button` (4) and `miniwob.sign-agreement` (1).
+
+This is a useful native browser-control receipt, but it remains a text/accessibility-tree
+diagnostic: vision is disabled, and it is not a WebArena, OSWorld, real-account email/Notion, or
+general computer-use score. The low grounded-step fraction is an explicit failure signal for
+future data collection and RL rather than a publication-ready capability claim.
