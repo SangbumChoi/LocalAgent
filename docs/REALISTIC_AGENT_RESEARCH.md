@@ -3270,3 +3270,16 @@ random arm moves `119.25%`, `87.78%`, `77.84%`, and `8.62%`. Action heads stay f
 arms. The [m602 gate](paper/results/raw/m602-workshop-gate-current-m585-transfer-v1.json) now
 passes the current transfer/ablation requirement, while retaining the native-benchmark and public
 artifact blockers.
+
+### m585 Hugging Face/WebGPU release preparation (m603)
+
+The [m603 receipt](paper/results/raw/m603-m585-hf-space-preparation-v1.json) rebuilds a
+checkpoint-bound Hugging Face model bundle and static WebGPU Space staging directory from m585.
+The safetensors model, auxiliary heads, tokenizer, four ONNX graphs, dispatch metadata, and static
+Space all bind to checkpoint SHA `6553dc2b…` and `10,524,544` parameters. FP32 and FP16 backbone
+and action-only graphs pass the hard parity gate.
+
+Publication is deliberately recorded as `published: false`: this environment has no `HF_TOKEN`
+and `hf auth` reports `Not logged in`, so no upload or public URL was invented. An authenticated
+Hub upload followed by anonymous checkpoint-binding verification is still required before the
+public-artifact gate can pass.

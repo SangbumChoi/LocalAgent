@@ -702,6 +702,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m598 current m585 workshop gate](raw/m598-workshop-gate-current-m585-v1.json) | Fail-closed gate over current m585 catalog, native receipts, WebGPU, RL, and public artifact checks | Six checks pass; native benchmark, current ablation, and current public-manifest blockers remain |
 | [m601 current transfer ablation](raw/m601-m585-current-transfer-ablation-v1.json) | 64 matched warm/random updates anchored to m585 over 202 public train and 53 held-out rows | Warm 69.65% vs random 25.34% (+44.31 pp); warm wins all four sources; action heads frozen |
 | [m602 current transfer gate](raw/m602-workshop-gate-current-m585-transfer-v1.json) | Workshop gate refreshed with the m585-bound matched ablation | Seven checks pass; native benchmark and current public-manifest blockers remain |
+| [m603 HF/Space preparation](raw/m603-m585-hf-space-preparation-v1.json) | Local checkpoint-bound safetensors, heads, ONNX graphs, tokenizer, and static Space staging | Parity passed; publication remains false because HF authentication is absent |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
