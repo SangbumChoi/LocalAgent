@@ -92,6 +92,13 @@ user, full scenario matrix, official split, model-based user simulator, and opti
 were not run, so the [m536 gate](paper/results/raw/m536-workshop-gate-current-m535-v1.json) correctly
 keeps `native:toolsandbox` blocked on `official_split_not_verified`.
 
+The [m537 release-preparation receipt](paper/results/raw/m537-local-hf-webgpu-release-prepare-v1.json)
+regenerates the exact current 10,524,544-parameter checkpoint bundle and static Space staging
+directory. All four ONNX graphs pass the hard PyTorch parity gate, the 63-tool dispatch surface is
+bound, and the WebGPU bundle identity is `ff0259b3f86c08de56533a32bd3db61783a8077e8090cb84e2bca6393258fc00`.
+This closes local packaging reproducibility, but publication remains intentionally false until a
+maintainer supplies HF write authentication and the anonymous post-upload checkpoint audit passes.
+
 ## What the public benchmarks actually measure
 
 | Surface | Public source and method | What LocalAgent may claim locally |

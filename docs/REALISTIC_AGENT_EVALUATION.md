@@ -71,6 +71,12 @@ Because this is still a scripted-user smoke rather than the official split with 
 simulator and full scenario matrix, the [m536 gate](paper/results/raw/m536-workshop-gate-current-m535-v1.json)
 records the evidence but remains blocked on `official_split_not_verified`.
 
+The [m537 release-preparation receipt](paper/results/raw/m537-local-hf-webgpu-release-prepare-v1.json)
+binds the current checkpoint to a freshly generated HF model bundle and static WebGPU Space staging
+directory. The hard ONNX/PyTorch parity gate passes for logits, hidden, and action graphs, with 63
+dispatch tools. No upload or public URL is claimed: HF authentication and the anonymous post-upload
+current-checkpoint audit are still required.
+
 The current BrowserGym diagnosis is split explicitly by grounding contract.  The official
 one-episode diagnostic [m510](paper/results/raw/m510-browsergym-current-canary-v1.json) keeps the
 live accessibility-only adapter and remains `0/1`: the model routes to `click`, but MiniWoW's SVG
