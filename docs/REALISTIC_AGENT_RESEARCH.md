@@ -3430,6 +3430,22 @@ The paired m607 weight audit remains transfer-shaped: warm embedding/attention/F
 frozen. The receipt therefore supports reusing the m585 body as an initialization candidate, but
 does not authorize WebGPU export or native benchmark promotion.
 
+### Agent-Diff enterprise state-diff transfer (m618)
+
+The [Agent-Diff dataset](https://huggingface.co/datasets/hubertmarek/agent-diff-bench), its
+[official repository](https://github.com/agent-diff-bench/agent-diff), and the [paper](https://arxiv.org/abs/2602.11224)
+add a realistic enterprise API surface: Slack, Linear, Box, and Google Calendar across 108
+endpoints. The pinned public release has 179 train tasks and 45 test tasks under an 80/20 split;
+the test rows are normalized as eval-only state-diff assertion targets.
+
+On the same 45 test rows, the m607 warm child reaches `27.084%` teacher-forced assertion-token
+accuracy versus `9.056%` for the matched random control (`+18.028` points). Warm wins every
+service: Box `+16.698`, Calendar `+19.895`, Linear `+13.537`, and Slack `+21.045` points. Exact
+sequence accuracy is `0%` for both. This is a text projection only: no sandbox replica, API,
+state-diff verifier, credentials, or external side effect ran. The separate Agent-Diff addendum
+keeps the source discoverable while leaving the frozen workshop catalog and WebGPU export gate
+unchanged.
+
 ### ToolSandbox protocol audit (m613)
 
 The [m613 receipt](paper/results/raw/m613-toolsandbox-protocol-audit-v1.json) audits the pinned
