@@ -3357,3 +3357,18 @@ current RL preflight. Readiness remains `false` with ten blockers: AndroidWorld,
 iOSWorld, OSWorld, OSWorld-V2, native AgentNet, MCPMark, EnterpriseOps-Gym, the official
 ToolSandbox split, and a public model/demo manifest bound to m585. This confirms that the stronger
 offline transfer result does not erase the native-environment or publication requirements.
+
+### Browser-observed local WebGPU demo probe (m609)
+
+The [m609 receipt](paper/results/raw/m609-webgpu-local-demo-probe-v1.json) is the first direct
+browser observation of the current static bundle, rather than a file-only export check. The exact
+10,524,544-parameter artifact loaded with a `WEBGPU` session; the email prompt routed to
+`send_email` and stopped at the confirmation boundary, and the two-step search→Notion prompt
+produced `web_search` followed by `notion_write`, again stopping before any external side effect.
+The probe used no credentials, account, MCP service, or network write.
+
+The same receipt records the quality negative control: “What does ephemeral mean?” was incorrectly
+dispatched as a `computer_use/click` action (1,309 ms) instead of a text answer or abstention.
+Therefore the local bundle/runtime and safety boundary are verified, but `publish_ready` and the
+quality gate remain false. This is not a native email/Notion score, a BrowserGym result, or a public
+Hugging Face/Space deployment.
