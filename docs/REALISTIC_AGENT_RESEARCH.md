@@ -1595,6 +1595,22 @@ current RL preflight. It remains `ready: false` because nine native benchmark/se
 missing, the transfer-ablation report is bound to an older checkpoint, and the public HF model/Space
 does not bind m679.
 
+### m688 current m679 ToolSandbox native diagnostic
+
+The exact m679 checkpoint now runs through all `129` pinned ToolSandbox base scenarios with the
+native simulator and milestone verifier: zero runner exceptions, `30/129` exact (`23.26%`), and
+mean milestone similarity `0.3409`. Insufficient-information tasks are the strongest slice
+(`26/28` exact); state-dependent and multi-tool tasks remain `0/24` and `0/82` exact. This is a
+more complete native diagnostic than the earlier smoke, but ToolSandbox still publishes no train/test
+split and the upstream model-based user simulator was not executed, so the result remains eval-only
+and does not clear the official-suite gate.
+
+The [m688 gate](paper/results/raw/m688-workshop-gate-current-m679-v1.json) records this precisely:
+ToolSandbox is no longer missing as an environment run, but remains blocked because its pinned
+public repository defines no verified train/test split. The remaining native Android, iOS, desktop,
+AgentNet, MCPMark, and EnterpriseOps-Gym receipts are still absent, and the public HF artifacts do
+not bind m679.
+
 ### m687 current m679 weight-reuse ablation and gate refresh
 
 The fresh m687 warm/random synthetic service-contract ablation is parent-bound to m679 with 28

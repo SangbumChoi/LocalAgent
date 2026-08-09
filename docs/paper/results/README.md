@@ -753,6 +753,8 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m686 current workshop gate](raw/m686-workshop-gate-current-m679-v1.json) | Gate refresh after the current m679 RL preflight | `ready: false`; six requirements pass; nine native suites, transfer-ablation lineage, and checkpoint-bound public artifacts remain blocked |
 | [m687 m679 weight transfer](raw/m687-m679-current-weight-transfer-v1.json) | Fresh 32-step warm/random synthetic service-contract ablation from the exact m679 parent, with tensor-group movement | Warm shared-body movement is 0%; random embedding/attention/FFN movement is 118.6%/77.9%/87.8%; compatibility passes; reuse parent backbone, diagnostic only |
 | [m687 current workshop gate](raw/m687-workshop-gate-current-m679-v1.json) | Gate refresh after current RL and weight-lineage receipts | `ready: false`; seven requirements pass; ten native/public artifact blockers remain |
+| [m688 m679 ToolSandbox native](raw/m688-m679-toolsandbox-native-v1.json) | Complete pinned ToolSandbox base scenario run with the native simulator and milestone verifier | 129/129 executed, zero exceptions, 30 exact (23.26%), mean similarity 0.3409; 26/28 insufficient-information exact, 0 state-dependent exact; no official split/user simulator |
+| [m688 current workshop gate](raw/m688-workshop-gate-current-m679-v1.json) | Gate refresh after complete m679 ToolSandbox diagnostic | `ready: false`; ToolSandbox is now evidenced but remains blocked by `official_split_not_verified`; nine other native/public artifact blockers remain |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
