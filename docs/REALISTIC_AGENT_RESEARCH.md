@@ -1514,6 +1514,19 @@ the current warm backbone, use a lower learning rate for transferred body tensor
 heads from a controlled seed, and give heads a larger rate than the body. Native guardrails still
 prevent export as a claimed agent: MobileGym is `1/256` and BrowserGym/MiniWoW is `5/240`.
 
+### Mixed mobile/computer/tool continuation from the current warm checkpoint (m642)
+
+The [m642 receipt](paper/results/raw/m642-m626-mixed-cross-surface-warm-random-v1.json) runs a
+source-local parent/slot-disjoint continuation over public AndroidControl, AgentNet, and redacted
+MCPMark projections: `138` selected train rows and `133` selected evaluation rows. After the same
+`16`-step budget, warm initialization reaches `82.82%` AndroidControl, `74.93%` AgentNet, and
+`27.84%` MCP token accuracy; the matched random arm reaches `1.92%`, `0.04%`, and `0%`. Warm
+minus random gains are therefore `+80.89`, `+74.89`, and `+27.84` points, with a weighted
+aggregate advantage of `+59.59` points. Warm AndroidControl moves slightly downward during the
+mixed update (`83.37%` to `82.82%`), so the result supports the initialization and source-balancing
+policy but not unrestricted continued training. Exact sequence accuracy remains `0%`, and no
+native emulator, desktop, browser, or MCP service was executed.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
