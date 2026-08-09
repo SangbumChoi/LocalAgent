@@ -4442,6 +4442,22 @@ receipt without promoting it: `native:mcpmark_playwright` is explicitly blocked 
 split, pinned browser parity, visual grounding, and successful final-answer verification are
 available.
 
+### Browser-specific SFT weight transfer does not improve native Playwright (m705/m706)
+
+The [m705 receipt](paper/results/raw/m705-m679-browser-transfer-native-v1.json) isolates the
+browser surface: two public MCPMark browser trajectories are used for `256` SFT updates from the
+exact m679 warm checkpoint, with one source-disjoint browser trajectory held out.  Held-out
+teacher-forced token accuracy rises from `52.43%` to `73.16%` (`+20.72` points), while sequence
+exactness remains `0%`.  Shared-body movement is modest (about `4.0%` embedding, `2.5%` FFN, and
+`2.1%` attention relative L2), and action heads remain frozen, supporting reuse of the warm
+backbone with low-rate surface adaptation.
+
+The adapted child is then replayed through all four native MCPMark Playwright standard tasks.  It
+still records `0/4` verifier passes and the same two invalid browser-code errors as the parent.
+Thus the text gain does not transfer to stateful browser execution; the child is not promoted.
+The [m706 gate](paper/results/raw/m706-workshop-gate-current-m679-v1.json) records this explicitly
+as `browser_sft_native_verifier_zero` and keeps publication blocked.
+
 ### Full bounded MCPMark Playwright standard subset (m702/m703)
 
 The [m702 receipt](paper/results/raw/m702-m679-mcpmark-playwright-standard-v1.json) expands the
