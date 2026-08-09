@@ -1580,6 +1580,21 @@ OSWorld/OSWorld-v2, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym native
 present; the current RL and transfer-ablation lineage is stale; and the public HF model/Space still
 does not bind the m679 checkpoint. This is an explicit publication stop, not an inferred approval.
 
+### m686 current m679 RL preflight and gate refresh
+
+The canonical one-update RL preflight now runs from the exact m679 checkpoint hash. It completes
+two realized optimizer updates, executes a nonzero learning rate (`2e-5`), changes 40 named policy
+parameters, and records three reward values across 32 attempted rollouts. The source is the local
+deterministic productivity simulator only: no public benchmark text, emulator, browser service,
+MCP server, account, or external side effect is involved. This satisfies the gate's current-RL
+lineage requirement, but it is not a public benchmark result.
+
+The [m686 gate](paper/results/raw/m686-workshop-gate-current-m679-v1.json) therefore passes six
+checks: catalog coverage, runnable adapters, MobileGym, BrowserGym, native WebGPU capability, and
+current RL preflight. It remains `ready: false` because nine native benchmark/service receipts are
+missing, the transfer-ablation report is bound to an older checkpoint, and the public HF model/Space
+does not bind m679.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
