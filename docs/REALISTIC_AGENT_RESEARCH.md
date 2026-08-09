@@ -1548,6 +1548,17 @@ with only six home navigations and one app open. This is a native simulator regr
 DOM/text observations (`vision_used=false`), not visual Android control; the child is retained as
 a negative control and is not promoted.
 
+### m684 current m679 BrowserGym regression
+
+The [m684 receipt](paper/results/raw/m684-m679-browsergym-native-v1.json) runs the exact m679
+child through the complete pinned BrowserGym/MiniWoB plan: `240` fixed-seed episodes, BrowserGym
+revision `9e779f…`, MiniWoB revision `7fd85d…`, and zero action errors. It passes `5/240`
+(`2.0833%`), matching the earlier m672 result. The five successes are four simple
+`click-button` cases and one `sign-agreement`; email-inbox, forms, scrolling, dragging, social,
+and other multi-step families fail. Accessibility-tree text is used with no coordinate or
+semantic fallback and no screenshots, so the receipt is a native text-grounding regression, not
+visual computer-use or real email/Notion execution. The m679 child is not promoted.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
