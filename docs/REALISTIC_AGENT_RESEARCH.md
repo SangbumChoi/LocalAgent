@@ -1626,6 +1626,23 @@ summary pretraining, while showing that syntax learning does not establish multi
 No AppWorld environment, email service, Notion service, or external account was executed, so this
 does not clear the native AppWorld or productivity gates.
 
+### Native AppWorld execution probe and matched controls (m693)
+
+The [m693 receipt](paper/results/raw/m693-m679-appworld-native-v1.json) closes that execution gap
+for a bounded probe. The pinned public AppWorld `0.2.0` environment and its ground-truth verifier
+were reset for six caller-selected dev tasks (`6bdbc26_1–3`, `396c5a2_1–3`); an oracle contract
+passed, proving the verifier was live. Each arm was limited to one strict AST-checked API action,
+with API candidates ranked by the checkpoint and bootstrap credentials injected only by the
+resettable fixture.
+
+The exact m679 warm checkpoint replayed `6/6` actions and the m692 AppWorld-trained warm child also
+replayed `6/6`, but both scored `0/6` native task completion. The matched m679 and m692 random
+controls replayed `0/6` valid actions and likewise scored `0/6`. This is a useful negative control:
+teacher-forced trajectory gains did not transfer to stateful execution, and the one-action adapter
+cannot claim multi-step AppWorld competence. No screenshots, Gmail/Notion tasks, external accounts,
+or irreversible side effects were used; the result is not an official AppWorld/AppWorld-UL score and
+does not clear the workshop gate.
+
 ### m689 current m679 ToolSandbox interactive diagnostic
 
 Allowing up to eight model turns after tool results on the same `129` base scenarios produces
