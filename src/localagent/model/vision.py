@@ -14,6 +14,17 @@ import torch.nn.functional as F
 from localagent.model.config import ModelConfig
 
 
+ANDROID_ACTIONS = (
+    "click",
+    "input_text",
+    "long_press",
+    "navigate_back",
+    "open_app",
+    "scroll",
+    "wait",
+)
+
+
 class VisualPatchEncoder(nn.Module):
     """Encode ``[0, 1]`` RGB screenshots into a fixed visual-token prefix."""
 
@@ -51,3 +62,39 @@ class VisualPatchEncoder(nn.Module):
         patches = self.patch(resized).flatten(2).transpose(1, 2)
         tokens = self.proj(self.norm(patches))
         return tokens + self.position.unsqueeze(0).to(tokens)
+
+
+class VisualActionHead(nn.Module):
+    """Structured mobile action head over one text-context feature and visual tokens.
+
+    The action vocabulary mirrors AndroidControl's JSON action contract.  ``pointer`` predicts
+    normalized ``x,y`` coordinates for click/long-press rows; callers should ignore it for actions
+    without coordinates.  This sidecar is intentionally separate from the legacy text heads until
+    its native emulator/export contract is verified.
+    """
+
+    def __init__(self, d_model: int, action_names: tuple[str, ...] = ANDROID_ACTIONS):
+        super().__init__()
+        self.action_names = tuple(action_names)
+        if not self.action_names or len(set(self.action_names)) != len(self.action_names):
+            raise ValueError("visual action names must be unique and non-empty")
+        self.fuse = nn.Sequential(
+            nn.Linear(2 * d_model, d_model, bias=False),
+            nn.LayerNorm(d_model),
+            nn.GELU(),
+        )
+        self.action = nn.Linear(d_model, len(self.action_names))
+        self.pointer = nn.Linear(d_model, 2)
+
+    def forward(
+        self,
+        text_feature: torch.Tensor,
+        visual_tokens: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if text_feature.ndim != 2 or visual_tokens.ndim != 3:
+            raise ValueError("visual action inputs must be [batch, d_model] and [batch, tokens, d_model]")
+        if text_feature.shape[0] != visual_tokens.shape[0] or text_feature.shape[1] * 2 != self.fuse[0].in_features:
+            raise ValueError("visual action feature widths do not match")
+        pooled = visual_tokens.mean(dim=1)
+        fused = self.fuse(torch.cat([text_feature, pooled], dim=-1))
+        return self.action(fused), self.pointer(fused).sigmoid()

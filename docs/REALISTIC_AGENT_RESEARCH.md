@@ -4569,3 +4569,19 @@ This is a useful weight-reuse boundary, not a success claim: the warm backbone h
 not produce reliable action sequences, and the visual adapter is not promoted.  The [m713 gate](paper/results/raw/m713-workshop-gate-current-m679-v1.json)
 adds an explicit `visual_pilot_sequence_exact_zero_and_no_emulator_verifier` blocker; no native
 AndroidControl, AndroidWorld, MobileGym visual, or WebGPU visual score is claimed.
+
+### Structured screenshot-conditioned action head (m714)
+
+The [m714 receipt](paper/results/raw/m714-androidcontrol-structured-visual-pilot-v1.json) replaces
+raw action-byte scoring with the AndroidControl action contract: `click`, `input_text`,
+`long_press`, `navigate_back`, `open_app`, `scroll`, and `wait`, plus normalized `x,y` pointer
+regression where present.  It uses the same 12 source episodes and complete-record 8/4 split as
+m712, freezes the decoder backbone, and trains a compact visual bridge plus structured head for 64
+updates.  Warm and random both reach `58.62%` held-out action-type accuracy; warm coordinate MAE is
+`0.2787` versus `0.2701` random.  Thus the explicit control interface is measurable, but pretrained
+weight reuse does not yet improve the held-out structured metric and neither arm has native task
+verification.
+
+The [m715 gate](paper/results/raw/m715-workshop-gate-current-m679-v1.json) keeps the result blocked
+as `structured_action_head_native_emulator_unverified`.  The head is not exported to WebGPU or
+promoted as AndroidControl/AndroidWorld/MobileGym visual competence.
