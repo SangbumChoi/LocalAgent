@@ -1603,6 +1603,18 @@ do not expose the exact m679 checkpoint hash (`current_checkpoint_match=false`).
 is therefore reachable but legacy; no upload was attempted without authentication, and no current
 checkpoint publication claim is made.
 
+### m691 current m679 AndroidControl retention and weight control
+
+The [m691 receipt](paper/results/raw/m691-m679-androidcontrol-current-v1.json) reruns the public
+AndroidControl mirror continuation from the exact m679 checkpoint, using `512` train rows and
+`256` source-disjoint held-out rows at the pinned mirror revision. The text/accessibility projection
+improves held-out teacher-forced token accuracy from `81.52%` to `82.68%` in both matched arms,
+while exact sequence accuracy remains `0%`. The warm arm keeps action heads frozen and changes only
+the shared body at small relative norms; the random-head control moves its action-head group by
+`29.5%` relative L2. Since screenshots were omitted and no emulator was launched, this is a
+current-checkpoint retention and weight-adoption diagnostic, not native AndroidControl, AndroidWorld,
+or MobileGym success. The result does not change the fail-closed publication gate.
+
 ### m689 current m679 ToolSandbox interactive diagnostic
 
 Allowing up to eight model turns after tool results on the same `129` base scenarios produces
