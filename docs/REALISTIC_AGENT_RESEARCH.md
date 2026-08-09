@@ -1471,6 +1471,24 @@ not a standalone weight-transfer claim: the matched subset is abstention-heavy a
 full ToolSandbox distribution, so the m631 MCP trajectory ablation remains the stronger
 current-checkpoint initialization evidence.
 
+### Current m626 EnterpriseOps-Gym email retrieval (m637)
+
+The [m637 receipt](paper/results/raw/m637-m626-enterpriseopsgym-current-email-retrieval-v1.json)
+replays the public [ServiceNow-AI/EnterpriseOps-Gym dataset](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym)
+at revision `c8e538e…` on the current m626 checkpoint. On the pinned `67`-row email slice,
+name-only dense-selector retrieval reaches `59.70%` top-1, `85.07%` top-3, and `94.03%`
+top-5. This is a current-checkpoint email/tool-use diagnostic and improves over the older m592
+warm-child top-1 result (`56.72%`), but it drops verifiers, server configuration, credentials,
+and side effects; it is not official stateful EnterpriseOps-Gym task success and does not clear
+the native enterprise benchmark gate.
+
+The matched [m638 weight-transfer receipt](paper/results/raw/m638-m626-enterpriseopsgym-warm-random-transfer-v1.json)
+repeats the same `67` rows with the m626 random backbone. Warm minus random gains are
+`+20.90` points at top-1, `+8.96` at top-3, and `+8.96` at top-5. Because the candidate pool,
+source hashes, tokenizer, and selector protocol are held constant, this is direct evidence for
+retaining the pretrained weights for email/tool retrieval. It still cannot substitute for the
+missing stateful EnterpriseOps-Gym server/verifier run.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
