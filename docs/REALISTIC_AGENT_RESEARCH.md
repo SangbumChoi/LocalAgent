@@ -1616,6 +1616,32 @@ retaining the warm body plus separate schema heads, not claiming complete AppWor
 or WebGPU agent success; the next required experiment is a multi-step native evaluator with
 trajectory-level state and exact public task verifiers.
 
+### AppWorld bounded trajectory continuation and weight adoption (m651)
+
+The [m651 receipt](paper/results/raw/m651-appworld-trajectory-transfer-v1.json) converts the same
+public AppWorld train/dev split into `64/18` multi-turn ground-truth API trajectories, capped at
+16 non-bootstrap actions per row. Credentials are removed and tool observations are deterministic
+`status/api/step` summaries, so this is controlled trajectory-learning supervision rather than a
+leak of task databases or a native score. On the disjoint dev slice, the warm m649 child improves
+teacher-forced assistant-token accuracy from `56.15%` to `64.50%` (`+8.35` points); the matched
+random-body arm improves from `16.75%` to `37.12%` (`+20.37` points), leaving warm ahead by
+`27.38` points. Exact multi-turn sequence accuracy remains `0%` for both.
+
+The weight audit supports a low-rate shared-body/high-rate head recipe: warm embedding,
+attention/mixer, and FFN movement is only `0.233%/0.137%/0.162%`, while action-head movement is
+`26.35%` (random: `0.325%/0.145%/0.175%` body and `25.75%` heads). This is the strongest current
+transfer signal, but it is not native AppWorld, email, Notion, browser, or WebGPU success; a
+free-running multi-step policy with unredacted verifier-backed observations is still required.
+
+The [m652 receipt](paper/results/raw/m652-appworld-trajectory-native-v1.json) runs that negative
+control directly: six paired public dev tasks, eight free-running steps per task, full candidate
+pool, resettable AppWorld state, and strict one-literal-API translation. The warm child replays
+`3` actions and the random child `15`, but both score `0/6` native task success. The warm policy
+repeats `spotify.show_song_queue` or fails required-argument grounding, showing that the
+teacher-forced trajectory gain does not yet transfer to a stateful free-run policy. The current
+recommendation remains to reuse the warm body only as an initialization and keep native promotion
+blocked until action/schema heads are trained against actual state observations and completion calls.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
