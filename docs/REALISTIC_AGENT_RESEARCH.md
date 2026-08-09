@@ -1492,6 +1492,22 @@ OSWorld-V2, AgentNet, ToolSandbox, MCPMark, EnterpriseOps-Gym, and the authentic
 model/demo manifest. The publication decision is intentionally unchanged by the new receipts;
 the remaining native suites and public URLs must be supplied before a workshop or HF release claim.
 
+### Current m626 ToolSandbox base-matrix replay (m635)
+
+The [m635 receipt](paper/results/raw/m635-m626-toolsandbox-native-base-v1.json) runs the current
+checkpoint through all `129` unaugmented scenarios exposed by the pinned Apple ToolSandbox source,
+using its real simulator and milestone verifier with a bounded scripted user. It records `27/129`
+exact verifier successes (`20.93%`) with zero runner exceptions. Success is highly concentrated in
+the `INSUFFICIENT_INFORMATION` slice (`26/28`, `92.86%`); canonicalization (`0/59`), multiple-tool
+(`0/82`), multiple-user-turn (`0/28`), and state-dependency (`0/24`) slices remain unsolved.
+
+This is stronger current stateful-tool evidence than the earlier three-scenario smoke, but it is
+not an official ToolSandbox score: the source expands to `1,032` generated variants, does not define
+a train/test split, and the upstream model-based user simulator/external APIs were not run. The
+[m635 gate](paper/results/raw/m635-workshop-gate-current-m626-v1.json) therefore records the
+ToolSandbox receipt as current evidence while retaining the explicit `official_split_not_verified`
+blocker; readiness remains `false`.
+
 The [m293 selector-first ablation](paper/results/raw/m293-mobilegym-selector-first-canary-v1.json)
 forces the learned top candidate instead of allowing LM re-ranking.  It remains `0/20` with the
 same `19` press-enter and one submit-answer collapse.  This is useful diagnosis: MobileGym's
