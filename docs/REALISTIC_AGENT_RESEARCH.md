@@ -4419,3 +4419,25 @@ AppWorld arms remain `0/6`, and EnterpriseOps-Gym still has no server/verifier e
 gate also retains the missing visual/native suites and the unauthenticated, legacy public HF/
 Space artifact blocker.  This prevents the +5.66-point text-only MCP continuation gain from being
 misrepresented as browser, email, Notion, or computer-use readiness.
+
+### Native MCPMark Playwright browser-service probe (m700)
+
+The [m700 receipt](paper/results/raw/m700-m679-mcpmark-playwright-standard-v1.json) exercises
+the exact m679 checkpoint against two public MCPMark Verified Playwright tasks using the real
+`@playwright/mcp@0.0.68` stdio server and an isolated Chromium executable.  On the extraction
+task, the model successfully reaches the public MCPBench page with `browser_navigate` and reads
+its accessibility snapshot with `browser_snapshot`, both without server errors.  The second task
+emits an invalid `browser_run_code` request and the browser reports a tool error.  Both task
+verifiers fail (`0/2`) because the model does not produce the required final extracted content.
+
+This is the first native browser-service evidence in the current m679 chain, but it is deliberately
+bounded: only two tasks ran, the browser executable is not the benchmark’s pinned version, and
+there is no official split, visual-answer, user-simulator, WebArena, or external-account claim.
+The result confirms that WebGPU deployment can reach a real browser MCP boundary while exposing
+the remaining failure as final-answer extraction and tool-code grounding, not merely server setup.
+
+The [m701 gate](paper/results/raw/m701-workshop-gate-current-m679-v1.json) adds this browser
+receipt without promoting it: `native:mcpmark_playwright` is explicitly blocked by
+`bounded_subset_and_verifier_zero`. The gate remains fail-closed until the complete benchmark
+split, pinned browser parity, visual grounding, and successful final-answer verification are
+available.
