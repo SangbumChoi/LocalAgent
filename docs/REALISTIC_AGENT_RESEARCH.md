@@ -1654,6 +1654,17 @@ probe remains `0/6` for both arms (`3` warm actions versus `10` random). Rich ob
 the learning signal, yet the result confirms that response summarization alone does not solve
 stateful planning, argument grounding, or completion-call generation.
 
+### AppWorld compact state sketch (m659)
+
+The [m659 receipt](paper/results/raw/m659-appworld-compact-state-v1.json) applies a stricter
+state sketch: contact/song/message IDs, names, titles, relationships, counts, and message text are
+retained; addresses, timestamps, tokens, credentials, and low-value metadata are dropped. This fits
+the 2,048-token model window for `35/36` trajectory rows. Warm held-out token accuracy is `63.49%`
+versus `35.89%` for random, and warm native action replay rises from `3` to `5` on the paired six
+task probe. However, verifier success remains `0/6`, exact sequence accuracy remains zero, and the
+policy still lacks completion/state-planning behavior. The compact sketch is retained as a WebGPU
+input-format candidate, not promoted as agent capability.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact

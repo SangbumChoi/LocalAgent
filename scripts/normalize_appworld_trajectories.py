@@ -45,6 +45,13 @@ _SENSITIVE_KEYS = {
 _LOW_VALUE_RESPONSE_KEYS = {
     "birthday", "created_at", "updated_at", "url", "website",
 }
+_RELEVANT_RESPONSE_KEYS = {
+    "album", "album_id", "album_title", "amount", "answer", "artist", "artists", "count",
+    "contact_id", "description", "genre", "id", "last_name", "first_name", "message", "name",
+    "page_index", "play_count", "playlist_id", "playlist_title", "rating", "relationships",
+    "request_id", "response", "result", "sender", "receiver", "song_id", "status", "text",
+    "text_message_id", "title", "total", "transaction_id", "type", "value",
+}
 
 
 def _sha256(path: Path) -> dict[str, Any]:
@@ -94,7 +101,12 @@ def _safe_value(value: Any, *, depth: int = 0, key: str = "") -> Any:
     if depth >= 3:
         return {"type": type(value).__name__}
     if isinstance(value, dict):
-        items = sorted((str(name), item) for name, item in value.items())
+        items = sorted(
+            (str(name), item)
+            for name, item in value.items()
+            if str(name).lower() in _RELEVANT_RESPONSE_KEYS
+            or str(name).lower().endswith("_id")
+        )
         kept = items[:12]
         result = {name: _safe_value(item, depth=depth + 1, key=name) for name, item in kept}
         if len(items) > len(kept):
