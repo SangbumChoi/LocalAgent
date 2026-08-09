@@ -118,6 +118,9 @@ The runnable GPU path is
 [`notebooks/localagent_pretraining_colab.ipynb`](notebooks/localagent_pretraining_colab.ipynb):
 licensed corpus streaming, mixed-precision training, resumable checkpoints, and verified Google
 Drive storage.
+For a portable attention/hybrid/vision comparison on a separate CUDA host, use the
+[`GPU experiment runbook`](docs/GPU_EXPERIMENT_RUNBOOK.md) and
+[`webgpu-realistic-campaign.v1.yaml`](configs/experiments/webgpu-realistic-campaign.v1.yaml).
 
 ### WebGPU cached-decode deployment frontier
 
