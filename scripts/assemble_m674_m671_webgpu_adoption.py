@@ -28,12 +28,20 @@ def _load(path: Path) -> dict[str, Any]:
     return value
 
 
-def assemble(*, preparation: Path, capability: Path, checkpoint: Path) -> dict[str, Any]:
+def assemble(
+    *,
+    preparation: Path,
+    capability: Path,
+    checkpoint: Path,
+    adoption_kind: str = "localagent_m674_m671_webgpu_adoption",
+    child_label: str = "m671",
+) -> dict[str, Any]:
     prep = _load(preparation)
     runtime = _load(capability)
     checkpoint_identity = _identity(checkpoint)
     checkpoint_sha = checkpoint_identity["sha256"]
-    if prep.get("kind") != "localagent_m673_m671_hf_space_preparation":
+    preparation_kind = str(prep.get("kind", ""))
+    if not preparation_kind.endswith("_hf_space_preparation"):
         raise ValueError("release preparation kind mismatch")
     if prep.get("checkpoint", {}).get("sha256") != checkpoint_sha:
         raise ValueError("release preparation checkpoint mismatch")
@@ -50,7 +58,7 @@ def assemble(*, preparation: Path, capability: Path, checkpoint: Path) -> dict[s
         raise ValueError("WebGPU side-effect safety is not explicit")
 
     payload: dict[str, Any] = {
-        "kind": "localagent_m674_m671_webgpu_adoption",
+        "kind": adoption_kind,
         "schema_version": 1,
         "checkpoint": checkpoint_identity,
         "release_preparation": {
@@ -83,7 +91,7 @@ def assemble(*, preparation: Path, capability: Path, checkpoint: Path) -> dict[s
             ],
         },
         "claim_boundary": (
-            "The m671 child is locally export-, parity-, and native-WebGPU verified. The three "
+            f"The {child_label} child is locally export-, parity-, and native-WebGPU verified. The three "
             "actions are structured local predictions only; no real email, browser navigation, "
             "Notion account, MCP server, or external side effect ran."
         ),
@@ -97,12 +105,18 @@ def main() -> int:
     parser.add_argument("--preparation", type=Path, required=True)
     parser.add_argument("--capability", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--adoption-kind", default="localagent_m674_m671_webgpu_adoption")
+    parser.add_argument("--child-label", default="m671")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     if args.out.exists() or args.out.is_symlink():
         raise SystemExit(f"refusing to overwrite receipt: {args.out}")
     payload = assemble(
-        preparation=args.preparation, capability=args.capability, checkpoint=args.checkpoint
+        preparation=args.preparation,
+        capability=args.capability,
+        checkpoint=args.checkpoint,
+        adoption_kind=args.adoption_kind,
+        child_label=args.child_label,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")

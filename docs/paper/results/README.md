@@ -737,6 +737,10 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m672 current BrowserGym](raw/m672-m671-browsergym-native-v1.json) | Exact m671 warm child on complete pinned BrowserGym/MiniWoB fixed-seed plan | 240/240 executed, 5/240 pass (2.08%), zero action errors; accessibility-tree text, no vision; retained as a negative control |
 | [m673 m671 HF/Space preparation](raw/m673-m671-hf-space-preparation-v2.json) | Checkpoint-bound model bundle plus static WebGPU Space staging | 10.52M parameters; ONNX/PyTorch parity passed; 8 WebGPU artifacts; upload not attempted because HF authentication is absent |
 | [m674 m671 native WebGPU adoption](raw/m674-m671-webgpu-adoption-v1.json) | Chromium native WebGPU runtime over the regenerated m671 bundle | Apple Metal-3; 3/3 exact structured actions; 1,454.5 tok/s p50; 7.4 ms p50; 20.46 MB; no side effects; closed loop 0 |
+| [m675 m671 AndroidControl transfer](raw/m675-m671-androidcontrol-transfer-v1.json) | Matched 32-step warm/random continuation on 512 public train and 256 held-out rows | Warm 74.48%→82.36%; random 44.74%→62.85%; warm +19.51 pp after training; exact sequence 0%; screenshots omitted |
+| [m676 m675 MobileGym](raw/m676-m675-mobilegym-native-v1.json) | Exact m675 AndroidControl-trained child on complete pinned MobileGym official test split | 256/256 executed, zero runner errors, 1/256 pass (0.39%); text/DOM projection, no vision; no improvement over parent |
+| [m677 m675 HF/Space preparation](raw/m677-m675-hf-space-preparation-v1.json) | Checkpoint-bound model bundle plus static WebGPU Space staging | 10.52M parameters; ONNX/PyTorch parity passed; upload not attempted because HF authentication is absent |
+| [m678 m675 native WebGPU adoption](raw/m678-m675-webgpu-adoption-v1.json) | Chromium native WebGPU runtime over the AndroidControl-trained bundle | Apple Metal-3; 3/3 exact structured actions; 995.0 tok/s p50; 9.85 ms p50; 20.46 MB; no side effects; closed loop 0 |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

@@ -1457,6 +1457,35 @@ control.  The result supports retaining parent weights as an initialization cand
 rejecting this child for WebGPU promotion; it is not an Android emulator, screenshot, or real-device
 score.
 
+### m675 AndroidControl continuation from the m671 child
+
+The [m675 AndroidControl receipt](paper/results/raw/m675-m671-androidcontrol-transfer-v1.json)
+uses the pinned Apache-2.0 [public mirror](https://huggingface.co/datasets/OfficerChul/Android-Control-84k)
+and its [Google Research AndroidControl project](https://github.com/google-research/google-research/tree/master/android_control).
+The 512-row train and 256-row holdout are disjoint in the acquired projection, with screenshots
+omitted. After identical 32-step SFT, the warm m671 child improves held-out token accuracy from
+`74.483%` to `82.360%`; the matched random control improves `44.736%` to `62.851%`, leaving a
+`19.510`-point warm advantage. Warm action heads remain frozen and shared-body movement stays
+below `0.41%` relative per group, while exact sequence accuracy is `0%` for both. This supports
+warm-start reuse for text/action continuation, not visual mobile control or native emulator
+promotion.
+
+### m676–m678 AndroidControl-trained native diagnostics and deployment
+
+The m675 AndroidControl-trained child was run through the complete pinned MobileGym test split in
+the [m676 receipt](paper/results/raw/m676-m675-mobilegym-native-v1.json): `256/256` tasks,
+zero runner errors, and `1/256` success (`0.3906%`), unchanged from the m671 parent. The model
+still emits predominantly navigation-back actions, confirming that text/action continuation did
+not add visual or state grounding.
+
+The [m677 preparation](paper/results/raw/m677-m675-hf-space-preparation-v1.json) and [m678 native
+WebGPU receipt](paper/results/raw/m678-m675-webgpu-adoption-v1.json) bind the same child to a
+fresh eight-artifact static bundle and real Chromium WebGPU execution. Apple Metal-3 reports `3/3`
+exact local structured actions at `995.0` tok/s p50 and `9.85 ms` p50, with no side effects and
+closed-loop success `0`. The lower throughput than m671 is measured evidence, not a reason to
+claim production readiness; authenticated HF upload, visual grounding, and service-backed
+Gmail/Notion/MCP evaluation remain open.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)

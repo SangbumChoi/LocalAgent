@@ -38,6 +38,7 @@ def assemble(
     space_dir: Path,
     model_repo: str,
     space_repo: str,
+    receipt_kind: str = "localagent_m673_m671_hf_space_preparation",
 ) -> dict[str, Any]:
     checkpoint_identity = _identity(checkpoint)
     model_config = _load(model_dir / "config.json")
@@ -73,7 +74,7 @@ def assemble(
     )
 
     payload: dict[str, Any] = {
-        "kind": "localagent_m673_m671_hf_space_preparation",
+        "kind": receipt_kind,
         "schema_version": 1,
         "checkpoint": {
             **checkpoint_identity,
@@ -122,6 +123,11 @@ def main() -> int:
     parser.add_argument("--space-dir", type=Path, required=True)
     parser.add_argument("--model-repo", required=True)
     parser.add_argument("--space-repo", required=True)
+    parser.add_argument(
+        "--receipt-kind",
+        default="localagent_m673_m671_hf_space_preparation",
+        help="receipt kind for the sealed preparation (default: m673 m671 preparation)",
+    )
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     if args.out.exists() or args.out.is_symlink():
@@ -133,6 +139,7 @@ def main() -> int:
         space_dir=args.space_dir,
         model_repo=args.model_repo,
         space_repo=args.space_repo,
+        receipt_kind=args.receipt_kind,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
