@@ -4376,3 +4376,21 @@ advantage. Warm shared-body movement is `0.442%` embedding, `0.204%` attention/m
 FFN, and `0.010%` normalization; action heads remain frozen. This is the current-checkpoint
 weight evidence used by m630, while still remaining an internal projection rather than a live MCP
 score.
+
+### Current m679 native MCPMark filesystem/standard replay (m697)
+
+The [m697 receipt](paper/results/raw/m697-m679-mcpmark-filesystem-standard-v1.json) runs the exact
+current m679 warm checkpoint on all `30` pinned MCPMark Verified `filesystem/standard` fixtures at
+revision `cd45b7f…`. Each task gets a fresh extracted public state archive, a real
+`@modelcontextprotocol/server-filesystem` stdio process, bounded six-turn tool interaction, and
+the task's independent verifier. All `30/30` tasks execute without runner exceptions, but `0/30`
+verifier checks pass. The failures are substantive stateful planning and argument-grounding
+errors, rather than a missing service process.
+
+This is stronger evidence than the earlier description-only MCPMark router: the current
+checkpoint caused real filesystem side effects in isolated workspaces and was judged by public
+verifiers. It also sharply limits the deployment claim. This is an official filesystem service
+subset, not a complete MCPMark score; Notion, GitHub, Postgres, Playwright, the user simulator,
+and external accounts remain unexecuted. Promotion therefore stays blocked; the warm backbone is
+an initialization candidate only, with state-conditioned planning, argument grounding, and native
+visual/service evaluation still required before WebGPU publication or workshop submission.
