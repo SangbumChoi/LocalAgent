@@ -1501,6 +1501,19 @@ score. The full random arm was stopped after malformed output grew beyond the pr
 budget, so no full-random score is claimed. Screenshots, desktop state, and AgentNetBench were
 not executed; this confirms the visual-grounding/runtime gap rather than native desktop success.
 
+### Cross-surface weight-adoption decision (m641)
+
+The [m641 summary](paper/results/raw/m641-m626-weight-adoption-summary-v1.json) consolidates
+the current warm/random evidence without averaging incompatible metrics. Warm initialization wins
+by `+19.28` points on AndroidControl token accuracy, `+45.19` on the MCP trajectory projection,
+and `+20.90` top-1 points on EnterpriseOps-Gym email retrieval; the bounded AgentNet control also
+shows a `+75`-point first-action-type advantage. Across AndroidControl and MCP continuation, mean
+relative shared-body movement is only `0.65%` in embeddings, `0.34%` in FFN, `0.27%` in attention,
+and `0.018%` in normalization, while action heads remain fixed. The resulting policy is to reuse
+the current warm backbone, use a lower learning rate for transferred body tensors, initialize new
+heads from a controlled seed, and give heads a larger rate than the body. Native guardrails still
+prevent export as a claimed agent: MobileGym is `1/256` and BrowserGym/MiniWoW is `5/240`.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
