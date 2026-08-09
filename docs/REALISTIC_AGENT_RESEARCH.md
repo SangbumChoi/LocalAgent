@@ -1457,6 +1457,34 @@ control.  The result supports retaining parent weights as an initialization cand
 rejecting this child for WebGPU promotion; it is not an Android emulator, screenshot, or real-device
 score.
 
+### m671 public source refresh and current MCP continuation
+
+The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
+resolves nine public Hugging Face revisions to immutable commits, original links, licenses, and
+bounded file inventories. It is provenance-only: no mutable evaluation payloads were downloaded,
+and sources without a disjoint split remain eval-only. The companion [m671 transfer receipt]
+(paper/results/raw/m671-m666-mcp-current-transfer-v1.json) continues the exact m666 warm/random
+children on `86` public MCP trajectory decisions with a deterministic `21`-decision,
+agent-disjoint holdout. Warm held-out token accuracy improves `45.353%`→`55.927%`; random
+improves `25.487%`→`39.844%`, leaving a `16.082`-point warm advantage after training. Exact
+multi-action sequence accuracy is `0%` for both, and action heads remain frozen. This supports
+weight reuse for text tool-call initialization, not native MCP execution or production safety.
+
+### m672 current-child native browser and mobile diagnostics
+
+The [m672 MobileGym receipt](paper/results/raw/m672-m671-mobilegym-native-v1.json) runs the exact
+m671 warm child through all `256` tasks of the pinned official test split: `1/256` (`0.3906%`),
+zero runner errors, and the independent state-diff judge enabled. The observation is a bounded
+DOM/text projection (`vision_used=false`), so this is not screenshot-grounded Android control.
+
+The [m672 BrowserGym receipt](paper/results/raw/m672-m671-browsergym-native-v1.json) runs the same
+child through the complete fixed-seed `240`-episode BrowserGym/MiniWoB plan, passing `5/240`
+episodes (`2.0833%`) with zero action errors. It records native environment execution and
+accessibility-tree text observations only; the result is retained as a negative control and does not
+claim visual computer use, email/Notion side effects, WebArena, or real-service execution. Together
+these receipts are current-checkpoint evidence of the remaining
+grounding and multi-step planning gap, not workshop promotion evidence.
+
 ### Matched random-backbone ToolSandbox control (m636)
 
 To separate checkpoint transfer from the native ToolSandbox protocol, the [m636 receipt](paper/results/raw/m636-m626-toolsandbox-matched-random-control-v1.json)

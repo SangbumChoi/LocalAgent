@@ -733,6 +733,8 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m670 current MobileGym](raw/m670-m666-mobilegym-native-v1.json) | Exact m666 warm checkpoint on the complete pinned MobileGym official test split | 256/256 executed with zero errors; 1/256 pass (0.39%); text/DOM projection, no vision |
 | [m670 current BrowserGym](raw/m670-m666-browsergym-native-v1.json) | Exact m666 warm checkpoint on the complete pinned BrowserGym/MiniWoB fixed-seed plan | 240/240 executed with zero action errors; 5/240 pass (2.08%); accessibility-tree text, no vision |
 | [m667 current workshop gate](raw/m667-workshop-gate-current-m666-v3.json) | Exact-current-checkpoint gate refresh after m666 public AppWorld, m668 weight envelope, and m670 native reruns | `ready: false`; 11 blockers remain for missing official suites, stale ToolSandbox/RL evidence, and an unbound public manifest |
+| [m672 current MobileGym](raw/m672-m671-mobilegym-native-v1.json) | Exact m671 warm child on complete pinned MobileGym official test split | 256/256 executed, zero runner errors, 1/256 pass (0.39%); bounded DOM/text projection, no vision |
+| [m672 current BrowserGym](raw/m672-m671-browsergym-native-v1.json) | Exact m671 warm child on complete pinned BrowserGym/MiniWoB fixed-seed plan | 240/240 executed, 5/240 pass (2.08%), zero action errors; accessibility-tree text, no vision; retained as a negative control |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

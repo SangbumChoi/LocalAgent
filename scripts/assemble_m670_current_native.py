@@ -40,7 +40,9 @@ def _write(payload: dict[str, Any], output: Path) -> dict[str, Any]:
     return payload
 
 
-def assemble_mobile(raw_path: Path, checkpoint: Path, output: Path) -> dict[str, Any]:
+def assemble_mobile(
+    raw_path: Path, checkpoint: Path, output: Path, *, receipt_prefix: str = "m670_m666"
+) -> dict[str, Any]:
     raw = _load(raw_path)
     current = _identity(checkpoint)
     if raw.get("kind") != "localagent_mobilegym_native_text_eval":
@@ -57,7 +59,7 @@ def assemble_mobile(raw_path: Path, checkpoint: Path, output: Path) -> dict[str,
         raise ValueError("MobileGym raw run contains errors")
     return _write(
         {
-            "kind": "localagent_m670_m666_mobilegym_native_receipt",
+            "kind": f"localagent_{receipt_prefix}_mobilegym_native_receipt",
             "schema_version": 1,
             "benchmark_id": "mobilegym",
             "checkpoint": current,
@@ -94,7 +96,9 @@ def assemble_mobile(raw_path: Path, checkpoint: Path, output: Path) -> dict[str,
     )
 
 
-def assemble_browser(raw_path: Path, checkpoint: Path, output: Path) -> dict[str, Any]:
+def assemble_browser(
+    raw_path: Path, checkpoint: Path, output: Path, *, receipt_prefix: str = "m670_m666"
+) -> dict[str, Any]:
     raw = _load(raw_path)
     current = _identity(checkpoint)
     if raw.get("kind") != "localagent_browsergym_native_eval":
@@ -110,7 +114,7 @@ def assemble_browser(raw_path: Path, checkpoint: Path, output: Path) -> dict[str
     if raw.get("task_count") != 240 or not isinstance(raw.get("cases"), list) or len(raw["cases"]) != 240:
         raise ValueError("BrowserGym task count mismatch")
     payload: dict[str, Any] = {
-        "kind": "localagent_m670_m666_browsergym_native_receipt",
+        "kind": f"localagent_{receipt_prefix}_browsergym_native_receipt",
         "schema_version": 1,
         "benchmark_id": "browsergym_miniwob",
         "checkpoint": current,
@@ -158,9 +162,18 @@ def main() -> int:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--mobile-out", type=Path, required=True)
     parser.add_argument("--browser-out", type=Path, required=True)
+    parser.add_argument(
+        "--receipt-prefix",
+        default="m670_m666",
+        help="version prefix for the sealed receipt kind (default: m670_m666)",
+    )
     args = parser.parse_args()
-    mobile = assemble_mobile(args.mobile_raw, args.checkpoint, args.mobile_out)
-    browser = assemble_browser(args.browser_raw, args.checkpoint, args.browser_out)
+    mobile = assemble_mobile(
+        args.mobile_raw, args.checkpoint, args.mobile_out, receipt_prefix=args.receipt_prefix
+    )
+    browser = assemble_browser(
+        args.browser_raw, args.checkpoint, args.browser_out, receipt_prefix=args.receipt_prefix
+    )
     print(json.dumps({"mobile": mobile["result"], "browser": browser["result"]}, indent=2, sort_keys=True))
     return 0
 
