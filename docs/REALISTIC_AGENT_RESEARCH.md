@@ -1571,6 +1571,20 @@ unverified official split; and the missing authenticated public model/demo manif
 diagnostic changes no gate status: its DOM-coordinate improvement is an environment-side bridge,
 not an official benchmark or Mind2Web transfer score.
 
+### Current AppWorld public action-step continuation (m647)
+
+The [m647 receipt](paper/results/raw/m647-appworld-current-transfer-v1.json) adds a fresh,
+source-linked AppWorld `0.2.0` train/dev slice: `64` public train tasks and `18` disjoint public
+dev tasks, with protected test data excluded. A 32-step continuation from the warm m626
+checkpoint improves held-out first-action token accuracy from `45.17%` to `58.41%`; the matched
+random-backbone arm improves from `4.11%` to `27.28%`, leaving warm ahead by `31.13` points.
+Exact sequence accuracy remains `0%` and route/selector accuracy remains `0%` for the warm child.
+Weight movement is transfer-shaped (warm embedding/attention/FFN `0.433%/0.224%/0.275%`, with
+action heads unchanged), so the current recommendation is to retain the warm body but train a
+separate schema/action grounding head before any native AppWorld or WebGPU promotion. This is
+teacher-forced first-action evidence only; no external email, SMS, app account, or protected test
+result is claimed.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
