@@ -1511,6 +1511,22 @@ generated name-only descriptions, drops server configuration and verifiers, and 
 email action, so the result is neither official EnterpriseOps-Gym stateful success nor evidence
 of real Gmail/Outlook side effects.
 
+### m681 public Hugging Face WebGPU live probe
+
+The [m681 receipt](paper/results/raw/m681-public-webgpu-live-probe-v1.json) verifies the public
+[model](https://huggingface.co/danelcsb/localagent-tiny-30m-byte) and [Space](https://huggingface.co/spaces/danelcsb/localagent-webgpu)
+by anonymous Hub metadata plus a live browser probe. The Space is publicly reachable and reports
+`RUNNING`; the embedded model reaches `Model ready` with `WEBGPU`. A read-only request, “What does
+ephemeral mean?”, completes in `818 ms` but routes to `web_search(term=ephemeral)` instead of the
+expected `define` tool. This is a concrete public deployment-quality failure, not a reason to
+hide the result.
+
+The public model revision `d15db7…` and Space revision `3c07f7…` expose the same older 28M-byte
+bundle, while the public config does not bind the current m679 checkpoint SHA. Therefore the
+deployment is reachable but **legacy**, not a current-checkpoint publication. No credentials,
+email/Notion writes, or external side effects were used; the probe does not establish realistic
+service, mobile, browser, desktop, MCP, or visual-agent success.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
