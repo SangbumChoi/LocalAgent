@@ -4598,3 +4598,19 @@ This closes the checkpoint-to-graph parity gap without overstating deployment: t
 been run through onnxruntime-web/WebGPU, integrated into the browser demo, quantized, or validated
 against an Android emulator.  The [m717 gate](paper/results/raw/m717-workshop-gate-current-m679-v1.json)
 therefore adds `cpu_onnx_parity_only_no_browser_webgpu_runtime` and keeps publication blocked.
+
+### Browser execution of the visual sidecar (m718)
+
+The [m718 receipt](paper/results/raw/m718-visual-webgpu-probe-v1.json) closes the narrow
+checkpoint-to-browser runtime gap for the experimental visual graph.  The static
+`visual-action.html` page fetched and hash-checked the 42.3 MB fp16 graph, created an explicit
+onnxruntime-web WebGPU session, resized a local screenshot to RGB `96×96`, and emitted the seven
+Android action logits plus normalized pointer.  Warm WebGPU inference was `14.5–18.8 ms`; a WASM
+control produced the same `click` decision with maximum differences of `3.58e-7` in logits and
+`8.94e-8` in pointer coordinates.
+
+This is still a runtime ABI probe, not visual task success: the screenshot is not connected to an
+Android emulator, no action was dispatched to a device, and ORT does not expose per-node placement.
+The [m719 gate](paper/results/raw/m719-workshop-gate-current-m679-v1.json) replaces the earlier
+CPU-only visual blocker with `browser_visual_probe_bound_but_native_mobile_verifier_missing` and
+keeps publication blocked.

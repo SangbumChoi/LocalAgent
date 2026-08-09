@@ -1817,6 +1817,13 @@ function downloadBrowserTasks() {
   URL.revokeObjectURL(anchor.href);
 }
 
+// Read-only inspection hook for the local browser harness and automated receipt capture.
+// The page still owns execution; callers receive the immutable-in-practice result object
+// produced by the latest run and must not treat it as native browser/OS evidence.
+if (typeof window !== "undefined") {
+  window.__localAgentBrowserTaskResult = () => LAST_BROWSER_TASK_RUN;
+}
+
 async function initBrowserTasks() {
   $("start-browser-tasks").disabled = true;
   $("download-browser-tasks").disabled = true;

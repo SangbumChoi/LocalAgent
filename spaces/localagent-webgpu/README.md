@@ -194,6 +194,14 @@ cursor action does not move the physical pointer, and navigation stays inside a 
 iframe. It does **not** measure visual grounding, multi-step completion, trusted OS input, external
 site navigation, or browser-wide automation.
 
+## Screenshot-conditioned action probe
+
+`visual-action.html` is an isolated screenshot-conditioned sidecar probe. It accepts a local
+PNG/JPEG/WebP screenshot and task text, requests WebGPU (or an explicitly selected WASM control),
+and emits the seven-action/pointer ABI. The graph is pinned by `visual-action-manifest.json` but is
+deliberately not part of the text-only release manifest: it comes from the bounded m714
+AndroidControl pilot and still has no Android emulator or official AndroidControl verifier.
+
 ## Stateful mobile and productivity trajectory gate
 
 `mobile-trajectories.html` runs the v11 text-first policy against three local workflows (Gmail
