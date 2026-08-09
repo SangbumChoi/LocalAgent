@@ -741,6 +741,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m676 m675 MobileGym](raw/m676-m675-mobilegym-native-v1.json) | Exact m675 AndroidControl-trained child on complete pinned MobileGym official test split | 256/256 executed, zero runner errors, 1/256 pass (0.39%); text/DOM projection, no vision; no improvement over parent |
 | [m677 m675 HF/Space preparation](raw/m677-m675-hf-space-preparation-v1.json) | Checkpoint-bound model bundle plus static WebGPU Space staging | 10.52M parameters; ONNX/PyTorch parity passed; upload not attempted because HF authentication is absent |
 | [m678 m675 native WebGPU adoption](raw/m678-m675-webgpu-adoption-v1.json) | Chromium native WebGPU runtime over the AndroidControl-trained bundle | Apple Metal-3; 3/3 exact structured actions; 995.0 tok/s p50; 9.85 ms p50; 20.46 MB; no side effects; closed loop 0 |
+| [m679 m675 MCPMark transfer](raw/m679-m675-mcpmark-transfer-v1.json) | Matched 32-step continuation on 10 redacted train and 5 disjoint eval trajectories spanning filesystem, Notion, GitHub, Playwright, and Postgres | Warm 26.04%→30.47%; random 17.64%→19.21%; warm +11.27 pp after training; exact sequence 0%; eval-only projection |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

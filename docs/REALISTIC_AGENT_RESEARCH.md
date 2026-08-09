@@ -1486,6 +1486,17 @@ closed-loop success `0`. The lower throughput than m671 is measured evidence, no
 claim production readiness; authenticated HF upload, visual grounding, and service-backed
 Gmail/Notion/MCP evaluation remain open.
 
+### m679 MCPMark trajectory continuation from the m675 child
+
+The [m679 receipt](paper/results/raw/m679-m675-mcpmark-transfer-v1.json) evaluates the m675
+AndroidControl-trained warm child and its matched random control on a pinned, redacted public
+MCPMark trajectory projection: `10` train trajectories and `5` agent-disjoint eval trajectories
+covering filesystem, Notion, GitHub, Playwright, and Postgres. Warm held-out token accuracy rises
+from `26.039%` to `30.471%`; random rises from `17.636%` to `19.206%`, leaving an `11.265`-point
+warm advantage after training. Exact sequence accuracy remains `0%` for both, and tool outputs and
+assistant free text are redacted. This is evidence for retaining warm weights in text tool-call
+continuation, not an official MCPMark score or live Notion/browser/database execution.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
