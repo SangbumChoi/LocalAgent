@@ -83,8 +83,9 @@ def assemble(
             "reason": (
                 "The m666 warm child improves public AppWorld teacher-forced continuation, but its "
                 "fully free-running native result remains 0/6. The 6/6 schema-planner control is "
-                "explicitly not a model score. Existing native MobileGym/BrowserGym/RL receipts are "
-                "bound to older checkpoints, while the public manifest is not bound to this child. "
+                "explicitly not a model score. Current MobileGym and BrowserGym receipts now bind "
+                "this checkpoint, but ToolSandbox/RL evidence is stale while the public manifest is "
+                "not bound to this child. "
                 "The canonical m668 warm/random movement envelope now passes its structural gate, "
                 "but the fail-closed workshop decision remains blocked."
             ),

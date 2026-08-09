@@ -1756,17 +1756,30 @@ selector-first native replay, three API actions are executed, yet complete task 
 route selection, observation grounding, or multi-step planning. The head is not promoted to the
 WebGPU bundle.
 
-### Current m666 workshop/publication gate (m667 v2)
+### Current m666 native mobile/browser reruns (m670)
 
-The [m667 receipt](paper/results/raw/m667-workshop-gate-current-m666-v2.json) binds the full
+The [m670 MobileGym receipt](paper/results/raw/m670-m666-mobilegym-native-v1.json) and
+[m670 BrowserGym receipt](paper/results/raw/m670-m666-browsergym-native-v1.json) execute the
+exact m666 warm checkpoint (`8c3a4ed3...`) on the complete pinned public splits. MobileGym runs
+`256/256` official test tasks with zero errors and passes `1/256` (`0.39%`). BrowserGym/MiniWoB
+runs `240/240` fixed-seed episodes with zero action errors and passes `5/240` (`2.08%`), limited
+to four `click-button` and one `sign-agreement` episode. Both are accessibility/DOM text
+projections with `vision_used=false`; email-inbox, form, drag, scroll, and social task families
+remain unsuccessful. These are current native diagnostics, not visual-agent or real-account
+success claims.
+
+### Current m666 workshop/publication gate (m667 v3)
+
+The [m667 receipt](paper/results/raw/m667-workshop-gate-current-m666-v3.json) binds the full
 public AppWorld continuation to the exact `m666` warm child (`8c3a4ed3...`) and re-runs the
-fail-closed workshop gate. The gate remains `ready: false`: MobileGym, BrowserGym/MiniWoB, and
-RL receipts are from older checkpoints; ToolSandbox additionally lacks official-split
+fail-closed workshop gate. The gate remains `ready: false`: ToolSandbox and RL receipts are from
+older checkpoints; ToolSandbox additionally lacks official-split
 verification; and the public model/demo manifest is not bound to this child. AndroidWorld,
 MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, MCPMark, and EnterpriseOps-Gym still
 have no native receipts. The m666 schema-planner `6/6`
 control is explicitly executor-side and cannot satisfy learned-policy, native, or Hugging Face
-publication requirements. Thirteen blockers remain after the canonical weight-envelope repair;
+publication requirements. Eleven blockers remain after the canonical weight-envelope repair and
+current MobileGym/BrowserGym reruns;
 this is an auditable diagnostic checkpoint, not workshop approval.
 
 ### Full native BrowserGym continuation on the m626 child (m632)
