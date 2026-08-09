@@ -1559,6 +1559,27 @@ and other multi-step families fail. Accessibility-tree text is used with no coor
 semantic fallback and no screenshots, so the receipt is a native text-grounding regression, not
 visual computer-use or real email/Notion execution. The m679 child is not promoted.
 
+### m685 current m679 stateful productivity probe
+
+The exact m679 checkpoint was continued for 64 CPU updates on the disjoint local
+`stateful_productivity_v1` suite: email send, Notion create, browser search, browser recovery, and
+abstention. The pretrained-frozen-backbone arm reaches `93.75%` route accuracy, `46.67%` selector
+top-1, `68.75%` closed-loop step success, and `40%` task completion; the matched random arm reaches
+`81.25%`, `46.67%`, `68.75%`, and `40%`. Email and abstention complete, Notion partially completes,
+and recovery remains `0%`. This supports retaining the pretrained backbone for another continuation,
+but the matched control and failed recovery task explicitly do not justify native promotion. No
+public benchmark text, emulator/browser/MCP server, account, or external side effect was used.
+
+### m685 current m679 workshop gate
+
+The [m685 gate receipt](paper/results/raw/m685-workshop-gate-current-m679-v1.json) joins the exact
+m679 checkpoint hash to the current MobileGym, BrowserGym, and native WebGPU receipts. Five checks
+pass: catalog coverage, runnable adapters, MobileGym execution, BrowserGym execution, and native
+WebGPU capability/latency. Readiness remains `false`: AndroidWorld, Mobile Safety Bench, iOSWorld,
+OSWorld/OSWorld-v2, AgentNet, ToolSandbox, MCPMark, and EnterpriseOps-Gym native receipts are not
+present; the current RL and transfer-ablation lineage is stale; and the public HF model/Space still
+does not bind the m679 checkpoint. This is an explicit publication stop, not an inferred approval.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
