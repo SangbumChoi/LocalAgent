@@ -1595,6 +1595,15 @@ current RL preflight. It remains `ready: false` because nine native benchmark/se
 missing, the transfer-ablation report is bound to an older checkpoint, and the public HF model/Space
 does not bind m679.
 
+### m689 current m679 ToolSandbox interactive diagnostic
+
+Allowing up to eight model turns after tool results on the same `129` base scenarios produces
+`27/129` exact (`20.93%`) with mean similarity `0.3415` and zero runner exceptions. The interactive
+run still solves `0/82` multi-tool and `0/24` state-dependent scenarios; the strongest slice remains
+insufficient-information (`26/28` exact). This isolates the current failure mode as state grounding
+and action sequencing, not merely first-call routing. The result remains native diagnostic evidence,
+not an official ToolSandbox score, because the upstream user simulator and official split are absent.
+
 ### m688 current m679 ToolSandbox native diagnostic
 
 The exact m679 checkpoint now runs through all `129` pinned ToolSandbox base scenarios with the
