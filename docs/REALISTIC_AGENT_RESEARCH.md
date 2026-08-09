@@ -1457,6 +1457,41 @@ control.  The result supports retaining parent weights as an initialization cand
 rejecting this child for WebGPU promotion; it is not an Android emulator, screenshot, or real-device
 score.
 
+### Full native BrowserGym continuation on the m626 child (m632)
+
+The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
+`10,524,544`-parameter AndroidControl-adapted checkpoint through all `240` fixed-seed episodes of
+the pinned BrowserGym `0.14.3` / MiniWoB official plan. The BrowserGym and MiniWoB revisions,
+Playwright `1.44.0`, Chromium revision `1117`, and checkpoint hash are recorded in the receipt;
+the official split is verified and the runner reports no action errors. The child passes `5/240`
+episodes (`2.0833%`), all in `miniwob.click-button` (`4`) or `miniwob.sign-agreement` (`1`).
+
+This is a native browser-control result, but it is explicitly text/accessibility-tree only:
+`vision_used=false`, coordinate and semantic fallbacks are disabled, and `211` grounded steps are
+outnumbered by `2,040` no-op/ungrounded steps. It is therefore a reproducible grounding diagnostic,
+not a visual BrowserGym, WebArena, real Gmail/Notion, or external-account result. The failure
+pattern is actionable: the current transfer can emit a simple grounded click, but lacks the visual
+and multi-step state representation needed for forms, email-like pages, scrolling, drag tasks, and
+structured UI reasoning.
+
+### Current m626 RL preflight and refreshed workshop gate (m633)
+
+The [m633 RL receipt](paper/results/raw/m633-m626-stateful-rl-preflight-v1.json) runs the strict
+two-step one-update preflight from the m626 warm checkpoint on the isolated deterministic
+email/Notion/browser state machine. Train/eval rows are disjoint; `32` rollouts and `2` optimizer
+updates execute with learning rates `[0.0, 2e-5]`, all `40` policy tensors change, and held-out
+mean reward moves from `0.0` to `0.1` while exact match and strict tool-format validity remain
+`0`. This passes the lineage/optimizer protocol check only; it is not native API control, a public
+benchmark score, real-account execution, or a production RL checkpoint.
+
+The [m633 gate receipt](paper/results/raw/m633-workshop-gate-current-m626-v1.json) now has seven
+checkpoint-bound passes: catalog coverage, native MobileGym, native BrowserGym/MiniWoB, native
+WebGPU capability/latency, current warm/random transfer, and current RL preflight. Readiness
+remains `false` with ten explicit blockers: AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld,
+OSWorld-V2, AgentNet, ToolSandbox, MCPMark, EnterpriseOps-Gym, and the authenticated public
+model/demo manifest. The publication decision is intentionally unchanged by the new receipts;
+the remaining native suites and public URLs must be supplied before a workshop or HF release claim.
+
 The [m293 selector-first ablation](paper/results/raw/m293-mobilegym-selector-first-canary-v1.json)
 forces the learned top candidate instead of allowing LM re-ranking.  It remains `0/20` with the
 same `19` press-enter and one submit-answer collapse.  This is useful diagnosis: MobileGym's
