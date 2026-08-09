@@ -4553,3 +4553,19 @@ This closes the previously missing byte-to-encoder path, but it is intentionally
 smoke: the target is the public goal text, no action-quality dataset was trained, no emulator or
 desktop verifier ran, and ONNX/WebGPU export is not implemented for the visual prefix.  The receipt
 therefore does not promote the sibling checkpoint or change the `m710` workshop gate.
+
+### Bounded AndroidControl visual-action transfer (m712)
+
+The [m712 receipt](paper/results/raw/m712-androidcontrol-visual-action-pilot-v1.json) extends the
+bridge smoke into action supervision.  A `50 MiB` range from the official AndroidControl train
+shard yielded `12` complete source records (`8` train episodes, `4` held-out episodes) and `64`
+frozen-visual-bridge updates.  Screenshots were decoded and resized before batching; the warm arm
+loaded the exact m679 text backbone, while the random arm used a matched fresh backbone and the
+same optimizer/seed schedule.  Warm held-out action-token loss fell `8.072→6.760`, random
+`9.849→8.719`; however, both arms remained at `0%` action-sequence exactness, and random had
+higher action-token accuracy (`19.29%` vs `6.43%`).
+
+This is a useful weight-reuse boundary, not a success claim: the warm backbone helps loss but does
+not produce reliable action sequences, and the visual adapter is not promoted.  The [m713 gate](paper/results/raw/m713-workshop-gate-current-m679-v1.json)
+adds an explicit `visual_pilot_sequence_exact_zero_and_no_emulator_verifier` blocker; no native
+AndroidControl, AndroidWorld, MobileGym visual, or WebGPU visual score is claimed.
