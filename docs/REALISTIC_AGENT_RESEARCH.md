@@ -1595,6 +1595,22 @@ current RL preflight. It remains `ready: false` because nine native benchmark/se
 missing, the transfer-ablation report is bound to an older checkpoint, and the public HF model/Space
 does not bind m679.
 
+### m687 current m679 weight-reuse ablation and gate refresh
+
+The fresh m687 warm/random synthetic service-contract ablation is parent-bound to m679 with 28
+generated rows and matched 32-step head training. Warm initialization preserves the shared body
+exactly (`0%` embedding, attention/mixer, FFN, and normalization movement) while the random control
+moves those groups by `118.6%`, `77.9%`, `87.8%`, and `8.7%`. Both arms pass configuration,
+shape, and tokenizer compatibility checks. The evidence supports reusing the m679 backbone for
+continuation and keeping the action heads separately trainable; it is not official MCPMark or live
+service success.
+
+The [m687 gate](paper/results/raw/m687-workshop-gate-current-m679-v1.json) now passes seven checks,
+including current RL and transfer-ablation lineage. Readiness remains `false` only because the
+native AndroidWorld, Mobile Safety Bench, iOSWorld, OSWorld/OSWorld-v2, AgentNet, ToolSandbox,
+MCPMark, and EnterpriseOps-Gym receipts are absent and the public HF model/Space is still not bound
+to m679.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
