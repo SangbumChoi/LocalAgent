@@ -1659,6 +1659,34 @@ cannot claim multi-step AppWorld competence. No screenshots, Gmail/Notion tasks,
 or irreversible side effects were used; the result is not an official AppWorld/AppWorld-UL score and
 does not clear the workshop gate.
 
+### Longer AppWorld SFT with native replay (m696)
+
+The [m696 receipt](paper/results/raw/m696-m679-appworld-sft-native-v1.json) tests whether the
+m694 repetition failure is simply under-training. Both arms use the same `90` public AppWorld train
+tasks and `6` disjoint dev tasks for `128` multi-turn SFT updates; the warm arm starts from the
+exact m679 body and the control starts from a matched random backbone. The identical native
+free-running protocol then allows up to four schema-translated API steps per task.
+
+Warm held-out teacher-forced token accuracy rises from `63.90%` to `76.88%`; the random control
+rises from `0%` to `50.57%`, leaving a `26.31`-point warm advantage. The warm shared-body movement
+stays below `1.76%` relative L2, while the random body moves up to `118.6%`; compatibility and
+tokenizer checks pass and action heads remain frozen. Despite that transfer signal, native task
+completion is `0/6` for both arms, with repeated API candidates ending every trajectory. The weight
+decision is therefore unchanged: reuse the m679 body only as an initialization candidate, do not
+export the child, and require native multi-step success before claiming WebGPU productivity control.
+
+### Frozen API-head intervention (m695)
+
+The [m695 receipt](paper/results/raw/m695-m679-appworld-api-head-native-v1.json) isolates schema
+routing from the language-model policy. A small API head is trained for `1,024` updates on the `90`
+public train tasks while the m679 backbone stays frozen; a matched random-backbone head is trained
+with the identical protocol. The warm head reaches `2/6` held-out first-action labels (`33.3%`) versus
+`0/6` for random, but the same resettable native free-run still completes `0/6` tasks for both arms.
+
+This is a deployment boundary: a learned route/schema sidecar can improve candidate ranking, but it
+cannot replace state tracking, argument grounding, or multi-step policy learning. The sidecar is
+therefore not exported or counted as WebGPU productivity capability.
+
 ### m689 current m679 ToolSandbox interactive diagnostic
 
 Allowing up to eight model turns after tool results on the same `129` base scenarios produces
