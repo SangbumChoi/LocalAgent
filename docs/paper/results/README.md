@@ -735,6 +735,8 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m667 current workshop gate](raw/m667-workshop-gate-current-m666-v3.json) | Exact-current-checkpoint gate refresh after m666 public AppWorld, m668 weight envelope, and m670 native reruns | `ready: false`; 11 blockers remain for missing official suites, stale ToolSandbox/RL evidence, and an unbound public manifest |
 | [m672 current MobileGym](raw/m672-m671-mobilegym-native-v1.json) | Exact m671 warm child on complete pinned MobileGym official test split | 256/256 executed, zero runner errors, 1/256 pass (0.39%); bounded DOM/text projection, no vision |
 | [m672 current BrowserGym](raw/m672-m671-browsergym-native-v1.json) | Exact m671 warm child on complete pinned BrowserGym/MiniWoB fixed-seed plan | 240/240 executed, 5/240 pass (2.08%), zero action errors; accessibility-tree text, no vision; retained as a negative control |
+| [m673 m671 HF/Space preparation](raw/m673-m671-hf-space-preparation-v2.json) | Checkpoint-bound model bundle plus static WebGPU Space staging | 10.52M parameters; ONNX/PyTorch parity passed; 8 WebGPU artifacts; upload not attempted because HF authentication is absent |
+| [m674 m671 native WebGPU adoption](raw/m674-m671-webgpu-adoption-v1.json) | Chromium native WebGPU runtime over the regenerated m671 bundle | Apple Metal-3; 3/3 exact structured actions; 1,454.5 tok/s p50; 7.4 ms p50; 20.46 MB; no side effects; closed loop 0 |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

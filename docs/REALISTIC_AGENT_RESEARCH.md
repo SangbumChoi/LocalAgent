@@ -1485,6 +1485,28 @@ claim visual computer use, email/Notion side effects, WebArena, or real-service 
 these receipts are current-checkpoint evidence of the remaining
 grounding and multi-step planning gap, not workshop promotion evidence.
 
+### m673 local WebGPU/Hugging Face release preparation
+
+The [m673 release-preparation receipt](paper/results/raw/m673-m671-hf-space-preparation-v2.json)
+binds the m671 warm child (`10,524,544` parameters; checkpoint SHA `b5576dc8…`) to a regenerated
+Hugging Face-compatible model bundle and static WebGPU Space staging directory. The eight-artifact
+WebGPU bundle passes the hard ONNX/PyTorch parity gate, including fp16 logits argmax agreement, and
+the staged Space contains the same checkpoint-bound bundle manifest. This is the strongest local
+deployment evidence for the current child, but it is not a public release: no Hub repository was
+created or uploaded because authenticated HF credentials are unavailable. An anonymous Hub audit,
+visual grounding, and real Gmail/Notion execution remain required before publication or workshop
+promotion.
+
+### m674 native WebGPU adoption of the m671 child
+
+The [m674 adoption receipt](paper/results/raw/m674-m671-webgpu-adoption-v1.json) binds the
+checkpoint-bound m673 release preparation to a real Chromium native WebGPU run. Apple Metal-3
+reported `3/3` exact structured actions (email-shaped, URL, and Notion-shaped), `1,454.5` input
+tokens/s p50, `7.4 ms` p50 latency, and `20.46 MB` conservative peak memory. The harness executed
+no external side effects and closed-loop success is `0`, so these are local dispatch/capability
+measurements—not Gmail, browser navigation, Notion, or MCP task completion. Public Hub upload and
+visual/service-backed promotion gates remain open.
+
 ### Matched random-backbone ToolSandbox control (m636)
 
 To separate checkpoint transfer from the native ToolSandbox protocol, the [m636 receipt](paper/results/raw/m636-m626-toolsandbox-matched-random-control-v1.json)
