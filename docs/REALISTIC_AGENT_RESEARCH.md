@@ -1585,6 +1585,18 @@ separate schema/action grounding head before any native AppWorld or WebGPU promo
 teacher-forced first-action evidence only; no external email, SMS, app account, or protected test
 result is claimed.
 
+### AppWorld route/selector head adaptation and native replay (m648)
+
+The [m648 receipt](paper/results/raw/m648-appworld-head-native-v1.json) isolates deployment-head
+learning on the same `64/18` AppWorld train/dev projection. A 256-step route/selector update
+raises both warm route accuracy and selector top-1 accuracy to `100%` on the held-out projection;
+the matched random-body arm reaches the same ranking metrics. Only the serialized action-head
+group moves (`37.40%` warm, `40.39%` random); embedding, attention, FFN, and normalization remain
+unchanged. However, paired resettable native replay on six public dev tasks remains `0/6` for both
+baseline and head-adapted checkpoints, with zero native API calls. This cleanly separates candidate
+ranking from free-run action generation: keep the warm body and train the heads, but do not promote
+the head adapter as native AppWorld success or WebGPU-ready email/tool control.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
