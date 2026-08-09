@@ -1689,6 +1689,24 @@ random `12`). This separates a measurable token-learning gain from actual short-
 the current blocker is action selection/state planning, not only long-horizon length. The warm
 body remains the preferred initialization, but no native email/Notion/WebGPU promotion is justified.
 
+### AppWorld state-grounding and persisted native-control audit (m663)
+
+The [m663 receipt](paper/results/raw/m663-appworld-grounding-v1.json) closes two evaluator gaps
+exposed by the short-task probe. The compact response sketch now preserves answer-relevant
+`follower_count`, and native API calls execute through AppWorld's persisted `world.execute()`
+boundary rather than only mutating in-memory objects. This makes the native verifier read the same
+state that the model action changed; credentials are resolved inside the sandbox and never embedded
+in generated action code.
+
+The warm 24-step continuation reaches `65.15%` held-out teacher-forced token accuracy versus
+`37.70%` for the matched random arm, with shared-body movement of `0.345%/0.187%/0.224%` for
+embedding/attention/FFN and unchanged action heads. The strict free-running six-task probe remains
+`0/6` for both arms because the first API choices are wrong. A separately labeled control that
+replays the public ground-truth API prefix and asks only for the final completion succeeds `6/6` for
+both arms, including answer extraction from bounded live state. This isolates the remaining gap to
+state-conditioned action selection and multi-step planning; it is not a free-running score and does
+not authorize WebGPU email/Notion publication.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact

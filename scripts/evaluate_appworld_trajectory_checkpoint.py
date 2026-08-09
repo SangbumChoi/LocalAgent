@@ -53,6 +53,7 @@ def evaluate(
     *, checkpoint: Path, root: Path, task_ids: list[str], report: Path,
     max_steps: int, retrieve_k: int, experiment_name: str,
     appworld_api_head: Path | None = None, allow_completion: bool = False,
+    lexical_first: bool = False,
 ) -> dict[str, Any]:
     if max_steps < 1 or retrieve_k < 1:
         raise ValueError("max_steps and retrieve_k must be positive")
@@ -105,6 +106,7 @@ def evaluate(
                     prompt,
                     api_head=api_head,
                     allow_completion=allow_completion,
+                    lexical_first=lexical_first,
                 )
                 parsed = _parse_appworld_api_code(code) if code is not None else None
                 step_record: dict[str, Any] = {
@@ -184,6 +186,7 @@ def evaluate(
             "schema_adapter": "strict one literal API call per step",
             "appworld_api_head": str(appworld_api_head) if appworld_api_head else None,
             "allow_completion": allow_completion,
+            "lexical_first": lexical_first,
         },
         "environment": {
             "native_runtime_executed": True,
@@ -233,6 +236,11 @@ def main() -> int:
         action="store_true",
         help="add the strict supervisor.complete_task(status='success') candidate after an API step",
     )
+    parser.add_argument(
+        "--lexical-first",
+        action="store_true",
+        help="use the top schema-overlap candidate as a diagnostic grounding control",
+    )
     args = parser.parse_args()
     result = evaluate(
         checkpoint=args.checkpoint,
@@ -244,6 +252,7 @@ def main() -> int:
         experiment_name=args.experiment_name,
         appworld_api_head=args.appworld_api_head,
         allow_completion=args.allow_completion,
+        lexical_first=args.lexical_first,
     )
     print(json.dumps(result["summary"], indent=2, sort_keys=True))
     return 0

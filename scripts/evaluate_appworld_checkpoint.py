@@ -128,6 +128,8 @@ def _schema_ground_appworld_api_step(
     prompt: str,
     api_head: Any | None = None,
     allow_completion: bool = False,
+    lexical_first: bool = False,
+    completion_only: bool = False,
 ) -> str | None:
     """Rank bounded API-schema candidates with the checkpoint instead of free-generating code."""
 
@@ -147,6 +149,14 @@ def _schema_ground_appworld_api_step(
     quoted = [value for left, right in re.findall(r"'([^']+)'|\"([^\"]+)\"", prompt)
               for value in (left or right,)]
     proper_nouns = re.findall(r"\b[A-Z][a-z]+\b", prompt)
+    observed_values: dict[str, list[Any]] = {}
+    for key, raw in re.findall(
+        r'"([a-zA-Z][a-zA-Z0-9_]*)"\s*:\s*(-?\d+(?:\.\d+)?)', prompt
+    ):
+        value: Any = float(raw) if "." in raw else int(raw)
+        observed_values.setdefault(key, []).append(value)
+    # Natural-language thresholds are useful for public task instructions such as "over 980".
+    instruction_numbers = [int(raw) for raw in re.findall(r"\b\d+\b", prompt)]
     selected_label: str | None = None
     observed_fields: set[str] = set()
     if api_head is not None:
@@ -163,48 +173,65 @@ def _schema_ground_appworld_api_step(
                 selected_index = int(api_head(feature).argmax(-1).item())
             selected_label = api_head.classes[selected_index]
     ranked: list[tuple[float, str]] = []
-    for app, docs in world.task.api_docs.items():
-        if app in {"admin", "api_docs", "supervisor"}:
-            continue
-        for api, doc in docs.items():
-            if api in {"login", "logout", "signup", "verify_account", "reset_password"}:
+    if not completion_only:
+        for app, docs in world.task.api_docs.items():
+            if app in {"admin", "api_docs", "supervisor"}:
                 continue
-            if selected_label is not None and selected_label != f"{app}.{api}":
-                continue
-            description = str(doc.get("description", ""))
-            api_tokens = set(re.findall(r"[a-z0-9]+", f"{api} {description}".lower()))
-            overlap = prompt_tokens & api_tokens
-            score = float(2 * len(overlap))
-            if app.lower() in prompt.lower():
-                score += 3.0
-            if not overlap and selected_label is None:
-                continue
-            params = doc.get("parameters", [])
-            arguments: dict[str, Any] = {}
-            viable = True
-            for parameter in params:
-                name = str(parameter.get("name", ""))
-                if not name or name == "access_token":
+            for api, doc in docs.items():
+                if api in {"login", "logout", "signup", "verify_account", "reset_password"}:
                     continue
-                default = parameter.get("default")
-                if name == "page_index" and default == 0:
-                    arguments[name] = 0
-                elif (
-                    name in {"query", "search_query"}
-                    and (parameter.get("required") or name in observed_fields)
-                    and (proper_nouns or quoted)
-                ):
-                    arguments[name] = proper_nouns[0] if proper_nouns else quoted[0]
-                elif parameter.get("required") and default is None:
-                    viable = False
-                    break
-            if viable:
-                args = ", ".join(f"{key}={repr(arguments[key])}" for key in sorted(arguments))
-                code = f"apis.{app}.{api}({args})"
-                ranked.append((score, code))
+                if selected_label is not None and selected_label != f"{app}.{api}":
+                    continue
+                description = str(doc.get("description", ""))
+                api_tokens = set(re.findall(r"[a-z0-9]+", f"{api} {description}".lower()))
+                overlap = prompt_tokens & api_tokens
+                score = float(2 * len(overlap))
+                if app.lower() in prompt.lower():
+                    score += 3.0
+                if not overlap and selected_label is None:
+                    continue
+                params = doc.get("parameters", [])
+                arguments: dict[str, Any] = {}
+                viable = True
+                for parameter in params:
+                    name = str(parameter.get("name", ""))
+                    if not name or name == "access_token":
+                        continue
+                    default = parameter.get("default")
+                    if name in observed_values:
+                        arguments[name] = observed_values[name][-1]
+                    elif name == "page_index" and default == 0:
+                        arguments[name] = 0
+                    elif (
+                        name in {"query", "search_query"}
+                        and (parameter.get("required") or name in observed_fields)
+                        and (proper_nouns or quoted)
+                    ):
+                        arguments[name] = proper_nouns[0] if proper_nouns else quoted[0]
+                    elif name in {"min_play_count", "min_follower_count", "amount"} and instruction_numbers:
+                        arguments[name] = instruction_numbers[-1]
+                    elif parameter.get("required") and default is None:
+                        viable = False
+                        break
+                if viable:
+                    args = ", ".join(f"{key}={repr(arguments[key])}" for key in sorted(arguments))
+                    code = f"apis.{app}.{api}({args})"
+                    ranked.append((score, code))
     # Completion is deliberately opt-in: the default probe measures API-prefix replay only.
     # The candidate contains no answer, so question tasks can still fail honestly at the verifier.
     if allow_completion and "Next required action:" in prompt:
+        answer_fields = ("answer", "count", "follower_count", "total", "value")
+        answer_requested = bool(
+            re.search(r"\bhow many\b|\bhow much\b|\bwhat\b|\bwhich\b|\bwho\b|\bwhen\b|\bwhere\b", prompt.lower())
+        )
+        answers = (
+            [value for field in answer_fields for value in observed_values.get(field, [])]
+            if answer_requested else []
+        )
+        for answer in answers[-3:]:
+            ranked.append(
+                (2.0, f"apis.supervisor.complete_task(answer={answer!r}, status='success')")
+            )
         ranked.append((0.0, "apis.supervisor.complete_task(status='success')"))
     if not ranked:
         return None
@@ -213,6 +240,11 @@ def _schema_ground_appworld_api_step(
         f"{TOOL_CALL_OPEN}{json.dumps({'name': 'run_python', 'arguments': {'code': code}}, separators=(',', ':'), sort_keys=True)}{TOOL_CALL_CLOSE}"
         for _, code in ranked[:24]
     ]
+    if lexical_first:
+        # This is an explicit environment-side schema policy, not a model score.  It is useful as
+        # a diagnostic control for separating API-name/argument grounding from free candidate ranking.
+        selected_code = ranked[0][1]
+        return selected_code
     selected = _best(model, tokenizer, prompt, candidates, "cpu")
     try:
         parsed = json.loads(selected[len(TOOL_CALL_OPEN):-len(TOOL_CALL_CLOSE)])
@@ -223,7 +255,7 @@ def _schema_ground_appworld_api_step(
 
 
 def _appworld_execute_api_step(world: Any, app: str, api: str, arguments: dict[str, Any]) -> tuple[Any, int]:
-    """Execute one parsed API step with credentials sourced only from the resettable fixture."""
+    """Execute one parsed API step through AppWorld's persisted sandbox boundary."""
 
     if app == "supervisor" and api == "complete_task":
         allowed = {"answer", "status"}
@@ -232,33 +264,55 @@ def _appworld_execute_api_step(world: Any, app: str, api: str, arguments: dict[s
         status = arguments.get("status", "success")
         if status not in {"success", "fail"}:
             raise ValueError("supervisor.complete_task status must be success or fail")
+        rendered = ", ".join(f"{key}={value!r}" for key, value in sorted(arguments.items()))
+        code = f"result = apis.supervisor.complete_task({rendered})\nprint(repr(result))"
         request_count_before = len(world.requester.request_tracker.requests)
-        response = world.apis.supervisor.complete_task(**arguments)
+        message = world.execute(code)
+        response = _parse_appworld_printed_result(message)
         return response, len(world.requester.request_tracker.requests) - request_count_before
     if app in {"admin", "api_docs", "supervisor"} or api in {"login", "logout"}:
         raise ValueError("bootstrap/admin AppWorld API actions are not model-replayable")
     if app not in world.apis or api not in world.apis[app]:
         raise ValueError(f"unknown AppWorld API action: {app}.{api}")
-    request_count_before = len(world.requester.request_tracker.requests)
-    profile = world.apis.supervisor.show_profile()
-    passwords = world.apis.supervisor.show_account_passwords()
-    password_by_app = {str(item["account_name"]): item["password"] for item in passwords}
     from appworld.common.misc import get_login_by
 
     login_by = get_login_by(app)
-    if login_by is None or login_by not in profile or app not in password_by_app:
+    if login_by is None:
         raise ValueError(f"fixture has no supported login bootstrap for AppWorld app {app!r}")
-    login_result = world.apis[app].login(
-        username=profile[login_by],
-        password=password_by_app[app],
+    api_doc = world.task.api_docs.get(app, {}).get(api, {})
+    api_parameters = {
+        str(parameter.get("name", ""))
+        for parameter in api_doc.get("parameters", [])
+        if isinstance(parameter, dict)
+    }
+    rendered = ", ".join(f"{key}={value!r}" for key, value in sorted(arguments.items()))
+    if "access_token" in api_parameters:
+        rendered = "access_token=token" + (", " + rendered if rendered else "")
+    code = (
+        "profile = apis.supervisor.show_profile()\n"
+        "passwords = {item['account_name']: item['password'] for item in apis.supervisor.show_account_passwords()}\n"
+        f"token = apis.{app}.login(username=profile[{login_by!r}], password=passwords[{app!r}])['access_token']\n"
+        f"result = apis.{app}.{api}({rendered})\n"
+        "print(repr(result))"
     )
-    token = login_result.get("access_token") if isinstance(login_result, dict) else None
-    if not isinstance(token, str) or not token:
-        raise ValueError(f"AppWorld login did not return an access token for {app!r}")
-    call_arguments = dict(arguments)
-    call_arguments.setdefault("access_token", token)
-    response = world.apis[app][api](**call_arguments)
+    request_count_before = len(world.requester.request_tracker.requests)
+    message = world.execute(code)
+    response = _parse_appworld_printed_result(message)
     return response, len(world.requester.request_tracker.requests) - request_count_before
+
+
+def _parse_appworld_printed_result(message: str) -> Any:
+    """Parse the final repr printed by a one-action AppWorld sandbox execution."""
+
+    if not isinstance(message, str) or message.startswith("Execution failed."):
+        raise RuntimeError(message)
+    lines = [line.strip() for line in message.splitlines() if line.strip()]
+    if not lines:
+        raise RuntimeError("AppWorld action produced no printed result")
+    try:
+        return ast.literal_eval(lines[-1])
+    except (SyntaxError, ValueError) as error:
+        raise RuntimeError(f"AppWorld action result was not a literal: {lines[-1]!r}") from error
 
 
 def _verify_runner_contract(*, AppWorld: Any, task_id: str, experiment_name: str) -> dict[str, Any]:

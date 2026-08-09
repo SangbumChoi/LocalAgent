@@ -50,7 +50,7 @@ _RELEVANT_RESPONSE_KEYS = {
     "contact_id", "description", "genre", "id", "last_name", "first_name", "message", "name",
     "page_index", "play_count", "playlist_id", "playlist_title", "rating", "relationships",
     "request_id", "response", "result", "sender", "receiver", "song_id", "status", "text",
-    "text_message_id", "title", "total", "transaction_id", "type", "value",
+    "text_message_id", "title", "total", "transaction_id", "type", "value", "follower_count",
 }
 
 
