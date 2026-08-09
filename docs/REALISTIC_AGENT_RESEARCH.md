@@ -4441,3 +4441,20 @@ receipt without promoting it: `native:mcpmark_playwright` is explicitly blocked 
 `bounded_subset_and_verifier_zero`. The gate remains fail-closed until the complete benchmark
 split, pinned browser parity, visual grounding, and successful final-answer verification are
 available.
+
+### Full bounded MCPMark Playwright standard subset (m702/m703)
+
+The [m702 receipt](paper/results/raw/m702-m679-mcpmark-playwright-standard-v1.json) expands the
+browser-service probe to all four pinned Playwright standard tasks: extraction, Cloudflare
+Turnstile, biographical web search, and arXiv search.  Every task starts through the real
+`@playwright/mcp@0.0.68` server with zero runner exceptions.  The model reaches navigation and
+accessibility snapshots on the extraction/Turnstile tasks, but emits invalid browser code on the
+two search tasks; all four independent verifiers fail (`0/4`) and two browser-tool errors are
+recorded.  This is the complete locally reproducible Playwright standard subset, but not an
+official MCPMark score because the benchmark browser version, full cross-service split, visual
+answer quality, and user simulation are not reproduced.
+
+The [m703 gate](paper/results/raw/m703-workshop-gate-current-m679-v1.json) keeps the result
+blocked as `bounded_subset_and_verifier_zero`.  It demonstrates that the WebGPU-oriented
+checkpoint can cross a live browser MCP boundary, while the remaining gap is reliable multi-step
+browser reasoning and final-answer extraction.
