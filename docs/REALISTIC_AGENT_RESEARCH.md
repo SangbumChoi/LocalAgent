@@ -1560,6 +1560,17 @@ This isolates the bottleneck: the improvement is supplied by an environment-side
 not by Mind2Web policy transfer. Both runs are bounded, non-official diagnostics—no screenshots,
 real accounts, email/Notion side effects, or official BrowserGym score are claimed.
 
+### Current m626 gate with grounding evidence (m646)
+
+The [m646 receipt](paper/results/raw/m646-workshop-gate-current-m626-grounding-v1.json) refreshes
+the fail-closed publication gate from the exact m626 native MobileGym/BrowserGym/ToolSandbox,
+WebGPU, transfer, and RL receipts and attaches m645's paired grounding result. The gate still
+reports `ready: false` with ten blockers: missing AndroidWorld, MobileSafetyBench, iOSWorld,
+OSWorld, OSWorld-V2, AgentNet, MCPMark, and EnterpriseOps-Gym native receipts; ToolSandbox's
+unverified official split; and the missing authenticated public model/demo manifest. The m645
+diagnostic changes no gate status: its DOM-coordinate improvement is an environment-side bridge,
+not an official benchmark or Mind2Web transfer score.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
