@@ -1457,6 +1457,20 @@ control.  The result supports retaining parent weights as an initialization cand
 rejecting this child for WebGPU promotion; it is not an Android emulator, screenshot, or real-device
 score.
 
+### Matched random-backbone ToolSandbox control (m636)
+
+To separate checkpoint transfer from the native ToolSandbox protocol, the [m636 receipt](paper/results/raw/m636-m626-toolsandbox-matched-random-control-v1.json)
+replays the same pinned ToolSandbox scenario names with the matched random m626 backbone. The
+bounded control covers `25` scenarios (the warm run covers the full `129`-scenario unaugmented
+base matrix); both use the native simulator and milestone verifier, with no model-based user
+simulator, external API, or official split claim. The random control reaches `4/25` exact
+verifier matches (`16.0%`) versus `5/25` (`20.0%`) for the warm checkpoint on the identical
+subset. All four random exact matches are insufficient-information refusals, while the warm
+checkpoint gets `5/5` on that category. This is a useful negative control for protocol sanity,
+not a standalone weight-transfer claim: the matched subset is abstention-heavy and excludes the
+full ToolSandbox distribution, so the m631 MCP trajectory ablation remains the stronger
+current-checkpoint initialization evidence.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
