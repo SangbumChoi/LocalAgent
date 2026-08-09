@@ -4492,3 +4492,22 @@ The [m703 gate](paper/results/raw/m703-workshop-gate-current-m679-v1.json) keeps
 blocked as `bounded_subset_and_verifier_zero`.  It demonstrates that the WebGPU-oriented
 checkpoint can cross a live browser MCP boundary, while the remaining gap is reliable multi-step
 browser reasoning and final-answer extraction.
+
+### AgentNet visual archive provenance (m708)
+
+The [m708 receipt](paper/results/raw/m708-agentnet-visual-source-audit-v1.json) pins the public
+[xlangai/AgentNet](https://huggingface.co/datasets/xlangai/AgentNet) revision
+`d76ee50a63fad81cfdbe576416757d7c2091ed50`, whose original project is
+[OpenCUA](https://github.com/xlang-ai/OpenCUA).  Its manifest exposes the 282 MB Ubuntu trajectory
+JSONL, the 1.40 GB Windows/Mac trajectory JSONL, and the merged metadata JSONL, alongside an
+Ubuntu image archive of about 3.73 GB plus split volumes and a Windows/Mac archive of about 856 MB
+plus split volumes.  A bounded prefix of the Ubuntu source contains three complete desktop rows,
+26 unique screenshot filename references, and `click`, `doubleClick`, `hotkey`, `moveTo`, `press`,
+`rightClick`, and `terminate` pyautogui action families.  The metadata sample spans Windows Excel,
+Windows WPS Office, and Darwin Chrome tasks with screen dimensions and application/domain labels.
+
+This is source provenance, not a visual benchmark result: the local AgentNet projection still
+consumes text/actions and omits screenshot bytes.  The receipt therefore admits AgentNet visual
+data only as `provenance_only_until_image_loader_vision_encoder_and_visual_eval_are_bound`; no
+native desktop, AgentNetBench, OSWorld, or WebGPU visual success is claimed until those components
+and an executable evaluator are bound.
