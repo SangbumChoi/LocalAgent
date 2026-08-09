@@ -50,6 +50,8 @@ Stubs reference these phase numbers in their `TODO(phase-N)` markers.
       Train/evaluate the prespecified
       pre-marker-padding materialization separately only if claiming genuine fixed-512-context
       capability.
+- [x] Add an opt-in, budget-counted screenshot patch bridge and decode one official AndroidControl
+      PNG through a frozen-backbone PyTorch wiring smoke; no visual quality claim is admitted.
 - Exit: agent/code scores rise without unacceptable general-validation regression.
 
 ## Phase 3 — Agent data
@@ -122,6 +124,8 @@ Stubs reference these phase numbers in their `TODO(phase-N)` markers.
 - [x] Export the seed-2027 SFT checkpoint as a parity-gated fp16 one-forward action graph and bind
       its exact checkpoint/tokenizer/head/graph identities to preserved browser payloads.
 - [ ] Integrate cache-bearing decode with the trained complete-action autoregressive controls.
+- [ ] Add screenshot-prefix ONNX/WebGPU graphs, browser preprocessing parity, and a native visual
+      evaluator; the current `webgpu-10m-vision` config is intentionally not exportable.
 - [ ] GGUF, ExecuTorch, and real Q4 converters with runtime parity tests.
 - Exit: same weights run via PyTorch, llama.cpp, ONNX Runtime, and ExecuTorch with matching outputs.
 

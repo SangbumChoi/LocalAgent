@@ -57,6 +57,11 @@ Kimi Delta Attention.
 - **Inference state:** attention stores K/V per token; short-convolution stores a fixed tail.
   Recurrent passes share weights but retain separate cache slots, preserving exact cached/fresh
   parity.
+- **Optional screenshot bridge:** `vision_enabled` adds a compact 8-bit RGB patch encoder and
+  prepended visual-token prefix (`webgpu-10m-vision`: 10,612,224 parameters, 36 visual tokens).
+  It is budget-counted and trainable in PyTorch; legacy text checkpoints leave it disabled and
+  unchanged.  Cache-bearing visual decode and ONNX/WebGPU export remain unimplemented until the
+  preprocessing and native visual evaluator are frozen.
 - **Shared-paper tiers:** one frozen 16K BPE tokenizer and corpus split, 2K packed pretraining
   rows, and a 4K model limit make loss and prompt-capacity comparisons meaningful.
 
@@ -65,6 +70,7 @@ Kimi Delta Attention.
   | `webgpu-1m-bpe-router` | 128 / 32 | 2 × 3, `[conv, attn]` | 2 / 1 | 432 | 980,480 | recurrent router/planner |
   | `webgpu-10m-hybrid-4k` | 384 / 384 | 4 × 1, `[conv, attn, conv, attn]` | 6 / 1 | 512 | 10,524,544 | latency-feasible AR candidate |
   | `webgpu-10m-attn-4k` | 384 / 384 | 4 × 1, all attention | 6 / 1 | 624 | 10,547,072 | matched 10M control |
+  | `webgpu-10m-vision` | 384 / 384 | 4 × 1, `[conv, attn, conv, attn]` + 36 visual tokens | 6 / 1 | 512 | 10,612,224 | experimental screenshot bridge |
   | `webgpu-96m-hybrid` | 640 / 640 | 18 × 1, 12 conv + 6 attention | 10 / 1 | 1728 | 95,320,448 | near-budget quality/feasibility |
   | `webgpu-96m-attn` | 640 / 640 | 18 × 1, all attention | 10 / 1 | 1984 | 95,298,944 | matched 96M control |
   | `webgpu-44m-moe` | 320 / 320 | 9 × 1, 6 conv + 3 attention | 5 / 1 | 8×512, top-2 | 43,862,464 total / 17,320,384 active | opt-in capacity treatment |
@@ -145,6 +151,9 @@ build prompt(system+tools+history+memory) → generate →
   public action records into `Conversation`, preserves per-row provenance, rejects benchmark and
   license/split boundary violations, checks exact prompt holdouts, and writes a self-hashed
   mixture manifest.
+- `visual.py` — dependency-free decoding of bounded 8-bit RGB/RGBA PNG screenshots into tensors for
+  the opt-in visual bridge; unsupported/interlaced formats fail closed rather than being silently
+  admitted to training.
 - `flywheel.py` — ingest canonical conversation exports, **mine** positive/provenance-bound
   training rows, **verify** split/schema/provenance policy, and idempotently append to the
   SFT/distill pool. Production SQLite feedback ingestion remains Phase 8.

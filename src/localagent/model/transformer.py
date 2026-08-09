@@ -16,6 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from localagent.model.config import ModelConfig
+from localagent.model.vision import VisualPatchEncoder
 
 # One cache slot per loop×layer pass: attention stores (k, v), short-conv stores its input tail.
 KVCache = list
@@ -260,6 +261,7 @@ class LocalAgentLM(nn.Module):
         self.lm_head = (
             None if cfg.tie_embeddings else nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False)
         )
+        self.vision = VisualPatchEncoder(cfg) if cfg.vision_enabled else None
         self._rope = None
         self._last_routing_aux_losses: list[torch.Tensor] = []
         self._last_routing_records: list[dict[str, object]] = []
@@ -284,7 +286,13 @@ class LocalAgentLM(nn.Module):
     def n_cache_slots(self) -> int:
         return self.cfg.n_loops * self.cfg.n_layers
 
-    def forward_features(self, idx: torch.Tensor, pos: int = 0, caches=None):
+    def forward_features(
+        self,
+        idx: torch.Tensor,
+        pos: int = 0,
+        caches=None,
+        prefix_embeds: torch.Tensor | None = None,
+    ):
         """Run the embedding and decoder backbone, returning post-final-norm features.
 
         This deliberately stops before the factorized output projection and LM head.  Action
@@ -300,6 +308,16 @@ class LocalAgentLM(nn.Module):
         x = self.embed(idx)
         if self.in_proj is not None:
             x = self.in_proj(x)
+        if prefix_embeds is not None:
+            if return_cache:
+                raise ValueError("visual prefixes are only supported for uncached prefill")
+            if prefix_embeds.ndim != 3 or prefix_embeds.shape[0] != x.shape[0]:
+                raise ValueError("prefix_embeds must have shape [batch, tokens, d_model]")
+            if prefix_embeds.shape[2] != self.cfg.d_model:
+                raise ValueError("prefix_embeds width must equal cfg.d_model")
+            x = torch.cat([prefix_embeds.to(dtype=x.dtype, device=x.device), x], dim=1)
+        if x.shape[1] > self.cfg.max_seq_len:
+            raise ValueError("input sequence including visual prefix exceeds max_seq_len")
         cos, sin = self._rope_slice(pos, x.shape[1], x.device, x.dtype)
         new_caches = [None] * self.n_cache_slots()
         self._last_routing_aux_losses = []
@@ -323,6 +341,41 @@ class LocalAgentLM(nn.Module):
         if return_cache:
             return feats, new_caches
         return feats
+
+    def encode_images(self, images: torch.Tensor) -> torch.Tensor:
+        """Return screenshot tokens for an explicitly vision-enabled model."""
+
+        if self.vision is None:
+            raise RuntimeError("this checkpoint was built without vision_enabled=True")
+        return self.vision(images)
+
+    def forward_multimodal(
+        self,
+        idx: torch.Tensor,
+        images: torch.Tensor,
+        targets: torch.Tensor | None = None,
+        return_hidden: bool = False,
+    ):
+        """Run text generation conditioned on a screenshot prefix.
+
+        ``targets`` and returned logits cover text tokens only; visual prefix positions are never
+        scored as language-model targets.  KV-cache decode is intentionally separate until the
+        visual prefill/export contract is verified.
+        """
+
+        visual = self.encode_images(images)
+        feats = self.forward_features(idx, prefix_embeds=visual)
+        text_feats = feats[:, visual.shape[1] :]
+        h = self.out_proj(text_feats) if self.out_proj is not None else text_feats
+        logits = F.linear(h, self.embed.weight) if self.lm_head is None else self.lm_head(h)
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(
+                logits.reshape(-1, logits.size(-1)), targets.reshape(-1), ignore_index=-100
+            )
+        if return_hidden:
+            return logits, loss, text_feats, visual
+        return logits, loss
 
     def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None,
                 pos: int = 0, caches=None, return_hidden: bool = False):

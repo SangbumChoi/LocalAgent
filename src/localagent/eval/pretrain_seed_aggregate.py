@@ -160,8 +160,20 @@ def _model_config_sha256(config_path: Path, config: dict[str, Any]) -> str:
         "ffn_top_k",
         "router_aux_loss_coef",
     }
+    vision_fields = {
+        "vision_enabled",
+        "vision_image_size",
+        "vision_patch_size",
+        "vision_width",
+    }
     if isinstance(raw_model, dict) and sparse_fields.isdisjoint(raw_model):
         for field in sparse_fields:
+            identity.pop(field)
+    # Archived pretraining comparisons predate the opt-in screenshot bridge. Keep their model
+    # identities stable when the legacy YAML does not declare any vision fields; new visual configs
+    # bind the complete current schema.
+    if isinstance(raw_model, dict) and vision_fields.isdisjoint(raw_model):
+        for field in vision_fields:
             identity.pop(field)
     return canonical_sha256(identity)
 

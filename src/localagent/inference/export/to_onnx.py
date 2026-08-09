@@ -25,6 +25,16 @@ from torch import nn
 from localagent.model import LocalAgentLM, ModelConfig
 
 
+# Visual-prefix models need a separate image-input/export ABI.  Refuse to silently export only the
+# text path until that contract is implemented and parity-tested.
+def _assert_text_exportable(cfg: ModelConfig) -> None:
+    if cfg.vision_enabled:
+        raise ValueError(
+            "vision-enabled checkpoints require the screenshot export ABI; text-only ONNX/WebGPU "
+            "export is intentionally disabled"
+        )
+
+
 class _LogitsOnly(nn.Module):
     """ONNX-friendly wrapper: token ids -> final-token logits ``[batch, vocab]``."""
 
@@ -68,6 +78,7 @@ def export(checkpoint: str, out_path: str, opset: int = 17, check: bool = True) 
     ck, _checkpoint_identity = _load_weights_only_checkpoint(checkpoint)
     cfg_d = ck["cfg"] if isinstance(ck["cfg"], dict) else ck["cfg"].__dict__
     cfg = ModelConfig(**{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__})
+    _assert_text_exportable(cfg)
     model = LocalAgentLM(cfg).eval()
     model.load_state_dict(ck["state_dict"])
     wrap = _LogitsOnly(model).eval()
@@ -621,6 +632,7 @@ def export_web(
         json.dumps(cfg_d, separators=(",", ":"), sort_keys=True).encode("utf-8")
     ).hexdigest()
     cfg = ModelConfig(**{k: v for k, v in cfg_d.items() if k in ModelConfig.__dataclass_fields__})
+    _assert_text_exportable(cfg)
     tokenizer = _load_web_tokenizer(cfg, tokenizer_path)
     # A tokenizer with the right vocabulary size can still assign completely different IDs.  The
     # model's recorded tokenizer hash is therefore part of the deployment contract, not merely
@@ -957,6 +969,7 @@ def export_random_hidden_backbone(
     source = Path(config_path)
     cfg = ModelConfig.from_yaml(str(source))
     cfg.assert_within_budget()
+    _assert_text_exportable(cfg)
     if any(length > cfg.max_seq_len for length in fixture_lengths):
         raise ValueError("fixture length exceeds model max_seq_len")
 
@@ -2915,6 +2928,7 @@ def export_cached_decode(
     source = Path(config_path)
     cfg = ModelConfig.from_yaml(str(source))
     cfg.assert_within_budget()
+    _assert_text_exportable(cfg)
     if any(length + decode_steps > cfg.max_seq_len for length in fixture_lengths):
         raise ValueError("fixture trajectory exceeds model max_seq_len")
     descriptors = _cache_slot_descriptors(cfg)

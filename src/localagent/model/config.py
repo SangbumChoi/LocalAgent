@@ -51,6 +51,13 @@ class ModelConfig:
     ffn_num_experts: int = 1
     ffn_top_k: int = 1
     router_aux_loss_coef: float = 0.0
+    # --- Optional screenshot bridge ---
+    # Disabled by default so existing text/WebGPU checkpoints keep the exact legacy state dict.
+    # When enabled, a tiny patch encoder prepends visual tokens to the decoder context.
+    vision_enabled: bool = False
+    vision_image_size: int = 96
+    vision_patch_size: int = 16
+    vision_width: int = 64
 
     def __post_init__(self) -> None:
         if self.embed_dim is None:
@@ -81,6 +88,16 @@ class ModelConfig:
         assert math.isfinite(self.router_aux_loss_coef) and self.router_aux_loss_coef >= 0.0, (
             "router_aux_loss_coef must be finite and non-negative"
         )
+        if self.vision_enabled:
+            assert self.vision_image_size > 0, "vision_image_size must be positive"
+            assert self.vision_patch_size > 0, "vision_patch_size must be positive"
+            assert self.vision_image_size % self.vision_patch_size == 0, (
+                "vision_image_size must be divisible by vision_patch_size"
+            )
+            assert self.vision_width > 0, "vision_width must be positive"
+            assert self.max_seq_len > self.vision_tokens, (
+                "max_seq_len must leave room for visual prefix tokens"
+            )
 
     def block_types(self) -> list[str]:
         """Resolved per-layer block kinds; None => all attention (legacy behavior)."""
@@ -103,6 +120,14 @@ class ModelConfig:
         """Whether blocks use routed expert banks instead of the legacy dense SwiGLU."""
 
         return self.ffn_num_experts > 1
+
+    @property
+    def vision_grid(self) -> int:
+        return self.vision_image_size // self.vision_patch_size
+
+    @property
+    def vision_tokens(self) -> int:
+        return self.vision_grid * self.vision_grid if self.vision_enabled else 0
 
     @classmethod
     def from_yaml(cls, path: str) -> ModelConfig:
@@ -146,7 +171,16 @@ class ModelConfig:
             mixer = conv_mixer() if kind == "conv" else attn_mixer()
             total_blocks += mixer + ffn + 2 * d  # + two RMSNorm gains (pre-mixer, pre-ffn)
         final = d  # final norm
-        return embed_table + in_proj + out_proj + head + loop_embed + total_blocks + final
+        vision = 0
+        if self.vision_enabled:
+            # Conv2d patch weights, LayerNorm gain/bias, visual-to-model projection, and positions.
+            vision = (
+                3 * self.vision_width * self.vision_patch_size * self.vision_patch_size
+                + 2 * self.vision_width
+                + self.vision_width * d
+                + self.vision_tokens * d
+            )
+        return embed_table + in_proj + out_proj + head + loop_embed + total_blocks + final + vision
 
     def estimate_params(self) -> int:
         """Total stored parameters, including every routed expert.

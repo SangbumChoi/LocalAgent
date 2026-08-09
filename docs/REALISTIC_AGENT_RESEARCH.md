@@ -4538,3 +4538,18 @@ matched text-transfer diagnostic, but its native requirement is explicitly
 `visual_runtime_and_native_verifier_missing; text_projection_success_zero`; the adapted selector is
 not a WebGPU candidate.  This prevents a successful source audit or a selector weight movement
 number from being misreported as realistic computer-use competence.
+
+### First public screenshot-to-model bridge (m711)
+
+The [m711 receipt](paper/results/raw/m711-androidcontrol-visual-bridge-smoke-v1.json) is the
+first end-to-end wiring check from an original public screenshot object into model computation.  A
+bounded range from the official AndroidControl TFRecord was parsed, one `1080×2400` PNG was decoded
+without Pillow/torchvision, and the new `webgpu-10m-vision` sibling produced a `36`-token visual
+prefix with `10.61M` parameters.  With the language-model backbone frozen, one auxiliary
+goal-token update produced finite loss `8.691`, gradient norm `10.910`, and nonzero visual-bridge
+parameter movement `0.296`.
+
+This closes the previously missing byte-to-encoder path, but it is intentionally only a wiring
+smoke: the target is the public goal text, no action-quality dataset was trained, no emulator or
+desktop verifier ran, and ONNX/WebGPU export is not implemented for the visual prefix.  The receipt
+therefore does not promote the sibling checkpoint or change the `m710` workshop gate.
