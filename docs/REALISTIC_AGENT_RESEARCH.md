@@ -1489,6 +1489,18 @@ source hashes, tokenizer, and selector protocol are held constant, this is direc
 retaining the pretrained weights for email/tool retrieval. It still cannot substitute for the
 missing stateful EnterpriseOps-Gym server/verifier run.
 
+### Current m626 AgentNet computer-use control (m640)
+
+The [m640 receipt](paper/results/raw/m640-m626-agentnet-current-text-control-v1.json) evaluates
+the public [xlangai/AgentNet projection](https://huggingface.co/datasets/xlangai/AgentNet) on the
+current checkpoint. The full warm text projection covers `16` held-out parent tasks and `257`
+action rows: first-action type rate is `75%`, mean total score `0.02326`, exact trajectory rate
+`0%`, and task success `0%`. A matched four-parent random control has `0%` first-action type
+rate and mean total `0.0`, giving a bounded warm advantage of `+75` points and `+0.01499` total
+score. The full random arm was stopped after malformed output grew beyond the practical decode
+budget, so no full-random score is claimed. Screenshots, desktop state, and AgentNetBench were
+not executed; this confirms the visual-grounding/runtime gap rather than native desktop success.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
