@@ -1737,18 +1737,37 @@ control is identical across warm and random and is not learned model output, thi
 argument-grounding evidence, not a model score or promotion. The learned action-selection gap and
 the fail-closed workshop/Hugging Face gates therefore remain open.
 
-### Current m666 workshop/publication gate (m667)
+### Canonical m666 warm/random weight ablation (m668)
 
-The [m667 receipt](paper/results/raw/m667-workshop-gate-current-m666-v1.json) binds the full
+The [m668 receipt](paper/results/raw/m668-appworld-weight-ablation-v1.json) seals the existing
+warm/random movement reports into the canonical combined-ablation envelope required by the
+workshop checker. It binds the exact current warm child, the 90/6 public AppWorld split, shared
+configuration and tokenizer compatibility, and held-out metrics for both arms. The structural
+weight requirement now passes; the receipt still recommends retaining parent initialization only
+as a candidate because learned free-running success remains `0/6`.
+
+### Learned AppWorld API-head routing diagnostic (m669)
+
+The [m669 receipt](paper/results/raw/m669-appworld-api-head-diagnostic-v1.json) trains a frozen
+backbone `app.api` classifier on all `90` public train rows and evaluates it on the six disjoint
+public dev tasks. It reaches `100%` train-label exactness but only `2/6` dev-label exactness. In
+selector-first native replay, three API actions are executed, yet complete task success remains
+`0/6`. This is useful negative evidence: a small learned schema head does not replace stateful
+route selection, observation grounding, or multi-step planning. The head is not promoted to the
+WebGPU bundle.
+
+### Current m666 workshop/publication gate (m667 v2)
+
+The [m667 receipt](paper/results/raw/m667-workshop-gate-current-m666-v2.json) binds the full
 public AppWorld continuation to the exact `m666` warm child (`8c3a4ed3...`) and re-runs the
 fail-closed workshop gate. The gate remains `ready: false`: MobileGym, BrowserGym/MiniWoB, and
 RL receipts are from older checkpoints; ToolSandbox additionally lacks official-split
-verification; the two movement reports are not labeled as the required canonical
-transfer/no-transfer ablation with held-out metrics; and the public model/demo manifest is not
-bound to this child. AndroidWorld, MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet,
-MCPMark, and EnterpriseOps-Gym still have no native receipts. The m666 schema-planner `6/6`
+verification; and the public model/demo manifest is not bound to this child. AndroidWorld,
+MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, MCPMark, and EnterpriseOps-Gym still
+have no native receipts. The m666 schema-planner `6/6`
 control is explicitly executor-side and cannot satisfy learned-policy, native, or Hugging Face
-publication requirements. This is an auditable diagnostic checkpoint, not workshop approval.
+publication requirements. Thirteen blockers remain after the canonical weight-envelope repair;
+this is an auditable diagnostic checkpoint, not workshop approval.
 
 ### Full native BrowserGym continuation on the m626 child (m632)
 

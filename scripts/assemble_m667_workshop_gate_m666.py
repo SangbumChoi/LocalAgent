@@ -28,6 +28,7 @@ def assemble(
     appworld_receipt: Path,
     current_checkpoint: Path,
     manifest: Path,
+    weight_ablation: Path,
     warm_weight: Path,
     random_weight: Path,
     rl_receipt: Path,
@@ -49,7 +50,7 @@ def assemble(
             "toolsandbox": toolsandbox,
         },
         webgpu_receipt=webgpu,
-        weight_reports=[warm_weight, random_weight],
+        weight_reports=[weight_ablation],
         public_artifact_manifest=manifest,
         rl_preflight_receipt=rl_receipt,
         current_checkpoint=current_checkpoint,
@@ -67,6 +68,7 @@ def assemble(
         },
         "inputs": {
             "manifest": _identity(manifest),
+            "weight_ablation": _identity(weight_ablation),
             "warm_weight": _identity(warm_weight),
             "random_weight": _identity(random_weight),
             "rl_receipt": _identity(rl_receipt),
@@ -82,9 +84,9 @@ def assemble(
                 "The m666 warm child improves public AppWorld teacher-forced continuation, but its "
                 "fully free-running native result remains 0/6. The 6/6 schema-planner control is "
                 "explicitly not a model score. Existing native MobileGym/BrowserGym/RL receipts are "
-                "bound to older checkpoints, the movement reports are not a canonical ablation pair, "
-                "and the public manifest is not bound to this child; the fail-closed gate remains "
-                "blocked."
+                "bound to older checkpoints, while the public manifest is not bound to this child. "
+                "The canonical m668 warm/random movement envelope now passes its structural gate, "
+                "but the fail-closed workshop decision remains blocked."
             ),
         },
         "claim_boundary": (
@@ -107,6 +109,7 @@ def main() -> int:
     parser.add_argument("--appworld-receipt", type=Path, required=True)
     parser.add_argument("--current-checkpoint", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--weight-ablation", type=Path, required=True)
     parser.add_argument("--warm-weight", type=Path, required=True)
     parser.add_argument("--random-weight", type=Path, required=True)
     parser.add_argument("--rl-receipt", type=Path, required=True)
@@ -120,6 +123,7 @@ def main() -> int:
         appworld_receipt=args.appworld_receipt,
         current_checkpoint=args.current_checkpoint,
         manifest=args.manifest,
+        weight_ablation=args.weight_ablation,
         warm_weight=args.warm_weight,
         random_weight=args.random_weight,
         rl_receipt=args.rl_receipt,
