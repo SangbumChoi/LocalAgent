@@ -1720,6 +1720,23 @@ MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, MCPMark, EnterpriseO
 authenticated current model/demo manifest. This is the correct decision: m663 is useful diagnostic
 evidence, not workshop or Hugging Face publication approval.
 
+### Full public AppWorld continuation and schema-planner control (m666)
+
+The [m666 receipt](paper/results/raw/m666-appworld-public-full-v3.json) expands the supervised
+source from the earlier 64-task slice to all `90` public AppWorld train tasks, while retaining six
+disjoint public dev tasks and excluding the protected test split. This adds examples for the
+held-out `spotify.show_artist` and `spotify.search_songs` API families. A matched 64-step
+continuation raises warm held-out teacher-forced accuracy from `65.15%` to `73.12%`; the random
+control reaches `50.34%`. Warm shared-body movement is `0.895%/0.384%/0.478%` for
+embedding/attention/FFN with frozen action heads, versus `1.295%/0.427%/0.556%` for random.
+
+The exact free-running model ranking remains `0/6` for both children. A separate, explicitly
+environment-side schema-planner control—multi-token name preservation, live ID extraction,
+stateful API dependency ordering, and bounded completion—replays `6/6` for both arms. Because the
+control is identical across warm and random and is not learned model output, this is executor and
+argument-grounding evidence, not a model score or promotion. The learned action-selection gap and
+the fail-closed workshop/Hugging Face gates therefore remain open.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
