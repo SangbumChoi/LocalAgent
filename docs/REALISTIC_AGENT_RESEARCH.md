@@ -4394,3 +4394,28 @@ subset, not a complete MCPMark score; Notion, GitHub, Postgres, Playwright, the 
 and external accounts remain unexecuted. Promotion therefore stays blocked; the warm backbone is
 an initialization candidate only, with state-conditioned planning, argument grounding, and native
 visual/service evaluation still required before WebGPU publication or workshop submission.
+
+### MCPMark public trajectory continuation does not transfer to native state (m698)
+
+The [m698 receipt](paper/results/raw/m698-m679-mcpmark-continuation-native-v1.json) trains the
+exact m679 warm child for `128` updates on the public `Jakumetsu/mcpmark-trajectory-log` train
+split (`10` rows), holding out its `5`-row eval split.  Held-out teacher-forced token accuracy
+improves from `30.07%` to `35.73%` (`+5.66` points), while sequence exactness remains `0%`.
+
+The resulting child is then run through the same `30` pinned MCPMark Verified
+`filesystem/standard` tasks used in m697, with fresh state archives, a real stdio MCP server,
+and independent verifiers.  It executes all tasks without runtime errors but passes `0/30`
+verifiers, exactly matching the parent’s native pass count.  This is a controlled transfer
+failure: text imitation improves, but it does not produce reliable stateful file operations.
+The child is therefore not promoted or exported; the evidence supports warm initialization while
+requiring explicit state-conditioned planning, argument grounding, and native service training.
+
+### Current m679 publication gate after native transfer checks (m699)
+
+The [m699 gate](paper/results/raw/m699-workshop-gate-current-m679-v1.json) binds the latest
+MCPMark native replay and m698 continuation to the exact m679 checkpoint.  It remains explicitly
+`ready: false`: the current child has `0/30` MCPMark filesystem verifier passes, the native
+AppWorld arms remain `0/6`, and EnterpriseOps-Gym still has no server/verifier execution.  The
+gate also retains the missing visual/native suites and the unauthenticated, legacy public HF/
+Space artifact blocker.  This prevents the +5.66-point text-only MCP continuation gain from being
+misrepresented as browser, email, Notion, or computer-use readiness.
