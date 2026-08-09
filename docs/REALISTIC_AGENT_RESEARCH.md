@@ -4614,3 +4614,20 @@ Android emulator, no action was dispatched to a device, and ORT does not expose 
 The [m719 gate](paper/results/raw/m719-workshop-gate-current-m679-v1.json) replaces the earlier
 CPU-only visual blocker with `browser_visual_probe_bound_but_native_mobile_verifier_missing` and
 keeps publication blocked.
+
+### Scaled AndroidControl visual transfer and weight reuse (m720)
+
+The [m720 receipt](paper/results/raw/m720-androidcontrol-structured-visual-scaling-v1.json)
+extends the official Google AndroidControl screenshot path from the 50 MB pilot to a bounded 200 MB
+prefix.  It yields 57 complete episodes, with the final eight episodes held out by complete record
+(276 training rows and 40 held-out rows).  Both arms freeze the decoder and train only the vision
+bridge plus structured action/pointer head for 256 updates.  Warm and random tie at `52.5%`
+held-out action accuracy; warm reaches lower action loss (`1.3745` vs `1.4463`) but worse pointer
+MAE (`0.2893` vs `0.2753`).
+
+This is the relevant weight-reuse result: decoder initialization improves the auxiliary loss but
+does not improve action selection and harms coordinate transfer on this split.  The [m721 gate]
+(paper/results/raw/m721-workshop-gate-current-m679-v1.json) therefore keeps the visual artifact
+blocked and records no warm promotion.  The public Android-Control JSON mirror remains a separate
+text/action source because its manifest explicitly omits screenshot bytes; it is not substituted for
+the original visual TFRecord.
