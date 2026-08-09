@@ -1538,6 +1538,16 @@ Metal-3 executes `3/3` structured local actions at `1,250` input tok/s p50, `7.4
 no real email, browser, Notion, or MCP action. HF authentication is absent, so both intended
 repositories remain prepared-but-unpublished.
 
+### m683 current m679 MobileGym regression
+
+The [m683 receipt](paper/results/raw/m683-m679-mobilegym-native-v1.json) runs the exact m679
+AndroidControl+MCP child through all `256` tasks of the pinned MobileGym official test split.
+The state-diff judge reports `1/256` (`0.3906%`) with zero runner errors, exactly matching the
+m675 AndroidControl child. The dominant output is still `mobile_navigate_back` (`255` actions),
+with only six home navigations and one app open. This is a native simulator regression check over
+DOM/text observations (`vision_used=false`), not visual Android control; the child is retained as
+a negative control and is not promoted.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
