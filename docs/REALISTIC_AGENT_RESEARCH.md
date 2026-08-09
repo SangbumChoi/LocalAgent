@@ -1527,6 +1527,16 @@ mixed update (`83.37%` to `82.82%`), so the result supports the initialization a
 policy but not unrestricted continued training. Exact sequence accuracy remains `0%`, and no
 native emulator, desktop, browser, or MCP service was executed.
 
+### Current m626 Mind2Web browser continuation (m643)
+
+The [m643 receipt](paper/results/raw/m643-m626-mind2web-browser-continuation-v1.json) adds the
+source-linked [Mind2Web](https://huggingface.co/datasets/osunlp/Mind2Web) DOM/action projection:
+`96` source-parent-disjoint train rows and `32` held-out rows. After the same `16`-step budget,
+the warm checkpoint improves from `85.99%` to `86.99%` token accuracy, while the matched random
+arm reaches `5.66%`; warm minus random is `+81.33` points. Exact sequence accuracy remains `0%`.
+This supports retaining the warm browser initialization, but the receipt explicitly keeps the
+native BrowserGym gate separate: no live site, screenshot grounding, or browser side effect ran.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
