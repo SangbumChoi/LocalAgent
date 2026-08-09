@@ -2,8 +2,9 @@
 (function installVisualActionProbe(root) {
   "use strict";
 
-  const MODEL_FILE = "visual_action_model.fp16.onnx";
-  const MANIFEST_FILE = "visual-action-manifest.json";
+  const query = new URLSearchParams(root.location?.search || "");
+  const MODEL_FILE = query.get("graph") || "visual_action_model.fp16.onnx";
+  const MANIFEST_FILE = query.get("manifest") || "visual-action-manifest.json";
   const ACTION_NAMES = Object.freeze([
     "click", "input_text", "long_press", "navigate_back", "open_app", "scroll", "wait",
   ]);

@@ -4631,3 +4631,32 @@ does not improve action selection and harms coordinate transfer on this split.  
 blocked and records no warm promotion.  The public Android-Control JSON mirror remains a separate
 text/action source because its manifest explicitly omits screenshot bytes; it is not substituted for
 the original visual TFRecord.
+
+### Current WebGPU release checkpoint visual transfer (m722)
+
+The [m722 receipt](paper/results/raw/m722-current-checkpoint-structured-visual-v1.json) repeats
+the 200 MB / 256-step experiment from the actual WebGPU release checkpoint
+`6a6520264f5f81fc68c54f80d462ddde64ac2f442e6e30077c909b702939dd45`, rather than the older m679
+diagnostic parent.  The complete-record split is unchanged (49 train episodes, 8 held out).  The
+current warm arm and random arm both reach `52.5%` held-out action accuracy; warm action loss is
+lower (`1.3687` vs `1.4463`) but pointer MAE is worse (`0.2919` vs `0.2753`).  The warm visual
+sidecar exports with CPU ONNX parity (`1.19e-6` logits, `5.96e-8` pointer), but the transfer
+decision remains `do_not_promote_current_release_visual_transfer`.
+
+The [m723 current-release gate](paper/results/raw/m723-workshop-gate-current-release-v1.json)
+therefore binds the current checkpoint without claiming that its visual graph has run in the browser
+or passed a native Android verifier.  This is the evidence needed to prevent an older-parent visual
+result from being mistaken for the deployable WebGPU model.
+
+### Current-checkpoint browser visual execution (m724)
+
+The [m724 receipt](paper/results/raw/m724-current-checkpoint-visual-webgpu-v1.json) binds the
+current release checkpoint and its fp16 visual sidecar to the parameterized browser probe.  The
+browser hash-checked `visual_action_model.current.fp16.onnx`, created an explicit WebGPU session,
+and emitted the seven action logits plus normalized pointer for a screenshot/task input.  First
+inference was `77.8 ms`; three warm runs were `24.2`, `24.9`, and `26.5 ms`.
+
+This closes the current-checkpoint-to-browser ABI gap, not the task-success gap.  The screenshot was
+not connected to an Android emulator, no action was dispatched, and ORT does not expose per-node
+placement.  The [m725 gate](paper/results/raw/m725-workshop-gate-current-release-v1.json) therefore
+keeps the release blocked on native mobile verification and official task success.
