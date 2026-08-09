@@ -1615,6 +1615,17 @@ the shared body at small relative norms; the random-head control moves its actio
 current-checkpoint retention and weight-adoption diagnostic, not native AndroidControl, AndroidWorld,
 or MobileGym success. The result does not change the fail-closed publication gate.
 
+### m692 current m679 AppWorld API-trajectory continuation
+
+The [m692 receipt](paper/results/raw/m692-m679-appworld-current-v1.json) continues the exact m679
+checkpoint on `90` public AppWorld train tasks and a separate `6`-task public dev split. The export
+removes bootstrap credentials and keeps bounded, redacted API summaries. Held-out teacher-forced
+token accuracy rises from `63.90%` to `74.03%` in both matched arms, but exact multi-turn sequence
+accuracy remains `0%`. The result supports using public AppWorld traces for API syntax and state
+summary pretraining, while showing that syntax learning does not establish multi-step execution.
+No AppWorld environment, email service, Notion service, or external account was executed, so this
+does not clear the native AppWorld or productivity gates.
+
 ### m689 current m679 ToolSandbox interactive diagnostic
 
 Allowing up to eight model turns after tool results on the same `129` base scenarios produces
