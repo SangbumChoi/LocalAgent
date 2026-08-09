@@ -4458,6 +4458,24 @@ Thus the text gain does not transfer to stateful browser execution; the child is
 The [m706 gate](paper/results/raw/m706-workshop-gate-current-m679-v1.json) records this explicitly
 as `browser_sft_native_verifier_zero` and keeps publication blocked.
 
+### Official AndroidControl screenshot provenance (m707)
+
+The [m707 receipt](paper/results/raw/m707-androidcontrol-official-tfrecord-visual-sample-v1.json)
+audits the original Google Research AndroidControl source rather than the screenshot-omitting HF
+projection used by the current training pilots.  A bounded range fetch from the public
+`android_control-00000-of-00020` gzip TFRecord shard parses train episode `0` and its public split
+manifest: the episode has four PNG screenshots totaling `708,631` bytes at `1080×2400`, four
+serialized accessibility trees totaling `63,519` bytes, three step instructions, and three JSON
+actions (`open_app`, `wait`, `click`).  The source object and original repository URLs, object
+size/MD5 metadata, range hash, record hash, screenshot hash, and split membership are all bound in
+the receipt; screenshot pixels are not retained in Git.
+
+This closes the provenance question but confirms a deployment gap: the current LocalAgent
+Conversation projection and WebGPU bundle consume text/accessibility/action fields only, not these
+visual bytes.  The receipt therefore admits the visual source as provenance-only until a vision
+encoder, screenshot-aware training split, and native emulator evaluator are implemented; no
+AndroidControl visual or AndroidWorld score is claimed.
+
 ### Full bounded MCPMark Playwright standard subset (m702/m703)
 
 The [m702 receipt](paper/results/raw/m702-m679-mcpmark-playwright-standard-v1.json) expands the

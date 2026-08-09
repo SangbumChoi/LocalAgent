@@ -772,6 +772,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m703 current m679 workshop gate](raw/m703-workshop-gate-current-m679-v1.json) | Fail-closed gate refreshed with the complete bounded Playwright standard subset | `ready: false`; Playwright remains blocked by bounded scope and zero verifier passes |
 | [m705 m679 browser transfer/native](raw/m705-m679-browser-transfer-native-v1.json) | 256-step browser-specific public SFT from m679 warm, followed by all four native Playwright standard tasks | Held-out browser-trace token accuracy 52.43%→73.16% (+20.72 pp), sequence exact 0%; native remains 0/4 with the same 2 browser-tool errors; child not promoted |
 | [m706 current m679 workshop gate](raw/m706-workshop-gate-current-m679-v1.json) | Fail-closed gate after browser-specific transfer/native replay | `ready: false`; text improvement does not satisfy native browser execution or visual/public artifact requirements |
+| [m707 official AndroidControl visual sample](raw/m707-androidcontrol-official-tfrecord-visual-sample-v1.json) | Bounded parse of the original Google Research gzip TFRecord shard and split manifest | Train episode 0 contains 4 PNG screenshots (708,631 bytes), 4 accessibility trees, 3 instructions/actions, and 1080×2400 observations; current projection consumes no screenshots |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests
