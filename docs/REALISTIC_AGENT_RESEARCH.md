@@ -1707,6 +1707,19 @@ both arms, including answer extraction from bounded live state. This isolates th
 state-conditioned action selection and multi-step planning; it is not a free-running score and does
 not authorize WebGPU email/Notion publication.
 
+### Current m663 workshop/publication gate (m664)
+
+The [m664 receipt](paper/results/raw/m664-workshop-gate-current-m663-v1.json) re-runs the
+fail-closed gate against the exact `m663` warm child (`bb19d72e...`) and attaches the corrected
+AppWorld grounding audit. Only the catalog and previously measured native WebGPU capability pass
+without qualification. The older MobileGym, BrowserGym, ToolSandbox, and RL receipts are rejected
+for checkpoint mismatch (ToolSandbox also lacks official-split verification); the m663 movement
+files are intentionally rejected as a non-canonical transfer/no-transfer pair; and the public
+manifest has no current-checkpoint binding. Fourteen blockers remain, including AndroidWorld,
+MobileSafetyBench, iOSWorld, OSWorld, OSWorld-V2, AgentNet, MCPMark, EnterpriseOps-Gym, and the
+authenticated current model/demo manifest. This is the correct decision: m663 is useful diagnostic
+evidence, not workshop or Hugging Face publication approval.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
