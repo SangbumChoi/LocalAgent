@@ -1626,6 +1626,22 @@ summary pretraining, while showing that syntax learning does not establish multi
 No AppWorld environment, email service, Notion service, or external account was executed, so this
 does not clear the native AppWorld or productivity gates.
 
+### Native AppWorld multi-step free-running control (m694)
+
+The [m694 receipt](paper/results/raw/m694-m679-appworld-free-v1.json) extends the m693 native
+probe from one action to up to four closed-loop API steps. The same six public dev tasks and four
+checkpoint arms were reset independently; the model received only redacted response summaries and
+could stop on malformed or repeated candidates. This protocol tests actual stateful planning rather
+than teacher-forced continuation or a single schema-ranked call.
+
+All four arms still complete `0/6` tasks. The m679 warm arm replays `9` actions, while both m692
+arms replay `12`; importantly, the m692 warm and matched-random arms produce identical per-task API
+sequences, so the AppWorld continuation did not improve closed-loop behavior over a random control.
+Every arm eventually stops on a repeated candidate. The weight decision is therefore negative:
+retain the m679 body only as an initialization candidate, do not promote the m692 child, and require
+multi-step native success before WebGPU deployment claims. This remains a bounded diagnostic, not an
+official AppWorld/AppWorld-UL score, and it covers neither Gmail nor Notion or external accounts.
+
 ### Native AppWorld execution probe and matched controls (m693)
 
 The [m693 receipt](paper/results/raw/m693-m679-appworld-native-v1.json) closes that execution gap
