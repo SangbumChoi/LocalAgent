@@ -27,6 +27,7 @@ demo = ["gradio>=4.0", "matplotlib>=3.7"]              # web demo + flywheel/ben
 # ONNX path (GGUF/ExecuTorch use their own toolchains).
 export = ["onnx>=1.16", "onnxruntime>=1.18", "onnxscript>=0.5"]
 hub = ["huggingface_hub>=0.23", "safetensors>=0.4"]    # push trained weights to the HF Hub
+tracking = ["wandb>=0.17"]                             # optional online/offline experiment logging
 dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [project.scripts]

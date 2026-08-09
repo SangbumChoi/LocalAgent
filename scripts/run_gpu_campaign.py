@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import platform
 import subprocess
@@ -27,9 +28,11 @@ from localagent.model import ModelConfig
 from localagent.train.device import resolve_device
 
 try:  # direct script invocation
+    from acquire_hf_sources import acquire
     from benchmark_model_configs import run_benchmark
     from analyze_weight_transfer import analyze as analyze_transfer
 except ImportError:  # package-style test/import
+    from scripts.acquire_hf_sources import acquire
     from scripts.benchmark_model_configs import run_benchmark
     from scripts.analyze_weight_transfer import analyze as analyze_transfer
 
@@ -67,6 +70,9 @@ def _preflight(requested_device: str, dtype: str) -> dict[str, Any]:
         "emulator": _which("emulator"),
         "docker": _which("docker"),
         "git": _which("git"),
+        "hf_cli": _which("hf"),
+        "huggingface_hub_importable": importlib.util.find_spec("huggingface_hub") is not None,
+        "wandb_importable": importlib.util.find_spec("wandb") is not None,
         "claim_boundary": "Runtime inventory only; no device or external service was mutated.",
     }
 
@@ -108,6 +114,50 @@ def _load_campaign_config(path: Path) -> dict[str, Any]:
     return raw
 
 
+def _wandb_log(payload: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    if not args.wandb:
+        return {"enabled": False}
+    try:
+        import wandb
+    except ImportError as error:  # pragma: no cover - optional runtime
+        raise RuntimeError('install W&B tracking with: pip install -e ".[tracking]"') from error
+    run = wandb.init(
+        project=args.wandb_project,
+        entity=args.wandb_entity,
+        name=args.wandb_run_name,
+        mode=args.wandb_mode,
+        config={
+            "campaign_config_sha256": payload["campaign_config"]["sha256"],
+            "device": payload["preflight"]["resolved_device"],
+            "models": [row["name"] for row in payload["model_inventory"]],
+            "checkpoint_sha256": payload.get("checkpoint", {}).get("sha256"),
+        },
+    )
+    benchmark = payload.get("architecture_benchmark", {})
+    for index, row in enumerate(benchmark.get("results", [])):
+        wandb.log(
+            {
+                "model/parameters": row["parameters"],
+                "model/prefill_tok_s": row["prefill_tok_s"],
+                "model/cached_decode_tok_s": row["cached_decode_tok_s"],
+                "model/weight_bytes": row["weight_bytes_estimate"],
+                "model/kv_cache_bytes": row["kv_cache_bytes_estimate"],
+                "model/name": row["model"],
+            },
+            step=index,
+        )
+    run.summary["campaign_claim_boundary"] = payload["claim_boundary"]
+    run.finish()
+    return {
+        "enabled": True,
+        "mode": args.wandb_mode,
+        "project": args.wandb_project,
+        "entity": args.wandb_entity,
+        "run_id": getattr(run, "id", None),
+        "url": getattr(run, "url", None),
+    }
+
+
 def run_campaign(args: argparse.Namespace) -> dict[str, Any]:
     campaign_path = Path(args.campaign).resolve()
     campaign = _load_campaign_config(campaign_path)
@@ -142,6 +192,13 @@ def run_campaign(args: argparse.Namespace) -> dict[str, Any]:
                 for status in sorted({row["local_status"] for row in matrix["entries"]})
             },
         }
+    if args.acquire_hf:
+        payload["hf_acquisition"] = acquire(
+            config_path=args.hf_config,
+            output_dir=args.hf_out,
+            source_ids=args.hf_sources,
+            dry_run=args.hf_dry_run,
+        )
     if not args.skip_benchmark:
         payload["architecture_benchmark"] = run_benchmark(
             models,
@@ -167,6 +224,7 @@ def run_campaign(args: argparse.Namespace) -> dict[str, Any]:
             "Checkpoint identity only. Run the pinned native/browser evaluators separately and add "
             "their receipts; this campaign does not infer task success from checkpoint presence."
         )
+    payload["wandb"] = _wandb_log(payload, args)
     payload["finished_at_unix"] = time.time()
     payload["receipt_self_sha256"] = _self_hash(payload)
     report_path = output / "campaign.json"
@@ -192,6 +250,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--matrix", type=Path, default=Path("configs/data/realistic-agent-public-eval-matrix.v1.json"))
     parser.add_argument("--transfer", action="append", help="BASE:TARGET checkpoint pair; repeat")
     parser.add_argument("--checkpoint", type=Path)
+    parser.add_argument("--acquire-hf", action="store_true", help="download approved HF sources")
+    parser.add_argument("--hf-config", type=Path, default=Path("configs/experiments/hf-sources.v1.yaml"))
+    parser.add_argument("--hf-out", type=Path, default=Path("data/hf-campaign"))
+    parser.add_argument("--hf-source", action="append", dest="hf_sources")
+    parser.add_argument("--hf-dry-run", action="store_true")
+    parser.add_argument("--wandb", action="store_true", help="log campaign scalars to W&B")
+    parser.add_argument("--wandb-project", default="localagent")
+    parser.add_argument("--wandb-entity")
+    parser.add_argument("--wandb-run-name")
+    parser.add_argument("--wandb-mode", choices=("online", "offline"), default="online")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args(argv)
     try:

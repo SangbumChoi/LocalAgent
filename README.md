@@ -121,6 +121,8 @@ Drive storage.
 For a portable attention/hybrid/vision comparison on a separate CUDA host, use the
 [`GPU experiment runbook`](docs/GPU_EXPERIMENT_RUNBOOK.md) and
 [`webgpu-realistic-campaign.v1.yaml`](configs/experiments/webgpu-realistic-campaign.v1.yaml).
+The campaign can acquire approved public Hugging Face sources and log scalar measurements to W&B;
+Hub publication remains explicitly authenticated and owner-checked.
 
 ### WebGPU cached-decode deployment frontier
 

@@ -20,6 +20,30 @@ if torch.cuda.is_available():
 PY
 ```
 
+Install the optional Hub and tracking clients when using acquisition/upload/logging:
+
+```bash
+pip install -e ".[data,hub,tracking]"
+```
+
+## Acquire approved Hugging Face sources
+
+The campaign does not silently pull evaluation tasks. Its approved source manifest contains only
+the six training sources and the existing public model reference, with file patterns and a
+resolved revision recorded in `acquisition-manifest.json`. Five rows are anonymous-public;
+Salesforce xLAM is Hub-gated and requires your own `hf auth login` or `HF_TOKEN` when selected:
+
+```bash
+PYTHONPATH=src python scripts/run_gpu_campaign.py \
+  --output runs/gpu-campaign-cuda \
+  --skip-benchmark \
+  --acquire-hf --hf-out data/hf-campaign
+```
+
+Use `--hf-dry-run` first on a new machine. Select a subset with repeated `--hf-source` flags. The
+downloaded manifest is hash-bound and is the input for later normalization/training; benchmark
+evaluation rows are intentionally rejected.
+
 ## Run the matched architecture matrix
 
 This uses fresh random weights and measures prefill, cached decode, uncached decode, memory
@@ -31,6 +55,16 @@ PYTHONPATH=src python scripts/run_gpu_campaign.py \
   --device cuda --dtype auto \
   --prompt-len 512 --decode 128 --repeats 5
 ```
+
+To log the same run to Weights & Biases, install the `tracking` extra and authenticate first with
+`wandb login` (or `WANDB_API_KEY`), then add:
+
+```bash
+  --wandb --wandb-project localagent --wandb-mode online
+```
+
+Use `--wandb-mode offline` when the GPU machine has no network; the run can be synced later with
+the W&B CLI. Tokens are never written into the campaign receipt.
 
 For a faster smoke test, use `--prompt-len 64 --decode 32 --repeats 2`. To run a subset, repeat
 `--model webgpu-10m-attn` / `--model webgpu-10m-hybrid` (and so on). The complete architecture
@@ -90,3 +124,23 @@ seed, and stage so the transfer script can compare exact pairs.
 The campaign never downloads benchmark payloads, starts an emulator, calls external accounts, or
 silently trains. Missing runtimes are recorded in the preflight section rather than converted into
 zero or success scores.
+
+## Publish after verification
+
+Uploads are separate from acquisition and require an authenticated identity. The publisher checks
+that the model/dataset repository owner matches the logged-in Hub user and refuses unsealed or
+evaluation-only datasets:
+
+```bash
+hf auth login
+PYTHONPATH=src python scripts/publish_hf_campaign.py \
+  --checkpoint runs/sft/latest.pt \
+  --model-repo YOUR_ID/localagent-webgpu \
+  --model-out runs/hf_campaign_model \
+  --dataset-dir data/hf-campaign \
+  --dataset-repo YOUR_ID/localagent-training-data \
+  --public --push
+```
+
+Replace `YOUR_ID` with the username returned by `hf auth whoami`. A local bundle can be built
+without `--push`; no public URL is claimed until the upload and anonymous re-fetch audit pass.
