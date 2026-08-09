@@ -744,6 +744,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m679 m675 MCPMark transfer](raw/m679-m675-mcpmark-transfer-v1.json) | Matched 32-step continuation on 10 redacted train and 5 disjoint eval trajectories spanning filesystem, Notion, GitHub, Playwright, and Postgres | Warm 26.04%→30.47%; random 17.64%→19.21%; warm +11.27 pp after training; exact sequence 0%; eval-only projection |
 | [m680 m679 EnterpriseOps email control](raw/m680-m679-enterprise-email-control-v1.json) | Matched current m679 warm/random children on 67 public email rows with 20-tool candidate sets | Warm 13.43%/40.30%/62.69% vs random 22.39%/70.15%/89.55% hit@1/3/5; negative transfer; no server/verifier execution |
 | [m681 public WebGPU live probe](raw/m681-public-webgpu-live-probe-v1.json) | Anonymous browser audit of the public Hugging Face model/Space and one read-only request | Space running and WebGPU model ready; 818 ms probe misroutes `define`→`web_search`; public artifacts are legacy, not m679-bound |
+| [m682 m679 WebGPU adoption](raw/m682-m679-webgpu-adoption-v1.json) | Fresh current m679 model/ONNX/Space preparation plus native Chromium WebGPU capability run | 10.52M params; parity passed; 3/3 exact local actions; 1,250 tok/s p50; 7.45 ms p50; 20.46 MB; public upload still false |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

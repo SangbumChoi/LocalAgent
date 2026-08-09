@@ -1527,6 +1527,17 @@ deployment is reachable but **legacy**, not a current-checkpoint publication. No
 email/Notion writes, or external side effects were used; the probe does not establish realistic
 service, mobile, browser, desktop, MCP, or visual-agent success.
 
+### m682 current m679 WebGPU adoption
+
+The [m682 receipt](paper/results/raw/m682-m679-webgpu-adoption-v1.json) regenerates a complete
+current-checkpoint release from the m679 warm child (`10,524,544` parameters; checkpoint
+`dbf45e…`). The model bundle, eight WebGPU artifacts, static Space staging, and ONNX/PyTorch
+parity all verify against the same checkpoint. A fresh Chromium native WebGPU run on Apple
+Metal-3 executes `3/3` structured local actions at `1,250` input tok/s p50, `7.45 ms` p50, and
+`20.46 MB` conservative peak memory. Closed-loop success remains `0` because the harness performs
+no real email, browser, Notion, or MCP action. HF authentication is absent, so both intended
+repositories remain prepared-but-unpublished.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
