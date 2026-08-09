@@ -4511,3 +4511,30 @@ consumes text/actions and omits screenshot bytes.  The receipt therefore admits 
 data only as `provenance_only_until_image_loader_vision_encoder_and_visual_eval_are_bound`; no
 native desktop, AgentNetBench, OSWorld, or WebGPU visual success is claimed until those components
 and an executable evaluator are bound.
+
+### Current m679 AgentNet selector transfer and weight decision (m709)
+
+The [m709 receipt](paper/results/raw/m709-m679-agentnet-selector-transfer-v1.json) runs a matched
+`400`-step, frozen-backbone selector adaptation on the exact m679 warm checkpoint using `765`
+public AgentNet projection rows and a disjoint `257`-row projection.  The random-control arm uses
+the same optimizer, batches, seed, tool surface, and public inputs.  Both arms replay the same
+eight held-out parent trajectories with complete prediction/ground-truth coverage and reach
+`100%` first-action-type rate but `0%` success and `0%` exact trajectories.  Warm selector relative
+movement is `3.766×` versus `2.397×` for random; its bounded text score is `0.000582` versus
+`0.000003` for random, so the warm AgentNet selector is explicitly rejected for WebGPU adoption.
+
+This is useful negative transfer evidence for weight reuse: changing a surface-specific head cannot
+substitute for screenshot grounding, coordinate localization, or a desktop runtime.  The source
+revision is pinned, but the official AgentNet split is not verified, screenshots are not consumed,
+and no native desktop or WebGPU visual claim is made.
+
+### Current m679 workshop gate after AgentNet audit (m710)
+
+The [m710 gate](paper/results/raw/m710-workshop-gate-current-m679-v1.json) binds the exact m679
+checkpoint to both the [m708 visual-source receipt](paper/results/raw/m708-agentnet-visual-source-audit-v1.json)
+and the [m709 weight-transfer receipt](paper/results/raw/m709-m679-agentnet-selector-transfer-v1.json).
+It remains fail-closed with `12` blockers.  AgentNet is now evidenced as a pinned public source and
+matched text-transfer diagnostic, but its native requirement is explicitly
+`visual_runtime_and_native_verifier_missing; text_projection_success_zero`; the adapted selector is
+not a WebGPU candidate.  This prevents a successful source audit or a selector weight movement
+number from being misreported as realistic computer-use competence.
