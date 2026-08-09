@@ -1597,6 +1597,25 @@ baseline and head-adapted checkpoints, with zero native API calls. This cleanly 
 ranking from free-run action generation: keep the warm body and train the heads, but do not promote
 the head adapter as native AppWorld success or WebGPU-ready email/tool control.
 
+### AppWorld runtime-pool correction and API-schema head (m649–m650)
+
+The [m649 receipt](paper/results/raw/m649-appworld-runtime-pool-v1.json) closes a runtime
+configuration confound in that result. Direct probes ranked `run_python` correctly, but the default
+`retrieve_k=10` lexical retriever could remove that tool before the dense selector. Replaying the
+same six public dev tasks with the full `STANDARD_TOOLS` pool (`retrieve_k=100`) dispatches and
+replays `6/6` actions, while native task success remains `0/6`: the bounded adapter executes only
+one API step, whereas these AppWorld objectives are multi-step and stateful. The corrected result
+therefore fixes the dispatch-interface diagnosis without changing the publication gate.
+
+The [m650 receipt](paper/results/raw/m650-appworld-api-head-v1.json) then trains a frozen-backbone
+`app.api` schema head on the current warm child: `64` public train rows and a disjoint `15`-row
+seen-label dev slice (the remaining public dev rows contain labels absent from train and are not
+silently scored). The head reaches `60%` held-out API-label accuracy and constrains all six native
+replays to schema-valid Spotify calls, but one-step native success is still `0/6`. This supports
+retaining the warm body plus separate schema heads, not claiming complete AppWorld, email, Notion,
+or WebGPU agent success; the next required experiment is a multi-step native evaluator with
+trajectory-level state and exact public task verifiers.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
