@@ -1671,6 +1671,24 @@ prefixes and raises replayed actions from `5` to `8` on the paired six-task prob
 success remains `0/6`. The head therefore helps candidate restriction without solving first-action
 grounding, repeated-call avoidance, or completion planning; it remains diagnostic only.
 
+### AppWorld short-task completion probe (m662)
+
+The [m662 receipt](paper/results/raw/m662-appworld-short-completion-v1.json) narrows the next
+failure question using only public, split-disjoint AppWorld tasks. Six train tasks and six dev tasks
+fit a four-action window and retain the real `supervisor.complete_task` call; the train set covers
+phone→Venmo payment and Simple Note updates, while dev covers Spotify lookup/queue workflows. The
+normalizer keeps bounded IDs, names, titles, counts, and messages while removing bootstrap
+credentials and low-value state, and the source remains the public AppWorld `0.2.0` release.
+
+Warm continuation from the current compact-state child raises held-out teacher-forced token
+accuracy from `55.35%` to `66.06%`; the matched random-body arm reaches `43.51%`. Exact sequence
+accuracy is `0%` for both. In the strict resettable native probe, completion is opt-in and only a
+literal `supervisor.complete_task(status='success')` candidate is added—no answer or ground-truth
+action is injected. Both arms still score `0/6` native task success (warm replays `11` actions,
+random `12`). This separates a measurable token-learning gain from actual short-task completion:
+the current blocker is action selection/state planning, not only long-horizon length. The warm
+body remains the preferred initialization, but no native email/Notion/WebGPU promotion is justified.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact

@@ -51,7 +51,8 @@ def _response_summary(response: Any) -> dict[str, Any]:
 
 def evaluate(
     *, checkpoint: Path, root: Path, task_ids: list[str], report: Path,
-    max_steps: int, retrieve_k: int, experiment_name: str, appworld_api_head: Path | None = None,
+    max_steps: int, retrieve_k: int, experiment_name: str,
+    appworld_api_head: Path | None = None, allow_completion: bool = False,
 ) -> dict[str, Any]:
     if max_steps < 1 or retrieve_k < 1:
         raise ValueError("max_steps and retrieve_k must be positive")
@@ -98,7 +99,12 @@ def evaluate(
                 model_output = agent.chat(prompt, max_tool_hops=1)
                 selected_tool = calls[0]["name"] if calls else None
                 code = _schema_ground_appworld_api_step(
-                    agent.model, agent.tokenizer, world, prompt, api_head=api_head
+                    agent.model,
+                    agent.tokenizer,
+                    world,
+                    prompt,
+                    api_head=api_head,
+                    allow_completion=allow_completion,
                 )
                 parsed = _parse_appworld_api_code(code) if code is not None else None
                 step_record: dict[str, Any] = {
@@ -177,6 +183,7 @@ def evaluate(
             "observations": "redacted response type/keys summaries",
             "schema_adapter": "strict one literal API call per step",
             "appworld_api_head": str(appworld_api_head) if appworld_api_head else None,
+            "allow_completion": allow_completion,
         },
         "environment": {
             "native_runtime_executed": True,
@@ -196,7 +203,9 @@ def evaluate(
         "claim_boundary": (
             "Native resettable AppWorld free-running trajectory probe using a strict schema adapter and "
             "redacted observations. The model is not given ground-truth actions or task answers; this "
-            "is not an official leaderboard score and does not claim live email/Notion side effects."
+            "is not an official leaderboard score and does not claim live email/Notion side effects. "
+            "When completion is enabled, only a literal status=success supervisor candidate is added; "
+            "question answers are not injected."
         ),
     }
     result["receipt_self_sha256"] = hashlib.sha256(
@@ -219,6 +228,11 @@ def main() -> int:
     parser.add_argument("--retrieve-k", type=int, default=100)
     parser.add_argument("--experiment-name", default="localagent_appworld_free_running_trajectory")
     parser.add_argument("--appworld-api-head", type=Path)
+    parser.add_argument(
+        "--allow-completion",
+        action="store_true",
+        help="add the strict supervisor.complete_task(status='success') candidate after an API step",
+    )
     args = parser.parse_args()
     result = evaluate(
         checkpoint=args.checkpoint,
@@ -229,6 +243,7 @@ def main() -> int:
         retrieve_k=args.retrieve_k,
         experiment_name=args.experiment_name,
         appworld_api_head=args.appworld_api_head,
+        allow_completion=args.allow_completion,
     )
     print(json.dumps(result["summary"], indent=2, sort_keys=True))
     return 0

@@ -161,12 +161,27 @@ def _trace_ground_truth(world: Any) -> tuple[list[dict[str, Any]], str]:
     return captured, solution_code
 
 
-def _actions(trace: list[dict[str, Any]], max_actions: int) -> list[dict[str, Any]]:
+def _actions(
+    trace: list[dict[str, Any]], max_actions: int, *, include_completion: bool = False
+) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     for request in trace:
         app = str(request.get("app", ""))
         api = str(request.get("api", ""))
-        if not app or not api or app in _BOOTSTRAP_APPS or api in _BOOTSTRAP_APIS:
+        if not app or not api:
+            continue
+        is_completion = app == "supervisor" and api == "complete_task"
+        if is_completion and include_completion:
+            arguments = {
+                str(key): value
+                for key, value in request.get("arguments", {}).items()
+                if str(key) not in _OMIT_ARGUMENTS
+            }
+            actions.append({"app": app, "api": api, "arguments": arguments, "response": request.get("response")})
+            if len(actions) >= max_actions:
+                break
+            continue
+        if app in _BOOTSTRAP_APPS or api in _BOOTSTRAP_APIS:
             continue
         arguments = {
             str(key): value
@@ -191,6 +206,7 @@ def _actions(trace: list[dict[str, Any]], max_actions: int) -> list[dict[str, An
 def normalize(
     *, root: Path, split: str, purpose: str, output: Path, manifest: Path,
     max_tasks: int | None, max_actions: int, rich_observations: bool,
+    selected_tasks: list[str] | None = None, include_completion: bool = False,
 ) -> dict[str, Any]:
     if split not in {"train", "dev"}:
         raise ValueError("only AppWorld train/dev splits may be normalized")
@@ -213,8 +229,15 @@ def normalize(
         appworld_version = importlib.metadata.version("appworld")
     except importlib.metadata.PackageNotFoundError:
         appworld_version = "unknown"
-    task_ids = [line.strip() for line in split_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if max_tasks is not None:
+    split_task_ids = [line.strip() for line in split_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if selected_tasks:
+        unknown = sorted(set(selected_tasks) - set(split_task_ids))
+        if unknown:
+            raise ValueError(f"selected tasks are not in public {split} split: {unknown}")
+        task_ids = list(dict.fromkeys(selected_tasks))
+    else:
+        task_ids = split_task_ids
+    if max_tasks is not None and not selected_tasks:
         if max_tasks < 1:
             raise ValueError("max_tasks must be positive")
         task_ids = task_ids[:max_tasks]
@@ -231,7 +254,7 @@ def normalize(
         ) as world:
             instruction = str(world.task.instruction)
             trace, solution_code = _trace_ground_truth(world)
-        actions = _actions(trace, max_actions)
+        actions = _actions(trace, max_actions, include_completion=include_completion)
         messages = [Message(role=Role.user, content=instruction)]
         for index, action in enumerate(actions):
             label = f"{action['app']}.{action['api']}"
@@ -261,8 +284,17 @@ def normalize(
                 "data_version": version_path.read_text(encoding="utf-8").strip(),
                 "trajectory_steps": len(actions),
                 "trajectory_truncated": len(actions) < sum(
-                    int(str(item.get("app", "")) not in _BOOTSTRAP_APPS)
-                    and int(str(item.get("api", "")) not in _BOOTSTRAP_APIS)
+                    int(
+                        (
+                            str(item.get("app", "")) == "supervisor"
+                            and str(item.get("api", "")) == "complete_task"
+                            and include_completion
+                        )
+                        or (
+                            str(item.get("app", "")) not in _BOOTSTRAP_APPS
+                            and str(item.get("api", "")) not in _BOOTSTRAP_APIS
+                        )
+                    )
                     for item in trace
                 ),
                 "instruction": _text_hash(instruction),
@@ -306,6 +338,7 @@ def normalize(
                 if rich_observations else "redacted status/api/step summaries"
             ),
             "rich_observations": rich_observations,
+            "include_completion": include_completion,
         },
         "output": _sha256(output),
         "rows": len(rows),
@@ -334,6 +367,8 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--max-tasks", type=int)
     parser.add_argument("--max-actions", type=int, default=16)
+    parser.add_argument("--task", dest="tasks", action="append", help="select an exact public split task (repeatable)")
+    parser.add_argument("--include-completion", action="store_true", help="retain supervisor.complete_task as the final action")
     parser.add_argument(
         "--rich-observations",
         action="store_true",
@@ -349,6 +384,8 @@ def main() -> int:
         max_tasks=args.max_tasks,
         max_actions=args.max_actions,
         rich_observations=args.rich_observations,
+        selected_tasks=args.tasks,
+        include_completion=args.include_completion,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0

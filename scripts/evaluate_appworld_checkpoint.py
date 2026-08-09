@@ -127,6 +127,7 @@ def _schema_ground_appworld_api_step(
     world: Any,
     prompt: str,
     api_head: Any | None = None,
+    allow_completion: bool = False,
 ) -> str | None:
     """Rank bounded API-schema candidates with the checkpoint instead of free-generating code."""
 
@@ -201,6 +202,10 @@ def _schema_ground_appworld_api_step(
                 args = ", ".join(f"{key}={repr(arguments[key])}" for key in sorted(arguments))
                 code = f"apis.{app}.{api}({args})"
                 ranked.append((score, code))
+    # Completion is deliberately opt-in: the default probe measures API-prefix replay only.
+    # The candidate contains no answer, so question tasks can still fail honestly at the verifier.
+    if allow_completion and "Next required action:" in prompt:
+        ranked.append((0.0, "apis.supervisor.complete_task(status='success')"))
     if not ranked:
         return None
     ranked.sort(key=lambda item: (-item[0], item[1]))
@@ -220,6 +225,16 @@ def _schema_ground_appworld_api_step(
 def _appworld_execute_api_step(world: Any, app: str, api: str, arguments: dict[str, Any]) -> tuple[Any, int]:
     """Execute one parsed API step with credentials sourced only from the resettable fixture."""
 
+    if app == "supervisor" and api == "complete_task":
+        allowed = {"answer", "status"}
+        if set(arguments) - allowed:
+            raise ValueError("supervisor.complete_task received unsupported arguments")
+        status = arguments.get("status", "success")
+        if status not in {"success", "fail"}:
+            raise ValueError("supervisor.complete_task status must be success or fail")
+        request_count_before = len(world.requester.request_tracker.requests)
+        response = world.apis.supervisor.complete_task(**arguments)
+        return response, len(world.requester.request_tracker.requests) - request_count_before
     if app in {"admin", "api_docs", "supervisor"} or api in {"login", "logout"}:
         raise ValueError("bootstrap/admin AppWorld API actions are not model-replayable")
     if app not in world.apis or api not in world.apis[app]:
