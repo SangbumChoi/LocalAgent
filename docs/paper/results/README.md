@@ -756,6 +756,7 @@ entire prefix for every output token and report `decode_cache: false` with
 | [m688 m679 ToolSandbox native](raw/m688-m679-toolsandbox-native-v1.json) | Complete pinned ToolSandbox base scenario run with the native simulator and milestone verifier | 129/129 executed, zero exceptions, 30 exact (23.26%), mean similarity 0.3409; 26/28 insufficient-information exact, 0 state-dependent exact; no official split/user simulator |
 | [m688 current workshop gate](raw/m688-workshop-gate-current-m679-v1.json) | Gate refresh after complete m679 ToolSandbox diagnostic | `ready: false`; ToolSandbox is now evidenced but remains blocked by `official_split_not_verified`; nine other native/public artifact blockers remain |
 | [m689 m679 ToolSandbox interactive](raw/m689-m679-toolsandbox-interactive-v1.json) | Complete pinned ToolSandbox base run with bounded replanning after tool results | 129/129 executed, zero exceptions, 27 exact (20.93%), mean similarity 0.3415; 0/82 multi-tool and 0/24 state-dependent exact; no official split/user simulator |
+| [m690 public HF current audit](raw/m690-public-hf-current-audit-v1.json) | Anonymous read-only audit of the public model/Space against the exact m679 checkpoint | Both endpoints HTTP 200, but public model/Space revisions are legacy and `current_checkpoint_match: false`; no upload performed |
 
 Each summary declares the sizes and SHA-256 hashes of its raw payloads and recomputes the reported
 within-run percentiles, run ranges, and paired ratios from those records. The tracked result tests

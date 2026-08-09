@@ -1595,6 +1595,14 @@ current RL preflight. It remains `ready: false` because nine native benchmark/se
 missing, the transfer-ablation report is bound to an older checkpoint, and the public HF model/Space
 does not bind m679.
 
+### m690 public HF audit against m679
+
+An anonymous read-only Hub audit downloads and hashes the public model and WebGPU Space artifacts.
+Both endpoints return HTTP `200`, but the model revision `d15db7…` and Space revision `3c07f7…`
+do not expose the exact m679 checkpoint hash (`current_checkpoint_match=false`). The public release
+is therefore reachable but legacy; no upload was attempted without authentication, and no current
+checkpoint publication claim is made.
+
 ### m689 current m679 ToolSandbox interactive diagnostic
 
 Allowing up to eight model turns after tool results on the same `129` base scenarios produces
