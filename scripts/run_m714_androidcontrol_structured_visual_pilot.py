@@ -154,7 +154,7 @@ def _metrics(model: LocalAgentLM, head: VisualActionHead, samples: list[dict[str
     }
 
 
-def _run_arm(parent_state: dict[str, Any] | None, cfg: ModelConfig, samples: list[dict[str, Any]], train: list[int], eval_rows: list[int], *, warm: bool, steps: int, seed: int, head_state: dict[str, Any]) -> dict[str, Any]:
+def _run_arm(parent_state: dict[str, Any] | None, cfg: ModelConfig, samples: list[dict[str, Any]], train: list[int], eval_rows: list[int], *, warm: bool, steps: int, seed: int, head_state: dict[str, Any]) -> tuple[dict[str, Any], LocalAgentLM, VisualActionHead]:
     torch.manual_seed(seed)
     model = LocalAgentLM(cfg)
     if warm:
@@ -191,13 +191,14 @@ def _run_arm(parent_state: dict[str, Any] | None, cfg: ModelConfig, samples: lis
         optimizer.step()
         losses.append(float(loss.detach()))
     after = _metrics(model, head, samples, eval_rows)
-    return {
+    report = {
         "warm": warm,
         "seed": seed,
         "training": {"steps": steps, "mean_loss": sum(losses) / max(1, len(losses))},
         "before": before,
         "after": after,
     }
+    return report, model, head
 
 
 def main() -> int:
@@ -205,6 +206,8 @@ def main() -> int:
     parser.add_argument("--parent", type=Path, required=True)
     parser.add_argument("--prefix-bytes", type=int, default=50 * 1024 * 1024)
     parser.add_argument("--steps", type=int, default=64)
+    parser.add_argument("--warm-checkpoint", type=Path)
+    parser.add_argument("--random-checkpoint", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     raw = _download(OBJECT_URL, 0, args.prefix_bytes - 1)
@@ -219,8 +222,15 @@ def main() -> int:
         raise ValueError("parent checkpoint has no state_dict")
     torch.manual_seed(714)
     head_state = VisualActionHead(cfg.d_model).state_dict()
-    warm = _run_arm(parent_state, cfg, samples, train, eval_rows, warm=True, steps=args.steps, seed=714, head_state=head_state)
-    random = _run_arm(None, cfg, samples, train, eval_rows, warm=False, steps=args.steps, seed=715, head_state=head_state)
+    warm, warm_model, warm_head = _run_arm(parent_state, cfg, samples, train, eval_rows, warm=True, steps=args.steps, seed=714, head_state=head_state)
+    random, random_model, random_head = _run_arm(None, cfg, samples, train, eval_rows, warm=False, steps=args.steps, seed=715, head_state=head_state)
+    for path, model, head, arm in (
+        (args.warm_checkpoint, warm_model, warm_head, "warm"),
+        (args.random_checkpoint, random_model, random_head, "random"),
+    ):
+        if path is not None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            torch.save({"cfg": cfg.__dict__, "state_dict": model.state_dict(), "head_state": head.state_dict(), "action_names": list(ANDROID_ACTIONS), "arm": arm}, path)
     payload = {
         "kind": "localagent_m714_androidcontrol_structured_visual_pilot",
         "schema_version": 1,

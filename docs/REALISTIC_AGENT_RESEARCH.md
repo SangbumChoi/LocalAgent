@@ -4585,3 +4585,16 @@ verification.
 The [m715 gate](paper/results/raw/m715-workshop-gate-current-m679-v1.json) keeps the result blocked
 as `structured_action_head_native_emulator_unverified`.  The head is not exported to WebGPU or
 promoted as AndroidControl/AndroidWorld/MobileGym visual competence.
+
+### Trained visual sidecar ONNX ABI and parity (m716)
+
+The [m716 receipt](paper/results/raw/m716-structured-visual-onnx-parity-v1.json) binds the trained
+m714 warm sidecar to an explicit image/action export contract.  Inputs are `input_ids`,
+`context_lengths`, and float32 RGB `96×96` images; outputs are seven Android action logits and a
+normalized two-coordinate pointer.  CPU ONNX Runtime agrees with PyTorch within maximum absolute
+differences of `8.64e-7` and `1.19e-7` for the two outputs.
+
+This closes the checkpoint-to-graph parity gap without overstating deployment: the graph has not
+been run through onnxruntime-web/WebGPU, integrated into the browser demo, quantized, or validated
+against an Android emulator.  The [m717 gate](paper/results/raw/m717-workshop-gate-current-m679-v1.json)
+therefore adds `cpu_onnx_parity_only_no_browser_webgpu_runtime` and keeps publication blocked.
