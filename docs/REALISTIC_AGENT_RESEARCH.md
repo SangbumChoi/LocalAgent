@@ -1537,6 +1537,18 @@ arm reaches `5.66%`; warm minus random is `+81.33` points. Exact sequence accura
 This supports retaining the warm browser initialization, but the receipt explicitly keeps the
 native BrowserGym gate separate: no live site, screenshot grounding, or browser side effect ran.
 
+### Mind2Web-to-native BrowserGym canary (m644)
+
+The [m644 receipt](paper/results/raw/m644-mind2web-browsergym-native-canary-v1.json) pairs the
+m626 baseline with the m643 Mind2Web-trained child on the same `16` fixed-seed MiniWoB episodes,
+the pinned BrowserGym revision, and the `realistic_browser` vocabulary. Both arms pass `4/16`
+(`25%`), all on `miniwob.click-button`; all normalized step traces are identical and the success
+delta is `0`. This is important negative transfer evidence: the `+81.33`-point Mind2Web text
+projection gain does not transfer to live MiniWoB state without a compatible grounding/action
+bridge. The canary is intentionally non-official because it uses the realistic-browser diagnostic
+pool and is limited to 16 episodes; the full native BrowserGym gate remains the separate m632
+receipt.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
