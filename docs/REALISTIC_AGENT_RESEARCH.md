@@ -1665,6 +1665,12 @@ task probe. However, verifier success remains `0/6`, exact sequence accuracy rem
 policy still lacks completion/state-planning behavior. The compact sketch is retained as a WebGPU
 input-format candidate, not promoted as agent capability.
 
+The [m661 receipt](paper/results/raw/m661-appworld-api-head-native-v1.json) isolates the schema
+head itself. A frozen trajectory-level `app.api` head reaches `42.86%` on seen-label public dev
+prefixes and raises replayed actions from `5` to `8` on the paired six-task probe, but verified
+success remains `0/6`. The head therefore helps candidate restriction without solving first-action
+grounding, repeated-call avoidance, or completion planning; it remains diagnostic only.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact

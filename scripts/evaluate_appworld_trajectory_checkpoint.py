@@ -51,12 +51,13 @@ def _response_summary(response: Any) -> dict[str, Any]:
 
 def evaluate(
     *, checkpoint: Path, root: Path, task_ids: list[str], report: Path,
-    max_steps: int, retrieve_k: int, experiment_name: str,
+    max_steps: int, retrieve_k: int, experiment_name: str, appworld_api_head: Path | None = None,
 ) -> dict[str, Any]:
     if max_steps < 1 or retrieve_k < 1:
         raise ValueError("max_steps and retrieve_k must be positive")
     from appworld import AppWorld, update_root
     from localagent.agent.runtime import Agent
+    from localagent.eval.appworld_api_head import load_appworld_api_head
 
     root = root.resolve()
     if Path(update_root(str(root))).resolve() != root:
@@ -72,6 +73,10 @@ def evaluate(
         _registry(calls),
         selector_first=True,
         retrieve_k=retrieve_k,
+    )
+    api_head = (
+        load_appworld_api_head(appworld_api_head, d_model=agent.model.cfg.d_model)
+        if appworld_api_head is not None else None
     )
     records: list[dict[str, Any]] = []
     for task_id in task_ids:
@@ -93,7 +98,7 @@ def evaluate(
                 model_output = agent.chat(prompt, max_tool_hops=1)
                 selected_tool = calls[0]["name"] if calls else None
                 code = _schema_ground_appworld_api_step(
-                    agent.model, agent.tokenizer, world, prompt, api_head=None
+                    agent.model, agent.tokenizer, world, prompt, api_head=api_head
                 )
                 parsed = _parse_appworld_api_code(code) if code is not None else None
                 step_record: dict[str, Any] = {
@@ -171,6 +176,7 @@ def evaluate(
             "selector_first": True,
             "observations": "redacted response type/keys summaries",
             "schema_adapter": "strict one literal API call per step",
+            "appworld_api_head": str(appworld_api_head) if appworld_api_head else None,
         },
         "environment": {
             "native_runtime_executed": True,
@@ -212,6 +218,7 @@ def main() -> int:
     parser.add_argument("--max-steps", type=int, default=8)
     parser.add_argument("--retrieve-k", type=int, default=100)
     parser.add_argument("--experiment-name", default="localagent_appworld_free_running_trajectory")
+    parser.add_argument("--appworld-api-head", type=Path)
     args = parser.parse_args()
     result = evaluate(
         checkpoint=args.checkpoint,
@@ -221,6 +228,7 @@ def main() -> int:
         max_steps=args.max_steps,
         retrieve_k=args.retrieve_k,
         experiment_name=args.experiment_name,
+        appworld_api_head=args.appworld_api_head,
     )
     print(json.dumps(result["summary"], indent=2, sort_keys=True))
     return 0
