@@ -32,6 +32,7 @@ from localagent.train.stage_data import (
     probe_decisions,
     tokenizer_identity,
 )
+from scripts.analyze_weight_transfer import analyze as analyze_weight_transfer
 
 
 def _identity(path: Path) -> dict[str, Any]:
@@ -348,6 +349,7 @@ def main() -> int:
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     torch.save(child, args.output)
+    transfer = analyze_weight_transfer(args.init, args.output)
     report = {
         "kind": "localagent_public_agent_continuation_report",
         "schema_version": 1,
@@ -377,6 +379,13 @@ def main() -> int:
         "heads": {"before": heads_before, "after": heads_after},
         "loss_history": loss_history,
         "token_accounting": training,
+        "weight_transfer": {
+            "base": transfer["base"],
+            "target": transfer["target"],
+            "compatibility": transfer["compatibility"],
+            "groups": transfer["groups"],
+            "recommendation": transfer["recommendation"],
+        },
         "claim_boundary": (
             f"Held-out public {args.source_dataset} source continuation with text-first "
             "teacher-forced metrics; this is not an official benchmark score and makes no "

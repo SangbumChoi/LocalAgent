@@ -65,6 +65,12 @@ DEFAULT_REGISTRY: tuple[dict[str, str], ...] = (
         "original_url": "https://github.com/ServiceNow/EnterpriseOps-Gym",
         "policy": "evaluation_only;verifier_and_server_state_never_training_inputs",
     },
+    {
+        "id": "mcp_trajectory_benchmark",
+        "dataset": "obaydata/mcp-agent-trajectory-benchmark",
+        "original_url": "https://huggingface.co/datasets/obaydata/mcp-agent-trajectory-benchmark",
+        "policy": "train_only_public_train_projection;agent_disjoint_internal_holdout_not_official",
+    },
 )
 
 

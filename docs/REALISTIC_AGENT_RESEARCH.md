@@ -1756,6 +1756,21 @@ selector-first native replay, three API actions are executed, yet complete task 
 route selection, observation grounding, or multi-step planning. The head is not promoted to the
 WebGPU bundle.
 
+### Current m666 public MCP continuation and source snapshot (m671)
+
+The [m671 source snapshot](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json) resolves
+nine public Hugging Face revisions without downloading mutable evaluation payloads, retaining each
+original source link, revision, license metadata, and file inventory. The [m671 transfer receipt](paper/results/raw/m671-m666-mcp-current-transfer-v1.json) then uses the Apache-2.0
+`obaydata/mcp-agent-trajectory-benchmark` at revision `f4f449d...`: `86` public train rows and
+`21` deterministic agent-disjoint internal-holdout rows, with tool outputs and reasoning excluded.
+From the exact m666 warm child, held-out assistant-token accuracy rises `45.35%→55.93%`; the
+matched random child rises `25.49%→39.84%`, leaving a `16.08` percentage-point warm advantage.
+Both exact multi-action sequence rates remain `0%`. All shared tensors are shape/config/tokenizer
+compatible and action heads are frozen; embedding/attention/FFN movement is small, supporting a
+low-rate transferred backbone plus separately trained action heads. This remains teacher-forced
+projection evidence, not official MCPMark/Toolathlon, native MCP server execution, or real
+email/Notion side effects.
+
 ### Current m666 native mobile/browser reruns (m670)
 
 The [m670 MobileGym receipt](paper/results/raw/m670-m666-mobilegym-native-v1.json) and
