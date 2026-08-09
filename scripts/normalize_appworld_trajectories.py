@@ -38,6 +38,13 @@ _OMIT_ARGUMENTS = {
     "raise_on_failure",
     "username",
 }
+_SENSITIVE_KEYS = {
+    "access_token", "api_key", "authorization", "canary", "cookie", "email", "password",
+    "phone", "phone_number", "secret", "session", "token", "username",
+}
+_LOW_VALUE_RESPONSE_KEYS = {
+    "birthday", "created_at", "updated_at", "url", "website",
+}
 
 
 def _sha256(path: Path) -> dict[str, Any]:
@@ -68,6 +75,40 @@ def _literal(value: Any) -> str:
     raise TypeError(f"unsupported AppWorld argument type: {type(value).__name__}")
 
 
+def _safe_value(value: Any, *, depth: int = 0, key: str = "") -> Any:
+    """Keep useful schema/value hints while removing credentials and large task payloads."""
+
+    normalized_key = key.lower()
+    if (
+        normalized_key in _SENSITIVE_KEYS
+        or any(part in normalized_key for part in ("access_token", "password", "secret"))
+        or normalized_key.endswith("_address")
+        or normalized_key == "address"
+        or normalized_key in _LOW_VALUE_RESPONSE_KEYS
+    ):
+        return "<redacted>"
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return value[:80] + ("…" if len(value) > 80 else "")
+    if depth >= 3:
+        return {"type": type(value).__name__}
+    if isinstance(value, dict):
+        items = sorted((str(name), item) for name, item in value.items())
+        kept = items[:12]
+        result = {name: _safe_value(item, depth=depth + 1, key=name) for name, item in kept}
+        if len(items) > len(kept):
+            result["_truncated_fields"] = len(items) - len(kept)
+        return result
+    if isinstance(value, (list, tuple)):
+        kept = list(value[:3])
+        result = [_safe_value(item, depth=depth + 1) for item in kept]
+        if len(value) > len(kept):
+            result.append({"_truncated_items": len(value) - len(kept)})
+        return result
+    return str(value)[:80]
+
+
 def _run_python_spec():
     for tool in STANDARD_TOOLS:
         if tool.name == "run_python":
@@ -83,6 +124,7 @@ def _trace_ground_truth(world: Any) -> tuple[list[dict[str, Any]], str]:
     original_request = world.requester.request
 
     def capture(*args: Any, **kwargs: Any):
+        response = original_request(*args, **kwargs)
         captured.append(
             {
                 "app": kwargs.get("_app_name"),
@@ -92,9 +134,10 @@ def _trace_ground_truth(world: Any) -> tuple[list[dict[str, Any]], str]:
                     for key, value in kwargs.items()
                     if key not in {"_app_name", "_api_name"}
                 },
+                "response": response,
             }
         )
-        return original_request(*args, **kwargs)
+        return response
 
     world.requester.request = capture
     solution_code = str(ground_truth.compiled_solution_code).rstrip() + "\nsolution(apis, requester)"
@@ -118,7 +161,14 @@ def _actions(trace: list[dict[str, Any]], max_actions: int) -> list[dict[str, An
             for key, value in request.get("arguments", {}).items()
             if str(key) not in _OMIT_ARGUMENTS
         }
-        actions.append({"app": app, "api": api, "arguments": arguments})
+        actions.append(
+            {
+                "app": app,
+                "api": api,
+                "arguments": arguments,
+                "response": request.get("response"),
+            }
+        )
         if len(actions) >= max_actions:
             break
     if not actions:
@@ -128,7 +178,7 @@ def _actions(trace: list[dict[str, Any]], max_actions: int) -> list[dict[str, An
 
 def normalize(
     *, root: Path, split: str, purpose: str, output: Path, manifest: Path,
-    max_tasks: int | None, max_actions: int,
+    max_tasks: int | None, max_actions: int, rich_observations: bool,
 ) -> dict[str, Any]:
     if split not in {"train", "dev"}:
         raise ValueError("only AppWorld train/dev splits may be normalized")
@@ -178,14 +228,13 @@ def normalize(
             messages.append(
                 Message(role=Role.assistant, tool_calls=[ToolCall(name="run_python", arguments={"code": code})])
             )
+            observation: dict[str, Any] = {"status": "ok", "step": index, "api": label}
+            if rich_observations:
+                observation["response"] = _safe_value(action.get("response"))
             messages.append(
                 Message(
                     role=Role.tool,
-                    tool_response=json.dumps(
-                        {"status": "ok", "step": index, "api": label},
-                        separators=(",", ":"),
-                        sort_keys=True,
-                    ),
+                    tool_response=json.dumps(observation, separators=(",", ":"), sort_keys=True),
                 )
             )
         row = Conversation(
@@ -240,16 +289,20 @@ def normalize(
             "max_tasks": max_tasks,
             "max_actions": max_actions,
             "bootstrap_credentials_removed": True,
-            "tool_observations": "redacted status/api/step summaries",
+            "tool_observations": (
+                "bounded safe response summaries with credentials/canaries removed"
+                if rich_observations else "redacted status/api/step summaries"
+            ),
+            "rich_observations": rich_observations,
         },
         "output": _sha256(output),
         "rows": len(rows),
         "tasks": task_sources,
         "claim_boundary": (
-            "Public AppWorld train/dev ground-truth API trajectories with bootstrap credentials removed "
-            "and tool responses redacted to deterministic status summaries. This is trajectory-learning "
-            "supervision, not a native AppWorld score or a claim that redacted observations reproduce "
-            "the full stateful environment."
+            "Public AppWorld train/dev ground-truth API trajectories with bootstrap credentials removed. "
+            "When rich observations are enabled, responses are bounded safe summaries with sensitive "
+            "keys/canaries redacted; this is trajectory-learning supervision, not a native AppWorld "
+            "score or a claim that summaries reproduce the full stateful environment."
         ),
     }
     body["manifest_self_sha256"] = hashlib.sha256(
@@ -269,6 +322,11 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--max-tasks", type=int)
     parser.add_argument("--max-actions", type=int, default=16)
+    parser.add_argument(
+        "--rich-observations",
+        action="store_true",
+        help="include bounded response values/keys with credentials and canaries removed",
+    )
     args = parser.parse_args()
     result = normalize(
         root=args.root,
@@ -278,6 +336,7 @@ def main() -> int:
         manifest=args.manifest,
         max_tasks=args.max_tasks,
         max_actions=args.max_actions,
+        rich_observations=args.rich_observations,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0

@@ -1642,6 +1642,18 @@ teacher-forced trajectory gain does not yet transfer to a stateful free-run poli
 recommendation remains to reuse the warm body only as an initialization and keep native promotion
 blocked until action/schema heads are trained against actual state observations and completion calls.
 
+### AppWorld safe rich-state trajectory ablation (m657)
+
+The [m657 receipt](paper/results/raw/m657-appworld-rich-state-v1.json) replaces the prior empty
+tool observations with bounded response summaries containing useful IDs, titles, counts, and
+schema values while redacting credentials, addresses, canaries, and tokens. It uses the same public
+`64/18` train/dev split and matched warm/random initialization, capped at three actions per row to
+fit the WebGPU context. Warm held-out teacher-forced accuracy reaches `63.22%` versus `35.63%` for
+random, but all `18` dev rows are still truncated by the 2,048-token context and the native six-task
+probe remains `0/6` for both arms (`3` warm actions versus `10` random). Rich observations improve
+the learning signal, yet the result confirms that response summarization alone does not solve
+stateful planning, argument grounding, or completion-call generation.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact

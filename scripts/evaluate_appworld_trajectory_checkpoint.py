@@ -24,6 +24,7 @@ from scripts.evaluate_appworld_checkpoint import (
     _text_hash,
     _tracker_summary,
 )
+from scripts.normalize_appworld_trajectories import _safe_value
 
 
 def _sha256(path: Path) -> dict[str, Any]:
@@ -38,10 +39,14 @@ def _sha256(path: Path) -> dict[str, Any]:
 
 def _response_summary(response: Any) -> dict[str, Any]:
     if isinstance(response, dict):
-        return {"type": "object", "keys": sorted(str(key) for key in response)[:24]}
+        return {
+            "type": "object",
+            "keys": sorted(str(key) for key in response)[:24],
+            "value": _safe_value(response),
+        }
     if isinstance(response, list):
-        return {"type": "array", "length": len(response)}
-    return {"type": type(response).__name__}
+        return {"type": "array", "length": len(response), "value": _safe_value(response)}
+    return {"type": type(response).__name__, "value": _safe_value(response)}
 
 
 def evaluate(
