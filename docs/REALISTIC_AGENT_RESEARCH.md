@@ -1549,6 +1549,17 @@ bridge. The canary is intentionally non-official because it uses the realistic-b
 pool and is limited to 16 episodes; the full native BrowserGym gate remains the separate m632
 receipt.
 
+### Grounding bridge diagnostic for the native canary (m645)
+
+The [m645 receipt](paper/results/raw/m645-mind2web-browsergym-grounding-canary-v1.json) repeats
+the same paired `16`-episode canary with two explicit grounding adapters. Reading only the live
+accessibility tree (semantic fallback) leaves both checkpoints at `4/16` (`25%`), with identical
+normalized traces and no child gain. Reading the live DOM's clickable geometry (coordinate
+fallback) raises both arms to `8/16` (`50%`), again with identical traces and zero child gain.
+This isolates the bottleneck: the improvement is supplied by an environment-side geometry bridge,
+not by Mind2Web policy transfer. Both runs are bounded, non-official diagnostics—no screenshots,
+real accounts, email/Notion side effects, or official BrowserGym score are claimed.
+
 ### Full native BrowserGym continuation on the m626 child (m632)
 
 The [m632 receipt](paper/results/raw/m632-m626-browsergym-native-full-v1.json) executes the exact
