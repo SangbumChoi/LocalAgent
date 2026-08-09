@@ -1497,6 +1497,20 @@ warm advantage after training. Exact sequence accuracy remains `0%` for both, an
 assistant free text are redacted. This is evidence for retaining warm weights in text tool-call
 continuation, not an official MCPMark score or live Notion/browser/database execution.
 
+### m680 current-child EnterpriseOps-Gym email control
+
+The [m680 receipt](paper/results/raw/m680-m679-enterprise-email-control-v1.json) evaluates the
+exact m679 AndroidControl+MCP warm child against its matched random child on the public
+[EnterpriseOps-Gym](https://huggingface.co/datasets/ServiceNow-AI/EnterpriseOps-Gym) email slice:
+`67` rows, `20` candidate tools per row, and an immutable dataset revision. Warm retrieval is
+`13.433%`/`40.299%`/`62.687%` at hit@1/3/5, while random is `22.388%`/`70.149%`/`89.552%`;
+the warm-minus-random gaps are `-8.955`/`-29.851`/`-26.866` percentage points. This matched
+negative control means the m679 cross-surface warm initialization should not be promoted for
+email tool retrieval without task-family isolation or additional training. The adapter uses
+generated name-only descriptions, drops server configuration and verifiers, and executes no
+email action, so the result is neither official EnterpriseOps-Gym stateful success nor evidence
+of real Gmail/Outlook side effects.
+
 ### m671 public source refresh and current MCP continuation
 
 The [m671 public snapshot audit](paper/results/raw/m671-public-dataset-snapshot-audit-v1.json)
