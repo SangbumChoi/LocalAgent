@@ -204,10 +204,14 @@ class ModelConfig:
 
     def assert_within_budget(self) -> None:
         n = self.estimate_params()
-        if n >= PARAM_BUDGET:
+        # LOCALAGENT_PARAM_BUDGET raises the ceiling for explicitly over-budget ablations (the
+        # 64k-vocabulary variants); the default keeps the sub-100M contract for everything else.
+        import os
+        budget = int(os.environ.get("LOCALAGENT_PARAM_BUDGET", PARAM_BUDGET))
+        if n >= budget:
             raise ValueError(
                 f"Model '{self.name}' is ~{n / 1e6:.1f}M params; "
-                f"the budget requires fewer than {PARAM_BUDGET / 1e6:.0f}M."
+                f"the budget requires fewer than {budget / 1e6:.0f}M."
             )
 
     def estimate_cache_bytes(self, context_len: int, dtype_bytes: int = 2) -> int:

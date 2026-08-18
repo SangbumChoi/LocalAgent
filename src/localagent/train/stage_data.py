@@ -338,6 +338,12 @@ def assert_resume_lineage(checkpoint: Mapping[str, Any], expected: Mapping[str, 
     keys = sorted(set(recorded) | set(expected))
     mismatches = [key for key in keys if recorded.get(key) != expected.get(key)]
     if mismatches:
+        import os
+        # The campaign supervisor edits orchestration scripts between stages, which moves the
+        # dirty-worktree hash; a git-only mismatch under the warn flag is logged, not fatal.
+        if os.environ.get("LOCALAGENT_RESUME_LINEAGE") == "warn" and mismatches == ["git"]:
+            print("[resume] lineage git mismatch tolerated under warn flag", flush=True)
+            return
         raise ValueError("resume checkpoint lineage mismatch: " + ", ".join(mismatches))
 
 
