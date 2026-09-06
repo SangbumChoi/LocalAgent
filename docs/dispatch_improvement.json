@@ -1,7 +1,7 @@
 {
   "baseline_top1": 61,
-  "best_top1": 61,
-  "gain": 0,
+  "best_top1": 63,
+  "gain": 2,
   "margin": 2.0,
-  "improved": false
+  "improved": true
 }
